@@ -1,0 +1,16 @@
+# Ludibrium Village contract (wave 4): a drillmaster's price in toy drums off Eos Tower's drumming bunnies.
+- id: rollo-the-drum-price
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [rollo.intro.done]
+  price:
+    meso: 25000
+    items: [{ itemId: 4000127, count: 30 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 12000 }

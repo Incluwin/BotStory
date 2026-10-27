@@ -1,0 +1,32 @@
+# Tera Forest Time Gate contracts (wave 4): a scavenger paid partly in the afterlords' chained tires, a dragon-knight
+# scout's day rate.
+- id: tobiah-the-salvage-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [tobiah.intro.done]
+  price:
+    meso: 40000
+    items: [{ itemId: 4000552, count: 10 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 20000 }
+
+- id: dashiell-the-sky-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [dashiell.intro.done]
+  price:
+    meso: 140000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 45000 }

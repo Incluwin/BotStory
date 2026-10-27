@@ -119,9 +119,10 @@ class AgentTownLifeProfileRepositoryTest {
                 AgentTownLifeProfileRepository.defaultRepository();
 
         // 30, 15 Community Repack towns (docs/REPACK_IMPORT_PLAN.md), haunted-house, bigger-ben, valley-of-heroes
-        // (docs/ITCG_MASTERIA_PLAN.md section 6), aquarium-hall, aquarium-store (docs/REGIONAL_RESIDENTS_PLAN.md), and
-        // temple-of-time (docs/ROUTES_MALAYSIA_PLAN.md section 3)
-        assertEquals(51, repository.profiles().size());
+        // (docs/ITCG_MASTERIA_PLAN.md section 6), aquarium-hall, aquarium-store (docs/REGIONAL_RESIDENTS_PLAN.md),
+        // temple-of-time (docs/ROUTES_MALAYSIA_PLAN.md section 3), and the thirteen wave-4 Ossyria profiles
+        // (docs/REGIONAL_RESIDENTS_PLAN.md section 10)
+        assertEquals(64, repository.profiles().size());
         for (int mapId : new int[]{104000000, 100000000, 103000000, 102000000,
                 101000000, 120000000, 105040300}) {
             AgentTownLifeProfile profile = repository.require(mapId);

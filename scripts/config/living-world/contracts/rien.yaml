@@ -13,3 +13,19 @@
     leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
     cooldownHoursAfterLeave: 2
     rejoinPrice: { meso: 6000 }
+
+# Wave 4: an Aran who asks only that the player has heard Ansgar and her on the boat, and the road money.
+- id: brynja-the-warm-road
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [rien.heard-brynja]
+  price:
+    meso: 15000
+  terms:
+    durationHours: 6
+    maxLevelGap: 12
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 7000 }

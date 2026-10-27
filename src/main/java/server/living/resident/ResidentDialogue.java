@@ -114,7 +114,21 @@ public final class ResidentDialogue {
             Map.entry("mushroom-shrine", new int[] {9110002, 9110003, 9110004, 9110005, 9110006}),
             Map.entry("showa-town", new int[] {9120001, 9120003, 9120011, 9120017, 9120018}),
             Map.entry("kuala-lumpur", new int[] {9270054, 9270055, 9270056, 9270057}),
-            Map.entry("kampung-village", new int[] {9270061, 9270062, 9270065}));
+            Map.entry("kampung-village", new int[] {9270061, 9270062, 9270065}),
+            Map.entry("three-doors", new int[] {2140000, 2140001, 2140002, 2140003}),
+            Map.entry("tera-forest-time-gate", new int[] {2082004, 2082005, 2082007, 2082008, 2082009}),
+            Map.entry("altaire-camp", new int[] {2130000, 2131001, 2131002, 2131003, 2131006, 2131007}),
+            Map.entry("mu-lung-dojo", new int[] {2091005, 2091000, 2091001, 2091002}),
+            Map.entry("ice-valley-ii", new int[] {2030000, 2030009, 2020003, 2020006}),
+            Map.entry("door-to-zakum", new int[] {2030008, 2020007, 2020002}),
+            Map.entry("orbis-park", new int[] {2012010, 2010003, 2010004, 2012018}),
+            Map.entry("ludibrium-village", new int[] {2040014, 2040016, 2041004, 2040046}),
+            Map.entry("town-of-ariant", new int[] {2101000, 2101001, 2101003, 2101005, 2100001}),
+            Map.entry("ariant-castle", new int[] {2101004, 2101002, 2101011}),
+            Map.entry("tent-of-the-entertainers", new int[] {2101013, 2100005, 2100006}),
+            Map.entry("zenumist-society", new int[] {2111000, 2111002, 2110000}),
+            Map.entry("alcadno-society", new int[] {2111001, 2110001}),
+            Map.entry("pier-on-the-beach", new int[] {2093003, 2092000, 2093000, 2093001}));
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);

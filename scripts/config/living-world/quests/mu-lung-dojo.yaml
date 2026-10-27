@@ -1,0 +1,140 @@
+# Mu Lung Dojo quests (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own data. The
+# Dojo's floors are instanced (925020100-925023800), so the quests use Mu Lung's and Herb Town's fields: the Sky Forest
+# red porky 4230501 and black porky 4230502 (porcupine spine 4000290 at 20%; 250010000, 250010100, 250010200), blue and
+# red flower serpents 4230503/4230504 (snake area 250010300, where the sky forest ends 250010400), grizzly 5120500
+# (yellow belt 4000284; Wild Bear Areas 1-3 250010301-250010303), panda 6130203 (red belt 4000285; Wild Bear Areas 2/3,
+# Territory of Wandering Bear 250010304), reindeer 5120505 (broken deer horn 4000288; Peach Farms 1-3 250010500/
+# 250010600/250010700, Foggy Forest 250010501), and Herb Town's red-nose captain 7130104 (pirate dens 1-3
+# 251010401-251010403). Errands: Meiwen and Suyin in Mu Lung (wave 2).
+# Gear: Lianhua's Blue Belt 1132002 L45 / Red Belt 1132003 L60 / Black Belt 1132004 L75, her own pieces (belts have no
+# upgrade slots).
+
+# ---- Guo, retired master: his arc, the bow he owes (arcs/mu-lung-dojo.yaml) --------------------------------------------
+
+- id: guo-the-old-gi
+  persona: guo
+  title: "The Old Gi"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: porkies, type: KILL_MOBS, mobIds: [4230501, 4230502], count: 30, mapIds: [250010000, 250010100, 250010200] }
+    - { id: spines, type: COLLECT_ITEM, itemId: 4000290, count: 8 }
+    - { id: mend, type: DELIVER, to: guo, take: { itemId: 4000290, count: 8 } }
+  rewards: { meso: 11000, exp: 11000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: guo-the-unbowed, to: chapter-2 } }
+
+- id: guo-belts-taken-by-bears
+  persona: guo
+  title: "Belts Taken by Bears"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 54 }, questsCompleted: [guo-the-old-gi] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: belts, type: COLLECT_ITEM, itemId: 4000284, count: 10 }
+    - { id: home, type: DELIVER, to: guo, take: { itemId: 4000284, count: 10 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# The arc's last beat, once per server: the first player to carry Guo's word to Meiwen and Shen sends him up the floors
+# for everyone (requires.notFlags names the world flag it sets).
+- id: guo-the-bow
+  persona: guo
+  title: "The Bow"
+  length: MEDIUM
+  requires: { level: { min: 40 }, questsCompleted: [guo-the-old-gi], flags: [mu-lung-dojo.belt.kept], notFlags: [mu-lung-dojo.guo.bowed] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: meiwen, type: TALK_TO, persona: meiwen, say: ["Guo? i was a girl in the crowd at the Dojo door the day he came down. he didn't look at anyone. ...a bow isn't late. a bow is a bow. tell him i'll stand by the temple board the morning he goes up. tell him half the street will."] }
+    - { id: shen, type: TALK_TO, persona: shen, say: ["master Guo is going in? ...the door's open. it was always open. (bows very low) tell him i'll keep his shoes."] }
+    - { id: bow, type: DELIVER, to: guo }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 60, items: [{ itemId: 2022116, count: 10 }], worldFlags: [mu-lung-dojo.guo.bowed] }
+
+# ---- Shen, doorman of the Dojo --------------------------------------------------------------------------------------
+
+- id: shen-hooks-for-the-belts
+  persona: shen
+  title: "Pegs by the Door"
+  length: SHORT
+  requires: { level: { min: 56 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: reindeer, type: KILL_MOBS, mobIds: [5120505], count: 25, mapIds: [250010500, 250010600, 250010700, 250010501] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000288, count: 12 }
+    - { id: pegs, type: DELIVER, to: shen, take: { itemId: 4000288, count: 12 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 35 }
+
+# A middle beat, once per server: the note goes up once, and the master's answer comes down once.
+- id: shen-a-note-for-the-top-floor
+  persona: shen
+  title: "A Note for the Top Floor"
+  length: SHORT
+  requires: { level: { min: 40 }, questsCompleted: [guo-the-old-gi], flags: [mu-lung-dojo.heard-shen], notFlags: [mu-lung-dojo.belt.kept] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lianhua, type: TALK_TO, persona: lianhua, say: ["a note for the master? i've never got past twenty-nine. ...give it here. i'll knock louder."] }
+    - { id: answer, type: DELIVER, to: shen }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 60, items: [{ itemId: 2022116, count: 10 }], worldFlags: [mu-lung-dojo.belt.kept] }
+
+# ---- Lianhua, challenger of the Dojo floors (recruitable; day rate; her belts) ----------------------------------------
+
+- id: lianhua-morning-bears
+  persona: lianhua
+  title: "Warm-Up Before Breakfast"
+  length: SHORT
+  requires: { level: { min: 54 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: grizzlies, type: KILL_MOBS, mobIds: [5120500], count: 30, mapIds: [250010301, 250010302, 250010303] }
+    - { id: warm, type: DELIVER, to: lianhua }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 30, flags: [lianhua.intro.done] }
+
+- id: lianhua-blue-belt
+  persona: lianhua
+  title: "The Blue Belt"
+  length: MEDIUM
+  requires: { level: { min: 45 }, friendship: 5, questsCompleted: [lianhua-morning-bears] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: serpents, type: KILL_MOBS, mobIds: [4230503, 4230504], count: 30, mapIds: [250010300, 250010400] }
+    - { id: belt, type: DELIVER, to: lianhua }
+  rewards:
+    meso: 50000
+    exp: 50000
+    bondPoints: 35
+    gear:
+      - { pool: [1132002], scrolls: [{ success: 100 }] }
+
+- id: lianhua-red-belt
+  persona: lianhua
+  title: "The Red Belt"
+  length: LONG
+  requires: { level: { min: 60 }, friendship: 7, questsCompleted: [lianhua-blue-belt] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pandas, type: KILL_MOBS, mobIds: [6130203], count: 30, mapIds: [250010302, 250010303, 250010304] }
+    - { id: belts, type: COLLECT_ITEM, itemId: 4000285, count: 10 }
+    - { id: home, type: DELIVER, to: lianhua, take: { itemId: 4000285, count: 10 } }
+  rewards:
+    meso: 90000
+    exp: 90000
+    bondPoints: 50
+    gear:
+      - { pool: [1132003], scrolls: [{ success: 60 }] }
+
+- id: lianhua-black-belt
+  persona: lianhua
+  title: "The Black Belt"
+  length: LONG
+  requires: { level: { min: 75 }, friendship: 10, questsCompleted: [lianhua-red-belt] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: captains, type: KILL_MOBS, mobIds: [7130104], count: 25, mapIds: [251010401, 251010402, 251010403] }
+    - { id: suyin, type: TALK_TO, persona: suyin, say: ["Lianhua sent you? hands up. ...no, higher. (a short, hard jab, which you catch) huh. tell her yes. tell her it's the only yes i've got. and tell her one of these days we're going to find out."] }
+    - { id: belt, type: DELIVER, to: lianhua }
+  rewards:
+    meso: 130000
+    exp: 130000
+    bondPoints: 60
+    gear:
+      - { pool: [1132004], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }

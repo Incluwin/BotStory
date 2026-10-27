@@ -1,0 +1,130 @@
+# Ludibrium Village quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). The village's west door is Eos
+# Tower's top (220000400 -> the 100th floor 221024400), so its Residents use the tower floors wave 1 and Omega Sector
+# left alone: helly 3210206 (propeller 4000103; 74th/75th 221023200/221023300, 91st/92nd 221023500/221023600), propelly
+# 3230303 (motor 4000104; 57th-59th 221022400-221022600), bloctopus 3230302 (bloctopus key chain 4000099; 41st-44th
+# 221021700-221022000), king bloctopus 3230103 (plastic crown 4000100; 22nd/23rd 221021200/221021300), drumming bunny
+# 3230400 (toy drum 4000127; 57th-60th 221022400-221022700, 74th/75th). Errands to Ludibrium's wave-1 cast (Della,
+# Ignatz, Benno; personas/ludibrium.yaml) and to Orbis Park (Odalys; personas/orbis-park.yaml).
+# Gear: Alder's Toymaker Cap 1002677 L40 and Toymaker Cape 1102147 L40.
+
+# ---- Alder, toymaker of the village (his cap and cape) ---------------------------------------------------------------
+
+- id: alder-propellers-for-the-planes
+  persona: alder
+  title: "It's the Pitch"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hellies, type: KILL_MOBS, mobIds: [3210206], count: 25, mapIds: [221023200, 221023300, 221023500, 221023600] }
+    - { id: propellers, type: COLLECT_ITEM, itemId: 4000103, count: 12 }
+    - { id: planes, type: DELIVER, to: alder, take: { itemId: 4000103, count: 12 } }
+  rewards: { meso: 11000, exp: 10000, bondPoints: 35 }
+
+- id: alder-the-toymakers-cap
+  persona: alder
+  title: "A Pocket for Screws"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 5, questsCompleted: [alder-propellers-for-the-planes] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: propellys, type: KILL_MOBS, mobIds: [3230303], count: 25, mapIds: [221022400, 221022500, 221022600] }
+    - { id: motors, type: COLLECT_ITEM, itemId: 4000104, count: 12 }
+    - { id: cap, type: DELIVER, to: alder, take: { itemId: 4000104, count: 12 } }
+  rewards:
+    meso: 35000
+    exp: 30000
+    bondPoints: 35
+    gear:
+      - { pool: [1002677], scrolls: [{ success: 100 }] }
+
+- id: alder-the-toymakers-cape
+  persona: alder
+  title: "Sawdust Slides Off"
+  length: LONG
+  requires: { level: { min: 40 }, friendship: 7, questsCompleted: [alder-the-toymakers-cap] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bloctopuses, type: KILL_MOBS, mobIds: [3230302], count: 25, mapIds: [221021700, 221021800, 221021900, 221022000] }
+    - { id: keys, type: COLLECT_ITEM, itemId: 4000099, count: 12 }
+    - { id: della, type: TALK_TO, persona: della, say: ["Alder's cape? i cut it a year ago. he never came for it. he never comes for anything, he sends people. here. tell him the lining's teddy cotton. he'll pretend not to notice. he'll notice."] }
+    - { id: cape, type: DELIVER, to: alder, take: { itemId: 4000099, count: 12 } }
+  rewards:
+    meso: 45000
+    exp: 40000
+    bondPoints: 50
+    gear:
+      - { pool: [1102147], scrolls: [{ success: 60 }] }
+
+# ---- Winifred, schoolteacher of the village ---------------------------------------------------------------------------
+
+- id: winifred-crowns-for-the-play
+  persona: winifred
+  title: "Nine Kings, No Crowns"
+  length: SHORT
+  requires: { level: { min: 36 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kings, type: KILL_MOBS, mobIds: [3230103], count: 20, mapIds: [221021200, 221021300] }
+    - { id: crowns, type: COLLECT_ITEM, itemId: 4000100, count: 10 }
+    - { id: play, type: DELIVER, to: winifred, take: { itemId: 4000100, count: 10 } }
+  rewards: { meso: 11000, exp: 10000, bondPoints: 35 }
+
+- id: winifred-a-lesson-on-time
+  persona: winifred
+  title: "A Lesson on Time"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ignatz, type: TALK_TO, persona: ignatz, say: ["a lesson for the children? tell them a clock is a promise somebody keeps every night. i keep this one. that's the whole lesson. ...and tell them not to climb it. somebody always tries."] }
+    - { id: report, type: DELIVER, to: winifred }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 35 }
+
+- id: winifred-a-day-in-the-park
+  persona: winifred
+  title: "A Day in the Clouds"
+  length: MEDIUM
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: odalys, type: TALK_TO, persona: odalys, say: ["nine children? in my park? ...tell her yes. tell her to keep them off the blue beds and well away from the fierries. the fierries will be on their best behaviour. they won't. tell her yes anyway."] }
+    - { id: report, type: DELIVER, to: winifred }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
+
+# ---- Rollo, drillmaster of the toy parade (recruitable) --------------------------------------------------------------
+
+- id: rollo-the-drummers-desertion
+  persona: rollo
+  title: "Deserters in the Tower"
+  length: SHORT
+  requires: { level: { min: 33 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bunnies, type: KILL_MOBS, mobIds: [3230400], count: 30, mapIds: [221022400, 221022500, 221022600, 221022700, 221023200, 221023300] }
+    - { id: salute, type: VISIT_MAP, mapIds: [221024400] }
+    - { id: report, type: DELIVER, to: rollo }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 30, flags: [rollo.intro.done] }
+
+- id: rollo-the-old-guards-step
+  persona: rollo
+  title: "The Old Guard's Step"
+  length: SHORT
+  requires: { level: { min: 33 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: benno, type: TALK_TO, persona: benno, say: ["the boy wants the old guard's step? ...left foot on the tick, right foot on the tock, and never look up at the tower while you march. the tower looks back. and tell him his soldiers are less sloppy than Prue's. don't tell him i said it nicely."] }
+    - { id: report, type: DELIVER, to: rollo }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
+
+- id: rollo-the-drum-line
+  persona: rollo
+  title: "Every Soldier His Own Drum"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 33 }, questsCompleted: [rollo-the-drummers-desertion] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drums, type: COLLECT_ITEM, itemId: 4000127, count: 15 }
+    - { id: parade, type: DELIVER, to: rollo, take: { itemId: 4000127, count: 15 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }

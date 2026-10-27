@@ -1,0 +1,483 @@
+# Altaire Camp cast (wave 4): the expedition out of Ossyria, camped in Ellin's forest long ago (travellers come and go
+# by the time gate in the small forest). 7 residents, 2 recruitable (Maelis the huntress for a boar kill proof, Gaspard
+# the stone-breaker for a day rate), 1 arc (Ottavia's map, whose last chapter writes the forest's name across its top,
+# once per server). Ids in quests/altaire-camp.yaml.
+- id: ottavia
+  name: Ottavia
+  look: { gender: female }
+  title: "Cartographer of the Expedition"
+  job: BEGINNER
+  level: { min: 48, max: 48 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: altaire-camp
+    routine:
+      - { from: 6, to: 12, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:by-mayoren", activity: REST }
+      - { from: 14, to: 19, spot: "venue:tent-house-1-door", activity: SOCIALIZE }
+      - { from: 19, to: 23, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [mossy tree forest trail, tree rod, deep fairy forest]
+  questLines: [ottavia-the-walking-trees, ottavia-the-haze-line, ottavia-a-name-on-the-map, ottavia-green-ink]
+  arc: ottavia-the-map-of-the-forest
+  rumors: [altaire-the-haze-line]
+  relationships:
+    - { persona: casimir, kind: DRAWS_THE_LINE_WITH }
+    - { persona: larkin, kind: ASKS_THE_WAY_OF }
+    - { persona: gaspard, kind: MARKS_THE_CORNERS_WITH }
+    - { persona: wren, kind: HEARD_OF }
+  giftItemIds: [4000436, 4000438]
+  dialogue:
+    greetFirst: ["stand still. no, there. i'm pacing the camp and you're in the middle of a number.", "you came out of the time gate? then you've seen this forest later. don't tell me what it looks like. it'd ruin the map."]
+    greet: ["hello. forty paces from the tent to the fire. i've counted it again. it's still forty.", "you again. good. a second pair of eyes for the western trees."]
+    idle: ["(holds a pencil out at arm's length toward the treeline, squints, and writes down a number)", "(unrolls a long map across her knees, rubs out a tree, and draws it a little to the left)"]
+    noWork: ["nothing today. the trees are where i drew them. for once."]
+    nothingDue: ["we're square. i'd have written it down if we weren't."]
+    who: ["Ottavia. i draw the map for the expedition. we came out of Ossyria with a cart, a lot of frightened people and no idea where we were. Athena wants somewhere to build. you can't build on a guess. so i draw."]
+    bye: ["north is up. remember that. nobody in this forest does."]
+    thanks: ["noted. in ink."]
+    smallTalk: ["the trees in the west walk. you draw a tree, you turn round, it's moved. i've started drawing them with little feet.", "Kanderune keeps saying 'over the next hill'. i've drawn the next hill. there's another one behind it. there's always another one behind it."]
+    speakPlainly: ["plainly: a map, a pencil, and a forest that won't hold still."]
+    questOffer.ottavia-the-walking-trees: ["the western trees won't stay where i draw them. tree rods. they walk. thirty of them out of the way, then walk on to the mountain's foot at Boulder Mountain and tell me the west still ends where i say it does."]
+    questAccept.ottavia-the-walking-trees: ["out the west road, through the mossy tree forest, both western regions and the trail. the tree rods. then on to the boulders. count your paces if you can. you won't. nobody does."]
+    questWaiting.ottavia-the-walking-trees: ["thirty, and the mountain's foot. the west edge of the map is waiting on you."]
+    questComplete.ottavia-the-walking-trees: ["the mountain's foot, right where i have it. ...good. the west holds. the trees can walk where they like inside it. the edge stays in ink."]
+    questOffer.ottavia-the-haze-line: ["the haze has moved again. south, on the mushroom hill. thin out the mossy mushrooms on the way, twenty-five, and ask Casimir where the haze line stood this morning. he walks it every day. i don't."]
+    questAccept.ottavia-the-haze-line: ["the southern mossy tree forest and the mushroom hill. the mossy mushrooms. then Casimir. by Duru in the morning, out the west street at night. he'll have it to the pace."]
+    questWaiting.ottavia-the-haze-line: ["where did it stand? i need the number."]
+    questComplete.ottavia-the-haze-line: ["three paces further than yesterday. in pencil, then. ...it's the only line on this map i draw in pencil. i hate it."]
+    questOffer.ottavia-a-name-on-the-map: ["the map's nearly done and it has no name. 'the forest' isn't a name. Larkin says the fairies have one and the glade keeps it. go and stand in the fairies' glade, in the deep fairy forest, then ask Larkin what you heard. i'll write it across the top."]
+    questAccept.ottavia-a-name-on-the-map: ["east, through the eastern mossy tree forest, to the deep fairy forest. stand in the glade. listen. then Larkin. he'll know what you heard even if you don't."]
+    questWaiting.ottavia-a-name-on-the-map: ["the name. i've left the top of the map blank. it's the only blank left."]
+    questComplete.ottavia-a-name-on-the-map: ["Ellin's. ...Ellin's forest. there. across the whole top, as big as the paper goes. one day somebody will build a town under that name and never know why. i'll know."]
+    questOffer.ottavia-green-ink: ["the mossy snails' shells, crushed, make a green that doesn't fade. fifteen shells? i'm out of green and this forest is mostly green."]
+    questAccept.ottavia-green-ink: ["the mossy snails at the forest entrance, the western region, the east. the shells with moss still on."]
+    questWaiting.ottavia-green-ink: ["fifteen shells. i'm drawing trees in brown. it's wrong."]
+    questComplete.ottavia-green-ink: ["fifteen. green again. the trees look like trees."]
+    about.casimir: ["Casimir walks the haze line every morning and tells me where it is. i draw it in pencil. he says that's the most honest line on the map."]
+    about.larkin: ["Larkin was born in this forest. he doesn't need a map. it's very annoying. i ask him the way and he says 'left of the loud tree'."]
+    about.gaspard: ["Gaspard cuts my corner stones. one at each corner of the map, on the ground, so the map and the forest agree. he carves a north on every one. i asked him to."]
+    about.ewan: ["Ewan feeds forty people out of one pot and knows everyone's portion by heart. i've drawn his kitchen. it's the only square thing in the camp."]
+    about.rosalind: ["Rosalind learned her trade from the fairies and picked up their manners. she sits on my map when she wants attention. she's left a glitter where she sat. i've decided it's a landmark."]
+    about.maelis: ["Maelis came down off Boulder Mountain and told me my west was wrong. she was right. she's never once said so twice."]
+    about.wren: ["a traveller out of the time gate says that later there's a woman in a great tree who keeps every old paper this forest ever made. if my map lasts that long, i hope it's on her shelf. i hope she's rude about my lettering."]
+    aboutUnknown: ["not on the map."]
+    friend.close: ["i've drawn you on the map. a very small figure, by the fire. nobody else gets to be on it."]
+    friend.best: ["when the map's copied for the expedition, your name goes in the corner. where the cartographer signs. beside mine."]
+    famed: ["the camp speaks well of you. i've noted it. in ink."]
+    defamed: ["the camp speaks ill of you. i've noted it. in pencil."]
+    gift: ["oh. thank you. noted."]
+    gift.favorite: ["oh, that's useful. that's going straight into the map case."]
+    gift.again: ["one a day. the map case is full."]
+
+- id: larkin
+  name: Larkin
+  look: { gender: male }
+  title: "Fairy-born Forager"
+  job: BEGINNER
+  level: { min: 42, max: 42 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: altaire-camp
+    routine:
+      - { from: 5, to: 9, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 9, to: 15, materialize: false }
+      - { from: 15, to: 20, spot: "venue:by-yuris", activity: SOCIALIZE }
+      - { from: 20, to: 23, spot: "venue:lower-east-street-2", activity: REST }
+      - { from: 23, to: 5, materialize: false }
+  recruitable: false
+  knows: [mossy snail, moss snail shell, deep fairy forest]
+  questLines: [larkin-dew-shells, larkin-do-they-still-sing]
+  relationships:
+    - { persona: rosalind, kind: TOOK_TO_THE_GLADE }
+    - { persona: ottavia, kind: GIVES_DIRECTIONS_TO }
+    - { persona: thessaly, kind: ASKED_AFTER }
+  giftItemIds: [4000436, 4007003]
+  dialogue:
+    greetFirst: ["oh. you're from the gate. you smell of stone stairs. sit down, the moss is dry here.", "hello. don't step there, there's a fairy asleep under that leaf. the other leaf. thank you."]
+    greet: ["hello. the forest says you walked in from the west. it's a terrible gossip.", "you're back. i saved you a mushroom. it's the safe kind. probably."]
+    idle: ["(sits very still with a hand flat on the moss, as if listening for something under it)", "(sorts a basket of mushrooms into piles no one else could tell apart)"]
+    noWork: ["nothing today. the forest's busy. i'm staying out of its way."]
+    nothingDue: ["you owe me nothing. the forest doesn't keep accounts. neither do i."]
+    who: ["Larkin. i was found in a ring of mushrooms when i was very small and raised by the fairies until i got too big for the glade. now i forage for the camp. i know where everything grows. i know where everything hides."]
+    bye: ["walk soft. the moss remembers footprints."]
+    thanks: ["the leaves say thank you. so do i."]
+    smallTalk: ["the fairies drink the dew out of empty snail shells in the morning. a whole row of them, like cups. the camp folk walk right past. i don't blame them. you have to be small to notice.", "the haze makes the mushrooms on the south hill go black. the fairies won't touch them. i won't either. Casimir touches everything. he wears gloves."]
+    speakPlainly: ["plainly: mushrooms, moss, and a lot of very small friends."]
+    questOffer.larkin-dew-shells: ["the fairies need more dew cups. the mossy snails leave their shells about, but never where the fairies are. twenty-five snails, twelve shells? i'll set them out in a row before dawn."]
+    questAccept.larkin-dew-shells: ["the mossy snails. by the forest entrance, the first western region, and the east. they're slow. you'll feel bad. it passes."]
+    questWaiting.larkin-dew-shells: ["twelve shells. the fairies are sharing. they hate sharing."]
+    questComplete.larkin-dew-shells: ["twelve. a whole row of cups. ...tomorrow there'll be a fairy asleep in every one of them. they never drink from them. they sleep in them."]
+    questOffer.larkin-do-they-still-sing: ["you go back through the gate, don't you? to later. will you ask someone there something for me? the fairies here sing at dusk. i want to know if they still do, later. if anybody's still listening."]
+    questAccept.larkin-do-they-still-sing: ["back through the gate and over to wherever this forest goes, later. the travellers say there's a town up a great tree there, and a woman up it who watches the fairies. Thessaly. ask her."]
+    questWaiting.larkin-do-they-still-sing: ["do they still sing? you can tell me if they don't. i'd rather know."]
+    questComplete.larkin-do-they-still-sing: ["every dusk. never stopped. ...good. good. i'm going to go and sit in the glade for a while. don't come. it's not sad. it's the other thing."]
+    about.rosalind: ["Rosalind came out of Ossyria with a box of stones and no idea. i took her down to the glade. the fairies laughed at her settings for an hour and then taught her properly. she was always going to be the shiny one."]
+    about.ottavia: ["Ottavia asks me the way and then writes it down very carefully. then she asks me again. i like her. she listens to the answer."]
+    about.ewan: ["Ewan cooks whatever i bring him and never asks what it is. that's trust. or hunger."]
+    about.casimir: ["Casimir is the only big one who goes near the haze on purpose. the fairies think he's very brave or very silly. they haven't decided."]
+    about.maelis: ["Maelis brings the boars down off the mountain. the fairies hide when she walks past. she walks very quietly for someone so loud."]
+    about.gaspard: ["Gaspard breaks stones. the stones don't mind. i asked them."]
+    about.thessaly: ["a woman who watches the fairies, in the forest's later days. the travellers say she loses count. that's how you know she's doing it right."]
+    aboutUnknown: ["the forest hasn't mentioned them."]
+    friend.close: ["the fairies know your footsteps now. they don't hide from you. that's rare. that's very rare."]
+    friend.best: ["if you're ever lost in this forest, sit down and say my name to the moss. i'll hear. i always do."]
+    famed: ["the forest's talking about you. nicely."]
+    defamed: ["the forest's talking about you. it'll forget. forests do."]
+    gift: ["oh. for me? thank you."]
+    gift.favorite: ["oh, that's lovely. that's going under the leaf where i keep things."]
+    gift.again: ["you've already given me something. the leaf's only small."]
+
+- id: ewan
+  name: Ewan
+  look: { gender: male }
+  title: "Cook of the Camp"
+  job: BEGINNER
+  level: { min: 46, max: 46 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: altaire-camp
+    routine:
+      - { from: 5, to: 10, spot: "venue:by-mayoren", activity: LINGER }
+      - { from: 10, to: 14, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 14, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:lower-east-street-2", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  knows: [tree rod, tree trunk, primitive boar]
+  questLines: [ewan-firewood, ewan-supper-for-the-mountain, ewan-the-woodpile]
+  rumors: [altaire-supper-talk]
+  relationships:
+    - { persona: gaspard, kind: SUPS_WITH }
+    - { persona: maelis, kind: BEGS_SALT_OF }
+    - { persona: larkin, kind: COOKS_FOR }
+  giftItemIds: [4000438, 2020007]
+  dialogue:
+    greetFirst: ["a traveller out of the gate. have you any salt on you? any at all? no. nobody ever does. sit down anyway.", "you're new. here, hold this spoon. i carved it last night. tell me if it's straight. it isn't. i know."]
+    greet: ["hello. i've carved another spoon. that's fourteen. the jeweller hasn't stolen one of these yet.", "you're back. the woodpile's still where i left it. i've roped it to a stump. we'll see."]
+    idle: ["(whittles a spoon out of a curl of pale wood, holds it up to the light, and shaves a little more off the bowl)", "(opens a tiny tin, counts the salt inside with the tip of a knife, and shuts it again very carefully)"]
+    noWork: ["nothing today. the woodpile's roped down and the spoons are carved. i'll find something to worry about."]
+    nothingDue: ["you owe me nothing. bring me salt one day, if this forest ever grows any."]
+    who: ["Ewan. i cook for the camp, out of recipes from Ossyria that call for things that don't grow here. it's meant to be lemon. it's moss. nobody's noticed. the firewood walks off on its own, and we brought a lot of things out of Ossyria. we forgot the salt."]
+    bye: ["mind the woodpile on your way out. it might be on your way. it moves."]
+    thanks: ["good. that's a good thing to say to a cook."]
+    smallTalk: ["the tree rods walk off with the firewood. i'm not joking. i stacked a pile last night. this morning it was halfway to the mountain.", "the fairies steal honey off the bread. i've stopped minding. Yuris says they think it's a gift. i suppose it is now."]
+    speakPlainly: ["plainly: one fire, a tin of salt, and a spoon i carved myself."]
+    questOffer.ewan-firewood: ["i need firewood that stays where i put it. the tree rods west of camp burn slow and steady once they've stopped walking. twenty-five of them, twelve good trunks?"]
+    questAccept.ewan-firewood: ["the western mossy tree forest and the trail. the tree rods. they'll come at you. trees shouldn't do that. it's this forest."]
+    questWaiting.ewan-firewood: ["twelve trunks. the fire's down to twigs and stubbornness."]
+    questComplete.ewan-firewood: ["twelve. dry and heavy. ...that'll last the week, if i rope it down. here. and a spoon, from the last lot. it's nearly straight."]
+    questOffer.ewan-supper-for-the-mountain: ["the boars on Boulder Mountain go to a salt lick. they must, they taste of it. Maelis knows where it is and won't tell a soul, it's where she hunts. would you ask her for a handful? for the pot. she'll say no. ask anyway."]
+    questAccept.ewan-supper-for-the-mountain: ["she's by Tess in the evening, out the west street at dawn. tall, quiet, smells of the mountain. you'll know."]
+    questWaiting.ewan-supper-for-the-mountain: ["did she say? a handful. a pinch. anything."]
+    questComplete.ewan-supper-for-the-mountain: ["a handful a week, and i'm never to go looking? ...done. i won't look. i'll want to. here, for your trouble. tonight the pot tastes of something."]
+    questOffer.ewan-the-woodpile: ["fifteen trunks for the woodpile? it walks off again by the end of the week. it always does."]
+    questAccept.ewan-the-woodpile: ["the tree rods, west of camp."]
+    questWaiting.ewan-the-woodpile: ["fifteen. the pot's waiting."]
+    questComplete.ewan-the-woodpile: ["fifteen. stacked. i've tied this lot down."]
+    about.gaspard: ["Gaspard sits on the woodpile while i rope it. he's the only thing in camp heavier than it. he finishes whatever's left in the pot. somebody has to."]
+    about.maelis: ["Maelis knows where the boars go for salt and won't tell anyone. i'd carve her a spoon a day for that lick. she doesn't want spoons. she wants the boars left alone."]
+    about.larkin: ["Larkin brings me mushrooms i've never seen and tells me which ones won't kill me. he's been right every time. i still taste them last."]
+    about.ottavia: ["Ottavia measured my kitchen. said it was the only square thing in camp. i've been unbearable about it since."]
+    about.casimir: ["Casimir won't eat anything from the south hill. neither will i. he looks at my salt tin like it's a patient. it is. it's very nearly gone."]
+    about.rosalind: ["Rosalind steals the shiny spoons. all of them. i've started making wooden ones. she's furious."]
+    aboutUnknown: ["never cooked for them. ask them if they've any salt."]
+    friend.close: ["i've carved you a spoon. your own. there's a notch in the handle so you'll know it. nobody else eats with it."]
+    friend.best: ["if this camp ever becomes a town, there'll be an inn. you'll eat there for nothing. i'll see to it."]
+    famed: ["the whole camp's talking about you round the fire. the fire's never wrong."]
+    defamed: ["the camp's grumbling about you round the fire. they grumble about the moss-lemon too. it passes."]
+    gift: ["oh, thank you. that's going in the larder. what there is of it."]
+    gift.favorite: ["oh, that's useful. the kitchen will have that, one way or another."]
+    gift.again: ["one a day. the larder's small and the woodpile's restless."]
+
+- id: casimir
+  name: Casimir
+  look: { gender: male }
+  title: "Herbalist of the Poison Haze"
+  job: BEGINNER
+  level: { min: 52, max: 52 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: altaire-camp
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-duru", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 19, spot: "venue:tent-house-2-door", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [mossy mushroom, black mushroom spore, ellin forest pq]
+  questLines: [casimir-spores-under-glass, casimir-leather-masks, casimir-more-spores]
+  rumors: [altaire-the-haze-line]
+  relationships:
+    - { persona: ottavia, kind: WALKS_THE_LINE_FOR }
+    - { persona: larkin, kind: TAKES_ADVICE_FROM }
+    - { persona: isolde, kind: HEARD_OF }
+  giftItemIds: [4000437, 2050000]
+  dialogue:
+    greetFirst: ["don't come closer. no, you're fine. it's me. i've been in the haze this morning. give it an hour.", "a traveller from the gate. you look healthy. hold still. ...yes. healthy. good. that's rarer here than it ought to be."]
+    greet: ["hello. still breathing? good. so am i. we're doing well.", "you again. let me see your hands. fine. fine. carry on."]
+    idle: ["(holds a blackened mushroom cap up to the light with tweezers and writes three words in a little book)", "(ties a leather mask over his face, unties it, and sniffs the air in the direction of the south hill)"]
+    noWork: ["nothing today. the haze is quiet. i don't trust it when it's quiet."]
+    nothingDue: ["you owe me nothing. i haven't treated you. let's keep it that way."]
+    who: ["Casimir. i was a herbalist in Ossyria. here i'm the man who walks into the haze in the morning and writes down what it's done. something deep in the forest breathes it out. it's poisoning the fairies' glade. it's poisoning everything, slowly. i'm trying to be quicker."]
+    bye: ["breathe through your nose. stay out of the south."]
+    thanks: ["noted. i'll put it in the book. the good column."]
+    smallTalk: ["the haze breathes in at dawn and out at dusk. like something asleep. i've written that down and crossed it out four times. it keeps being true.", "some go deep into the forest of poison haze in fives and sixes and come back with little bright pieces of something. Rosalind won't say what. she goes very quiet when she sees them."]
+    speakPlainly: ["plainly: a sick forest, a little book, and a lot of gloves."]
+    questOffer.casimir-spores-under-glass: ["the mossy mushrooms nearest the haze have gone black. i want their spores under glass. twenty-five mushrooms, twelve black spores. i'll learn what the haze is from what it does."]
+    questAccept.casimir-spores-under-glass: ["the southern mossy tree forest and the mushroom hill. the mossy mushrooms. don't breathe on the spores. don't breathe near them."]
+    questWaiting.casimir-spores-under-glass: ["twelve spores. under glass, please. not in your pocket."]
+    questComplete.casimir-spores-under-glass: ["twelve. ...look at that. the black is on the outside only. it's a coat. the haze is coating them, not changing them. that's the first good news i've had in a month."]
+    questOffer.casimir-leather-masks: ["the camp needs masks. leather, soaked in spore tea. the haze can't get through boar hide. the primitive boars at Boulder Mountain. twenty of them, ten tough hides."]
+    questAccept.casimir-leather-masks: ["west, to Boulder Mountain's entrance. the primitive boars. Duru fought them barehanded. look at Duru. don't do that."]
+    questWaiting.casimir-leather-masks: ["ten hides. the children are breathing through their sleeves."]
+    questComplete.casimir-leather-masks: ["ten. i'll cut them tonight. every child in camp gets one first. then Ewan, because he won't ask."]
+    questOffer.casimir-more-spores: ["fifteen more black spores? the haze changes. so does the book."]
+    questAccept.casimir-more-spores: ["the mushroom hill. under glass."]
+    questWaiting.casimir-more-spores: ["fifteen."]
+    questComplete.casimir-more-spores: ["fifteen. thank you. the book grows."]
+    about.ottavia: ["Ottavia asks me where the haze line is every evening and draws it in pencil. she hates the pencil. i think the pencil is the bravest thing on her map."]
+    about.larkin: ["Larkin knows what the haze does to the fairies before the fairies do. i ask him first. it saves a morning."]
+    about.ewan: ["Ewan feeds the whole camp and eats last. i've told him that's a symptom. he laughed. it is a symptom."]
+    about.rosalind: ["Rosalind won't go near the south hill. the fairies taught her to feel bad air in her teeth. she pretends it's because the light's bad there."]
+    about.maelis: ["Maelis brings Duru's boars down off the mountain one at a time. she won't say it's for him. it's for him."]
+    about.gaspard: ["Gaspard's hands are made of stone dust and patience. he holds the jars for me when mine shake. mine shake."]
+    about.isolde: ["a healer at the top of a great tree, the travellers say, later. people who swore they'd be careful. i'd like to leave her my notes on the haze. somebody should have them when i'm gone."]
+    aboutUnknown: ["not in the book."]
+    friend.close: ["i've cut you a mask. your size. hang it by the door. you'll never need it. hang it anyway."]
+    friend.best: ["if the haze ever goes, you'll be the first i tell. before the book. that's a promise."]
+    famed: ["the camp speaks well of you. good. that's a healthy sign."]
+    defamed: ["the camp speaks ill of you. that's a symptom too. of what, i don't know yet."]
+    gift: ["thank you. careful. thank you."]
+    gift.favorite: ["oh, that's useful. that's going under glass. in a good way."]
+    gift.again: ["one a day. i've only so much glass."]
+
+- id: rosalind
+  name: Rosalind
+  look: { gender: female }
+  title: "Fairy Jeweller"
+  job: BEGINNER
+  level: { min: 50, max: 50 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: altaire-camp
+    routine:
+      - { from: 8, to: 13, spot: "venue:lower-west-street", activity: SHOW_OFF }
+      - { from: 13, to: 15, spot: "venue:beside-mayoren", activity: BROWSE }
+      - { from: 15, to: 21, spot: "venue:by-yuris", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [stone bug, rubble, moss snail shell]
+  questLines: [rosalind-a-glint-in-the-rubble, rosalind-moonstar-earrings, rosalind-altair-earrings, rosalind-glittering-altaire-earrings]
+  relationships:
+    - { persona: larkin, kind: WAS_TAKEN_TO_THE_GLADE_BY }
+    - { persona: ewan, kind: STEALS_SPOONS_FROM }
+    - { persona: perrin, kind: HEARD_OF }
+  giftItemIds: [4020004, 4020005]
+  dialogue:
+    greetFirst: ["oh, a new face. hold still. your ears. hm. your ears want something. i'll think about it.", "you came out of the gate. your buttons are dull. everybody from later has dull buttons. what happens to you people?"]
+    greet: ["hello. turn to the light. no, the other way. better.", "you're back. i've been polishing. i'm always polishing. it's that or think."]
+    idle: ["(holds a tiny stone up between two fingers and turns it slowly in the light, humming)", "(rubs a camp spoon on her sleeve until it shines, then tucks it into her apron with a guilty look)"]
+    noWork: ["nothing today. the light's flat. you can't set a stone in flat light."]
+    nothingDue: ["you owe me nothing. bring me something shiny sometime. that's not a debt. it's a hint."]
+    who: ["Rosalind. i was a jeweller's girl in Ossyria. i came out with the expedition carrying a box of stones and no proper tools. the fairies in their glade watched me make a mess of it and showed me their way. now i set stones the fairy way, for anyone in camp who asks. it's a long way from home for all of us. a bright thing helps."]
+    bye: ["mind your ears. i'll want them later."]
+    thanks: ["mm. it suits you, being thankful."]
+    smallTalk: ["one stone in a hundred that the stone bugs grind up has a glint in it. one. Gaspard brings me the rubble by the sack. we sit and sift. it's the best part of my week.", "the inside of a mossy snail's shell is the colour of the moon on water. the camp throws the shells away. i could weep."]
+    speakPlainly: ["plainly: stones, light, and ears that want earrings."]
+    questOffer.rosalind-a-glint-in-the-rubble: ["the stone bugs on the trail chew up stone and leave rubble. there's a glint in some of it. twenty-five bugs, twelve handfuls of rubble? i'll sift. you'll see."]
+    questAccept.rosalind-a-glint-in-the-rubble: ["the mossy tree forest trail and the southern regions. the stone bugs. they're slow and crunchy. don't step on the glints."]
+    questWaiting.rosalind-a-glint-in-the-rubble: ["twelve handfuls. i've a sieve ready. i've had it ready for days."]
+    questComplete.rosalind-a-glint-in-the-rubble: ["twelve. ...there. and there. two glints. two in twelve is a very good day. hold out your hand. no. keep it. it's yours. it's tiny. it's yours."]
+    questOffer.rosalind-moonstar-earrings: ["your ears have waited long enough. the Moonstar. a star of glint in a moon of shell. the mossy snails' shells, the insides. thirty snails, fifteen shells, and i'll set them tonight."]
+    questAccept.rosalind-moonstar-earrings: ["the mossy snails, at the forest entrance, the western region, the east. bring the shells whole. a crack ruins the moon."]
+    questWaiting.rosalind-moonstar-earrings: ["fifteen whole shells. whole. i'll know."]
+    questComplete.rosalind-moonstar-earrings: ["there. Moonstar. a little moon, a little star, every charm i know poured in and every one took. turn your head. ...oh, yes. i knew your ears wanted something."]
+    questOffer.rosalind-altair-earrings: ["the Altair next. a bright star wants amber behind it, and the only amber in this forest is in the heart of the walking trees. thirty tree rods, fifteen trunks. i'll split them for the amber."]
+    questAccept.rosalind-altair-earrings: ["the western mossy tree forest and the trail. the tree rods. the heartwood is the gold bit. bring the whole trunk."]
+    questWaiting.rosalind-altair-earrings: ["fifteen trunks. i can smell the amber in them from here."]
+    questComplete.rosalind-altair-earrings: ["amber behind the star. the Altair. i charmed it as far as it would go and every charm held. it's warm, isn't it? it'll stay warm."]
+    questOffer.rosalind-glittering-altaire-earrings: ["the last one. the Glittering Altaire. it wants a backing that never tears, boar hide from the mountain, and it wants the light from the fairies' glade in it, so it glitters for as long as there's a forest. thirty primitive boars, fifteen hides. then carry them through the glade."]
+    questAccept.rosalind-glittering-altaire-earrings: ["west to Boulder Mountain for the boars. then east, all the way, to the deep fairy forest. stand in the glade with the hides in your pack. the light gets into everything there. then bring them to me."]
+    questWaiting.rosalind-glittering-altaire-earrings: ["fifteen hides, and the glade. don't skip the glade. the glade is the glitter."]
+    questComplete.rosalind-glittering-altaire-earrings: ["oh, look. the glade's still on them. ...the Glittering Altaire. i pushed two charms past where charms should go and they held, and the rest held after. i've never made anything better. i won't again. wear them where there's light."]
+    about.larkin: ["Larkin took me down to the glade the first week we camped. the fairies laughed at my settings for an hour, then taught me properly. every stone i've set since, i owe him a little."]
+    about.ewan: ["Ewan's spoons are the shiniest things in camp. were. he makes wooden ones now. i'm told it's my fault."]
+    about.ottavia: ["Ottavia lets me sit on her map. i leave a little glitter where i sat. she's started drawing it in. that's a kind of love."]
+    about.casimir: ["Casimir goes into the haze every morning. i can't. the fairies taught me to feel bad air, and the south hill is all bad air. i set him a little stone for luck. he wears it inside his glove. i checked."]
+    about.maelis: ["Maelis wears nothing shiny. not one thing. she says the boars see it. i've offered her a stone the colour of mud. she's thinking about it."]
+    about.gaspard: ["Gaspard brings me rubble by the sackful and sits with me while i sift. he never asks for the glints. he likes watching me find them."]
+    about.perrin: ["a jeweller in a city in the clouds, later. a traveller wore his earrings through the gate. the stone was lovely. the setting was heavy. tell him a fairy-taught jeweller said so. he'll be furious. good."]
+    aboutUnknown: ["never set a stone for them."]
+    friend.close: ["i've set a tiny stone just for you. it's on my shelf. it's waiting until you need it. you'll know when."]
+    friend.best: ["when i'm very old, every stone i ever set will still be shining somewhere. yours will be the brightest. i'll have made sure."]
+    famed: ["they're saying lovely things about you. you sparkle a bit. it suits you."]
+    defamed: ["they're saying dull things about you. dull things wash off. polish."]
+    gift: ["oh! for me? thank you."]
+    gift.favorite: ["oh, that's perfect. that's going straight under the lamp."]
+    gift.again: ["one a day. the lamp's only so big."]
+
+- id: maelis
+  name: Maelis
+  look: { gender: female }
+  title: "Huntress of Boulder Mountain"
+  job: HUNTER
+  level: { min: 56, max: 58 }
+  strength: VETERAN
+  loadout: altaire-bow-l56
+  personality: efficient-v1
+  home:
+    town: altaire-camp
+    routine:
+      - { from: 5, to: 9, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 9, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:by-tess", activity: SOCIALIZE }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: true
+  knows: [primitive boar, tough leather, boulder mountain entrance]
+  contract: maelis-the-mountain-share
+  questLines: [maelis-the-boar-trail, maelis-icarus-cape-one, maelis-icarus-cape-two, maelis-icarus-cape-three, maelis-boar-hides]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: ewan, kind: SPARES_SALT_FOR }
+    - { persona: ottavia, kind: CORRECTED_THE_MAP_OF }
+    - { persona: gaspard, kind: HUNTS_BESIDE }
+  giftItemIds: [4000440, 2060001]
+  dialogue:
+    greetFirst: ["you came through the gate. you walk like it. heavy. the boars will hear you a mile off.", "stranger. don't stand upwind of me. the mountain's on my clothes."]
+    greet: ["you.", "back. the mountain's loud today."]
+    idle: ["(checks the fletching on an arrow, one feather at a time, and sights down the shaft)", "(sits with her back to Tess's post, cape pulled round her, watching the west road)"]
+    noWork: ["nothing today. the boars are bedded down. so's the mountain."]
+    nothingDue: ["square."]
+    who: ["Maelis. i hunt Boulder Mountain. i was up there before the camp came, and i'll be up there after. the boars came down on Duru and broke him. they don't come down anymore."]
+    bye: ["walk light."]
+    thanks: ["fine."]
+    smallTalk: ["the primitive boars give up their hide six times in ten. tough leather. Casimir wants it for masks. Ewan wants the rest of them. i want them off the mountain.", "i jump off the boulders. a cape catches the wind if it's cut right. i've broken two ankles finding out how to cut it right."]
+    speakPlainly: ["plainly: a bow, a mountain, and the boars on it."]
+    offer: ["thirty thousand, and sixty of the mountain's boars down before we go. i don't walk with people who haven't."]
+    join: ["fine. keep behind me. don't talk on the climb."]
+    bench: ["two days. after that the mountain starts forgetting me. i won't have that."]
+    leave: ["done. back to the mountain."]
+    refuse.bond: ["i don't know you. the mountain doesn't either."]
+    refuse.flags: ["walk the boar trail with me once. thirty primitive boars at Boulder Mountain's foot. then we'll talk."]
+    refuseOwnErrand: ["my hunt. you can carry the arrows."]
+    questOffer.maelis-the-boar-trail: ["thirty primitive boars on the mountain's foot. they've started coming down toward the camp again. walk the trail. come back. that's all."]
+    questAccept.maelis-the-boar-trail: ["west, past the trail, to Boulder Mountain's entrance. they charge. step left. always left."]
+    questWaiting.maelis-the-boar-trail: ["thirty. the trail's not walked till it's walked."]
+    questComplete.maelis-the-boar-trail: ["thirty. ...you stepped left. good. the boars will stay up a while. Duru can sleep."]
+    questOffer.maelis-icarus-cape-one: ["you want to come up the mountain properly, you need a cape that catches. ribs of light wood, like a bat's wing. the walking trees' trunks are the lightest wood here. thirty tree rods, fifteen trunks. i'll cut it."]
+    questAccept.maelis-icarus-cape-one: ["the western mossy tree forest and the trail. the tree rods. straight trunks. crooked ones spin you."]
+    questWaiting.maelis-icarus-cape-one: ["fifteen. straight ones."]
+    questComplete.maelis-icarus-cape-one: ["there. ribs set, every stitch holding. the first one i ever cut that didn't drop me. don't jump off anything higher than a tent. yet."]
+    questOffer.maelis-icarus-cape-two: ["the second cape wants a skin that won't tear in the wind. boar hide. thirty primitive boars, fifteen tough hides. you know the trail."]
+    questAccept.maelis-icarus-cape-two: ["Boulder Mountain's entrance. you've done it. do it again. step left."]
+    questWaiting.maelis-icarus-cape-two: ["fifteen hides. the wind's waiting."]
+    questComplete.maelis-icarus-cape-two: ["skinned and stretched. it took more than half the stitching and held anyway. that'll catch a real gust. you could jump off the mountain's shoulder with that. i did."]
+    questOffer.maelis-icarus-cape-three: ["the last one. black, so it drinks the sun and the warm air lifts it. the mossy mushrooms' black spores, boiled, give the only black that holds. thirty mushrooms, fifteen spores. then go and stand at the mountain's foot, at the drop where i first jumped. then come back."]
+    questAccept.maelis-icarus-cape-three: ["the southern forest and the mushroom hill for the spores. mind the haze. then Boulder Mountain's entrance. stand where it drops. you'll know the place."]
+    questWaiting.maelis-icarus-cape-three: ["fifteen spores, and the drop. both."]
+    questComplete.maelis-icarus-cape-three: ["you stood at the drop. ...good. the third cape. two stitches i shouldn't have risked held, and the rest after them. that's the one i'd jump off the top in. you're the only other one who'll have it."]
+    questOffer.maelis-boar-hides: ["fifteen tough hides? Casimir's out again. the camp's breathing through them."]
+    questAccept.maelis-boar-hides: ["the mountain's foot."]
+    questWaiting.maelis-boar-hides: ["fifteen."]
+    questComplete.maelis-boar-hides: ["fifteen. to Casimir. go on."]
+    about.ewan: ["Ewan wants my salt lick. he's a cook. of course he does. he gets a handful a week. he's never to go looking for it."]
+    about.ottavia: ["Ottavia had the mountain three hundred paces too far east. i told her. she fixed it the same night. she's all right."]
+    about.gaspard: ["Gaspard comes up the trail with me sometimes. he breaks the stones the boars hide behind. he's loud. the boars don't care. he's useful."]
+    about.larkin: ["Larkin knows every bush on the mountain. he won't tell me where the boars bed down. says it's their business. he's not wrong."]
+    about.casimir: ["Casimir makes masks out of my hides. he gives them to the children first. i bring him more."]
+    about.rosalind: ["the jeweller wants to give me a stone. i don't wear shiny. she's found one the colour of mud. i might."]
+    aboutUnknown: ["never seen them on the mountain."]
+    friend.close: ["you can come up the mountain without me now. the boars know your step. so do i."]
+    friend.best: ["if i ever don't come down off the mountain, the cape's yours. the real one. the one i jump in."]
+    famed: ["they talk about you. fine."]
+    defamed: ["they talk about you. the mountain doesn't."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["that's useful. that goes in the pack."]
+    gift.again: ["one's enough."]
+
+- id: gaspard
+  name: Gaspard
+  look: { gender: male }
+  title: "Stone-Breaker"
+  job: PAGE
+  level: { min: 53, max: 55 }
+  strength: SEASONED
+  loadout: altaire-2h-sword-l53
+  personality: relaxed-v1
+  home:
+    town: altaire-camp
+    routine:
+      - { from: 6, to: 10, spot: "venue:by-perzen", activity: LINGER }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:lower-east-street-2", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: true
+  knows: [stone bug, rubble, mossy tree forest trail]
+  contract: gaspard-day-rate
+  questLines: [gaspard-the-trail-stones, gaspard-a-north-for-the-stone, gaspard-rubble-for-perzen]
+  rumors: [altaire-supper-talk]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: ewan, kind: SUPS_WITH }
+    - { persona: ottavia, kind: CUTS_CORNER_STONES_FOR }
+    - { persona: rosalind, kind: SIFTS_RUBBLE_WITH }
+  giftItemIds: [4000439, 4010001]
+  dialogue:
+    greetFirst: ["mind your head. no, it's fine. there's nothing above it. i just like saying it.", "a traveller. you've come out of the gate with a long face. everyone does. sit on this rock. it's a good rock. i checked."]
+    greet: ["hello! i broke a big one this morning.", "you again. good. i was just talking to this stone. it's not much of a talker."]
+    idle: ["(taps a boulder all over with a knuckle, listening, then nods at one spot and marks it with chalk)", "(leans on a great two-handed sword, its point resting on a split boulder, and watches the treeline with great contentment)"]
+    noWork: ["nothing today. every stone in camp is the right size. that's never happened."]
+    nothingDue: ["you owe me nothing. you owe the rock an apology. you sat on it funny."]
+    who: ["Gaspard. i break stones. somebody has to, if we're going to build anything here. every stone's got a crack in it somewhere. you find it, you ask it nicely, with the flat of a big sword, and it opens up. people are the same. mostly without the sword."]
+    bye: ["watch your toes. i'm swinging."]
+    thanks: ["ha! go on. it was nothing. it was a rock."]
+    smallTalk: ["the stone bugs on the trail eat the stone i cut. they think it's lunch. i think it's a wall. we've been arguing about it for a month.", "Perzen says he can turn rubble into something wonderful. i bring it by the sack. it's still rubble after. it hums now, though. i'll give him that."]
+    speakPlainly: ["plainly: a big sword, a lot of stone, and a wall that isn't built yet."]
+    offer: ["forty-five thousand a day. i'll break whatever's in your way. stones, mostly. other things, if they're rude."]
+    join: ["ha! good. i'll walk in front. things bounce off me."]
+    bench: ["three days. then i get restless and start breaking things that aren't mine."]
+    leave: ["that's the day. i'll go and see if my stones missed me."]
+    refuse.bond: ["i don't swing next to strangers. it's how you lose a stranger."]
+    refuse.flags: ["walk the trail with me first. clear the stone bugs off my cut stone, thirty of them. then ask."]
+    refuseOwnErrand: ["my stone. you can watch. it's very satisfying."]
+    questOffer.gaspard-the-trail-stones: ["the stone bugs are eating my cut stone on the trail again. thirty of them, please. don't bring me anything. just bring my wall back."]
+    questAccept.gaspard-the-trail-stones: ["the mossy tree forest trail and the southern regions. the stone bugs. they crunch. you get used to it. i got used to it."]
+    questWaiting.gaspard-the-trail-stones: ["thirty. my wall's getting smaller."]
+    questComplete.gaspard-the-trail-stones: ["thirty! ha. my wall's still there. most of it. that's the best news a wall's had all month."]
+    questOffer.gaspard-a-north-for-the-stone: ["i've cut a corner stone for Ottavia's map. big one. she wants it on the ground somewhere so the forest and the map agree. ask her where. i'll carry it. i always carry it."]
+    questAccept.gaspard-a-north-for-the-stone: ["Ottavia. high up on the top street in the mornings, by Sion's tent in the afternoon, out west at night. ask her where the stone goes."]
+    questWaiting.gaspard-a-north-for-the-stone: ["where does it go? i'm holding it. i'm not holding it. but i'm ready to."]
+    questComplete.gaspard-a-north-for-the-stone: ["where the trail bends to the mountain, with a north carved on it. ha! i like a stone with a job. i'll carve the north tonight. big. so the forest can read it."]
+    questOffer.gaspard-rubble-for-perzen: ["fifteen sacks of rubble for Perzen? well, fifteen handfuls. he does magic on it. it hums."]
+    questAccept.gaspard-rubble-for-perzen: ["the stone bugs on the trail. they leave rubble everywhere."]
+    questWaiting.gaspard-rubble-for-perzen: ["fifteen."]
+    questComplete.gaspard-rubble-for-perzen: ["fifteen. Perzen will be thrilled. the rubble won't."]
+    about.ewan: ["Ewan makes the best stew in the forest. it's the only stew in the forest. it'd still be the best."]
+    about.ottavia: ["Ottavia's map has my stones at its corners. i've never been on a map before. i'm on a map now. well, my stones are."]
+    about.rosalind: ["Rosalind sifts my rubble for glints. she finds one, she lights up like a lamp. i'd break the whole mountain for that face. don't tell her."]
+    about.maelis: ["Maelis lets me come up the trail with her if i'm quiet. i'm never quiet. she lets me anyway."]
+    about.larkin: ["Larkin talks to stones. i asked him what they say. he said they say 'ow'. i've felt bad all week."]
+    about.casimir: ["Casimir's hands shake after the haze. i hold his jars. he holds his breath. it's a system."]
+    aboutUnknown: ["never broke a stone with them."]
+    friend.close: ["i've cut a little stone with your name on it. it's in the wall. you're part of the wall now."]
+    friend.best: ["if they ever build a town here, the first stone's got your name on the underside. nobody'll see it. i'll know."]
+    famed: ["they're saying good things about you! loudly. like me."]
+    defamed: ["they're saying hard things about you. hard things break. ask me."]
+    gift: ["ha! thank you."]
+    gift.favorite: ["oh, that's useful. that's going in the tool sack."]
+    gift.again: ["one a day! the sack's heavy enough."]

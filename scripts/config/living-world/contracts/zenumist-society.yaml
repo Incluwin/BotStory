@@ -1,0 +1,16 @@
+# Zenumist Society contracts (wave 4): an apprentice who lends her fire openly, once the player has helped with her
+# glass and heard her terms at the hidden room door.
+- id: oriane-the-open-flame
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [oriane.intro.done, zenumist.heard-oriane]
+  price:
+    meso: 30000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 12000 }

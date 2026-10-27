@@ -1,0 +1,32 @@
+# The Town of Ariant rumors (wave 4). Each pair is awake together at its spot in those hours
+# (personas/town-of-ariant.yaml).
+- id: ariant-town-kasims-terms
+  participants: [zahra, kasim]
+  where: { town: town-of-ariant, spot: "venue:residential-area-1-door" }
+  when:
+    serverHours: [17, 18]
+    everyDays: 1
+  setsFlagOnListeners: ariant.heard-kasim
+  lines:
+    - { by: zahra, text: "your sash is torn again, Kasim. hold still." }
+    - { by: kasim, text: "a traveller asked me today if i'd walk the desert with them. for money." }
+    - { by: zahra, text: "and?" }
+    - { by: kasim, text: "i told them the rule. i don't rob a road, i don't take water, and i never take from the quarter. anyone who pays and keeps to that, i'll watch their back." }
+    - { by: zahra, text: "your father's rule." }
+    - { by: kasim, text: "Sefa's, before him. tell anyone who asks, aunt. i'd rather they heard it from you." }
+
+- id: ariant-town-the-word-goes-out
+  participants: [zahra, idris]
+  where: { town: town-of-ariant, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: zahra-the-red-silk, chapterAtLeast: chapter-3 }
+  setsFlagOnListeners: ariant.heard-silk
+  lines:
+    - { by: idris, text: "palace red, in the quarter, in the open street. you've a nerve, Zahra." }
+    - { by: zahra, text: "it was lost to sand, Idris. the palace wrote so itself. you can't take back what's lost." }
+    - { by: idris, text: "and it's the tent's now." }
+    - { by: zahra, text: "every scrap. whenever the tent comes to dance in it, you run the word out to Zarek. not a letter. the word." }
+    - { by: idris, text: "...i'll run it. it's the happiest thing that's ever been in my satchel." }
+    - { by: zahra, text: "then run it fast. good news has waited under enough floors." }

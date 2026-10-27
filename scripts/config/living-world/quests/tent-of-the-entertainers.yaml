@@ -1,0 +1,116 @@
+# Tent of the Entertainers quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the
+# server's own data: ear plug plead 2100106 (earmuff 4000326; White Rock Desert 260010300, the Scorching Desert
+# 260010400), royal cactus 2100104 (cactus' flower 4000331; cactus desert 2 260010200, royal catthus desert 260010201),
+# scarf plead 2100107 (ragged scarf 4000327; dry desert 260010500, frilled field 260010501), dark sand dwarf 3110301
+# (flaming desert 4000352; the desert of serenity 260020610, the desert of dreams 260020620), cactus 2100103 (cactus
+# thorn 4000330; outside the west entrance 260010000, cactus desert 1/2 260010100/260010200).
+# Gifts: Pepita's masks, Smiling Mask 1012108 and Crying Mask 1012109 (L25 face accessories, no slots).
+
+# ---- Pepita, juggler ------------------------------------------------------------------------------------------------
+
+- id: pepita-soft-things-to-juggle
+  persona: pepita
+  title: "Soft Things to Juggle"
+  length: SHORT
+  requires: { level: { min: 23 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pleads, type: KILL_MOBS, mobIds: [2100106], count: 20, mapIds: [260010300, 260010400] }
+    - { id: earmuffs, type: COLLECT_ITEM, itemId: 4000326, count: 12 }
+    - { id: juggle, type: DELIVER, to: pepita, take: { itemId: 4000326, count: 12 } }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 30 }
+
+- id: pepita-the-smiling-mask
+  persona: pepita
+  title: "The Smiling Mask"
+  length: SHORT
+  requires: { level: { min: 25 }, friendship: 4, questsCompleted: [pepita-soft-things-to-juggle] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zarek, type: TALK_TO, persona: zarek, say: ["Pepita wants to give you a mask from my trunk? ...the smiling one, yes. it's been waiting for a face. tell her the crying one stays in the trunk till she can do the sad part herself. she'll know what i mean. she won't like it."] }
+    - { id: mask, type: DELIVER, to: pepita }
+  rewards:
+    meso: 5000
+    exp: 4000
+    bondPoints: 30
+    gear:
+      - { pool: [1012108] }
+
+- id: pepita-the-crying-mask
+  persona: pepita
+  title: "The Sad Part"
+  length: SHORT
+  requires: { level: { min: 25 }, friendship: 7, questsCompleted: [pepita-the-smiling-mask] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: royals, type: KILL_MOBS, mobIds: [2100104], count: 20, mapIds: [260010200, 260010201] }
+    - { id: flowers, type: COLLECT_ITEM, itemId: 4000331, count: 10 }
+    - { id: tear, type: DELIVER, to: pepita, take: { itemId: 4000331, count: 10 } }
+  rewards:
+    meso: 8000
+    exp: 7000
+    bondPoints: 40
+    gear:
+      - { pool: [1012109] }
+
+# ---- Rafi, fire-eater (recruitable; black sand and a fee) -----------------------------------------------------------
+
+- id: rafi-rags-for-the-torches
+  persona: rafi
+  title: "Rags for the Torches"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pleads, type: KILL_MOBS, mobIds: [2100107], count: 25, mapIds: [260010500, 260010501] }
+    - { id: scarves, type: COLLECT_ITEM, itemId: 4000327, count: 12 }
+    - { id: torches, type: DELIVER, to: rafi, take: { itemId: 4000327, count: 12 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 30, flags: [rafi.intro.done] }
+
+- id: rafi-a-pinch-never-two
+  persona: rafi
+  title: "A Pinch, Never Two"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vael, type: TALK_TO, persona: vael, say: ["a fire-eater from the tent wants my blue flame? ...black sand from the dark dwarves on the Sahel. a pinch, never two. and tell him to keep his mouth shut while it's lit. i mean that literally."] }
+    - { id: report, type: DELIVER, to: rafi }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 35 }
+
+- id: rafi-black-sand
+  persona: rafi
+  title: "Black Sand"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 }, questsCompleted: [rafi-rags-for-the-torches] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sand, type: COLLECT_ITEM, itemId: 4000352, count: 10 }
+    - { id: flame, type: DELIVER, to: rafi, take: { itemId: 4000352, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }
+
+# ---- Zarek, old ringmaster ------------------------------------------------------------------------------------------
+
+- id: zarek-needles-for-the-big-top
+  persona: zarek
+  title: "Needles for the Big Top"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cacti, type: KILL_MOBS, mobIds: [2100103], count: 25, mapIds: [260010000, 260010100, 260010200] }
+    - { id: thorns, type: COLLECT_ITEM, itemId: 4000330, count: 15 }
+    - { id: canvas, type: DELIVER, to: zarek, take: { itemId: 4000330, count: 15 } }
+  rewards: { meso: 6000, exp: 4000, bondPoints: 30 }
+
+- id: zarek-a-piece-of-blue
+  persona: zarek
+  title: "A Piece of Blue"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mott, type: TALK_TO, persona: mott, say: ["the tent, in Ariant's town square, on lantern night? i swept up after it. a boy with a broom. confetti for a week. ...tell him i kept a piece. it's blue. it's in my good pocket."] }
+    - { id: report, type: DELIVER, to: zarek }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 35 }

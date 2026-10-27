@@ -1,0 +1,16 @@
+# Alcadno Society rumors (wave 4). The pair is awake together in the hall in those hours (personas/alcadno-society.yaml).
+- id: alcadno-the-record
+  participants: [ferro, mathilde]
+  where: { town: alcadno-society, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+    requiresArc: { arc: oriane-the-shared-proving, chapterAtLeast: chapter-3 }
+  setsFlagOnListeners: magatia.heard-proving
+  lines:
+    - { by: ferro, text: "Mathilde. it's nearly proving season." }
+    - { by: mathilde, text: "the record knows. it has a page ready. it always has a page ready." }
+    - { by: ferro, text: "Oriane's flame and my hand on one table in the square. one page, both houses' names on it." }
+    - { by: mathilde, text: "the record takes what happens, Ferro. not what's wished." }
+    - { by: ferro, text: "then it'll happen. at noon, in front of both doors. this spring and every spring after." }
+    - { by: mathilde, text: "...then i'll sharpen two pens. and i'll write slowly, so everyone sees." }

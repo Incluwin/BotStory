@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "profileId": "pier-on-the-beach",
+  "mapId": 251000100,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 12,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 161,
+    "middleMaxY": 222,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 220, "y": 233, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -120, "y": 233 },
+    { "x": -35, "y": 233 },
+    { "x": 70, "y": 163 }
+  ],
+  "npcSpots": [
+    { "npcId": 2060009, "offsetX": 86 }
+  ],
+  "trafficZones": [
+    { "id": "portal-out00", "type": "PORTAL", "minX": 308, "minY": 89, "maxX": 448, "maxY": 214, "excludesOccupancy": true },
+    { "id": "npc-2060009", "type": "NPC_LANE", "minX": -313, "minY": 143, "maxX": -181, "maxY": 273, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 50, "y": 233, "seatId": -1 }, { "x": 135, "y": 233, "seatId": -1 }, { "x": 220, "y": 233, "seatId": -1 }, { "x": 305, "y": 233, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

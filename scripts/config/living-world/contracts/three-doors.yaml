@@ -1,0 +1,33 @@
+# Temple of Time contracts (wave 4): a guardian-knight's kill proof on his intro quest's memory guardians, a hunter's
+# item price once the player has walked her first road and heard Caedmon on her.
+- id: caedmon-the-doors-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [caedmon.intro.done]
+  price:
+    meso: 60000
+    proof: { killMobs: { mobIds: [8200003], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 30000 }
+
+- id: liesl-the-far-road-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [liesl.intro.done, temple.heard-liesl]
+  price:
+    meso: 50000
+    items: [{ itemId: 4000444, count: 25 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 25000 }

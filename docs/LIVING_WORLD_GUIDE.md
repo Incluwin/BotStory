@@ -22,7 +22,9 @@ line per persona per tick when a Resident does not show up.
 
 Residents stand in their home towns (all seven Victoria towns have a cast; Orbis, El Nath, Ludibrium, Leafre, Mu Lung,
 Herb Town, Ariant, Magatia, Omega Sector, Korean Folk Town, Aquarium, Singapore, Zipangu, Kuala Lumpur and Kampung
-Village have seven each, and New Leaf City 25: `docs/REGIONAL_RESIDENTS_PLAN.md`, `docs/ROUTES_MALAYSIA_PLAN.md`). Talk to them in map
+Village have seven each, and New Leaf City 25; wave 4 adds the Temple of Time, Neo City at the Time Gate, Altaire Camp,
+more of Ereve and Rien, and two or three each on the Ossyria outposts such as Orbis Park, the Town of Ariant and the Door
+to Zakum: `docs/REGIONAL_RESIDENTS_PLAN.md`, `docs/ROUTES_MALAYSIA_PLAN.md`). Talk to them in map
 chat with their name anywhere in the line, or stand next to one and speak, or whisper them.
 
 | Say | Effect |
@@ -126,7 +128,9 @@ Town, Thalia and Kael in Aquarium, Genzo and Rin in Zipangu, Brody, Vance, Delph
 Singapore's Arjun and Priscilla give earrings and capes, and New Leaf City's other Residents hand out the iTCG
 items. Malaysia's Iskandar, Devi, Kamal and Bayu (`docs/ROUTES_MALAYSIA_PLAN.md` section 8) give the four lines that
 stopped at waves 1 and 2 (two-handed swords, spears, two-handed blunts, one-handed axes) an L100-120 tier beside
-Masteria's. Quest rewards are added with `InventoryManipulator.addById`, which does not create a pet: never reward a pet
+Masteria's. Wave 4 gives armour and accessories only: the Temple of Time's Caedmon and Liesl carry Della's coats and
+Perrin's earrings past L100 (to the Timeless suits and earrings), and the outposts give their places' own pieces (the
+Dojo's belts, Zakum's helmet and capes, the Altaire earrings, the Icarus capes, the Pharaoh belts, the society capes). Quest rewards are added with `InventoryManipulator.addById`, which does not create a pet: never reward a pet
 item until a pet-aware reward path exists, and never ask for an untradeable item as a hand-in.
 
 The armour piece:

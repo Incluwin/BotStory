@@ -1,0 +1,14 @@
+# Ariant Castle rumors (wave 4). Each pair is awake together at its spot in those hours (personas/ariant-castle.yaml).
+- id: ariant-castle-the-night-watch
+  participants: [yusra, darius]
+  where: { town: ariant-castle, spot: "venue:by-tigun" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 2
+  lines:
+    - { by: yusra, text: "you're standing very straight tonight, Darius." }
+    - { by: darius, text: "Tigun says a guard stands straight so the queen can see him from her window." }
+    - { by: yusra, text: "the queen's asleep by eight." }
+    - { by: darius, text: "...then i'm standing straight for whoever's up there with the lamp." }
+    - { by: yusra, text: "the king. reading. with a plate of cake." }
+    - { by: darius, text: "i didn't see a cake. i don't see things. it's in my orders." }
