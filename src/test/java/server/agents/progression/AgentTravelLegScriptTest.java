@@ -1,7 +1,13 @@
 package server.agents.progression;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import server.mods.RepackMaps;
+import server.mods.ServerMods;
 
 import javax.script.Bindings;
 import javax.script.Invocable;
@@ -14,33 +20,64 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 /**
  * Every travel leg does what its NPC scripts do when the headless gateway answers them with the catalog's
  * selections: the seller hands over the ticket for its price, and the boarding NPC takes the ticket and the fare
  * and sends the rider to the leg's destination or onto its ride. The scripts run in Graal against a recording
- * conversation, as NPCScriptManager runs them for an Agent.
+ * conversation, as NPCScriptManager runs them for an Agent. The Community Repack areas' guides find their gate open,
+ * and a bot (no client) counts as having the Repack files, as RepackMaps lets it in live.
  */
 public class AgentTravelLegScriptTest {
     private static final int PURSE = 100_000;
     private static final int MAX_ADVANCES = 10;
     private static final Pattern LIFE_BLOCK = Pattern.compile("(?s)<imgdir name=\"life\">(.*?)\\n  </imgdir>");
+    private static final Pattern PORTAL_BLOCK = Pattern.compile("(?s)<imgdir name=\"portal\">(.*?)\\n  </imgdir>");
     private static final Pattern LIFE_ENTRY = Pattern.compile("(?s)<imgdir name=\"\\d+\">(.*?)</imgdir>");
     private static final Pattern FIELD = Pattern.compile("name=\"(\\w+)\" value=\"([^\"]*)\"");
 
     private static ScriptEngineManager engines;
+    private MockedStatic<RepackMaps> repack;
 
     @BeforeAll
     static void graal() {
         System.setProperty("polyglot.engine.WarnInterpreterOnly", "false");
         engines = new ScriptEngineManager();
+    }
+
+    @BeforeEach
+    void openTheRepackGate() {
+        RepackMaps gate = new RepackMaps(new ServerMods(ServerMods.ALL, Map.of()), new RepackMaps.Store() {
+            @Override
+            public Optional<RepackMaps.Answer> load(int accountId) {
+                return Optional.empty();
+            }
+
+            @Override
+            public void save(int accountId, RepackMaps.Answer answer) {
+            }
+
+            @Override
+            public void forget(int accountId) {
+            }
+        }, client -> false);
+        repack = mockStatic(RepackMaps.class, Mockito.CALLS_REAL_METHODS);
+        repack.when(RepackMaps::get).thenReturn(gate);
+    }
+
+    @AfterEach
+    void closeTheRepackGate() {
+        repack.close();
     }
 
     @Test
@@ -66,7 +103,7 @@ public class AgentTravelLegScriptTest {
             if (leg.ticket() != null) {
                 cm.items.put(leg.ticket().itemId(), 1);
             }
-            run(leg.npcId(), cm, leg.selections());
+            board(leg, cm);
 
             if (leg.rideMapIds().isEmpty()) {
                 assertEquals(leg.toMapId(), cm.warpedTo, () -> leg.id() + ": lands on its destination at once");
@@ -119,7 +156,13 @@ public class AgentTravelLegScriptTest {
             }
         }
         for (AgentTravelLegCatalog.Leg leg : AgentTravelLegCatalog.legs()) {
-            assertTrue(placed(leg.fromMapId(), leg.npcId()), () -> leg.id() + ": its NPC stands on " + leg.fromMapId());
+            if (leg.portal() != null) {
+                assertNotNull(portalScript(leg.fromMapId(), leg.portal()),
+                        () -> leg.id() + ": its scripted portal " + leg.portal() + " is on " + leg.fromMapId());
+            } else {
+                assertTrue(placed(leg.fromMapId(), leg.npcId()),
+                        () -> leg.id() + ": its NPC stands on " + leg.fromMapId());
+            }
             assertTrue(nodes.contains(leg.fromMapId()), () -> leg.id() + ": boards on the walking graph");
             assertTrue(nodes.contains(leg.toMapId()), () -> leg.id() + ": lands on the walking graph");
             for (int ride : leg.rideMapIds()) {
@@ -134,8 +177,81 @@ public class AgentTravelLegScriptTest {
         }
     }
 
+    @Test
+    void jeffSendsNobodyBelowLevelFiftyIntoTheDungeon() throws Exception {
+        AgentTravelLegCatalog.Leg leg = leg("ice-valley-to-sharp-cliff");
+        assertEquals(50, leg.minLevel());
+
+        Conversation young = new Conversation(leg.fromMapId(), PURSE, "true");
+        young.level = 49;
+        run(leg.npcId(), young, leg.selections());
+        assertNull(young.warpedTo, "a level 49 rider stays on Ice Valley II");
+
+        Conversation ready = new Conversation(leg.fromMapId(), PURSE, "true");
+        ready.level = 50;
+        run(leg.npcId(), ready, leg.selections());
+        assertEquals(leg.toMapId(), ready.warpedTo);
+    }
+
+    @Test
+    void aWorldTourSavesWhereItBeganAndTheWayBackLandsThere() throws Exception {
+        Conversation out = new Conversation(100000000, PURSE, "true");
+        AgentTravelLegCatalog.Leg there = leg("henesys-to-mushroom-shrine");
+        run(there.npcId(), out, there.selections());
+        assertEquals(800000000, out.warpedTo);
+        assertEquals(100000000, out.saved.get("WORLDTOUR"), "Spinel keeps Henesys as the tour's start");
+
+        for (String id : List.of("mushroom-shrine-to-lith-harbor", "kuala-lumpur-to-boat-quay",
+                "florina-beach-to-lith-harbor")) {
+            AgentTravelLegCatalog.Leg back = leg(id);
+            Conversation cm = new Conversation(back.fromMapId(), PURSE, "true");
+            cm.saved.put(back.savedLocation(), 100000000);
+            run(back.npcId(), cm, back.selections());
+            assertEquals(100000000, cm.warpedTo, () -> id + ": lands where its saved location points");
+            assertNull(cm.saved.get(back.savedLocation()), () -> id + ": the saved location is used up");
+        }
+    }
+
     private static AgentTravelLegCatalog.Leg leg(String id) {
         return AgentTravelLegCatalog.legs().stream().filter(leg -> leg.id().equals(id)).findFirst().orElseThrow();
+    }
+
+    /** Talks to the leg's NPC, or walks into its portal: the portal's script runs as PortalScriptManager runs it. */
+    private static void board(AgentTravelLegCatalog.Leg leg, Conversation cm) throws Exception {
+        if (leg.portal() == null) {
+            run(leg.npcId(), cm, leg.selections());
+            return;
+        }
+        String name = portalScript(leg.fromMapId(), leg.portal());
+        assertNotNull(name, () -> leg.id() + ": its portal runs a script");
+        ScriptEngine engine = engines.getEngineByName("graal.js");
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
+        engine.eval(Files.readString(Path.of("scripts", "portal", name + ".js")));
+        Object entered = ((Invocable) engine).invokeFunction("enter", cm);
+        assertEquals(Boolean.TRUE, entered, () -> leg.id() + ": the portal lets the rider through");
+    }
+
+    /** The script of the portal of that name on the map, or null when there is none. */
+    private static String portalScript(int mapId, String portalName) throws Exception {
+        Path file = Path.of("wz", "Map.wz", "Map", "Map" + mapId / 100_000_000, String.format("%09d.img.xml", mapId));
+        Matcher block = PORTAL_BLOCK.matcher(Files.readString(file));
+        if (!block.find()) {
+            return null;
+        }
+        Matcher entry = LIFE_ENTRY.matcher(block.group(1));
+        while (entry.find()) {
+            Map<String, String> fields = new HashMap<>();
+            Matcher field = FIELD.matcher(entry.group(1));
+            while (field.find()) {
+                fields.put(field.group(1), field.group(2));
+            }
+            if (portalName.equals(fields.get("pn")) && !fields.getOrDefault("script", "").isBlank()) {
+                return fields.get("script");
+            }
+        }
+        return null;
     }
 
     /** As NPCScriptManager and the headless gateway do: start, then one action(1, 0, selection) per advance. */
@@ -155,7 +271,11 @@ public class AgentTravelLegScriptTest {
         assertTrue(cm.disposed, () -> "NPC " + npcId + " never ended its conversation");
     }
 
+    /** In the map's life, or spawned there by RepackMaps.ENTRIES (the Community Repack areas' guides on shared maps). */
     private static boolean placed(int mapId, int npcId) throws Exception {
+        if (RepackMaps.ENTRIES.stream().anyMatch(entry -> entry.fromMap() == mapId && entry.npcId() == npcId)) {
+            return true;
+        }
         Path file = Path.of("wz", "Map.wz", "Map", "Map" + mapId / 100_000_000, String.format("%09d.img.xml", mapId));
         Matcher life = LIFE_BLOCK.matcher(Files.readString(file));
         if (!life.find()) {
@@ -175,13 +295,18 @@ public class AgentTravelLegScriptTest {
         return false;
     }
 
-    /** The NPC conversation an Agent's headless client holds, recording what the script does. */
+    /**
+     * The NPC conversation an Agent's headless client holds, recording what the script does; also the portal
+     * interaction a portal script gets.
+     */
     public static final class Conversation {
         public final ClientStub c;
         private final PlayerStub player;
         final Map<Integer, Integer> items = new HashMap<>();
+        final Map<String, Integer> saved = new HashMap<>();
         final String entry;
         int mesos;
+        int level = 120;
         boolean disposed;
         Integer warpedTo;
         String startedEvent;
@@ -197,11 +322,39 @@ public class AgentTravelLegScriptTest {
             return items.getOrDefault(itemId, 0);
         }
 
+        public int getLevel() {
+            return level;
+        }
+
+        public int getMapId() {
+            return player.getMapId();
+        }
+
+        public Object getClient() {
+            return null;
+        }
+
+        public String numberWithCommas(int number) {
+            return String.format("%,d", number);
+        }
+
+        public void useItem(int itemId) { }
+
+        public void cancelItem(int itemId) { }
+
+        public void playPortalSound() { }
+
+        public void message(String text) { }
+
+        public void playerMessage(int type, String text) { }
+
         public void sendOk(String text) { }
 
         public void sendNext(String text) { }
 
         public void sendNextPrev(String text) { }
+
+        public void sendPrev(String text) { }
 
         public void sendYesNo(String text) { }
 
@@ -309,6 +462,19 @@ public class AgentTravelLegScriptTest {
 
         public boolean canHold(int itemId, int quantity) {
             return true;
+        }
+
+        public void saveLocation(String type) {
+            cm.saved.put(type, mapId);
+        }
+
+        public int peekSavedLocation(String type) {
+            return cm.saved.getOrDefault(type, -1);
+        }
+
+        public int getSavedLocation(String type) {
+            Integer map = cm.saved.remove(type);
+            return map == null ? -1 : map;
         }
     }
 

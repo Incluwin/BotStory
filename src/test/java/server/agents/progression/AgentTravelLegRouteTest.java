@@ -1,14 +1,21 @@
 package server.agents.progression;
 
+import client.Character;
+import client.QuestStatus;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /** Paths that walk the portal graphs and ride the travel legs between them. */
 class AgentTravelLegRouteTest {
@@ -83,6 +90,62 @@ class AgentTravelLegRouteTest {
                 670010000, 100000000, Set.of(), leg -> true, RIDE_HOP_COST)));
         assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(100000000, 680000000, Set.of(),
                 leg -> !leg.id().equals("henesys-to-amoria"), RIDE_HOP_COST), "no portal leads to Amoria");
+    }
+
+    @Test
+    void henesysReachesEveryTownTheTownAuditFoundCutOff() {
+        Map<Integer, String> towns = Map.of(550000000, "Kuala Lumpur", 551000000, "Kampung Village",
+                800000000, "Mushroom Shrine", 801000000, "Showa Town", 110000000, "Florina Beach",
+                103040000, "Kerning Square", 300000000, "Altaire Camp", 270000100, "the Temple of Time",
+                211040300, "Sharp Cliff I", 106020000, "the Mushroom Castle's forest field");
+        towns.forEach((town, name) -> assertFalse(AgentVictoriaTrainingRouteCatalog.ridePath(
+                100000000, town, Set.of(), leg -> true, RIDE_HOP_COST).isEmpty(), () -> "Henesys reaches " + name));
+        towns.forEach((town, name) -> assertFalse(AgentVictoriaTrainingRouteCatalog.ridePath(
+                town, 100000000, Set.of(), leg -> true, RIDE_HOP_COST).isEmpty(), () -> name + " reaches Henesys"));
+    }
+
+    @Test
+    void malaysiaIsTheKerningPlaneAWalkToBoatQuayAndSpinelAndAudreyFliesBack() {
+        assertEquals(List.of("kerning-to-singapore", "boat-quay-to-kuala-lumpur"), legs(
+                AgentVictoriaTrainingRouteCatalog.ridePath(103000000, 551000000, Set.of(), leg -> true, RIDE_HOP_COST)),
+                "Kampung Village is on foot from Kuala Lumpur");
+        assertEquals(List.of("kuala-lumpur-to-boat-quay", "singapore-to-kerning"), legs(
+                AgentVictoriaTrainingRouteCatalog.ridePath(551000000, 103000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+    }
+
+    @Test
+    void theTempleOfTimeIsADragonFlightFromLeafreStationAndTheWayBackIsFlown() {
+        List<AgentVictoriaTrainingRouteCatalog.Step> there = AgentVictoriaTrainingRouteCatalog.ridePath(
+                240000000, 270000100, Set.of(), leg -> true, RIDE_HOP_COST);
+        assertEquals(List.of("leafre-station-to-the-temple-flight"), legs(there));
+        assertEquals(List.of(200090500, 200090510, 270000100), there.stream()
+                .map(AgentVictoriaTrainingRouteCatalog.Step::toMapId).toList().subList(there.size() - 3, there.size()));
+        assertEquals(240000110, AgentVictoriaTrainingRouteCatalog.nextHop(200090500, 240000110),
+                "minar00 turns the dragon back at Leafre Station");
+        assertNotNull(AgentVictoriaTrainingRouteCatalog.nextHop(270000100, 240000000),
+                "from the Temple the flight back is walked (flown) through portals alone");
+        assertEquals(11, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(200090510, 270000100), "in00");
+    }
+
+    @Test
+    void anEmptyHousesDoorOpensOnlyForTheMushroomCastleQuests() {
+        long door = AgentVictoriaTrainingRouteCatalog.edgeKey(100000002, 106020000);
+        Character newcomer = mock(Character.class);
+        assertTrue(AgentVictoriaRouteRuntime.withGates(Set.of(), newcomer).contains(door));
+        assertTrue(AgentVictoriaRouteRuntime.withGates(Set.of(), null).contains(door), "nobody to ask: shut");
+        assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(100000000, 106020000,
+                AgentVictoriaRouteRuntime.withGates(Set.of(), newcomer), leg -> true, RIDE_HOP_COST));
+
+        Character done = mock(Character.class);
+        when(done.getQuestStatus(2260)).thenReturn((byte) QuestStatus.Status.COMPLETED.getId());
+        assertFalse(AgentVictoriaRouteRuntime.withGates(Set.of(), done).contains(door));
+        Character started = mock(Character.class);
+        when(started.getQuestStatus(2305)).thenReturn((byte) QuestStatus.Status.STARTED.getId());
+        assertFalse(AgentVictoriaRouteRuntime.withGates(Set.of(), started).contains(door));
+        Character halfway = mock(Character.class);
+        when(halfway.getQuestStatus(2260)).thenReturn((byte) QuestStatus.Status.STARTED.getId());
+        assertTrue(AgentVictoriaRouteRuntime.withGates(Set.of(), halfway).contains(door),
+                "2260 counts only once it is completed");
     }
 
     @Test

@@ -214,7 +214,11 @@ public final class KnowledgeExportMain {
         return script == null || script.isBlank() ? String.valueOf(mapId) : script.trim();
     }
 
-    /** Coarse area by id prefix; null for event, instance and GM maps. */
+    /**
+     * Coarse area by id prefix; null for event, instance and GM maps, the Free Market and its hub maps (910) and Mu Lung
+     * Dojo (925). Amoria's Purplewood fields (670), Zipangu's spas and the Ludibrium Maze (809), Nett's Pyramid (926)
+     * and the Forest of Poison Haze (930) belong to the town they are entered from.
+     */
     static String region(int mapId) {
         if (mapId < 100_000_000) {
             return "maple-island";
@@ -236,19 +240,20 @@ public final class KnowledgeExportMain {
             case 240 -> "leafre";
             case 250 -> "mu-lung";
             case 251 -> "herb-town";
-            case 260 -> "ariant";
+            case 260, 926 -> "ariant";
             case 261 -> "magatia";
             case 270 -> "temple-of-time";
             case 271, 272, 273 -> "future"; // Repack: Gate to the Future, Crack in Time, Twilight Perion
-            case 300 -> "ellin-forest";
+            case 300, 930 -> "ellin-forest";
             case 450 -> "arcane-river"; // Repack, scenery only
             case 540, 541 -> "singapore";
             case 550, 551 -> "malaysia";
             case 600, 682 -> "new-leaf-city";
             case 610 -> "crimsonwood";
-            case 680 -> "amoria";
+            case 670, 680 -> "amoria";
             case 800 -> "zipangu";
             case 801 -> "showa";
+            case 809 -> mapId < 809_050_000 ? "zipangu" : "ludibrium";
             default -> null;
         };
     }

@@ -1,0 +1,64 @@
+# Malaysia contracts (docs/ROUTES_MALAYSIA_PLAN.md section 5): a night guard's kill proof on his intro quest's
+# Galloperas, a bodyguard's day rate, a ranger's item price in the Viking ship's helmets, and a boat-builder who asks
+# only that the player has rung his bell with him and heard Rohani on him.
+- id: iskandar-the-night-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [iskandar.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [9420540], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }
+
+- id: devi-the-day-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [devi.intro.done]
+  price:
+    meso: 130000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 40000 }
+
+- id: bayu-the-road-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [bayu.intro.done]
+  price:
+    meso: 30000
+    items: [{ itemId: 4000477, count: 20 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }
+
+- id: kamal-the-strongman
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [kamal.intro.done, kampung.heard-kamal]
+  price:
+    meso: 60000
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 20000 }

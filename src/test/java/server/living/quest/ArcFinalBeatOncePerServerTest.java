@@ -39,7 +39,9 @@ class ArcFinalBeatOncePerServerTest {
             "bertil-the-sixth-name", "cornelius-a-party-at-last", "agatha-the-enigma-chamber",
             // wave 3 (docs/REGIONAL_RESIDENTS_PLAN.md)
             "monty-cup-night", "lyra-the-trace", "bomi-the-first-answer", "delmar-the-wreck-lantern",
-            "rosnah-the-lantern-home", "chiyo-the-silent-bell", "daichi-the-hideout", "chiyo-the-bell-rings");
+            "rosnah-the-lantern-home", "chiyo-the-silent-bell", "daichi-the-hideout", "chiyo-the-bell-rings",
+            // Malaysia (docs/ROUTES_MALAYSIA_PLAN.md section 8)
+            "farah-the-opening-night", "awang-bintang", "farah-the-carousel-turns");
 
     @Test
     void eachFinalBeatIsBarredByTheWorldFlagItSets() {

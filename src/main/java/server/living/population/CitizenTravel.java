@@ -218,8 +218,8 @@ final class CitizenTravel {
     /**
      * Its next walk from where it stands: the route graphs' walking route, else a portal on this map straight to the
      * destination (a Free Market door, a town's market portal), else, for the market, the nearest map with a market
-     * portal, else the route to its first sea leg's dock and up to the boarding NPC, else out by the nearest visible
-     * portal.
+     * portal, else the route to its first sea leg's dock and up to the boarding NPC (or out by the leg's boarding
+     * portal), else out by the nearest visible portal.
      */
     private void next(CitizenSession session, Trip trip, Character agent, MapleMap here, long now) {
         int destination = trip.target.getId();
@@ -239,7 +239,15 @@ final class CitizenTravel {
             walk(session, trip, agent, AgentMapWalk.Target.map(market), now); // there, its market portal is the door
             return;
         }
-        if (ride != null) {
+        if (ride != null && ride.boardingPortal() != null) {
+            // boarded through a portal (Kerning Square Station's train back): it walks out by it, as through any door
+            MapleMap dock = population.map(session.channel, ride.fromMapId());
+            Portal portal = dock == null ? null : dock.getPortal(ride.boardingPortal());
+            if (portal != null) {
+                walk(session, trip, agent, AgentMapWalk.Target.reach(ride.fromMapId(), portal.getId()), now);
+                return;
+            }
+        } else if (ride != null) {
             trip.boarding = ride;
             walk(session, trip, agent, AgentMapWalk.Target.npc(ride.fromMapId(), ride.boardingNpcId()), now);
             return;

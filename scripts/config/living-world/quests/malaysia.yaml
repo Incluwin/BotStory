@@ -1,0 +1,596 @@
+# Malaysia quests (docs/ROUTES_MALAYSIA_PLAN.md section 5). Fields, east of Kuala Lumpur and on through Kampung Village:
+# the Outskirts of Muddy Banks 550000100 (chlorotrap 9420527 coconut husk 4000465, emo slime 9420528 rebab 4000466),
+# Muddy Banks 1 550000200 (dark fission 9420529 yellow wig 4000467, oly oly 9420530 somebody's tire 4000468), Muddy
+# Banks 2 550000300 (rodeo 9420533 rodeo's master 4000471), Muddy Banks 3 550000400 (charmer 9420534 charmer's flute
+# 4000472); past the kampung, Hibiscus Road 1 551000100 (rodeo, charmer) and 2 551000200 (scaredy scarlion 9420531
+# scarf 4000469, ratatula 9420532 tall hat 4000470); Fantasy Theme Park 1 551010000 (jester scarlion 9420535 dented
+# barrel 4000473, froscola 9420536 lucky hat 4000474), 2 551020000 (yabber doo 9420537 lucky bus ticket 4000475,
+# booper scarlion 9420538 toy plane 4000476), 3 551030000 (vikerola 9420539 viking helmet 4000477); the Entrance to the
+# Spooky World 551030100 (gallopera 9420540 wooden pony tail 4000478). Every drop above is the mob's own 30% etc item.
+# The Longest Ride on ByeBye Station (551030001-551030019) is the third park's mini-dungeon (scripts/portal/MD_high.js
+# opens the first free of its 19 copies; 551030020 is never used), so its steps list all nineteen. Scarlion and Targa
+# (Aldol's expedition in the Spooky World) are script-spawned boss-event mobs, so no quest counts them.
+
+# ---- Farah: the opening-night tape (arcs/malaysia.yaml) ----
+- id: farah-the-muddy-banks-footage
+  persona: farah
+  title: "Sunset on the Muddy Banks"
+  length: SHORT
+  requires: { level: { min: 46 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: outskirts, type: VISIT_MAP, mapIds: [550000100] }
+    - { id: slimes, type: KILL_MOBS, mobIds: [9420528], count: 20, mapIds: [550000100] }
+    - { id: shot, type: DELIVER, to: farah }
+  rewards: { meso: 9000, exp: 10000, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: farah-the-opening-night
+  persona: farah
+  title: "The Opening Night Tape"
+  length: MEDIUM
+  requires: { level: { min: 58 }, questsCompleted: [farah-the-muddy-banks-footage], notFlags: [kl.tape.mended] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lim, type: TALK_TO, persona: lim, say: ["a tape? from the archive? give it here. ...'opening night'. aiyo. i nearly didn't open the box. there, that's the carousel. listen. that hum is my motor. and the horses are Tok Awang's, from the kampung. forty of them. the one in front with the star is Bintang. it's mended. tell her to play it loud."] }
+    - { id: scarlions, type: KILL_MOBS, mobIds: [9420531], count: 20, mapIds: [551000200] }
+    - { id: gates, type: VISIT_MAP, mapIds: [551010000] }
+    - { id: footage, type: DELIVER, to: farah }
+  rewards: { meso: 16000, exp: 18000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }], worldFlags: [kl.tape.mended] }
+
+- id: farah-the-carousel-turns
+  persona: farah
+  title: "One Turn of the Carousel"
+  length: LONG
+  requires: { level: { min: 80 }, questsCompleted: [farah-the-muddy-banks-footage], flags: [kampung.bintang.home], notFlags: [my.carousel.turns] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 30, mapIds: [551020000] }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 20, mapIds: [551030000] }
+    - { id: awang, type: TALK_TO, persona: awang, say: ["the city wants to turn my carousel. for its camera. ...tell her yes. Bintang's ready. tell her the kampung's children ride free. that's my condition. it was always the deal. the city forgot it. we didn't."] }
+    - { id: lim, type: TALK_TO, persona: lim, say: ["he said yes? Awang said yes? ...then the motor's ready. it's been ready thirty years. tell her tonight. i'll bring the key."] }
+    - { id: turns, type: DELIVER, to: farah }
+  rewards: { meso: 60000, exp: 70000, bondPoints: 60, items: [{ itemId: 2000005, count: 20 }], worldFlags: [my.carousel.turns] }
+
+# ---- Lim ----
+- id: lim-the-barrel-ride
+  persona: lim
+  title: "Good Bearings"
+  length: SHORT
+  requires: { level: { min: 66 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jesters, type: KILL_MOBS, mobIds: [9420535], count: 25, mapIds: [551010000] }
+    - { id: barrels, type: COLLECT_ITEM, itemId: 4000473, count: 10 }
+    - { id: bearings, type: DELIVER, to: lim, take: { itemId: 4000473, count: 10 } }
+  rewards: { meso: 22000, exp: 25000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: lim-the-viking-ship
+  persona: lim
+  title: "Does It Still Swing?"
+  length: MEDIUM
+  requires: { level: { min: 84 }, questsCompleted: [lim-the-barrel-ride] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ship, type: VISIT_MAP, mapIds: [551030000] }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 25, mapIds: [551030000] }
+    - { id: creak, type: DELIVER, to: lim }
+  rewards: { meso: 34000, exp: 38000, bondPoints: 35, items: [{ itemId: 2000005, count: 10 }] }
+
+# ---- Ravi ----
+- id: ravi-the-coconut-husks
+  persona: ravi
+  title: "A Slow, Sweet Fire"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: traps, type: KILL_MOBS, mobIds: [9420527], count: 25, mapIds: [550000100] }
+    - { id: husks, type: COLLECT_ITEM, itemId: 4000465, count: 10 }
+    - { id: kettle, type: DELIVER, to: ravi, take: { itemId: 4000465, count: 10 } }
+  rewards: { meso: 8000, exp: 9000, bondPoints: 30, items: [{ itemId: 2022478, count: 10 }] }
+
+- id: ravi-the-ikan-bilis
+  persona: ravi
+  title: "Hamid's Ikan Bilis"
+  length: SHORT
+  requires: { level: { min: 48 }, questsCompleted: [ravi-the-coconut-husks] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hamid, type: TALK_TO, persona: hamid, say: ["late? i'm not late. the fish are late. tell Ravi tomorrow, with Hafiz, two sacks. and tell him his roti's too thick. he'll know i'm joking. he won't."] }
+    - { id: order, type: DELIVER, to: ravi }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 35, items: [{ itemId: 2022476, count: 10 }] }
+
+# ---- Hafiz ----
+- id: hafiz-a-parcel-for-zara
+  persona: hafiz
+  title: "A Parcel That Rattles"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zara, type: TALK_TO, persona: zara, say: ["for me? from the city? ...a rosin box! for the rebab bow! Cikgu Meera ordered it. tell Hafiz thank you, and tell him he's late, and tell him thank you again!"] }
+    - { id: delivered, type: DELIVER, to: hafiz }
+  rewards: { meso: 8000, exp: 9000, bondPoints: 30, items: [{ itemId: 2022207, count: 10 }] }
+
+- id: hafiz-the-rodeo-road
+  persona: hafiz
+  title: "The Road Is Open"
+  length: SHORT
+  requires: { level: { min: 58 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rodeos, type: KILL_MOBS, mobIds: [9420533], count: 25, mapIds: [550000300] }
+    - { id: kampung, type: VISIT_MAP, mapIds: [551000000] }
+    - { id: open, type: DELIVER, to: hafiz }
+  rewards: { meso: 15000, exp: 17000, bondPoints: 35, items: [{ itemId: 2000004, count: 10 }] }
+
+- id: hafiz-the-park-bus
+  persona: hafiz
+  title: "My Father's Tickets"
+  length: SHORT
+  requires: { level: { min: 74 }, questsCompleted: [hafiz-the-rodeo-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yabbers, type: KILL_MOBS, mobIds: [9420537], count: 20, mapIds: [551020000] }
+    - { id: tickets, type: COLLECT_ITEM, itemId: 4000475, count: 10 }
+    - { id: father, type: DELIVER, to: hafiz, take: { itemId: 4000475, count: 10 } }
+  rewards: { meso: 26000, exp: 29000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }
+
+# ---- Cheryl ----
+- id: cheryl-the-yellow-wigs
+  persona: cheryl
+  title: "Yellow for Spring"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fissions, type: KILL_MOBS, mobIds: [9420529], count: 25, mapIds: [550000200] }
+    - { id: wigs, type: COLLECT_ITEM, itemId: 4000467, count: 10 }
+    - { id: windows, type: DELIVER, to: cheryl, take: { itemId: 4000467, count: 10 } }
+  rewards: { meso: 11000, exp: 12000, bondPoints: 30, items: [{ itemId: 2022209, count: 10 }] }
+
+- id: cheryl-the-batik-runway
+  persona: cheryl
+  title: "Batik on the Runway"
+  length: SHORT
+  requires: { level: { min: 52 }, questsCompleted: [cheryl-the-yellow-wigs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rohani, type: TALK_TO, persona: rohani, say: ["the city girl wants my batik? on her runway? ...hm. six lengths. not orange. and i sit in the front row, and she says my name, and the kampung's. tell her that. and tell her please works both ways."] }
+    - { id: yes, type: DELIVER, to: cheryl }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 35, items: [{ itemId: 2022210, count: 10 }] }
+
+- id: cheryl-the-tall-hats
+  persona: cheryl
+  title: "Silk on a Rat"
+  length: SHORT
+  requires: { level: { min: 57 }, questsCompleted: [cheryl-the-yellow-wigs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ratatulas, type: KILL_MOBS, mobIds: [9420532], count: 25, mapIds: [551000200] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000470, count: 10 }
+    - { id: line, type: DELIVER, to: cheryl, take: { itemId: 4000470, count: 10 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }] }
+
+# ---- Iskandar (recruit; two-handed sword line, third tier) ----
+- id: iskandar-the-night-gate
+  persona: iskandar
+  title: "The Gate I Locked"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 30, mapIds: [551030100] }
+    - { id: done, type: DELIVER, to: iskandar }
+  rewards: { meso: 50000, exp: 50000, bondPoints: 30, flags: [iskandar.intro.done] }
+
+- id: iskandar-the-beheader
+  persona: iskandar
+  title: "The Beheader"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [iskandar-the-night-gate] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 40, mapIds: [551030000] }
+    - { id: honest, type: DELIVER, to: iskandar }
+  rewards:
+    meso: 220000
+    exp: 220000
+    bondPoints: 35
+    gear:
+      - { itemId: 1402035, scrolls: [{ success: 100 }] }
+
+- id: iskandar-dragon-claymore
+  persona: iskandar
+  title: "The Dragon Claymore"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [iskandar-the-beheader] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 50, mapIds: [551030100] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000478, count: 15 }
+    - { id: temper, type: DELIVER, to: iskandar, take: { itemId: 4000478, count: 15 } }
+  rewards:
+    meso: 300000
+    exp: 300000
+    bondPoints: 50
+    gear:
+      - { itemId: 1402036, scrolls: [{ success: 60 }] }
+
+- id: iskandar-timeless-nibleheim
+  persona: iskandar
+  title: "Walked Out Properly"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [iskandar-dragon-claymore] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 60, mapIds: [551030100] }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 40, mapIds: [551030000] }
+    - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 30, mapIds: [551020000] }
+    - { id: home, type: DELIVER, to: iskandar }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1402046, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: iskandar-pony-tails
+  persona: iskandar
+  title: "Tails for the Carver"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 90 }, questsCompleted: [iskandar-the-night-gate] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000478, count: 10 }
+    - { id: carver, type: DELIVER, to: iskandar, take: { itemId: 4000478, count: 10 } }
+  rewards: { meso: 20000, exp: 16000, bondPoints: 10 }
+
+# ---- Devi (recruit; spear line, third tier) ----
+- id: devi-the-park-tour
+  persona: devi
+  title: "Show Me How You Move"
+  length: SHORT
+  requires: { level: { min: 78 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yabbers, type: KILL_MOBS, mobIds: [9420537], count: 25, mapIds: [551020000] }
+    - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 25, mapIds: [551020000] }
+    - { id: done, type: DELIVER, to: devi }
+  rewards: { meso: 45000, exp: 45000, bondPoints: 30, flags: [devi.intro.done] }
+
+- id: devi-stormshear
+  persona: devi
+  title: "The Stormshear"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [devi-the-park-tour] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 40, mapIds: [551030100] }
+    - { id: whistle, type: DELIVER, to: devi }
+  rewards:
+    meso: 220000
+    exp: 220000
+    bondPoints: 35
+    gear:
+      - { itemId: 1432056, scrolls: [{ success: 100 }] }
+
+- id: devi-dragon-faltizan
+  persona: devi
+  title: "The Dragon Faltizan"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [devi-stormshear] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 40, mapIds: [551020000] }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 40, mapIds: [551030100] }
+    - { id: heavy, type: DELIVER, to: devi }
+  rewards:
+    meso: 300000
+    exp: 300000
+    bondPoints: 50
+    gear:
+      - { itemId: 1432038, scrolls: [{ success: 60 }] }
+
+- id: devi-timeless-alchupiz
+  persona: devi
+  title: "Nobody Rides It Twice"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [devi-dragon-faltizan] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ride, type: VISIT_MAP, mapIds: [551030001, 551030002, 551030003, 551030004, 551030005, 551030006, 551030007, 551030008, 551030009, 551030010, 551030011, 551030012, 551030013, 551030014, 551030015, 551030016, 551030017, 551030018, 551030019] }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 60, mapIds: [551030100] }
+    - { id: spear, type: DELIVER, to: devi }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1432047, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: devi-bus-tickets
+  persona: devi
+  title: "Souvenirs for Clients"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 78 }, questsCompleted: [devi-the-park-tour] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tickets, type: COLLECT_ITEM, itemId: 4000475, count: 10 }
+    - { id: clients, type: DELIVER, to: devi, take: { itemId: 4000475, count: 10 } }
+  rewards: { meso: 18000, exp: 14000, bondPoints: 10 }
+
+# ---- Awang: the carousel horses (arcs/malaysia.yaml) ----
+- id: awang-the-charmers-flutes
+  persona: awang
+  title: "My Flutes, Badly Played"
+  length: SHORT
+  requires: { level: { min: 62 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: charmers, type: KILL_MOBS, mobIds: [9420534], count: 25, mapIds: [550000400, 551000100] }
+    - { id: flutes, type: COLLECT_ITEM, itemId: 4000472, count: 10 }
+    - { id: tuned, type: DELIVER, to: awang, take: { itemId: 4000472, count: 10 } }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 30, items: [{ itemId: 2022480, count: 10 }] }
+
+- id: awang-bintang
+  persona: awang
+  title: "Bintang Comes Home"
+  length: LONG
+  requires: { level: { min: 90 }, questsCompleted: [awang-the-charmers-flutes], flags: [kl.tape.mended], notFlags: [kampung.bintang.home] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 30, mapIds: [551030100] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000478, count: 10 }
+    - { id: home, type: DELIVER, to: awang, take: { itemId: 4000478, count: 10 } }
+  rewards: { meso: 120000, exp: 130000, bondPoints: 60, items: [{ itemId: 2000005, count: 20 }], worldFlags: [kampung.bintang.home] }
+
+# ---- Zara ----
+- id: zara-the-rebab
+  persona: zara
+  title: "A Band of Rebabs"
+  length: SHORT
+  requires: { level: { min: 46 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [9420528], count: 25, mapIds: [550000100] }
+    - { id: rebabs, type: COLLECT_ITEM, itemId: 4000466, count: 10 }
+    - { id: band, type: DELIVER, to: zara, take: { itemId: 4000466, count: 10 } }
+  rewards: { meso: 9000, exp: 10000, bondPoints: 30, items: [{ itemId: 2022480, count: 5 }] }
+
+- id: zara-on-the-big-screen
+  persona: zara
+  title: "Tell Her They're Atuk's"
+  length: SHORT
+  requires: { level: { min: 52 }, questsCompleted: [zara-the-rebab], flags: [kl.tape.mended], notFlags: [my.carousel.turns] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: farah, type: TALK_TO, persona: farah, say: ["Tok Awang's granddaughter? and she plays the rebab? ...nearly good, she said? tell her she's on the follow-up, with her rebab. and tell her grandfather the city's sorry. no. i'll tell him myself. one day i will."] }
+    - { id: told, type: DELIVER, to: zara }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 40, items: [{ itemId: 2022209, count: 10 }] }
+
+# ---- Hamid ----
+- id: hamid-the-river-tires
+  persona: hamid
+  title: "A Jetty of Tires"
+  length: SHORT
+  requires: { level: { min: 54 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: olys, type: KILL_MOBS, mobIds: [9420530], count: 25, mapIds: [550000200] }
+    - { id: tires, type: COLLECT_ITEM, itemId: 4000468, count: 10 }
+    - { id: jetty, type: DELIVER, to: hamid, take: { itemId: 4000468, count: 10 } }
+  rewards: { meso: 13000, exp: 14000, bondPoints: 30, items: [{ itemId: 2022203, count: 10 }] }
+
+- id: hamid-the-rodeo-riders
+  persona: hamid
+  title: "Riders for Luck"
+  length: SHORT
+  requires: { level: { min: 61 }, questsCompleted: [hamid-the-river-tires] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rodeos, type: KILL_MOBS, mobIds: [9420533], count: 25, mapIds: [550000300, 551000100] }
+    - { id: riders, type: COLLECT_ITEM, itemId: 4000471, count: 10 }
+    - { id: luck, type: DELIVER, to: hamid, take: { itemId: 4000471, count: 10 } }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 35, items: [{ itemId: 2022477, count: 10 }] }
+
+# ---- Rohani ----
+- id: rohani-the-batik-scarves
+  persona: rohani
+  title: "My Mother's Border"
+  length: SHORT
+  requires: { level: { min: 57 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: scarlions, type: KILL_MOBS, mobIds: [9420531], count: 25, mapIds: [551000200] }
+    - { id: scarves, type: COLLECT_ITEM, itemId: 4000469, count: 10 }
+    - { id: painted, type: DELIVER, to: rohani, take: { itemId: 4000469, count: 10 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 30, items: [{ itemId: 2022208, count: 10 }] }
+
+- id: rohani-the-frog-hats
+  persona: rohani
+  title: "Hats from the Frog Parade"
+  length: SHORT
+  requires: { level: { min: 70 }, questsCompleted: [rohani-the-batik-scarves] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: froscolas, type: KILL_MOBS, mobIds: [9420536], count: 25, mapIds: [551010000] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000474, count: 10 }
+    - { id: races, type: DELIVER, to: rohani, take: { itemId: 4000474, count: 10 } }
+  rewards: { meso: 24000, exp: 27000, bondPoints: 35, items: [{ itemId: 2000004, count: 15 }] }
+
+# ---- Meera ----
+- id: meera-the-school-trip
+  persona: meera
+  title: "Twenty-Three to the City"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hafiz, type: TALK_TO, persona: hafiz, say: ["the whole school? to the big screen? on my bike? ...no, no, my cousin has a van. a big one. tell Cikgu Meera yes, a Saturday, and i'll ride ahead and clear the Rodeos off the road. and tell Zara not to tell anyone. she'll tell everyone."] }
+    - { id: yes, type: DELIVER, to: meera }
+  rewards: { meso: 8000, exp: 9000, bondPoints: 30, items: [{ itemId: 2022478, count: 10 }] }
+
+- id: meera-the-sports-day
+  persona: meera
+  title: "Prizes for Sports Day"
+  length: SHORT
+  requires: { level: { min: 80 }, questsCompleted: [meera-the-school-trip] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 25, mapIds: [551020000] }
+    - { id: planes, type: COLLECT_ITEM, itemId: 4000476, count: 10 }
+    - { id: prizes, type: DELIVER, to: meera, take: { itemId: 4000476, count: 10 } }
+  rewards: { meso: 30000, exp: 33000, bondPoints: 35, items: [{ itemId: 2000005, count: 10 }] }
+
+# ---- Kamal (recruit; two-handed blunt line, third tier) ----
+- id: kamal-the-high-striker
+  persona: kamal
+  title: "Ring the Bell"
+  length: SHORT
+  requires: { level: { min: 72 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: froscolas, type: KILL_MOBS, mobIds: [9420536], count: 30, mapIds: [551010000] }
+    - { id: jesters, type: KILL_MOBS, mobIds: [9420535], count: 30, mapIds: [551010000] }
+    - { id: done, type: DELIVER, to: kamal }
+  rewards: { meso: 40000, exp: 40000, bondPoints: 30, flags: [kamal.intro.done] }
+
+- id: kamal-blue-seal-cushion
+  persona: kamal
+  title: "The Blue Seal Cushion"
+  length: MEDIUM
+  requires: { level: { min: 103 }, friendship: 5, questsCompleted: [kamal-the-high-striker] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 40, mapIds: [551030000] }
+    - { id: prize, type: DELIVER, to: kamal }
+  rewards:
+    meso: 240000
+    exp: 240000
+    bondPoints: 35
+    gear:
+      - { itemId: 1422031, scrolls: [{ success: 100 }] }
+
+- id: kamal-dragon-flame
+  persona: kamal
+  title: "The Dragon Flame"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [kamal-blue-seal-cushion] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ride, type: VISIT_MAP, mapIds: [551030001, 551030002, 551030003, 551030004, 551030005, 551030006, 551030007, 551030008, 551030009, 551030010, 551030011, 551030012, 551030013, 551030014, 551030015, 551030016, 551030017, 551030018, 551030019] }
+    - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 50, mapIds: [551020000] }
+    - { id: hot, type: DELIVER, to: kamal }
+  rewards:
+    meso: 300000
+    exp: 300000
+    bondPoints: 50
+    gear:
+      - { itemId: 1422028, scrolls: [{ success: 60 }] }
+
+- id: kamal-timeless-bellocce
+  persona: kamal
+  title: "Who's Coming"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [kamal-dragon-flame] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 60, mapIds: [551030100] }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 30, mapIds: [551030000] }
+    - { id: bell, type: DELIVER, to: kamal }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1422037, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: kamal-barrel-caulk
+  persona: kamal
+  title: "Hulls That Never Leak"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 72 }, questsCompleted: [kamal-the-high-striker] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: barrels, type: COLLECT_ITEM, itemId: 4000473, count: 10 }
+    - { id: caulk, type: DELIVER, to: kamal, take: { itemId: 4000473, count: 10 } }
+  rewards: { meso: 16000, exp: 13000, bondPoints: 10 }
+
+# ---- Bayu (recruit; one-handed axe line, third tier) ----
+- id: bayu-the-ship-ride
+  persona: bayu
+  title: "Thin Them Out"
+  length: SHORT
+  requires: { level: { min: 86 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 30, mapIds: [551030000] }
+    - { id: done, type: DELIVER, to: bayu }
+  rewards: { meso: 50000, exp: 50000, bondPoints: 30, flags: [bayu.intro.done] }
+
+- id: bayu-dragon-axe
+  persona: bayu
+  title: "The Dragon Axe"
+  length: MEDIUM
+  requires: { level: { min: 108 }, friendship: 5, questsCompleted: [bayu-the-ship-ride] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 50, mapIds: [551030100] }
+    - { id: bite, type: DELIVER, to: bayu }
+  rewards:
+    meso: 280000
+    exp: 280000
+    bondPoints: 35
+    gear:
+      - { itemId: 1312031, scrolls: [{ success: 100 }] }
+
+- id: bayu-reverse-bardiche
+  persona: bayu
+  title: "The Wall Is Full"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 7, questsCompleted: [bayu-dragon-axe] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vikerolas, type: KILL_MOBS, mobIds: [9420539], count: 40, mapIds: [551030000] }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000477, count: 20 }
+    - { id: wall, type: DELIVER, to: bayu, take: { itemId: 4000477, count: 20 } }
+  rewards:
+    meso: 340000
+    exp: 340000
+    bondPoints: 50
+    gear:
+      - { itemId: 1312038, scrolls: [{ success: 60 }] }
+
+- id: bayu-timeless-bardiche
+  persona: bayu
+  title: "The Whole Road"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [bayu-reverse-bardiche] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 60, mapIds: [551030100] }
+    - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 40, mapIds: [551020000] }
+    - { id: scarlions, type: KILL_MOBS, mobIds: [9420531], count: 30, mapIds: [551000200] }
+    - { id: home, type: DELIVER, to: bayu }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1312037, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: bayu-viking-helmets
+  persona: bayu
+  title: "The Second Wall"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 86 }, questsCompleted: [bayu-the-ship-ride] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000477, count: 10 }
+    - { id: wall, type: DELIVER, to: bayu, take: { itemId: 4000477, count: 10 } }
+  rewards: { meso: 20000, exp: 16000, bondPoints: 10 }

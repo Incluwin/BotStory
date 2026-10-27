@@ -3,6 +3,7 @@ package server.agents.capabilities.follow;
 import client.Character;
 import constants.game.CharacterStance;
 import server.agents.capabilities.movement.AgentGroundingService;
+import server.agents.capabilities.movement.AgentMapEnvironmentService;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.navigation.AgentNavigationRegionService;
@@ -42,7 +43,7 @@ public final class AgentFollowTargetPositionService {
                 return Math.abs(below.y - leaderPos.y) <= Math.abs(above.y - leaderPos.y) ? below : above;
             }
         }
-        if (map != null && map.isSwim()
+        if (AgentMapEnvironmentService.swims(map)
                 && leader != null && CharacterStance.isSwimming(leader.getStance())) {
             return new Point(followBase.x, leaderPos.y);
         }

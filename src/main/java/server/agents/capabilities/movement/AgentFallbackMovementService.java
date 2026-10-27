@@ -94,7 +94,7 @@ public final class AgentFallbackMovementService {
             return false;
         }
         MapleMap map = map(entry);
-        if (map == null || !map.isSwim()) {
+        if (!AgentMapEnvironmentService.swims(map)) {
             return false;
         }
         // Target must be sufficiently above bot. dy < 0 = target higher in MS coords.

@@ -3,7 +3,6 @@ package server.agents.progression;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import server.mods.RepackMaps;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,8 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * world-portal-route-graph.json is what tools/game-catalog/Export-WorldPortalRouteGraph.ps1 derives from WZ:
- * every unscripted portal between two maps of one continent group, outside the excluded ride maps. A WZ edit
- * that changes a portal fails here until the catalog is exported again.
+ * every unscripted portal between two maps of one continent group, outside the excluded ride maps, and the authored
+ * scripted portals as WZ and their scripts have them. A WZ edit that changes a portal fails here until the catalog is
+ * exported again.
  */
 class AgentWorldPortalRouteGraphFreshnessTest {
     private static final Path CATALOG = Path.of("src", "main", "resources", "agents", "catalogs",
@@ -97,21 +97,40 @@ class AgentWorldPortalRouteGraphFreshnessTest {
         }
         Set<String> missing = new TreeSet<>(derived);
         missing.removeAll(committed);
-        // The Community Repack maps (server.mods.RepackMaps) join the catalog when the routes work exports it again;
-        // until the catalog has one of their edges, theirs may be missing. Once it has one, all must be there.
-        if (committed.stream().noneMatch(AgentWorldPortalRouteGraphFreshnessTest::touchesRepackMap)) {
-            missing.removeIf(AgentWorldPortalRouteGraphFreshnessTest::touchesRepackMap);
-        }
         Set<String> stale = new TreeSet<>(committed);
         stale.removeAll(derived);
         assertEquals(Set.of(), missing, "WZ portals missing from the catalog: run Export-WorldPortalRouteGraph.ps1");
         assertEquals(Set.of(), stale, "catalog edges WZ no longer has: run Export-WorldPortalRouteGraph.ps1");
     }
 
-    private static boolean touchesRepackMap(String edge) {
-        int arrow = edge.indexOf("->");
-        return RepackMaps.listed(Integer.parseInt(edge.substring(0, arrow)))
-                || RepackMaps.listed(Integer.parseInt(edge.substring(arrow + 2)));
+    @Test
+    void everyScriptedPortalRunsItsScriptToItsDestination() throws IOException {
+        JsonNode portals = new ObjectMapper().readTree(CATALOG.toFile()).path("scriptedPortals");
+        assertTrue(portals.size() >= 5, "the Time Gate, An Empty House's door and the Temple of Time's flights");
+        for (JsonNode portal : portals) {
+            int source = portal.path("sourceMapId").asInt();
+            int destination = portal.path("destinationMapId").asInt();
+            String name = portal.path("portalName").asText();
+            String script = portal.path("script").asText();
+            Path file = MAP_ROOT.resolve("Map" + source / 100_000_000).resolve(String.format("%09d.img.xml", source));
+            Matcher block = PORTAL_BLOCK.matcher(Files.readString(file));
+            assertTrue(block.find(), () -> source + " has portals");
+            Matcher entry = Pattern.compile("(?s)<imgdir name=\"" + portal.path("portalId").asInt() + "\">(.*?)</imgdir>")
+                    .matcher(block.group(1));
+            assertTrue(entry.find(), () -> source + " has portal " + portal.path("portalId").asInt());
+            assertTrue(entry.group(1).contains("<string name=\"pn\" value=\"" + name + "\"/>"),
+                    () -> source + ": the portal id names " + name);
+            assertTrue(entry.group(1).contains("<string name=\"script\" value=\"" + script + "\"/>"),
+                    () -> source + ": " + name + " runs " + script);
+            String js = Files.readString(Path.of("scripts", "portal", script + ".js"));
+            assertTrue(js.contains("warp(" + destination), () -> script + " sends the traveller to " + destination);
+            for (JsonNode quest : portal.path("gate").path("completedAny")) {
+                assertTrue(js.contains("isQuestCompleted(" + quest.asInt() + ")"), () -> script + " checks " + quest);
+            }
+            for (JsonNode quest : portal.path("gate").path("activeAny")) {
+                assertTrue(js.contains("isQuestStarted(" + quest.asInt() + ")"), () -> script + " checks " + quest);
+            }
+        }
     }
 
     private static int mapId(Path file) {
