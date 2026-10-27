@@ -189,6 +189,48 @@ class MiniGameTableHeadlessTest {
         assertEquals(2, moves.get(1)[2], "the citizen plays the other stone");
     }
 
+    @Test
+    void aCitizenDoneWithItsGamesLeavesEvenWhenTheHumanReadiesAgainAtOnce() {
+        MiniGameTable.Seat owner = seat(ann, 0.5d, 1);
+        assertEquals(MiniGameRules.OK, MiniGameRules.createOmok(ann.chr, "omok", "", 0));
+        MiniGame game = ann.game();
+        MiniGameTable.watch(game, owner, clock, new Random(11L), PACE, listener);
+        MiniGameRules.visit(bo.chr, game, "");
+        MiniGameRules.ready(bo.chr, true);
+        runAll();
+        assertTrue(game.isMatchInProgress());
+
+        MiniGameRules.giveUp(bo.chr);
+        MiniGameRules.ready(bo.chr, true); // before the citizen got up after its "bye"
+        runAll();
+
+        assertNull(ann.game(), "it closed its room instead of starting another game");
+        verify(ann.chr, times(1)).setMiniGamePoints(eq(bo.chr), anyInt(), eq(true));
+        assertTrue(heard.contains("say Ann game.bye"));
+    }
+
+    @Test
+    void aTieOfferDuringTheCitizensTurnNeverStallsTheGame() {
+        MiniGameTable.Seat owner = seat(ann, 0.5d, 3);
+        assertEquals(MiniGameRules.OK, MiniGameRules.createOmok(ann.chr, "omok", "", 0));
+        MiniGame game = ann.game();
+        MiniGameTable.watch(game, owner, clock, new Random(13L), PACE, listener);
+        MiniGameRules.visit(bo.chr, game, "");
+        MiniGameRules.ready(bo.chr, true);
+        runAll();
+        for (int round = 0; round < 3; round++) { // the citizen has four stones at most: no five yet
+            MiniGameRules.moveOmok(bo.chr, round * 3, 14, 2);
+            MiniGameRules.requestTie(bo.chr); // the citizen's move is pending: the offer drops it
+            int before = omokMoves(bo.packets).size();
+            runAll();
+            boolean tied = bo.packets.contains("getMiniGameTie(game)");
+            assertTrue(tied || omokMoves(bo.packets).size() == before + 1, "it answered and moved on");
+            if (tied) {
+                return;
+            }
+        }
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------
 
     private static MiniGameTable.Seat seat(Player player, double strength, int games) {

@@ -146,10 +146,14 @@ public class MiniGame extends AbstractMapObject {
         observe(watcher -> watcher.visitorJoined(this, challenger));
     }
 
-    public void closeRoom(boolean forceClose) {
+    /** Under the room's lock, as MiniGameRules' steps are: a visit never lands in a room half closed. */
+    public synchronized void closeRoom(boolean forceClose) {
         observe(watcher -> watcher.closed(this));
-        owner.getMap().broadcastMessage(PacketCreator.removeMinigameBox(owner));
-        owner.getMap().removeMapObject(this); // a closed room was left in the map's objects for good
+        MapleMap map = owner.getMap();
+        map.broadcastMessage(PacketCreator.removeMinigameBox(owner));
+        if (map.getMapObject(getObjectId()) == this) {
+            map.removeMapObject(this); // a closed room was left in the map's objects for good
+        }
 
         if (forceClose) {
             this.broadcastToOwner(PacketCreator.getMiniGameClose(false, 4));
@@ -165,7 +169,7 @@ public class MiniGame extends AbstractMapObject {
         owner = null;
     }
 
-    public void removeVisitor(boolean forceClose, Character challenger) {
+    public synchronized void removeVisitor(boolean forceClose, Character challenger) {
         if (visitor == challenger) {
             if (isMatchInProgress()) { // owner is winner if visitor leave in progress
                 minigameMatchOwnerWins(true);

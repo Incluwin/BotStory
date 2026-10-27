@@ -169,12 +169,15 @@ final class MiniGameTable implements MiniGameObserver {
             visitorSeat = null;
             listener.left(gone);
         }
+        departIfDone(); // its leave after its last game was dropped by this
     }
 
     @Override
     public synchronized void ready(MiniGame game, boolean ready) {
         bump();
-        if (ready && ownerSeat != null && !game.isMatchInProgress()) {
+        if (ownerSeat != null && ownerSeat.gamesLeft <= 0) {
+            departIfDone(); // it said bye: a quick ready does not keep it at the table
+        } else if (ready && ownerSeat != null && !game.isMatchInProgress()) {
             schedule(ownerSeat, think(1_500L, 4_000L), seat -> MiniGameRules.start(seat.chr));
         }
     }
@@ -265,6 +268,12 @@ final class MiniGameTable implements MiniGameObserver {
         // a crowded omok board is a fair draw; otherwise most players want to finish
         boolean accept = game.isOmok() && stones > 150 || random.nextInt(100) < 20;
         schedule(answerer, think(2_000L, 5_000L), seat -> MiniGameRules.answerTie(seat.chr, accept));
+    }
+
+    @Override
+    public synchronized void tieDenied(MiniGame game, Character answerer) {
+        bump();
+        nextTurn(think(1_000L, 3_000L)); // the offer dropped the pending move: whoever was to move moves on
     }
 
     @Override
@@ -365,7 +374,11 @@ final class MiniGameTable implements MiniGameObserver {
         return game.isMatchInProgress() && (ownerToMove ? ownerSeat : visitorSeat) == seat;
     }
 
-    /** Runs {@code step} for {@code seat} after {@code delayMs}, unless anything happens in the room meanwhile. */
+    /**
+     * Runs {@code step} for {@code seat} after {@code delayMs}, unless anything happens in the room meanwhile. The step
+     * runs holding the room's lock (then the table's, the observer's order), so nothing can end the match between its
+     * last look and its move.
+     */
     private void schedule(Seat seat, long delayMs, Consumer<Seat> step) {
         int asked = generation;
         clock.after(delayMs, () -> {
@@ -373,11 +386,22 @@ final class MiniGameTable implements MiniGameObserver {
                 return;
             }
             seat.runner.accept(() -> {
-                if (!stale(asked)) {
-                    step.accept(seat);
+                synchronized (game) {
+                    if (!stale(asked)) {
+                        step.accept(seat);
+                    }
                 }
             });
         });
+    }
+
+    /** A citizen seat that played its last game gets up, now that the leave scheduled after that game was dropped. */
+    private void departIfDone() {
+        Seat done = ownerSeat != null && ownerSeat.gamesLeft <= 0 ? ownerSeat
+                : visitorSeat != null && visitorSeat.gamesLeft <= 0 ? visitorSeat : null;
+        if (done != null) {
+            schedule(done, think(2_000L, 5_000L), seat -> MiniGameRules.leave(seat.chr));
+        }
     }
 
     private synchronized boolean stale(int asked) {

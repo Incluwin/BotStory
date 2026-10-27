@@ -75,8 +75,10 @@ public final class CitizenMiniGames {
         /** A walk to a room or a room about to open is under way. */
         volatile boolean pending;
         volatile long readyAtMs;
-        /** Its rooms that closed with nobody in them. */
+        /** Rooms it got up from with no game: its own that nobody joined, and rooms where nothing happened. */
         volatile int emptyRooms;
+        /** Rooms it got up from because nothing happened there: it does not sit down in them again. */
+        final Set<MiniGame> passed = ConcurrentHashMap.newKeySet();
 
         Player(CitizenSession session, MiniGameTable.Seat seat, int omokSet, boolean hasCards, boolean prefersCards) {
             this.session = session;
@@ -220,7 +222,7 @@ public final class CitizenMiniGames {
             finish(player, now, "played enough");
             return;
         }
-        MiniGame open = joinable(agent, now);
+        MiniGame open = joinable(player, agent, now);
         if (open != null) {
             walkTo(player, open, now);
         } else if (player.emptyRooms >= 2 || player.omokSet < 0 && !player.hasCards) {
@@ -235,7 +237,7 @@ public final class CitizenMiniGames {
         MiniGame game = table.game();
         long quiet = now - table.lastEventMs();
         if (game.isOwner(agent) && game.getVisitor() == null) {
-            MiniGame human = quiet >= SWITCH_TO_HUMAN_ROOM_MS ? joinable(agent, now) : null;
+            MiniGame human = quiet >= SWITCH_TO_HUMAN_ROOM_MS ? joinable(player, agent, now) : null;
             if (human != null && !AgentPresence.isAgent(human.getOwner())) {
                 table.leave(player.seat); // a player opened a room nearby: it goes to play them instead
                 walkTo(player, human, now);
@@ -245,19 +247,21 @@ public final class CitizenMiniGames {
                 player.readyAtMs = now + 10_000L + random.nextInt(20_000);
             }
         } else if (quiet >= config().MINIGAME_IDLE_MS) {
-            table.leave(player.seat); // a player who never readies or moves
+            player.emptyRooms++; // a player who never readies or moves: two such rooms end the session
+            player.passed.add(game);
+            table.leave(player.seat);
         }
     }
 
     /** An open room on its map it could sit down in: a human's (seen open a while) first, then a citizen's. */
-    private MiniGame joinable(Character agent, long now) {
+    private MiniGame joinable(Player player, Character agent, long now) {
         MapleMap map = agent.getMap();
         if (map == null) {
             return null;
         }
         MiniGame citizenRoom = null;
         for (MapObject object : map.getMapObjects()) {
-            if (!(object instanceof MiniGame game) || targeted.contains(game)) {
+            if (!(object instanceof MiniGame game) || targeted.contains(game) || player.passed.contains(game)) {
                 continue;
             }
             Character owner = game.getOwner();
