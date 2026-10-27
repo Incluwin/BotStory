@@ -207,6 +207,24 @@ public final class AgentDefenseDataProvider {
         return meanFlooredAtLeastOne(square * MIN_DAMAGE_FACTOR - reduction, square * MAX_DAMAGE_FACTOR - reduction);
     }
 
+    /**
+     * The most one landed hit of {@code mob} can take from {@code bot}: the touch roll at its PADamage or the magic roll
+     * at its MADamage, whichever is larger, both at MAX_DAMAGE_FACTOR (F8: whether a drink may come a beat late).
+     */
+    public int maxIncomingHit(Character bot, Monster mob) {
+        int touch = Math.max(0, mob.getPADamage());
+        int magic = Math.max(0, mob.getMADamage());
+        double touchMax = touch <= 0 ? 1.0d : touch * (double) touch * MAX_DAMAGE_FACTOR
+                - touchReduction(touchDefense(bot, mob));
+        double magicMax = magic <= 0 ? 1.0d : magic * (double) magic * MAX_DAMAGE_FACTOR
+                - Math.max(0, bot.getTotalMdef()) * 0.5d;
+        return Math.max(1, (int) Math.floor(Math.max(touchMax, magicMax)));
+    }
+
+    private static double touchReduction(TouchDefense defense) {
+        return (defense.wdef() * defense.a()) + ((defense.wdef() - defense.standardPdd()) * defense.b());
+    }
+
     /** E[max(1, floor(u))] for u uniform on [lo, hi]. */
     static double meanFlooredAtLeastOne(double lo, double hi) {
         if (!(hi > lo)) {

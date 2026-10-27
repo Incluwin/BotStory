@@ -10838,8 +10838,11 @@ public class Character extends AbstractCharacterObject {
                             ? this.getInventory(InventoryType.USE).findById(autohpItemid)
                             : null;
                     if (agentChoice != null) {
-                        runAutopotAction(agentChoice.position(), agentChoice.itemId());
-                        server.agents.capabilities.behavior.AgentTellProbe.potionPoint(Math.round(autohpAlert * 100));
+                        // F8.2: a citizen's or companion's drink may wait a beat while it is safe; it drinks when due
+                        if (!CosmicAgentPotionCheckRequestBridge.holdsHpDrink(this)) {
+                            runAutopotAction(agentChoice.position(), agentChoice.itemId());
+                            server.agents.capabilities.behavior.AgentTellProbe.potionPoint(Math.round(autohpAlert * 100));
+                        }
                     } else if (autohpItem != null) {
                         runAutopotAction(autohpItem.getPosition(), autohpItemid);
                     } else if (agent) {

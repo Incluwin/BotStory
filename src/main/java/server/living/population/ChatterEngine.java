@@ -12,6 +12,7 @@ import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.integration.AgentPresence;
 import server.living.audit.TellAudit;
+import server.living.imperfections.Imperfections;
 import server.living.population.PopulationContent.Intent;
 import server.living.population.PopulationContent.Lobby;
 import server.maps.MapleMap;
@@ -36,6 +37,9 @@ import java.util.function.UnaryOperator;
 public final class ChatterEngine {
     private static final Logger log = LoggerFactory.getLogger(ChatterEngine.class);
     private static final long SELF_COOLDOWN_MS = 15_000L;
+    /** A typo's "*word" follows the line this long after it, plus up to TYPO_FIX_SPAN_MS (F8). */
+    private static final long TYPO_FIX_MIN_MS = 1_500L;
+    private static final int TYPO_FIX_SPAN_MS = 1_500;
     /** A delivery channel naming one alliance's chat: this prefix and the alliance id (allianceSay). */
     private static final String ALLIANCE_CHANNEL = "alliance:";
     private static final long INTENT_COOLDOWN_DEFAULT_MS = 300_000L;
@@ -352,7 +356,12 @@ public final class ChatterEngine {
             session.recentIntents.removeFirst();
         }
         long delay = urgent ? 400L : population.voices().delayMs(session.citizen, rendered);
-        deliver(session, channel, rendered, delay);
+        Imperfections slips = Imperfections.active(); // F8: now and then a typo in town, then "*word"
+        String[] typo = slips == null ? null : slips.typoFix(session.agent(), rendered, where);
+        deliver(session, channel, typo == null ? rendered : typo[0], delay);
+        if (typo != null) {
+            deliver(session, channel, typo[1], delay + TYPO_FIX_MIN_MS + random.nextInt(TYPO_FIX_SPAN_MS));
+        }
         if (channel.equals("map")) {
             population.conversation().overheard(session, filled, delay); // another citizen may answer its question
         }

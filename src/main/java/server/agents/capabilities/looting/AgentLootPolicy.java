@@ -1,6 +1,9 @@
 package server.agents.capabilities.looting;
 
 import client.Character;
+import constants.inventory.ItemConstants;
+import server.ItemInformationProvider;
+import server.agents.capabilities.behavior.AgentImperfections;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogRewardClaimRegistry;
 import server.life.Monster;
 import server.maps.MapItem;
@@ -85,20 +88,45 @@ public final class AgentLootPolicy {
     }
 
     /**
-     * True when this Agent's policy lets it pick up the drop: always with no rule installed or no policy for it.
-     * Inside an event instance it is true too, except for a boss's drop the Agent leaves in a boss run
-     * ({@link #leftInRun}).
+     * True when this Agent's policy lets it pick up the drop: always with no rule installed or no policy for it, unless
+     * a loot slip leaves it ({@link #slipsPast}). Inside an event instance it is true too, except for a boss's drop the
+     * Agent leaves in a boss run ({@link #leftInRun}).
      */
     public static boolean permits(Character bot, MapItem drop) {
+        if (bot == null || drop == null) {
+            return true;
+        }
         Rule current = rule;
-        if (current == null || bot == null || drop == null) {
-            return true;
+        Policy policy = current == null ? null : current.policy(bot.getId());
+        if (bot.getEventInstance() != null) {
+            return policy == null || !leftInRun(current, policy, bot, drop);
         }
-        Policy policy = current.policy(bot.getId());
-        if (policy == null) {
-            return true;
+        return (policy == null || permits(policy, bot, drop)) && !slipsPast(bot, drop, policy, QUEST_OR_CASH);
+    }
+
+    /** A quest or cash item by its item data; read only when a slip is asked about the drop. */
+    private static final java.util.function.IntPredicate QUEST_OR_CASH = itemId -> {
+        ItemInformationProvider items = ItemInformationProvider.getInstance();
+        return items.isQuestItem(itemId) || items.isCash(itemId);
+    };
+
+    /**
+     * F8.5 loot slip (docs/BOT_CONCEPT_PLAN.md F8): now and then a citizen or companion walks past a cheap monster drop
+     * (AgentImperfections.leavesDrop: the host's price index, chance and budget; the same answer for the same drop). It
+     * only ever narrows what the policy allows, LIKE_OWNER's skips included, and never leaves meso, an equip, a cash or
+     * quest item, a player's drop, or an item its host's quests still need ({@link Policy#questNeeds}).
+     */
+    static boolean slipsPast(Character bot, MapItem drop, Policy policy, java.util.function.IntPredicate questOrCash) {
+        if (!AgentImperfections.on() || drop.getMeso() > 0 || !(drop.getDropper() instanceof Monster)) {
+            return false;
         }
-        return bot.getEventInstance() != null ? !leftInRun(current, policy, bot, drop) : permits(policy, bot, drop);
+        int itemId = drop.getItemId();
+        if (ItemConstants.isEquipment(itemId)
+                || policy != null && policy.questNeeds() != null && policy.questNeeds().test(bot, itemId)
+                || questOrCash.test(itemId)) {
+            return false;
+        }
+        return AgentImperfections.leavesDrop(bot, itemId, drop.getObjectId());
     }
 
     /**

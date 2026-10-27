@@ -60,7 +60,9 @@ public final class PopulationLoader {
             "game.lf", "game.title.omok", "game.title.cards", "game.hi", "game.nice", "game.win", "game.loss", "game.tie",
             "game.bye",
             // a citizen asking after a friend who is away (PersonMemories.askAfter, the letters)
-            "memory.asked");
+            "memory.asked",
+            // small imperfections (F8): a short pause on a field (D6), "rez pls?" and the thanks after a Resurrection
+            "brb", "rez.ask.self", "rez.thanks.self");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

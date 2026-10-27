@@ -119,8 +119,9 @@ class AgentPotionThresholdsTest {
                 }
             }
         }
+        // F8.2: the configured HP point passes the imperfections seam first (a bot's own point), then the owner's seam
         assertEquals(List.of(
-                "AgentPotionService.java: return AgentPotionThresholds.hp(bot.getId(), AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);",
+                "AgentPotionService.java: float configured = AgentImperfections.hpAlert(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);",
                 "AgentPotionService.java: return AgentPotionThresholds.mp(bot.getId(), AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH);"),
                 reads);
     }

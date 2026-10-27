@@ -549,6 +549,33 @@ public class LivingWorldConfig {
      */
     public boolean TELL_AUDIT_ENABLED = false;
 
+    // Small imperfections with hard caps (2026-10-27, docs/BOT_CONCEPT_PLAN.md F8; Imperfections)
+    /** Kill switch: false = no citizen or companion shows any slip or human calibration; everything as before. */
+    public boolean IMPERFECTIONS_ENABLED = false;
+    /** Slips one bot may show in any hour, all kinds together (each kind has its own lower cap too). */
+    public int IMPERFECTIONS_SLIPS_PER_HOUR = 10;
+    /** No slip while the bot's HP is under this share of its maximum. */
+    public double IMPERFECTIONS_HP_GUARD = 0.6;
+    /** A bot's own potion point (0.60-0.75 around the configured 0.70) never goes below this. */
+    public double IMPERFECTIONS_POTION_FLOOR = 0.45;
+    /** Chance an autopot HP drink waits 0.3-1.5 s (only while safe: HP 50%+, no mob that could take it under 40%). */
+    public double IMPERFECTIONS_LATE_POTION_CHANCE = 0.15;
+    /** Chance a non-survival buff lapses 2-10 s before its recast. */
+    public double IMPERFECTIONS_BUFF_LAPSE_CHANCE = 0.05;
+    /** Chance a cheap drop (at or under the price index median) is left on the ground. */
+    public double IMPERFECTIONS_LOOT_SLIP_CHANCE = 0.05;
+    /** Chance of a town fumble at each chance: a missed rope grab, walking past the NPC it went to. */
+    public double IMPERFECTIONS_FUMBLE_CHANCE = 0.1;
+    /** Chance a citizen's town chat line gets a typo and a "*word" line after it. */
+    public double IMPERFECTIONS_TYPO_FIX_CHANCE = 0.04;
+    /** Chance a companion goes AFK once its owner has idled in town IMPERFECTIONS_OWNER_IDLE_MS (once per idle spell). */
+    public double IMPERFECTIONS_COMPANION_AFK_CHANCE = 0.3;
+    public int IMPERFECTIONS_OWNER_IDLE_MS = 60000;
+    /** A companion's AFK lasts 30 s to this (the code never lets it pass 90 s). */
+    public int IMPERFECTIONS_COMPANION_AFK_MAX_MS = 90000;
+    /** Least time between two AFKs of one companion. */
+    public int IMPERFECTIONS_COMPANION_AFK_GAP_MS = 3600000;
+
     // A companion says why its owner's whisper reached no Agent (2026-10-10)
     /**
      * Least time between two of one companion's whispered "can't right now" lines (a live bench slice keeps it, or its
@@ -818,6 +845,17 @@ public class LivingWorldConfig {
         if (CITIZEN_YIELD_WEIGHT < 0) {
             throw new IllegalArgumentException("living_world.CITIZEN_YIELD_WEIGHT must be >= 0");
         }
+        if (IMPERFECTIONS_SLIPS_PER_HOUR < 0 || IMPERFECTIONS_HP_GUARD < 0 || IMPERFECTIONS_HP_GUARD > 1
+                || IMPERFECTIONS_POTION_FLOOR < 0.45 || IMPERFECTIONS_POTION_FLOOR > 0.9
+                || !share(IMPERFECTIONS_LATE_POTION_CHANCE) || !share(IMPERFECTIONS_BUFF_LAPSE_CHANCE)
+                || !share(IMPERFECTIONS_LOOT_SLIP_CHANCE) || !share(IMPERFECTIONS_FUMBLE_CHANCE)
+                || !share(IMPERFECTIONS_TYPO_FIX_CHANCE) || !share(IMPERFECTIONS_COMPANION_AFK_CHANCE)
+                || IMPERFECTIONS_OWNER_IDLE_MS < 0 || IMPERFECTIONS_COMPANION_AFK_MAX_MS < 30000
+                || IMPERFECTIONS_COMPANION_AFK_MAX_MS > 90000 || IMPERFECTIONS_COMPANION_AFK_GAP_MS < 0) {
+            throw new IllegalArgumentException("living_world.IMPERFECTIONS_*: SLIPS_PER_HOUR, OWNER_IDLE_MS and"
+                    + " COMPANION_AFK_GAP_MS >= 0, HP_GUARD and the chances within 0..1, POTION_FLOOR within 0.45..0.9,"
+                    + " COMPANION_AFK_MAX_MS within 30000..90000");
+        }
         if (OWNER_HABIT_MIN_DRINKS < 1 || OWNER_HABIT_HP_FLOOR < 0 || OWNER_HABIT_HP_FLOOR > 0.9
                 || OWNER_HABIT_DEATH_WINDOW_MS < 0 || OWNER_HABIT_LOOT_MIN_SEEN < 1 || OWNER_HABIT_LOOT_SKIP_SHARE <= 0
                 || OWNER_HABIT_LOOT_SKIP_SHARE > 1 || OWNER_HABIT_LOOT_MAX_PRICE < 0 || OWNER_HABIT_LOOT_MAX_SKIPS < 0
@@ -967,5 +1005,9 @@ public class LivingWorldConfig {
         if (COMPANION_WHISPER_REFUSAL_GAP_MS < 0) {
             throw new IllegalArgumentException("living_world.COMPANION_WHISPER_REFUSAL_GAP_MS must be >= 0");
         }
+    }
+
+    private static boolean share(double value) {
+        return value >= 0 && value <= 1;
     }
 }

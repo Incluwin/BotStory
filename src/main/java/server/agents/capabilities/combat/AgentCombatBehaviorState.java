@@ -44,6 +44,12 @@ public final class AgentCombatBehaviorState {
         candidateOpportunity = false;
     }
 
+    /** True while a wait for a target runs (a stimulus is held). */
+    public synchronized boolean waiting() { return stimulus != 0L; }
+
+    /** The running wait ends now (the Agent was hit: it answers at once). */
+    public synchronized void respondNow(long nowMs) { readyAtMs = Math.min(readyAtMs, nowMs); }
+
     public synchronized void markCandidateOpportunity() { candidateOpportunity = true; }
     public synchronized boolean responseDeferred() { return responseDeferred; }
     public synchronized boolean candidateOpportunity() { return candidateOpportunity; }

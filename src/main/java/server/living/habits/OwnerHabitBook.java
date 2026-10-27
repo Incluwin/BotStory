@@ -297,9 +297,11 @@ public final class OwnerHabitBook {
         if (owners.isEmpty()) {
             return;
         }
+        server.living.imperfections.Imperfections slips = server.living.imperfections.Imperfections.active();
         for (MapItem drop : drops) {
             int itemId = drop.getItemId();
-            if (drop.getMeso() > 0 || itemId <= 0 || drop.isPlayerDrop() || drop.isPickedUp()) {
+            if (drop.getMeso() > 0 || itemId <= 0 || drop.isPlayerDrop() || drop.isPickedUp()
+                    || slips != null && slips.leftBySlip(drop.getObjectId())) { // a bot's loot slip is no habit (F8)
                 continue;
             }
             InventoryType type = ItemConstants.getInventoryType(itemId);

@@ -926,11 +926,12 @@ public final class PresenceScheduler {
         if (leaveFieldBoss(session, now)) {
             return;
         }
-        if (session.afkUntilMs > now) {
+        if (session.afkUntilMs > now && !(session.fieldPause && FieldPause.endsEarly(session.agent()))) {
             return;
         }
         if (session.afkUntilMs != 0L) {
             session.afkUntilMs = 0L;
+            session.fieldPause = false;
             population.chatter().event(ChatterEngine.Event.of("back", session.mapId, session.channel).self(session));
             resume(session, now);
             return;
@@ -945,13 +946,19 @@ public final class PresenceScheduler {
             return;
         }
         session.lastPlanAtMs = now;
-        if (random.nextInt(100) < 15) {
+        boolean afk = random.nextInt(100) < 15;
+        String afkWhere = afk ? population.fields().kind(session.mapId) : null;
+        boolean field = "field".equals(afkWhere) && population.config().FIELD_AFK_MAX_MS > 0;
+        if (afk && (!field || FieldPause.safeToStart(session.agent()))) {
             endStint(session, now); // time spent AFK is never booked as hunting
-            session.afkUntilMs = now + (5 + random.nextInt(11)) * 60_000L;
+            // D6 (docs/BOT_CONCEPT_PLAN.md F8): on a field a short pause where it is safe, else the long town AFK
+            session.afkUntilMs = now + FieldPause.durationMs(afkWhere, population.config().FIELD_AFK_MAX_MS, random);
+            session.fieldPause = field;
             if (TellAudit.active() != null) {
-                TellAudit.afk(population.fields().kind(session.mapId), session.afkUntilMs - now);
+                TellAudit.afk(afkWhere, session.afkUntilMs - now);
             }
-            population.chatter().event(ChatterEngine.Event.of("afk", session.mapId, session.channel).self(session));
+            population.chatter().event(ChatterEngine.Event.of(field ? "brb" : "afk", session.mapId, session.channel)
+                    .self(session));
             if (session.entry != null) {
                 AgentMovementCommandRuntime.stop(session.entry);
             }

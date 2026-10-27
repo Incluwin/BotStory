@@ -1,0 +1,40 @@
+# Small imperfections (docs/BOT_CONCEPT_PLAN.md F8): a short pause on a training field (decision D6; "back" is
+# time.yaml's), and the words around a Resurrection a citizen waits for after it dies beside a party member who has it.
+intents:
+  - id: slip.brb
+    trigger: brb
+    where: field
+    channel: map
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "brb water"
+      - "brb 1 sec"
+      - "sec"
+      - "brb door"
+      - "brb"
+      - "1 min"
+  - id: slip.rez.ask
+    trigger: rez.ask.self
+    where: any
+    channel: party
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "rez pls?"
+      - "rez?"
+      - "anyone got rez"
+      - "rezz pls"
+      - "rez me pls"
+  - id: slip.rez.thanks
+    trigger: rez.thanks.self
+    where: any
+    channel: party
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "ty!!"
+      - "ty for rez"
+      - "thx"
+      - "tyty"
+      - "saved me a walk ty"

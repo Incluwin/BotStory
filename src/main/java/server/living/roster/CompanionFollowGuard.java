@@ -7,6 +7,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.imperfections.Imperfections;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -90,6 +91,26 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
      */
     @Override
     public Point waitsAt(int agentCharacterId, Character anchor) {
+        Point place = waitsAtPlace(agentCharacterId, anchor);
+        Imperfections slips = Imperfections.active();
+        return place != null || slips == null || anchor == null ? place : afkSpot(slips, agentCharacterId, anchor);
+    }
+
+    /**
+     * F8.4: while its owner idles in town, the owner's own companion now and then goes AFK where it stands for at most
+     * 90 s (Imperfections.companionAfk); null when it follows as usual.
+     */
+    private Point afkSpot(Imperfections slips, int agentCharacterId, Character owner) {
+        Persona persona = world.residents().personaOfCharacterId(agentCharacterId);
+        if (persona == null || world.roster().cachedOwnerOf(persona.id()) != owner.getId()) {
+            return null;
+        }
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId);
+        Character companion = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
+        return slips.companionAfk(companion, owner);
+    }
+
+    private Point waitsAtPlace(int agentCharacterId, Character anchor) {
         Point boss = world.bossRuns() == null ? null : world.bossRuns().waitsAt(agentCharacterId, anchor);
         if (boss != null) {
             return boss;

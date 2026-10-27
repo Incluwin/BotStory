@@ -27,6 +27,12 @@ public class PopulationConfig {
     public String CHANNELS = "1";
     /** Presence sweep interval. */
     public int SWEEP_MS = 60000;
+    /**
+     * A citizen that goes AFK on a training field pauses 30 s to this long and only where it is safe (decision D6,
+     * docs/BOT_CONCEPT_PLAN.md F8); in towns, Free Market rooms and lobbies the 5-15 min AFK stays. At most 120000.
+     * 0 = fields AFK like towns, 5-15 min (the rule before 2026-10-27).
+     */
+    public int FIELD_AFK_MAX_MS = 110000;
     /** Ledger interval for citizens that are scheduled online but not loaded. */
     public int LEDGER_MS = 600000;
     /** Global multiplier on cohort online probability (1.0 = as authored; 0.5 = half as many online). */
@@ -270,6 +276,10 @@ public class PopulationConfig {
         if (MAP_VISIBLE_RETRY_MS < 1000 || MAP_VISIBLE_RETRY_LIMIT < 0 || MAP_VISIBLE_TRIM_PER_SWEEP < 0) {
             throw new IllegalArgumentException("population.MAP_VISIBLE_RETRY_MS must be >= 1000, MAP_VISIBLE_RETRY_LIMIT"
                     + " and MAP_VISIBLE_TRIM_PER_SWEEP >= 0");
+        }
+        if (FIELD_AFK_MAX_MS != 0 && (FIELD_AFK_MAX_MS < 30000 || FIELD_AFK_MAX_MS > 120000)) {
+            throw new IllegalArgumentException("population.FIELD_AFK_MAX_MS must be within 30000..120000 (0 = the old"
+                    + " 5-15 min field AFK)");
         }
         if (PRESENCE_MULTIPLIER < 0 || LIFE_PACE <= 0) {
             throw new IllegalArgumentException("population.PRESENCE_MULTIPLIER must be >= 0 and LIFE_PACE > 0");

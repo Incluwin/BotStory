@@ -11,6 +11,16 @@ public final class AgentPotionSupplyState {
     private long lowTopUpDueAtMs = 0L;
     private boolean hpShareRequested = false;
     private boolean mpShareRequested = false;
+    /** F8.2: when an autopot HP drink that waits a beat goes down (0: none waits); any thread (a stat loss's). */
+    private volatile long lateHpDrinkAtMs = 0L;
+
+    public long lateHpDrinkAtMs() {
+        return lateHpDrinkAtMs;
+    }
+
+    public void setLateHpDrinkAtMs(long lateHpDrinkAtMs) {
+        this.lateHpDrinkAtMs = lateHpDrinkAtMs;
+    }
 
     public long lowTopUpDueAtMs() {
         return lowTopUpDueAtMs;
