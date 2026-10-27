@@ -194,11 +194,11 @@
       - { from: 21, to: 8, materialize: false }
   recruitable: false
   knows: [rodeo, yabber doo, muddy banks 2]
-  questLines: [hafiz-a-parcel-for-zara, hafiz-the-rodeo-road, hafiz-the-park-bus]
+  questLines: [hafiz-a-parcel-for-zarina, hafiz-the-rodeo-road, hafiz-the-park-bus]
   rumors: [kl-the-mamak-stall]
   relationships:
     - { persona: ravi, kind: STOPS_FOR_TEA_WITH }
-    - { persona: zara, kind: CARRIES_PARCELS_FOR }
+    - { persona: zarina, kind: CARRIES_PARCELS_FOR }
     - { persona: meera, kind: IS_ASKED_FAVOURS_BY }
   giftItemIds: [2022207, 2022477]
   dialogue:
@@ -212,10 +212,10 @@
     thanks: ["thanks, boss!"]
     smallTalk: ["the Rodeos on the second muddy bank chase my bike. every day. i think they want to race. i don't stop to ask.", "Spinel flies folk in from Boat Quay and Audrey flies the CBD lot. me, i just ride. the road's better. you see things."]
     speakPlainly: ["plainly: parcels, a bike, and a muddy road."]
-    questOffer.hafiz-a-parcel-for-zara: ["a parcel for Zara in the kampung. Tok Awang's granddaughter. it's from a shop in the Trend Zone and it rattles. i've got six more. would you take it?"]
-    questAccept.hafiz-a-parcel-for-zara: ["the kampung, past the three muddy banks. she'll be the one who runs at you."]
-    questWaiting.hafiz-a-parcel-for-zara: ["did she get it? did she run?"]
-    questComplete.hafiz-a-parcel-for-zara: ["she ran? she always runs. thanks, boss. here, for the road."]
+    questOffer.hafiz-a-parcel-for-zarina: ["a parcel for Zarina in the kampung. Tok Awang's granddaughter. it's from a shop in the Trend Zone and it rattles. i've got six more. would you take it?"]
+    questAccept.hafiz-a-parcel-for-zarina: ["the kampung, past the three muddy banks. she'll be the one who runs at you."]
+    questWaiting.hafiz-a-parcel-for-zarina: ["did she get it? did she run?"]
+    questComplete.hafiz-a-parcel-for-zarina: ["she ran? she always runs. thanks, boss. here, for the road."]
     questOffer.hafiz-the-rodeo-road: ["ride the road with me. well, walk it. the Rodeos on the second muddy bank chase my bike. clear twenty-five, then go all the way to the kampung and tell me the road's open."]
     questAccept.hafiz-the-rodeo-road: ["east out of the square, the outskirts, the first bank, the second. then on to the kampung."]
     questWaiting.hafiz-the-rodeo-road: ["is the road open?"]
@@ -225,7 +225,7 @@
     questWaiting.hafiz-the-park-bus: ["ten tickets. for my father."]
     questComplete.hafiz-the-park-bus: ["ten. look. 'to the city'. he punched these. that's his clip. thank you. i'll give them to him tonight. he'll pretend he doesn't care."]
     about.ravi: ["Uncle Ravi pours the teh tarik on the lower street. i always say i can't stop. i always stop."]
-    about.zara: ["Zara in the kampung. she wants to be on the big screen in the square. she asks me every day if Farah's looking for her."]
+    about.zarina: ["Zarina in the kampung. she wants to be on the big screen in the square. she asks me every day if Farah's looking for her."]
     about.meera: ["Cikgu Meera, the kampung teacher. she wants me to drive the whole school to the city. on a motorbike."]
     aboutUnknown: ["don't know them. never had a parcel for them."]
     friend.close: ["you ride pillion any time. you don't, but you could."]
@@ -468,7 +468,7 @@
   arc: awang-the-carousel-horses
   rumors: [kampung-on-the-big-screen]
   relationships:
-    - { persona: zara, kind: GRANDFATHER_OF }
+    - { persona: zarina, kind: GRANDFATHER_OF }
     - { persona: lim, kind: BUILT_THE_CAROUSEL_WITH }
     - { persona: kamal, kind: BUILDS_BOATS_BESIDE }
   giftItemIds: [2022211, 2022480]
@@ -487,13 +487,13 @@
     questAccept.awang-the-charmers-flutes: ["the muddy bank behind the kampung, or the road in front. they sway. don't sway with them."]
     questWaiting.awang-the-charmers-flutes: ["ten flutes."]
     questComplete.awang-the-charmers-flutes: ["ten. hm. this one's cracked. this one's mine from the first year. you can hear it. here. thank you. i'll give them to the school."]
-    questOffer.awang-bintang: ["the city showed my horses on its big screen. Zara saw. the lead horse, with the star on her brow: Bintang. i carved her for opening night. she ran first when the park went wild, and the others followed her. she's out there among the Galloperas at the Spooky World's gate. bring her home. thirty of them, and ten tails. hers will have the star burned into it. i burned it myself."]
+    questOffer.awang-bintang: ["the city showed my horses on its big screen. Zarina saw. the lead horse, with the star on her brow: Bintang. i carved her for opening night. she ran first when the park went wild, and the others followed her. she's out there among the Galloperas at the Spooky World's gate. bring her home. thirty of them, and ten tails. hers will have the star burned into it. i burned it myself."]
     questAccept.awang-bintang: ["the far end of the park, past the Viking ship. she won't run from you. she never ran from anyone. only from that night."]
     questWaiting.awang-bintang: ["is she there? is the star on it?"]
     questComplete.awang-bintang: ["...this one. the star. my own iron. Bintang. you brought her home. i'll carve her a new body, the best wood i have. when she stands on the carousel again, the others will come back to her. they always followed her."]
-    about.zara: ["Zara. my granddaughter. she wants to be on the city's big screen. i told her the city forgets. she says it doesn't. we'll see who's right."]
+    about.zarina: ["Zarina. my granddaughter. she wants to be on the city's big screen. i told her the city forgets. she says it doesn't. we'll see who's right."]
     about.lim: ["Lim, in the city. he built the carousel's motor. good motor. we haven't spoken in thirty years. that's my fault and his. mostly his."]
-    about.kamal: ["Kamal builds boats next to my shed. he rang the bell at the park every night. he carried the children out, the night it went wild. Zara's mother was one of them."]
+    about.kamal: ["Kamal builds boats next to my shed. he rang the bell at the park every night. he carried the children out, the night it went wild. Zarina's mother was one of them."]
     aboutUnknown: ["never carved for them."]
     friend.close: ["you can sit in my shed any day. sweep the shavings if you like. you won't."]
     friend.best: ["i carved you a horse. small. it has your name under its hoof. don't lose it."]
@@ -503,8 +503,8 @@
     gift.favorite: ["hm. now that's proper kampung food. sit, we'll share it."]
     gift.again: ["one a day. my teeth aren't what they were."]
 
-- id: zara
-  name: Zara
+- id: zarina
+  name: Zarina
   look: { gender: female }
   title: "Tok Awang's Granddaughter"
   job: BEGINNER
@@ -521,7 +521,7 @@
       - { from: 21, to: 7, materialize: false }
   recruitable: false
   knows: [emo slime, rebab, trend zone metropolis]
-  questLines: [zara-the-rebab, zara-on-the-big-screen]
+  questLines: [zarina-the-rebab, zarina-on-the-big-screen]
   rumors: [kampung-on-the-big-screen]
   relationships:
     - { persona: awang, kind: GRANDDAUGHTER_OF }
@@ -534,19 +534,19 @@
     idle: ["(practises a bow on an invisible rebab, humming the tune under her breath)", "(stands very straight and talks to an imaginary camera, then giggles)"]
     noWork: ["nothing today! i've done my homework. most of it."]
     nothingDue: ["we're even! i think. i'm bad at sums. Cikgu Meera says so."]
-    who: ["Zara. Tok Awang's my grandpa. i go to Cikgu Meera's school, and i'm learning the rebab, and one day i'm going to be on the big screen in the city, and everyone in the Trend Zone will stop and look."]
+    who: ["Zarina. Tok Awang's my grandpa. i go to Cikgu Meera's school, and i'm learning the rebab, and one day i'm going to be on the big screen in the city, and everyone in the Trend Zone will stop and look."]
     bye: ["bye! watch the big screen for me!"]
     thanks: ["thank you thank you!"]
     smallTalk: ["the Emo Slimes on the outskirts carry rebabs. real ones! they don't even play them. they just sulk with them.", "Hafiz brings parcels from the city on his motorbike. he lets me ring the bell. once."]
     speakPlainly: ["plainly: i want to be on TV."]
-    questOffer.zara-the-rebab: ["the school band needs rebabs and we only have one, and it's Cikgu Meera's, and she won't let us drop it. the Emo Slimes on the outskirts carry them. twenty-five slimes, ten rebabs. please?"]
-    questAccept.zara-the-rebab: ["back down the muddy banks toward the city, all the way to the outskirts. they sulk. it's not personal."]
-    questWaiting.zara-the-rebab: ["ten rebabs! the concert's soon!"]
-    questComplete.zara-the-rebab: ["ten! a whole band! we'll be so loud. Cikgu Meera will hate it. she'll love it. thank you!"]
-    questOffer.zara-on-the-big-screen: ["the big screen in the city showed Atuk's horses! Hafiz showed me on his phone! the lady who makes it is called Farah. will you tell her they're Atuk's horses? and that i play the rebab? say i'm nearly good."]
-    questAccept.zara-on-the-big-screen: ["the city! the Trend Zone! she's the one with the camera. tell her everything. not the nearly."]
-    questWaiting.zara-on-the-big-screen: ["did you tell her? what did she say?"]
-    questComplete.zara-on-the-big-screen: ["she wants me on the follow-up? me? with the rebab? and she said sorry to Atuk? ...i'm going to practise all night. thank you!"]
+    questOffer.zarina-the-rebab: ["the school band needs rebabs and we only have one, and it's Cikgu Meera's, and she won't let us drop it. the Emo Slimes on the outskirts carry them. twenty-five slimes, ten rebabs. please?"]
+    questAccept.zarina-the-rebab: ["back down the muddy banks toward the city, all the way to the outskirts. they sulk. it's not personal."]
+    questWaiting.zarina-the-rebab: ["ten rebabs! the concert's soon!"]
+    questComplete.zarina-the-rebab: ["ten! a whole band! we'll be so loud. Cikgu Meera will hate it. she'll love it. thank you!"]
+    questOffer.zarina-on-the-big-screen: ["the big screen in the city showed Atuk's horses! Hafiz showed me on his phone! the lady who makes it is called Farah. will you tell her they're Atuk's horses? and that i play the rebab? say i'm nearly good."]
+    questAccept.zarina-on-the-big-screen: ["the city! the Trend Zone! she's the one with the camera. tell her everything. not the nearly."]
+    questWaiting.zarina-on-the-big-screen: ["did you tell her? what did she say?"]
+    questComplete.zarina-on-the-big-screen: ["she wants me on the follow-up? me? with the rebab? and she said sorry to Atuk? ...i'm going to practise all night. thank you!"]
     about.awang: ["Atuk carves. he carved the horses for the park, forty of them. ask him about Bintang. if he's in the mood, he'll tell you about every one."]
     about.meera: ["Cikgu Meera teaches us everything. sums and English and why the river's muddy. she says the city's rubbish washes down. Hamid says so too."]
     about.hafiz: ["Hafiz rides the parcels from the city. he's always in a hurry. he always has time for me."]
@@ -687,7 +687,7 @@
   knows: [booper scarlion, toy plane, hibiscus road 1]
   questLines: [meera-the-school-trip, meera-the-sports-day]
   relationships:
-    - { persona: zara, kind: TEACHES }
+    - { persona: zarina, kind: TEACHES }
     - { persona: hafiz, kind: ASKS_FAVOURS_OF }
     - { persona: bayu, kind: IS_WALKED_TO_SCHOOL_BY }
   giftItemIds: [2022478, 2022210]
@@ -710,7 +710,7 @@
     questAccept.meera-the-sports-day: ["Hibiscus Road, the first park, the second. they're cheerful. be cheerful back."]
     questWaiting.meera-the-sports-day: ["ten planes. the races are on Saturday."]
     questComplete.meera-the-sports-day: ["ten! oh, look, they still fly. the children will fight over them. i'll make them share. here, thank you."]
-    about.zara: ["Zara. bright as a button, loud as a drum. she wants to be on TV. she'll be on TV. i'm a little afraid of what she'll say."]
+    about.zarina: ["Zarina. bright as a button, loud as a drum. she wants to be on TV. she'll be on TV. i'm a little afraid of what she'll say."]
     about.hafiz: ["Hafiz, the despatch boy. he brings the school's books from the city. late, crumpled, every one."]
     about.bayu: ["Bayu keeps Hibiscus Road open. he walks the children to school. the children call him Abang Bayu. he pretends it annoys him."]
     aboutUnknown: ["not one of my pupils. yet."]

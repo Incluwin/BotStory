@@ -50,11 +50,11 @@
       title: "On the Big Screen"
       enterWhen: { flags: [kl.tape.mended] }
       dialogueOverrides:
-        greet: ["hm. you. Zara says my horses are on the city's big screen. every night.", "sit. mind the shavings. i'm carving a horse. don't ask."]
-        who: ["Awang. Tok Awang. i carved the forty horses of the city's carousel, thirty years ago. now the city shows them on its big screen every night, Zara says. thirty years of nothing, and now every night. hm."]
-        smallTalk: ["the lead horse on the tape is Bintang. she ran first when the park went wild. she's still out at the Spooky World's gate with the others, i'd wager. they always followed her.", "Zara wants to go to the city and see the screen. i said the city can come and see me. she said that's what i'd say. she's right. i hate it."]
+        greet: ["hm. you. Zarina says my horses are on the city's big screen. every night.", "sit. mind the shavings. i'm carving a horse. don't ask."]
+        who: ["Awang. Tok Awang. i carved the forty horses of the city's carousel, thirty years ago. now the city shows them on its big screen every night, Zarina says. thirty years of nothing, and now every night. hm."]
+        smallTalk: ["the lead horse on the tape is Bintang. she ran first when the park went wild. she's still out at the Spooky World's gate with the others, i'd wager. they always followed her.", "Zarina wants to go to the city and see the screen. i said the city can come and see me. she said that's what i'd say. she's right. i hate it."]
         speakPlainly: ["plainly: the city remembered. i don't know what to do with that."]
-        about.zara: ["Zara. she saw my horses on Hafiz's telephone and ran the length of the kampung shouting. i pretended not to hear."]
+        about.zarina: ["Zarina. she saw my horses on Hafiz's telephone and ran the length of the kampung shouting. i pretended not to hear."]
         chapterEnter: ["(sets down his knife, picks up a block of the best wood in the shed, turns it over, and puts it back very carefully)"]
     - id: chapter-3
       title: "Bintang Comes Home"
@@ -77,6 +77,6 @@
         smallTalk: ["i went to the city. the first time in thirty years. i stood in the square and watched my horses go round on the big screen. they went round very well. i carved them to.", "Lim and i shook hands by the motor. thirty years. he's still wrong about the city. so am i, a little."]
         speakPlainly: ["plainly: they went round. the children rode free."]
         about.lim: ["Lim built the motor. we shook hands by it, the night it turned. we're going to argue about the city again next week. i'm looking forward to it."]
-        about.zara: ["Zara was right. the city doesn't forget. i'll never tell her."]
+        about.zarina: ["Zarina was right. the city doesn't forget. i'll never tell her."]
         friend.best: ["i carved you a horse. small. it has a star on its brow, like Bintang's. you brought her home. she's yours too."]
         chapterEnter: ["(sets a tiny carved horse with a star on its brow on the windowsill, and for a long moment just looks at it)"]

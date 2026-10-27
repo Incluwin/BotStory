@@ -184,7 +184,7 @@ each recruit carries the tier below what it gives.
 | Kuala Lumpur | Iskandar | night guard of the east road, once the park's security chief (Crusader 98) | kill proof: 60 Galloperas + 30k | two-handed swords The Beheader L100 / Dragon Claymore L110 / Timeless Nibleheim L120 |
 | Kuala Lumpur | Devi | bodyguard for hire (Dragon Knight 98) | day rate: 130k | spears Stormshear L100 / Dragon Faltizan L110 / Timeless Alchupiz L120 |
 | Kampung Village | Awang | Tok Awang, woodcarver who carved the carousel's forty horses, arc owner | - | - |
-| Kampung Village | Zara | Awang's granddaughter, wants to be on the big screen | - | - |
+| Kampung Village | Zarina | Awang's granddaughter, wants to be on the big screen | - | - |
 | Kampung Village | Hamid | fisherman of the muddy banks | - | - |
 | Kampung Village | Rohani | batik painter by Ali's stall | - | - |
 | Kampung Village | Meera | teacher of the kampung school | - | - |
@@ -210,7 +210,7 @@ Hibiscus Road (59-65), the three Fantasy Theme Parks (68-87), the Entrance to th
 Ride on ByeBye Station (the third park's mini-dungeon; its steps list the nineteen copies MD_high.js opens). Collect steps use each mob's
 own 30% etc drop. Scarlion and Targa are script-spawned boss-event mobs (ScargaBattle's clear is a boss clear, not a
 party-quest clear), so the L118 tiers are long kill runs through the park instead. Errands cross the two towns on foot
-(Ravi to Hamid, Hafiz to Zara, Cheryl to Rohani, Zara to Farah, Meera to Hafiz, and the finale's Awang and Lim).
+(Ravi to Hamid, Hafiz to Zarina, Cheryl to Rohani, Zarina to Farah, Meera to Hafiz, and the finale's Awang and Lim).
 
 **The regional thread.** Thirty years ago the city built the Fantasy Theme Park on the kampung's rubber land; Tok
 Awang carved the forty horses of its carousel, Lim built its motor, and the kampung's children rode free on opening
@@ -231,12 +231,12 @@ only by gossip (Ravi on Wei, Hamid on Rosnah, Hafiz and Farah on Spinel's and Au
 |---|---|---|
 | `kl-the-big-screen` | Farah, Lim on KL's lower east street, 20-21, from Farah's chapter 2 | - |
 | `kl-the-mamak-stall` | Ravi, Hafiz on KL's lower central street, 17-18, every 2 days | - |
-| `kampung-on-the-big-screen` | Awang, Zara by Audrey in the kampung, 19-20, from Awang's chapter 2 | - |
+| `kampung-on-the-big-screen` | Awang, Zarina by Audrey in the kampung, 19-20, from Awang's chapter 2 | - |
 | `kampung-the-strongman` | Rohani, Kamal on the kampung's middle east street, 18-19 | `kampung.heard-kamal` (Kamal's contract) |
 
 **Once per server.** `farah-the-opening-night`, `awang-bintang` and `farah-the-carousel-turns` name the world flag they
 set in `requires.notFlags` (pinned in `ArcFinalBeatOncePerServerTest`). No later quest lists them in
-`questsCompleted` (the finale needs Farah's first quest and the Bintang flag), so nobody is cut off; `zara-on-the-big-screen`
+`questsCompleted` (the finale needs Farah's first quest and the Bintang flag), so nobody is cut off; `zarina-on-the-big-screen`
 is offered between the tape and the finale only (`notFlags: [my.carousel.turns]`).
 
 **Portraits.** Borrowed until the portrait tool runs: Encik Musa, Chiang, Riduan and Kok Hua in Kuala Lumpur; Lam, Ali

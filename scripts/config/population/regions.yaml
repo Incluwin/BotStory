@@ -6,10 +6,11 @@
 regions:
   - id: victoria
     levels: { min: 1, max: 45 }
-    # Florina Beach (Pason's boat from Lith Harbor) counts as Victoria.
-    towns: [100000000, 101000000, 102000000, 103000000, 104000000, 105040300, 120000000, 110000000]
+    # Florina Beach (Pason's boat from Lith Harbor) counts as Victoria, and so does Kerning Square (the KerningTrain from
+    # Kerning City; its Residents are wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 11).
+    towns: [100000000, 101000000, 102000000, 103000000, 104000000, 105040300, 120000000, 110000000, 103040000]
     # Hubs draw the crowd: Henesys and Kerning City carry most of Victoria's town life, like a real server.
-    townWeights: [40, 10, 8, 30, 4, 4, 4, 3]
+    townWeights: [40, 10, 8, 30, 4, 4, 4, 3, 2]
     lobbies:
       # Henesys Park: Tory's HPQ for lv10-20 (its admission takes 10+); KPQ for 21-30.
       - { id: hpq, mapId: 100000200, levels: { min: 10, max: 20 }, name: "HPQ" }
@@ -69,7 +70,9 @@ regions:
     weight: 3
   - id: leafre
     levels: { min: 70, max: 120 }
-    towns: [240000000]
+    # The Tera Forest Time Gate is where Neo City's cast lives (docs/REGIONAL_RESIDENTS_PLAN.md section 10.1).
+    towns: [240000000, 240070000]
+    townWeights: [85, 15]
     lobbies:
       - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
@@ -79,7 +82,9 @@ regions:
     # Road to Oblivion (mobs 80-141), open one by one with the Temple's own quests, so citizens reach the far roads only
     # while nobody watches them pass the gates.
     levels: { min: 79, max: 140 }
-    towns: [270000100]
+    # The temple itself and Three Doors, the hub its wave-4 Residents live on (docs/REGIONAL_RESIDENTS_PLAN.md 10.1).
+    towns: [270000100, 270000000]
+    townWeights: [50, 50]
     lobbies: []
     fm: 910000000
     weight: 1

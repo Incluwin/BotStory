@@ -101,14 +101,14 @@
   rewards: { meso: 10000, exp: 11000, bondPoints: 35, items: [{ itemId: 2022476, count: 10 }] }
 
 # ---- Hafiz ----
-- id: hafiz-a-parcel-for-zara
+- id: hafiz-a-parcel-for-zarina
   persona: hafiz
   title: "A Parcel That Rattles"
   length: SHORT
   requires: { level: { min: 45 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: zara, type: TALK_TO, persona: zara, say: ["for me? from the city? ...a rosin box! for the rebab bow! Cikgu Meera ordered it. tell Hafiz thank you, and tell him he's late, and tell him thank you again!"] }
+    - { id: zarina, type: TALK_TO, persona: zarina, say: ["for me? from the city? ...a rosin box! for the rebab bow! Cikgu Meera ordered it. tell Hafiz thank you, and tell him he's late, and tell him thank you again!"] }
     - { id: delivered, type: DELIVER, to: hafiz }
   rewards: { meso: 8000, exp: 9000, bondPoints: 30, items: [{ itemId: 2022207, count: 10 }] }
 
@@ -347,9 +347,9 @@
     - { id: home, type: DELIVER, to: awang, take: { itemId: 4000478, count: 10 } }
   rewards: { meso: 120000, exp: 130000, bondPoints: 60, items: [{ itemId: 2000005, count: 20 }], worldFlags: [kampung.bintang.home] }
 
-# ---- Zara ----
-- id: zara-the-rebab
-  persona: zara
+# ---- Zarina ----
+- id: zarina-the-rebab
+  persona: zarina
   title: "A Band of Rebabs"
   length: SHORT
   requires: { level: { min: 46 } }
@@ -357,18 +357,18 @@
     - { id: talk, type: TALK }
     - { id: slimes, type: KILL_MOBS, mobIds: [9420528], count: 25, mapIds: [550000100] }
     - { id: rebabs, type: COLLECT_ITEM, itemId: 4000466, count: 10 }
-    - { id: band, type: DELIVER, to: zara, take: { itemId: 4000466, count: 10 } }
+    - { id: band, type: DELIVER, to: zarina, take: { itemId: 4000466, count: 10 } }
   rewards: { meso: 9000, exp: 10000, bondPoints: 30, items: [{ itemId: 2022480, count: 5 }] }
 
-- id: zara-on-the-big-screen
-  persona: zara
+- id: zarina-on-the-big-screen
+  persona: zarina
   title: "Tell Her They're Atuk's"
   length: SHORT
-  requires: { level: { min: 52 }, questsCompleted: [zara-the-rebab], flags: [kl.tape.mended], notFlags: [my.carousel.turns] }
+  requires: { level: { min: 52 }, questsCompleted: [zarina-the-rebab], flags: [kl.tape.mended], notFlags: [my.carousel.turns] }
   steps:
     - { id: talk, type: TALK }
     - { id: farah, type: TALK_TO, persona: farah, say: ["Tok Awang's granddaughter? and she plays the rebab? ...nearly good, she said? tell her she's on the follow-up, with her rebab. and tell her grandfather the city's sorry. no. i'll tell him myself. one day i will."] }
-    - { id: told, type: DELIVER, to: zara }
+    - { id: told, type: DELIVER, to: zarina }
   rewards: { meso: 12000, exp: 13000, bondPoints: 40, items: [{ itemId: 2022209, count: 10 }] }
 
 # ---- Hamid ----
@@ -429,7 +429,7 @@
   requires: { level: { min: 45 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: hafiz, type: TALK_TO, persona: hafiz, say: ["the whole school? to the big screen? on my bike? ...no, no, my cousin has a van. a big one. tell Cikgu Meera yes, a Saturday, and i'll ride ahead and clear the Rodeos off the road. and tell Zara not to tell anyone. she'll tell everyone."] }
+    - { id: hafiz, type: TALK_TO, persona: hafiz, say: ["the whole school? to the big screen? on my bike? ...no, no, my cousin has a van. a big one. tell Cikgu Meera yes, a Saturday, and i'll ride ahead and clear the Rodeos off the road. and tell Zarina not to tell anyone. she'll tell everyone."] }
     - { id: yes, type: DELIVER, to: meera }
   rewards: { meso: 8000, exp: 9000, bondPoints: 30, items: [{ itemId: 2022478, count: 10 }] }
 

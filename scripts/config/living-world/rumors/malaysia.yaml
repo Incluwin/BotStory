@@ -31,16 +31,16 @@
     - { by: ravi, text: "that also." }
 
 - id: kampung-on-the-big-screen
-  participants: [awang, zara]
+  participants: [awang, zarina]
   where: { town: kampung-village, spot: "venue:by-audrey" }
   when:
     serverHours: [19, 20]
     everyDays: 1
     requiresArc: { arc: awang-the-carousel-horses, chapterAtLeast: chapter-2 }
   lines:
-    - { by: zara, text: "Atuk, Hafiz showed me on his phone. your horses were on the big screen in the city again." }
+    - { by: zarina, text: "Atuk, Hafiz showed me on his phone. your horses were on the big screen in the city again." }
     - { by: awang, text: "again." }
-    - { by: zara, text: "every night! the whole Trend Zone stops to watch them go round." }
+    - { by: zarina, text: "every night! the whole Trend Zone stops to watch them go round." }
     - { by: awang, text: "...they go round very well. i carved them to." }
 
 - id: kampung-the-strongman
