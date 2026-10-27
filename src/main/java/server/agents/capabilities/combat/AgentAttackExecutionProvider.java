@@ -9,7 +9,6 @@ import client.inventory.Item;
 import client.inventory.WeaponType;
 import constants.skills.Crossbowman;
 import constants.skills.Hunter;
-import constants.skills.Gunslinger;
 import constants.skills.ThunderBreaker;
 import constants.skills.Pirate;
 import net.server.channel.handlers.AbstractDealDamageHandler;
@@ -46,35 +45,58 @@ public final class AgentAttackExecutionProvider {
     private AgentAttackExecutionProvider() {
     }
 
+    /**
+     * The weapon's basic swing or shot at {@code targetPosition}, swung point-blank or without projectiles the way a
+     * v83 client does with a bow, crossbow, claw or gun (a reactor hit, a flourish). An attack on a monster uses
+     * {@link #buildMonsterBasicAttackData} instead.
+     */
     public static BasicAttackData buildBasicAttackData(Character bot, Point targetPosition) {
+        return buildBasicAttackData(bot, targetPosition, true);
+    }
+
+    /**
+     * The basic attack an Agent aims at a monster: a bow, crossbow, claw or gun always shoots, at any distance.
+     * 2026-10-27 (user: "bots should never whack"): the client's point-blank swing did about 6% of a Lucky Seven and
+     * was half of the ranged citizens' attacks in the 10-25 KPQ (Likoly 303 of 556, TinyFox 278 of 440).
+     */
+    public static BasicAttackData buildMonsterBasicAttackData(Character bot, Point targetPosition) {
+        return buildBasicAttackData(bot, targetPosition, false);
+    }
+
+    private static BasicAttackData buildBasicAttackData(Character bot, Point targetPosition, boolean whackAllowed) {
         Item weapon = bot.getInventory(InventoryType.EQUIPPED).getItem((short) -11);
         if (weapon == null) {
-            return fallbackBasicAttackData(targetPosition.x < bot.getPosition().x, 4, null, bot, targetPosition);
+            return fallbackBasicAttackData(targetPosition.x < bot.getPosition().x, 4, null, bot, targetPosition,
+                    whackAllowed);
         }
 
         AgentAttackDataProvider.NormalAttackProfile attackProfile =
                 AgentAttackDataProvider.getInstance().getNormalAttackProfile(weapon.getItemId());
         if (attackProfile == null) {
-            return fallbackBasicAttackData(targetPosition.x < bot.getPosition().x, 4, null, bot, targetPosition);
+            return fallbackBasicAttackData(targetPosition.x < bot.getPosition().x, 4, null, bot, targetPosition,
+                    whackAllowed);
         }
 
         WeaponType weaponType = inventory().getWeaponType(weapon.getItemId());
         boolean facingLeft = targetPosition.x < bot.getPosition().x;
-        return buildBasicAttackDataFromProfile(attackProfile, weaponType, facingLeft, bot, targetPosition);
+        return buildBasicAttackDataFromProfile(attackProfile, weaponType, facingLeft, bot, targetPosition,
+                whackAllowed);
     }
 
     private static BasicAttackData buildBasicAttackDataFromProfile(AgentAttackDataProvider.NormalAttackProfile profile,
                                                                    WeaponType weaponType, boolean facingLeft,
-                                                                   Character bot, Point targetPosition) {
+                                                                   Character bot, Point targetPosition,
+                                                                   boolean whackAllowed) {
         int baseDisplay = profile.getAttack();
         AgentAttackDataProvider provider = AgentAttackDataProvider.getInstance();
-        boolean useDegenerateCloseRange = shouldDegenerateRangedAttack(weaponType,
+        boolean useDegenerateCloseRange = whackAllowed && (shouldDegenerateRangedAttack(weaponType,
                 bot != null ? bot.getPosition() : null, targetPosition)
-                || shouldDegenerateForNoAmmo(weaponType, bot);
+                || shouldDegenerateForNoAmmo(weaponType, bot));
         AgentAttackDataProvider.AttackAnimationSpec attackSpec =
                 provider.getBasicAttackSpec(baseDisplay, weaponType, useDegenerateCloseRange);
         if (baseDisplay <= 0) {
-            return fallbackBasicAttackData(facingLeft, profile.getAttackSpeed(), weaponType, bot, targetPosition);
+            return fallbackBasicAttackData(facingLeft, profile.getAttackSpeed(), weaponType, bot, targetPosition,
+                    whackAllowed);
         }
 
         String fallbackAction = attackSpec.primaryAction();
@@ -119,11 +141,12 @@ public final class AgentAttackExecutionProvider {
     }
 
     private static BasicAttackData fallbackBasicAttackData(boolean facingLeft, int baseAttackSpeed,
-                                                           WeaponType weaponType, Character bot, Point targetPosition) {
+                                                           WeaponType weaponType, Character bot, Point targetPosition,
+                                                           boolean whackAllowed) {
         AgentAttackDataProvider provider = AgentAttackDataProvider.getInstance();
-        boolean useDegenerateCloseRange = shouldDegenerateRangedAttack(weaponType,
+        boolean useDegenerateCloseRange = whackAllowed && (shouldDegenerateRangedAttack(weaponType,
                 bot != null ? bot.getPosition() : null, targetPosition)
-                || shouldDegenerateForNoAmmo(weaponType, bot);
+                || shouldDegenerateForNoAmmo(weaponType, bot));
         AgentAttackDataProvider.AttackAnimationSpec attackSpec = provider.getBasicAttackSpec(weaponType, useDegenerateCloseRange);
         String action = sampleAttackAction(attackSpec.actions(), attackSpec.primaryAction());
         AgentAttackRoute route = useDegenerateCloseRange
@@ -284,10 +307,6 @@ public final class AgentAttackExecutionProvider {
         return determineBasicWeaponRoute(getEquippedWeaponType(bot));
     }
 
-    public static boolean canUseRangedAttackRoute(AgentAttackRoute route, WeaponType weaponType, Point botPos, Point targetPos) {
-        return route != AgentAttackRoute.RANGED || !shouldDegenerateRangedAttack(weaponType, botPos, targetPos);
-    }
-
     // Skills the bow/crossbow classes cast as a melee swing on the client (opcode 0x2C,
     // broadcast via CLOSE_RANGE_ATTACK 0xBA) even though the equipped weapon is ranged.
     // Power Knockback fires no projectile and uses skill.range as the close-range reach
@@ -301,15 +320,6 @@ public final class AgentAttackExecutionProvider {
             Pirate.SOMERSAULT_KICK,
             ThunderBreaker.SOMERSAULT_KICK
     );
-
-    /** Lobbed projectiles whose WZ box surrounds the caster; the ranged degenerate-distance rule does not apply. */
-    private static final Set<Integer> SHORT_RANGE_PROJECTILE_SKILL_IDS = Set.of(
-            Gunslinger.GRENADE
-    );
-
-    public static boolean isShortRangeProjectileSkill(int skillId) {
-        return SHORT_RANGE_PROJECTILE_SKILL_IDS.contains(skillId);
-    }
 
     public static AgentAttackRoute determineSkillRoute(Character bot, int skillId) {
         if (FORCED_CLOSE_RANGE_SKILL_IDS.contains(skillId)) {

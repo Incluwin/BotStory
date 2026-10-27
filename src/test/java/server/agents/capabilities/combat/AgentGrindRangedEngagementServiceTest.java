@@ -35,7 +35,6 @@ class AgentGrindRangedEngagementServiceTest {
                 target,
                 target.getPosition(),
                 plan,
-                null,
                 hooks(counters, true, false, false));
 
         assertTrue(result.consumedTick());
@@ -61,7 +60,6 @@ class AgentGrindRangedEngagementServiceTest {
                 target,
                 target.getPosition(),
                 plan,
-                null,
                 hooks(counters, false, false, true, WeaponType.SWORD1H, false));
 
         assertTrue(result.consumedTick());
@@ -80,7 +78,7 @@ class AgentGrindRangedEngagementServiceTest {
 
         AgentGrindRangedEngagementService.Result result = AgentGrindRangedEngagementService.engage(
                 entry, agent, new Point(100, 100), new Point(150, 100), target,
-                target.getPosition(), plan, null,
+                target.getPosition(), plan,
                 hooks(counters, false, false, true, WeaponType.GUN, true));
 
         assertTrue(result.consumedTick());
@@ -99,7 +97,7 @@ class AgentGrindRangedEngagementServiceTest {
 
         AgentGrindRangedEngagementService.Result result = AgentGrindRangedEngagementService.engage(
                 entry, agent, new Point(100, 100), new Point(140, 100), target,
-                target.getPosition(), plan, null,
+                target.getPosition(), plan,
                 hooks(counters, true, true, false, WeaponType.GUN, true,
                         landing, null));
 
@@ -121,7 +119,7 @@ class AgentGrindRangedEngagementServiceTest {
 
         AgentGrindRangedEngagementService.Result result = AgentGrindRangedEngagementService.engage(
                 entry, agent, new Point(100, 100), new Point(220, 100), target,
-                target.getPosition(), plan, null,
+                target.getPosition(), plan,
                 hooks(counters, true, true, false, WeaponType.GUN, true,
                         null, firingPosition));
 
@@ -142,7 +140,7 @@ class AgentGrindRangedEngagementServiceTest {
 
         AgentGrindRangedEngagementService.Result result = AgentGrindRangedEngagementService.engage(
                 entry, agent, new Point(100, 100), new Point(140, 100), target,
-                target.getPosition(), plan, null,
+                target.getPosition(), plan,
                 hooks(counters, true, true, false, WeaponType.GUN, true));
 
         assertFalse(result.consumedTick());
@@ -161,7 +159,7 @@ class AgentGrindRangedEngagementServiceTest {
 
         AgentGrindRangedEngagementService.Result result = AgentGrindRangedEngagementService.engage(
                 entry, agent, new Point(100, 100), new Point(140, 100), target,
-                target.getPosition(), plan, null,
+                target.getPosition(), plan,
                 hooks(counters, true, true, false, WeaponType.GUN, true,
                         null, firingPosition, true));
 
@@ -213,7 +211,6 @@ class AgentGrindRangedEngagementServiceTest {
                                                                 boolean retreatRequested) {
         return new AgentGrindRangedEngagementService.Hooks(
                 agent -> resolvedWeaponType,
-                (weaponType, agentPosition, targetPosition) -> false,
                 (weaponType, route, agentPosition, targetPosition) -> {
                     counters.retreatRoute = route;
                     return retreatRequested;

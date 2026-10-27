@@ -78,7 +78,6 @@ Per skill, in skill-id order:
 | `PLAN_COMBO_ORBS_REQUIRED` | Panic/Coma without `BuffStat.COMBO` | `AgentComboFinisherPolicy` (needs a combo prerequisite) |
 | `PLAN_INSUFFICIENT_AMMO` | ranged cost | `AgentCombatAmmoCounter` |
 | `PLAN_NO_HITBOX` / `PLAN_TARGET_UNREACHABLE` | hitbox shape vs dummy | `AgentCombatSkillHitboxPolicy` |
-| `PLAN_RANGED_ROUTE_BLOCKED` | degenerate ranged distance | `AgentAttackExecutionProvider` |
 | `PLAN_REJECTED_UNKNOWN` | planner returned null past every mirrored gate | a gate the harness does not replay (e.g. Dragon Roar ally rule) |
 | `EXEC_DEFERRED` / `EXEC_REJECTED` | attack transaction refused | `AgentAttackTransactionResult.Reason` in detail |
 | `EXEC_HANDLER_REJECTED` | Cosmic `applyAttack` refused the AttackInfo | `AbstractDealDamageHandler` skill branches |

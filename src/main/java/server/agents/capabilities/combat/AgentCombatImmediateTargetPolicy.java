@@ -25,9 +25,7 @@ public final class AgentCombatImmediateTargetPolicy {
         Point agentPosition = agent.getPosition();
         Point targetPosition = target.getPosition();
         WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(agent);
-        if (AgentAttackExecutionProvider.determineBasicWeaponRoute(weaponType) == AgentAttackRoute.RANGED
-                && !AgentAttackExecutionProvider.shouldDegenerateRangedAttack(
-                weaponType, agentPosition, targetPosition)) {
+        if (AgentAttackExecutionProvider.determineBasicWeaponRoute(weaponType) == AgentAttackRoute.RANGED) {
             Rectangle hitBox = AgentProjectileHitbox.clientProjectileHitBox(
                     agent, targetPosition.x < agentPosition.x, 1.0f);
             if (AgentCombatHitboxIntersection.intersectsMonster(hitBox, target)) {
@@ -71,12 +69,6 @@ public final class AgentCombatImmediateTargetPolicy {
 
         Rectangle hitBox = AgentCombatSkillHitboxPolicy.calculateSkillHitBox(
                 effect, agent, target, route, cachedAttackSkillId, null);
-        if (hitBox == null || !AgentCombatHitboxIntersection.intersectsMonster(hitBox, target)) {
-            return false;
-        }
-
-        WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(agent);
-        return AgentAttackExecutionProvider.canUseRangedAttackRoute(
-                route, weaponType, agent.getPosition(), target.getPosition());
+        return hitBox != null && AgentCombatHitboxIntersection.intersectsMonster(hitBox, target);
     }
 }

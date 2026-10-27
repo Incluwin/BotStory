@@ -1,33 +1,31 @@
 package server.agents.capabilities.combat;
 
-/** Pure ranged-spacing policy. Live movement and attack execution remain outside this class. */
+/**
+ * Pure ranged-spacing policy. Live movement and attack execution remain outside this class.
+ *
+ * <p>2026-10-27: a ranged Agent shoots at any distance (it never whacks), so a monster in the point-blank band only
+ * asks for spacing; it no longer buys one close swing before the retreat.
+ */
 public final class AgentRangedEngagementPolicy {
     private AgentRangedEngagementPolicy() {
     }
 
-    public record Input(boolean targetInDegenerateBand,
-                        boolean degenerateAttackAlreadyCommitted,
-                        boolean priorityTargetPresent,
+    /**
+     * @param degenerateAttackAlreadyCommitted a close-range skill (Power Knock-Back) just swung with a ranged weapon
+     */
+    public record Input(boolean degenerateAttackAlreadyCommitted,
                         boolean retreatRequested,
-                        boolean canFireWithoutDegenerateAttack,
                         boolean bossSpacingRequired) {
     }
 
-    public record Decision(boolean allowOneDegenerateAttack,
-                           boolean retreat,
+    public record Decision(boolean retreat,
                            boolean attackGateOpen) {
     }
 
     public static Decision decide(Input input) {
-        boolean allowOneDegenerateAttack = input.targetInDegenerateBand()
-                && !input.degenerateAttackAlreadyCommitted()
-                && !input.priorityTargetPresent()
-                && !input.bossSpacingRequired();
         boolean retreat = input.bossSpacingRequired()
                 || input.degenerateAttackAlreadyCommitted()
-                || (input.retreatRequested() && !allowOneDegenerateAttack);
-        boolean attackGateOpen = !input.bossSpacingRequired()
-                && (!retreat || input.canFireWithoutDegenerateAttack() || allowOneDegenerateAttack);
-        return new Decision(allowOneDegenerateAttack, retreat, attackGateOpen);
+                || input.retreatRequested();
+        return new Decision(retreat, !input.bossSpacingRequired());
     }
 }

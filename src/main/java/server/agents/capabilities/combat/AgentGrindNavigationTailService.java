@@ -55,16 +55,18 @@ public final class AgentGrindNavigationTailService {
                         shouldRetreatForRangedSpacing || attackAttemptedInRange);
 
         boolean degenerateAttackDone = AgentDegenerateAttackStateRuntime.degenAttackDone(entry);
-        boolean noUsableRetreat = degenerateAttackDone
+        // Cornered (no retreat point): hold and keep shooting rather than walk into the monster. A ranged Agent never
+        // whacks since 2026-10-27, so it shoots from here at any distance.
+        boolean noUsableRetreat = (degenerateAttackDone || shouldRetreatForRangedSpacing)
                 && hooks.retreatPolicy().shouldRetreat(weaponType, agentPosition, mobPosition)
                 && targetPos.equals(mobPosition);
         if (degenerateAttackDone
                 && (!hooks.retreatPolicy().shouldRetreat(weaponType, agentPosition, mobPosition)
                 || noUsableRetreat)) {
             AgentDegenerateAttackStateRuntime.clear(entry);
-            if (noUsableRetreat) {
-                targetPos = agentPosition;
-            }
+        }
+        if (noUsableRetreat) {
+            targetPos = agentPosition;
         }
 
         if (crossRegionRetreatPos == null && !shouldRetreatForRangedSpacing

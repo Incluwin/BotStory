@@ -67,7 +67,6 @@ class AgentGrindModeTickServiceTest {
                         (entry, agent, agentPosition, targetPosition) -> null),
                 new AgentGrindRangedEngagementService.Hooks(
                         agent -> null,
-                        (weaponType, agentPosition, targetPosition) -> false,
                         (weaponType, route, agentPosition, targetPosition) -> false,
                         (entry, agentPosition, targetPosition) -> null,
                         (attackPlan, agent, target) -> false,
