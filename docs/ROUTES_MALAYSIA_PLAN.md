@@ -96,7 +96,7 @@ to Singapore by gossip), finales once per server (`requires.notFlags`, pinned in
 rumors at venues where their cast is awake, quests on Malaysia's own fields (Muddy Banks 46-65, Hibiscus Road 59-63,
 Fantasy Theme Park 70-87, Spooky World 94+). The recruits carry the third regional tier of the four weapon lines that
 still stop at waves 1 and 2 (two-handed swords, spears, one-handed axes, two-handed blunts).
-Quest-log ids 31600-31749, appended to `quest-log-ids.yaml`. The cast table goes in section 8 once authored.
+Quest-log ids 32000-32149, appended to `quest-log-ids.yaml`. The cast table goes in section 8 once authored.
 
 Shared Resident files are append-only: `loadouts.yaml` (one section "# Malaysia Residents (docs/ROUTES_MALAYSIA_PLAN.md)"),
 `ResidentDialogue.PORTRAITS` (`kuala-lumpur`, `kampung-village`), `quest-log-ids.yaml`. Pinned counts that move here
@@ -146,7 +146,7 @@ GM commands are fine for setup (`!warp`, `!level`, `!item`, `!world`); the behav
 
 ## 8. Malaysia cast
 
-14 Residents (7 in Kuala Lumpur, 7 in Kampung Village), 4 recruitable, 43 quests (quest-log ids 31600-31642), 4
+14 Residents (7 in Kuala Lumpur, 7 in Kampung Village), 4 recruitable, 43 quests (quest-log ids 32000-32042), 4
 contracts, 2 arcs, 4 rumors, 4 loadouts. Files: `personas|quests|contracts|arcs|rumors/malaysia.yaml` (both towns in
 one file each, as Singapore and Zipangu), the "Malaysia Residents" section at the end of `loadouts.yaml`, the
 `kuala-lumpur` and `kampung-village` entries of `ResidentDialogue.PORTRAITS`. The kit and the gear rules are wave 3's;
