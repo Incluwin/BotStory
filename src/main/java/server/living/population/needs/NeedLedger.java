@@ -892,8 +892,16 @@ public final class NeedLedger {
     void expire(long nowMs) {
         for (Need need : new ArrayList<>(live.values())) {
             Citizen citizen = population.citizen(need.citizenId());
-            boolean gone = citizen == null || citizen.hired() || citizen.state() != Citizen.State.ACTIVE;
-            if (need.isOpen() && gone) {
+            boolean retired = citizen == null || citizen.state() != Citizen.State.ACTIVE;
+            boolean gone = retired || citizen.hired();
+            if (retired && !need.isOpen()) { // it never loads again: its escrow stays with its character, no thanks come
+                if (need.state() == Need.State.ESCROW) {
+                    close(need, Need.State.GONE, nowMs);
+                    escrowHolders.remove(need.citizenId());
+                } else {
+                    live.remove(need.id());
+                }
+            } else if (need.isOpen() && gone) {
                 close(need, Need.State.GONE, nowMs);
             } else if (need.isOpen() && need.deadlineMs() > 0L && need.deadlineMs() <= nowMs) {
                 close(need, need.kind() == NeedKind.GEAR ? Need.State.BOUGHT

@@ -217,6 +217,25 @@ class NeedLedgerTest {
     }
 
     @Test
+    void aRetiredCitizensEscrowEndsAndAHiredOnesWaits() {
+        Need claw = ledger.post(CITIZEN, null, HENESYS, new NeedDerivation.Proposal(NeedKind.SCROLL, CLAW_ATT, 1,
+                2_500_000L, "1472030"), NOW + 24 * HOUR, NOW);
+        hands.purse.put(CITIZEN, 5_000_000L);
+        hands.carried.put(ANN, 1);
+        assertNull(ledger.handOver(ann, claw.id(), 1, true, NOW));
+
+        when(population.citizen(CITIZEN)).thenReturn(citizen(CITIZEN, "Kim").withFlag(Citizen.FLAG_HIRED));
+        ledger.expire(NOW + 60_000L);
+        assertEquals(Need.State.ESCROW, ledger.need(claw.id()).state(), "hired: its release brings it back to take it");
+
+        when(population.citizen(CITIZEN)).thenReturn(citizen(CITIZEN, "Kim").withState(Citizen.State.RETIRED));
+        ledger.expire(NOW + 120_000L);
+        assertNull(ledger.need(claw.id()), "retired: it never loads again");
+        assertEquals(Need.State.GONE, store.rows.get(claw.id()).state());
+        assertFalse(ledger.escrowHolders().contains(CITIZEN));
+    }
+
+    @Test
     void inPersonTheItemGoesIntoItsInventoryItPaysAndItWarms() {
         online();
         Need white = post(NeedKind.SUPPLY, WHITE, 100, 345, NOW);
