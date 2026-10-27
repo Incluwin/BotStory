@@ -95,7 +95,6 @@ public final class AgentGrindModeCoordinator {
     private static AgentGrindRangedEngagementService.Hooks grindRangedEngagementHooks() {
         return new AgentGrindRangedEngagementService.Hooks(
                 AgentAttackExecutionProvider::getEquippedWeaponType,
-                AgentAttackExecutionProvider::shouldDegenerateRangedAttack,
                 AgentAttackExecutionProvider::shouldRetreatFromNearbyTarget,
                 (entry, agentPosition, targetPosition) ->
                         AgentGrindNavigationTargetSelector.selectCrossRegionRetreatTarget(

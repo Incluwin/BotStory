@@ -10,7 +10,7 @@ import server.life.Monster;
 import java.awt.Point;
 
 /**
- * Agent-owned selector for replacing degenerate ranged targets with a valid ranged target.
+ * Agent-owned selector for replacing a ranged target the Agent cannot shoot now with one it can.
  */
 public final class AgentRangedPriorityTargetSelector {
     private AgentRangedPriorityTargetSelector() {
@@ -28,7 +28,7 @@ public final class AgentRangedPriorityTargetSelector {
         if (!AgentCombatAmmoCounter.isRangedAmmoWeapon(weaponType)) {
             return null;
         }
-        if (isNonDegenerateRangedAttackTarget(entry, agent, agentPosition, weaponType, preferredTarget)) {
+        if (isRangedAttackTarget(entry, agent, weaponType, preferredTarget)) {
             return preferredTarget;
         }
 
@@ -38,7 +38,7 @@ public final class AgentRangedPriorityTargetSelector {
             if (candidate == preferredTarget) {
                 continue;
             }
-            if (!isNonDegenerateRangedAttackTarget(entry, agent, agentPosition, weaponType, candidate)) {
+            if (!isRangedAttackTarget(entry, agent, weaponType, candidate)) {
                 continue;
             }
             double distanceSq = candidate.getPosition().distanceSq(agentPosition);
@@ -50,19 +50,14 @@ public final class AgentRangedPriorityTargetSelector {
         return best;
     }
 
-    private static boolean isNonDegenerateRangedAttackTarget(AgentRuntimeEntry entry,
-                                                            Character agent,
-                                                            Point agentPosition,
-                                                            WeaponType weaponType,
-                                                            Monster target) {
+    private static boolean isRangedAttackTarget(AgentRuntimeEntry entry,
+                                                Character agent,
+                                                WeaponType weaponType,
+                                                Monster target) {
         if (target == null || !target.isAlive()) {
             return false;
         }
         if (!AgentCombatObjectiveTargetStateRuntime.allows(entry, target.getId())) {
-            return false;
-        }
-        Point targetPos = target.getPosition();
-        if (AgentAttackExecutionProvider.shouldDegenerateRangedAttack(weaponType, agentPosition, targetPos)) {
             return false;
         }
         AgentAttackPlan plan = AgentCombatPlanRuntime.planAttack(entry, agent, target, AgentCombatConfig.cfg);

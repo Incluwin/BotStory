@@ -1,6 +1,7 @@
 package server.agents.capabilities.combat;
 
 import client.Character;
+import client.inventory.WeaponType;
 import server.life.Monster;
 
 import java.util.List;
@@ -9,10 +10,19 @@ public final class AgentBasicAttackPlanRuntime {
     private AgentBasicAttackPlanRuntime() {
     }
 
+    /**
+     * The basic attack on {@code target}; with a bow, crossbow, claw or gun always a shot, so null without a
+     * projectile to shoot (Agents never whack).
+     */
     public static AgentAttackPlan planBasicAttack(Character bot, Monster target) {
+        WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        if (AgentCombatAmmoCounter.isRangedAmmoWeapon(weaponType)
+                && AgentCombatAmmoCounter.countAmmo(bot, weaponType) <= 0) {
+            return null;
+        }
         AgentBasicAttackPlanner.BasicAttackSelection selection = AgentBasicAttackPlanner.selectBasicAttack(
                 target,
-                candidate -> AgentAttackExecutionProvider.buildBasicAttackData(
+                candidate -> AgentAttackExecutionProvider.buildMonsterBasicAttackData(
                         bot, AgentCombatAimPointPolicy.aimPoint(bot, candidate)),
                 (candidate, hitBox) -> AgentCombatTargetSelector.resolveEffectivePrimary(
                         bot.getPosition(), candidate, hitBox, server.agents.perception.AgentMapPerception.monsters(bot.getMap())),
@@ -20,7 +30,7 @@ public final class AgentBasicAttackPlanRuntime {
                 candidate -> bot == null ? null : AgentCombatTargetSelector.findReachableOnOppositeFacing(
                         bot.getPosition(),
                         candidate,
-                        mirroredPos -> AgentAttackExecutionProvider.buildBasicAttackData(bot, mirroredPos).hitBox(),
+                        mirroredPos -> AgentAttackExecutionProvider.buildMonsterBasicAttackData(bot, mirroredPos).hitBox(),
                         hitBox -> AgentCombatTargetSelector.resolveEffectivePrimary(
                                 bot.getPosition(), candidate, hitBox, server.agents.perception.AgentMapPerception.monsters(bot.getMap()))));
         if (selection == null) {

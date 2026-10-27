@@ -2,8 +2,11 @@ package server.agents.capabilities.combat;
 
 import client.Character;
 import client.Skill;
+import client.SkillFactory;
 import client.inventory.WeaponType;
+import constants.skills.Archer;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import server.StatEffect;
 import server.life.Monster;
 
@@ -14,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class AgentCombatPlanRuntimeTest {
@@ -71,6 +75,34 @@ class AgentCombatPlanRuntimeTest {
                 boss, WeaponType.GUN, List.of(somersaultKick, doubleShot)));
         assertEquals(List.of(somersaultKick, doubleShot), AgentCombatPlanRuntime.preferRangedBossCandidates(
                 boss, WeaponType.KNUCKLE, List.of(somersaultKick, doubleShot)));
+    }
+
+    /** 2026-10-27 (user): a shooter's basic attack is a projectile, and only while it is out of MP for its skills. */
+    @Test
+    void aBowAgentShootsItsBasicAttackOnlyWhenItCannotPayAnAttackSkill() {
+        Character bot = mock(Character.class);
+        Skill doubleShot = mock(Skill.class);
+        StatEffect effect = mock(StatEffect.class);
+        when(bot.getSkillLevel(doubleShot)).thenReturn((byte) 20);
+        when(doubleShot.getEffect(20)).thenReturn(effect);
+
+        try (MockedStatic<SkillFactory> skillFactory = mockStatic(SkillFactory.class)) {
+            skillFactory.when(() -> SkillFactory.getSkill(Archer.DOUBLE_SHOT)).thenReturn(doubleShot);
+
+            when(effect.canPaySkillCost(bot)).thenReturn(true);
+            assertFalse(AgentCombatPlanRuntime.basicShotAllowed(bot, WeaponType.BOW, List.of(Archer.DOUBLE_SHOT)));
+
+            when(effect.canPaySkillCost(bot)).thenReturn(false);
+            assertTrue(AgentCombatPlanRuntime.basicShotAllowed(bot, WeaponType.BOW, List.of(Archer.DOUBLE_SHOT)));
+        }
+        assertTrue(AgentCombatPlanRuntime.basicShotAllowed(bot, WeaponType.BOW, List.of()), "no attack skill yet");
+    }
+
+    @Test
+    void aMeleeAgentKeepsItsBasicAttackBesideItsSkills() {
+        Character bot = mock(Character.class);
+
+        assertTrue(AgentCombatPlanRuntime.basicShotAllowed(bot, WeaponType.SWORD1H, List.of(Archer.DOUBLE_SHOT)));
     }
 
     private static AgentAttackPlan plan(int skillId, AgentAttackRoute route) {

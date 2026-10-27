@@ -26,7 +26,6 @@ public final class AgentGrindRangedEngagementService {
     }
 
     public record Hooks(WeaponTypeResolver weaponTypeResolver,
-                        DegenerateAttackPolicy degenerateAttackPolicy,
                         RetreatPolicy retreatPolicy,
                         CrossRegionRetreatSelector crossRegionRetreatSelector,
                         TargetRangePolicy targetRangePolicy,
@@ -47,11 +46,6 @@ public final class AgentGrindRangedEngagementService {
     @FunctionalInterface
     public interface WeaponTypeResolver {
         WeaponType resolve(Character agent);
-    }
-
-    @FunctionalInterface
-    public interface DegenerateAttackPolicy {
-        boolean shouldDegenerate(WeaponType weaponType, Point agentPosition, Point targetPosition);
     }
 
     @FunctionalInterface
@@ -162,11 +156,8 @@ public final class AgentGrindRangedEngagementService {
                                 Monster target,
                                 Point targetPosition,
                                 AgentAttackPlan attackPlan,
-                                Monster rangedPriorityTarget,
                                 Hooks hooks) {
         WeaponType weaponType = hooks.weaponTypeResolver().resolve(agent);
-        boolean targetInDegenerateBand = hooks.degenerateAttackPolicy().shouldDegenerate(
-                weaponType, agentPosition, targetPosition);
         boolean degenAttackDone = AgentDegenerateAttackStateRuntime.degenAttackDone(entry);
         AgentAttackRoute attackRoute = attackPlan != null ? attackPlan.route : AgentAttackRoute.CLOSE;
         AgentAttackRoute spacingRoute = target != null && target.isBoss()
@@ -176,15 +167,10 @@ public final class AgentGrindRangedEngagementService {
         boolean retreatRequested = hooks.retreatPolicy().shouldRetreat(
                 weaponType, spacingRoute, agentPosition, targetPosition);
         boolean bossSpacingRequired = target != null && target.isBoss() && retreatRequested;
-        boolean canFireWithoutDegen = weaponType == null
-                || !hooks.degenerateAttackPolicy().shouldDegenerate(weaponType, agentPosition, targetPosition);
         AgentRangedEngagementPolicy.Decision spacingDecision = AgentRangedEngagementPolicy.decide(
                 new AgentRangedEngagementPolicy.Input(
-                        targetInDegenerateBand,
                         degenAttackDone,
-                        rangedPriorityTarget != null,
                         retreatRequested,
-                        canFireWithoutDegen,
                         bossSpacingRequired));
         boolean shouldRetreatForRangedSpacing = spacingDecision.retreat();
         boolean attackGateOpen = spacingDecision.attackGateOpen();

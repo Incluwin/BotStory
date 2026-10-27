@@ -459,17 +459,21 @@ class BotManagerTest {
         assertEquals(220, Math.abs(target.x - bowAnchor.x));
     }
 
+    /**
+     * 2026-10-27 (user: "bots should never whack"): a preferred target at point-blank range is shot, not traded for a
+     * farther one; before, the selector swapped it out because the Agent would have swung its bow at it.
+     */
     @Test
-    void shouldPreferRangedAttackTargetOverDegeneratePreferredTarget() {
+    void shouldKeepAPointBlankPreferredTargetItCanShoot() {
         MapleMap map = mock(MapleMap.class);
         Character bot = mock(Character.class);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
         Point botPos = new Point(100, 100);
         Monster closeMob = mockMob(new Point(150, 100), 9300400);
         Monster rangedMob = mockMob(new Point(260, 100), 9300401);
-        AgentAttackPlan rangedPlan = new AgentAttackPlan(
+        AgentAttackPlan pointBlankShot = new AgentAttackPlan(
                 0, 0, 1, new Rectangle(105, 50, 395, 100),
-                List.of(rangedMob), AgentAttackRoute.RANGED,
+                List.of(closeMob), AgentAttackRoute.RANGED,
                 0, 11, 11, 11, 4, 300, 600, null);
 
         when(bot.getMap()).thenReturn(map);
@@ -480,10 +484,12 @@ class BotManagerTest {
              MockedStatic<AgentCombatPlanRuntime> plans =
                      mockStatic(AgentCombatPlanRuntime.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
             attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(WeaponType.BOW);
-            plans.when(() -> AgentCombatPlanRuntime.planAttack(entry, bot, rangedMob, AgentCombatConfig.cfg))
-                    .thenReturn(rangedPlan);
+            assertTrue(AgentAttackExecutionProvider.shouldDegenerateRangedAttack(
+                    WeaponType.BOW, botPos, closeMob.getPosition()), "inside the client's whack band");
+            plans.when(() -> AgentCombatPlanRuntime.planAttack(entry, bot, closeMob, AgentCombatConfig.cfg))
+                    .thenReturn(pointBlankShot);
 
-            assertEquals(rangedMob, AgentRangedPriorityTargetSelector.selectPriorityRangedAttackTarget(
+            assertEquals(closeMob, AgentRangedPriorityTargetSelector.selectPriorityRangedAttackTarget(
                     entry, bot, botPos, closeMob));
         }
     }

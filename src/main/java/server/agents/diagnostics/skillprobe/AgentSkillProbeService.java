@@ -28,7 +28,6 @@ import server.agents.capabilities.combat.AgentAttackPlan;
 import server.agents.capabilities.combat.AgentAttackRoute;
 import server.agents.capabilities.combat.AgentAttackTransactionResult;
 import server.agents.capabilities.combat.AgentComboFinisherPolicy;
-import server.agents.capabilities.combat.AgentCombatAimPointPolicy;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
 import server.agents.capabilities.combat.AgentCombatAttackRuntime;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
@@ -1321,11 +1320,6 @@ public final class AgentSkillProbeService {
         if (!AgentCombatHitboxIntersection.intersectsMonster(hitBox, mob)) {
             return new Pair<>(SkillProbeOutcome.Stage.PLAN_TARGET_UNREACHABLE,
                     "hitbox " + hitBox + " misses mob at " + mob.getPosition() + " (bot at " + bot.getPosition() + ")");
-        }
-        Point aim = AgentCombatAimPointPolicy.aimPoint(bot, mob);
-        if (!AgentAttackExecutionProvider.canUseRangedAttackRoute(route, weaponType, bot.getPosition(), aim)) {
-            return new Pair<>(SkillProbeOutcome.Stage.PLAN_RANGED_ROUTE_BLOCKED, "route=" + route + " weapon=" + weaponType
-                    + " aim=" + aim + " within degenerate range of " + bot.getPosition());
         }
         if (skillId == DragonKnight.DRAGON_ROAR) {
             return new Pair<>(SkillProbeOutcome.Stage.PLAN_REJECTED_UNKNOWN, "Dragon Roar needs a nearby healer ally (AgentCombatSupportPolicy)");
