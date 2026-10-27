@@ -65,6 +65,11 @@ public interface PrimitiveCapabilityGateway {
         return null;
     }
 
+    /** The id of the portal of that name on the Agent's map; null when there is none or the map is not loaded. */
+    default Integer portalId(Character agent, String portalName) {
+        return null;
+    }
+
     Integer directPortalIdTo(Character agent, int destinationMapId);
 
     /**

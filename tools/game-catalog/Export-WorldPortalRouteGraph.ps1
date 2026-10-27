@@ -30,7 +30,24 @@ $groups = @(
     [ordered]@{ id = "zipangu"; firstMapId = 800000000; endMapId = 810000000 }
 )
 $excludedRanges = @(
-    [ordered]@{ firstMapId = 200090000; endMapId = 200100000; reason = "ferry, crane and boat ride maps" }
+    [ordered]@{ firstMapId = 200090000; endMapId = 200090500; reason = "ferry, crane and boat ride maps" },
+    [ordered]@{ firstMapId = 200090520; endMapId = 200100000; reason = "ferry, crane and boat ride maps" }
+)
+
+# Scripted portals routes may walk through: the script always sends the traveller to destinationMapId (or does so when
+# the gate holds: one of completedAny completed, or one of activeAny started or completed, as the script checks). The
+# portal id is looked up by name in WZ; AgentWorldPortalRouteGraphFreshnessTest checks each against WZ and the script.
+# The dragon flights 200090500/200090510 (fly=1) stay in the graph between the two ride ranges above: Leafre Station's
+# Halfling (2082003, a travel leg) sets the rider down on 200090500, and it flies east through 200090510 into the
+# Temple of Time; the way back is the Temple's out00, 200090500's minar00 and Leafre Station's own exit west00.
+$scriptedPortals = @(
+    [ordered]@{ sourceMapId = 100000002; destinationMapId = 106020000; portalName = "TD00"; script = "TD_MC_first";
+        gate = [ordered]@{ completedAny = @(2260); activeAny = @(2300..2310) } },
+    [ordered]@{ sourceMapId = 222020400; destinationMapId = 300000100; portalName = "in01"; script = "move_elin" },
+    [ordered]@{ sourceMapId = 200090510; destinationMapId = 270000100; portalName = "in00"; script = "templeenter" },
+    [ordered]@{ sourceMapId = 270000100; destinationMapId = 200090510; portalName = "out00"; script = "outTemple" },
+    [ordered]@{ sourceMapId = 200090500; destinationMapId = 240000110; portalName = "minar00"; script = "undodraco" },
+    [ordered]@{ sourceMapId = 240000110; destinationMapId = 240000100; portalName = "west00"; script = "dracoout" }
 )
 
 function Get-Group([int]$mapId) {
@@ -86,6 +103,31 @@ $edges = @($edgeKeys |
     Where-Object { $known.Contains($_.toMapId) } |
     Sort-Object fromMapId, toMapId)
 
+# Each scripted portal's id, from its name on the source map; the portal must carry the script named above.
+$portalName = [regex]'<string name="pn" value="([^"]*)"/>'
+$scripted = @(foreach ($portal in $scriptedPortals) {
+    $source = $portal.sourceMapId
+    $file = Join-Path $MapRoot ("Map" + [math]::Floor($source / 100000000)) | Join-Path -ChildPath ("{0:D9}.img.xml" -f $source)
+    $block = $portalBlock.Match([System.IO.File]::ReadAllText($file))
+    $found = $null
+    foreach ($entry in [regex]::Matches($block.Groups[1].Value, '(?s)<imgdir name="(\d+)">(.*?)</imgdir>')) {
+        if ($portalName.Match($entry.Groups[2].Value).Groups[1].Value -eq $portal.portalName) { $found = $entry; break }
+    }
+    if ($null -eq $found) { throw "no portal $($portal.portalName) on map $source" }
+    if ($script.Match($found.Groups[2].Value).Groups[1].Value -ne $portal.script) {
+        throw "portal $($portal.portalName) on map $source does not run $($portal.script)"
+    }
+    $out = [ordered]@{
+        sourceMapId = $source
+        destinationMapId = $portal.destinationMapId
+        portalName = $portal.portalName
+        portalId = [int]$found.Groups[1].Value
+        script = $portal.script
+    }
+    if ($portal.Contains("gate")) { $out.gate = $portal.gate }
+    $out
+})
+
 $sha = [System.Security.Cryptography.SHA256]::Create()
 $digest = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes(($sourceLines -join "`n")))
 $sourceSha256 = -join ($digest | ForEach-Object { $_.ToString("x2") })
@@ -97,6 +139,7 @@ $catalog = [ordered]@{
     sourceSha256 = $sourceSha256
     groups = $groups
     excludedRanges = $excludedRanges
+    scriptedPortals = $scripted
     edges = $edges
 }
 
@@ -107,4 +150,4 @@ $fullOutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathF
 [System.IO.File]::WriteAllText($fullOutputPath, $json.Replace("`r`n", "`n") + "`n",
     (New-Object System.Text.UTF8Encoding($false)))
 
-Write-Host "Exported $($edges.Count) standard portal edges outside Victoria Island to $OutputPath"
+Write-Host "Exported $($edges.Count) standard portal edges outside Victoria Island and $($scripted.Count) scripted portals to $OutputPath"

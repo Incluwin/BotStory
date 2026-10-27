@@ -140,7 +140,7 @@ public enum CosmicMapGateway implements MapGateway {
 
     @Override
     public boolean isSwimMap(Character agent) {
-        return agent != null && agent.getMap() != null && agent.getMap().isSwim();
+        return agent != null && server.agents.capabilities.movement.AgentMapEnvironmentService.swims(agent.getMap());
     }
 
     @Override

@@ -38,19 +38,29 @@ public final class AgentTravelLegCatalog {
     }
 
     /**
-     * Boards at {@code fromMapId} by talking to {@code npcId} with {@code selections}, paying {@code fare} there (and
+     * Boards at {@code fromMapId} by talking to {@code npcId} with {@code selections} (or, with {@code portal} and NPC 0,
+     * by walking into that portal: Kerning Square Station's way back to the subway), paying {@code fare} there (and
      * holding {@code ticket}, when there is one); lands on {@code toMapId} at once or after waiting on one of
-     * {@code rideMapIds}.
+     * {@code rideMapIds}. The NPC lets nobody below {@code minLevel} on (Jeff at Ice Valley II, 50). With
+     * {@code savedLocation} the script lands the rider where that saved location points (Spinel's and Audrey's
+     * WORLDTOUR, Pison's FLORINA): {@code toMapId} is where it lands when nothing is saved, and every other landing
+     * counts as the ride done.
      */
     public record Leg(String id, int fromMapId, int npcId, List<Integer> selections, int toMapId, int fare,
-                      List<Integer> rideMapIds, Ticket ticket) {
+                      List<Integer> rideMapIds, Ticket ticket, int minLevel, String savedLocation, String portal) {
         public Leg {
-            if (id == null || id.isBlank() || fromMapId <= 0 || npcId <= 0 || toMapId <= 0
-                    || fromMapId == toMapId || fare < 0) {
-                throw new IllegalArgumentException("a travel leg needs an id, two maps, an NPC and a fare");
+            boolean byPortal = portal != null && !portal.isBlank();
+            if (id == null || id.isBlank() || fromMapId <= 0 || (byPortal ? npcId != 0 : npcId <= 0) || toMapId <= 0
+                    || fromMapId == toMapId || fare < 0 || minLevel < 0) {
+                throw new IllegalArgumentException("a travel leg needs an id, two maps, an NPC or a portal and a fare");
+            }
+            if (byPortal && (ticket != null || selections != null && !selections.isEmpty())) {
+                throw new IllegalArgumentException("a portal leg has no ticket and no dialogue: " + id);
             }
             selections = selections == null ? List.of() : List.copyOf(selections);
             rideMapIds = rideMapIds == null ? List.of() : List.copyOf(rideMapIds);
+            savedLocation = savedLocation == null || savedLocation.isBlank() ? null : savedLocation;
+            portal = byPortal ? portal : null;
         }
 
         /** What boarding costs an Agent that does not hold the ticket yet. */
