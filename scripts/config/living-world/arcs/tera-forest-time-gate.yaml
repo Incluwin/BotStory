@@ -17,7 +17,6 @@
         smallTalk: ["there's a foghorn, and the overlords, and the water. there's a lamp somewhere. you can't hear a lamp. i know there's a lamp.", "Augustin says lost things go to the Temple of Time. memories too. he says the Eyes of Time keep them in hourglasses. maybe gran's in an hourglass. that's a silly thing to think. i think it anyway."]
         speakPlainly: ["plainly: a listener, and a night that won't change."]
         questOffer.calla-the-harbor-listener: ["the listener eats radar. the dishes burn out. twenty-five overlords at Midnight Harbor, eight radars, and it keeps listening. please?"]
-        questComplete.calla-the-harbor-listener: ["eight. clipped in, where Bettany marked. it's listening again. same night. i'll keep listening anyway."]
         chapterEnter: ["(sets the listener down by the gate, very carefully, and sits beside it with her chin on her knees)"]
     - id: chapter-3
       title: "Somebody Has Gran's Song"
@@ -38,11 +37,11 @@
       dialogueOverrides:
         greet: ["hi! gran's name was Liv. i say it every morning now. Liv.", "hello! i wrote to Solveig. she's my great-gran. that's too long to say. i say gran's mum."]
         who: ["Calla. i'm from Midnight Harbor, in 2099. my gran was Liv. she came through this gate from the forest when she was seventeen, kept a lamp lit by the sea, and sang me her mother's song. her mother's at the Temple of Time. her name's Solveig. i've got family here."]
-        idle: ["(hums a whole song through, all three lines, and smiles at the gate)", "(writes a letter on a logbook page, folds it small, and tucks it in her pocket for the next ship)"]
+        idle: ["(hums a whole song through, all three lines, and smiles at the gate)", "(writes a letter on a logbook page, folds it small, and tucks it in her pocket for the next traveller going up to the temple)"]
         smallTalk: ["gran said the gate goes home. i thought she meant the harbor. she meant the forest. she meant here. she knew where she was sending me.", "i still listen to the harbor. same night. but now i listen for the lamp, and i know whose it is. it's Liv's. it's always lit."]
         speakPlainly: ["plainly: gran's name, gran's song, and gran's mum."]
         noWork: ["nothing today. i'm writing to gran's mum. it's a long letter. i keep starting in the middle."]
-        about.solveig: ["Solveig. gran's mum. she's at the Temple of Time. we write by every ship. she tells me about gran when she was little and wouldn't sleep. i tell her about gran when she was old and sang."]
+        about.solveig: ["Solveig. gran's mum. she's at the Temple of Time. we send letters with anybody going that way. she tells me about gran when she was little and wouldn't sleep. i tell her about gran when she was old and sang."]
         about.augustin: ["Augustin keeps the logbook. there's a line in one of his old ones: Liv, of Orbis, seventeen, through the gate. he showed me. he's written under it, very small: 'came home, in a way.'"]
         friend.best: ["if i ever get home, i'll tell everybody about you. and if i don't, i've got you here, and gran's mum. that's a lot."]
         questOffer.calla-the-harbor-listener: ["the listener eats radar. twenty-five overlords at Midnight Harbor, eight radars. i listen for gran's lamp now. it's always lit."]

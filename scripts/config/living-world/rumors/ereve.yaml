@@ -14,15 +14,15 @@
     - { by: isaura, text: "i know what the record says about it. there's always more to read." }
 
 - id: ereve-the-night-watch
-  participants: [caius, wynn]
+  participants: [caius, cadoc]
   where: { town: ereve, spot: "venue:by-neinheart" }
   when:
     serverHours: [20, 21]
     everyDays: 2
   lines:
-    - { by: wynn, text: "Caius! how do you walk without making any noise? i tried. i fell off the bridge." }
+    - { by: cadoc, text: "Caius! how do you walk without making any noise? i tried. i fell off the bridge." }
     - { by: caius, text: "you tried at noon, in boots, humming." }
-    - { by: wynn, text: "i wasn't humming. much." }
+    - { by: cadoc, text: "i wasn't humming. much." }
     - { by: caius, text: "Eckhart says a Night Walker is a shadow that picked a side. you're a thunderclap that picked a side. both are fine." }
-    - { by: wynn, text: "...was that a compliment?" }
+    - { by: cadoc, text: "...was that a compliment?" }
     - { by: caius, text: "go to bed, cadet." }

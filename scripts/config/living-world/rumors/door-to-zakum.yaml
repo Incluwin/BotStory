@@ -27,7 +27,6 @@
     - { by: brenna, text: "the lava's orange tonight, Hrafn." }
     - { by: hrafn, text: "then the bains sleep. good." }
     - { by: brenna, text: "you're listening up the road again." }
-    - { by: hrafn, text: "a yeti horn carries further than you'd think, Brenna." }
-    - { by: brenna, text: "all the way up to Jeff's gate?" }
-    - { by: hrafn, text: "Torsten listens at dusk, up there. he says he always has." }
-    - { by: brenna, text: "...then send him a long one." }
+    - { by: hrafn, text: "it's dusk. Torsten listens at dusk, up at Jeff's gate." }
+    - { by: brenna, text: "you've never even seen his face." }
+    - { by: hrafn, text: "i know his hour. that's enough to go on." }

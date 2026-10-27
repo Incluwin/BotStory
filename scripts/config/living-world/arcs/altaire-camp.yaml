@@ -11,7 +11,7 @@
       dialogueOverrides:
         greet: ["hello. the west is inked. the whole west, to the mountain's foot. i keep going back to look at it.", "you again. good. the south's still a guess. i don't like guesses."]
         who: ["Ottavia. i draw the map for the expedition. the west is done, to the boulders. the south is where the haze is, and the haze won't hold still to be drawn."]
-        smallTalk: ["the west is inked and the trees in it still walk. i've decided that's their problem now.", "Teodor walks the haze line every morning. i ask him where it is every evening. i've a whole page of where it used to be."]
+        smallTalk: ["the west is inked and the trees in it still walk. i've decided that's their problem now.", "Casimir walks the haze line every morning. i ask him where it is every evening. i've a whole page of where it used to be."]
         chapterEnter: ["(inks a long line down the west edge of the map in one stroke, and blows on it until it dries)"]
       unlocks:
         rumors: [altaire-the-haze-line]

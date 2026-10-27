@@ -43,7 +43,7 @@ class ArcFinalBeatOncePerServerTest {
             // wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10)
             "solveig-the-girl-at-the-gate", "calla-grans-name", "isaura-in-her-words", "eira-the-copy-from-ereve",
             "eira-on-rien-shelf", "ottavia-a-name-on-the-map", "yusra-the-silk-ledger", "zahra-red-under-the-lanterns",
-            "ferro-in-daylight", "ines-one-page-two-names", "brenna-tempered-in-the-breath", "hrafn-the-first-call",
+            "ferro-in-daylight", "oriane-one-page-two-names", "brenna-tempered-in-the-breath", "hrafn-the-first-call",
             "shen-a-note-for-the-top-floor", "guo-the-bow");
 
     @Test

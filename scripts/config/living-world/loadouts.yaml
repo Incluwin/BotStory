@@ -1013,7 +1013,7 @@ loadouts:
       gloves: [0, 0, 0, 0, 0, 0, 0, 1082161, 1082022, 1082224]
       cape: [0, 0, 0, 0, 0, 0, 0, 1102144, 1102142, 1102009, 1102010, 1102070]
       weapon: [1382002]
-  # Ines (Zenumist Society): a Wizard Wand until her proving
+  # Oriane (Zenumist Society): a Wizard Wand until her proving
   - id: zenumist-wand-l38
     equips: [1372001, 1002141]
     consumables: [{ itemId: 2000006, count: 60 }, { itemId: 2000002, count: 20 }]

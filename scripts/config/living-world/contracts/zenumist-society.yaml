@@ -1,9 +1,9 @@
 # Zenumist Society contracts (wave 4): an apprentice who lends her fire openly, once the player has helped with her
 # glass and heard her terms at the hidden room door.
-- id: ines-the-open-flame
+- id: oriane-the-open-flame
   offerWhen:
     bondStage: ACQUAINTED
-    flags: [ines.intro.done, zenumist.heard-ines]
+    flags: [oriane.intro.done, zenumist.heard-oriane]
   price:
     meso: 30000
   terms:

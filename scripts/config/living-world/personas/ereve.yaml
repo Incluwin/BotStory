@@ -55,8 +55,10 @@
     questComplete.aldric-tiguru-drill: ["that's the drill done. you'd pass Mihile's exam, i think. take these, you earned them."]
     about.linnea: ["Linnea watches the sky ferry like it owes her something. best eyes on the island."]
     about.caius: ["Caius keeps the Empress's watch after dark. i've never once heard him coming. Mihile says that's the point. i say it's rude."]
-    about.wynn: ["Wynn drills beside me every morning. he hits like a storm and falls off the bridge like one. he'll make a fine knight, if the bridge lets him."]
+    about.cadoc: ["Cadoc drills beside me every morning. he hits like a storm and falls off the bridge like one. he'll make a fine knight, if the bridge lets him."]
     about.isaura: ["Isaura lent me a book of sword forms. i turned the corners down. she hasn't forgiven me."]
+    about.celandine: ["Celandine sews every coat on the island. she can make a knight stand still. Mihile can't even do that."]
+    about.fintan: ["Fintan keeps the eggs at Kiridu's hatchery. one of them's my mount, someday. he says i'm too loud for the hatchery. the chicks don't seem to mind."]
     aboutUnknown: ["not someone i've trained with."]
 
 - id: linnea
@@ -95,13 +97,15 @@
     questWaiting.linnea-tiv-feathers: ["twenty Tiv feathers. the fluffy ones."]
     questComplete.linnea-tiv-feathers: ["oh, these are perfect. my arrows will fly straight for once."]
     about.aldric: ["he's nice. a bit loud. he practices at dawn and wakes the whole bridge."]
-    about.wynn: ["Wynn fell off the bridge again! he's fine. he always lands in the same bush. i think the bush is used to him."]
+    about.cadoc: ["Cadoc fell off the bridge again! he's fine. he always lands in the same bush. i think the bush is used to him."]
     about.fintan: ["Fintan's the groom at Kiridu's hatchery. i give him my bald feathers for the nests. don't tell him they're my bald ones."]
-    about.celandine: ["Celandine won't sew me a quiver with a flap. she says it's a pocket. it's a quiver."]
+    about.celandine: ["Celandine won't sew pockets on my coat for arrows. she says that's a quiver. a quiver doesn't have a flap!"]
+    about.caius: ["Caius walks the bridges at night. i see him from the lookout. i never say anything. i think he likes that."]
+    about.isaura: ["Isaura lends me books about Orbis. the ones with pictures. one day i'll go and see if they got it right."]
     aboutUnknown: ["i don't think i know them."]
 
 # ---- Wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10): +5 Residents, 1 recruitable (Caius). Isaura, Fintan and
-# Celandine are townsfolk and always here; Caius and Wynn follow CYGNUS_ARAN_CAREERS_ENABLED like Aldric and Linnea.
+# Celandine are townsfolk and always here; Caius and Cadoc follow CYGNUS_ARAN_CAREERS_ENABLED like Aldric and Linnea.
 # Isaura keeps the Empress's record of the five heroes, whose last leaf is blank; Rien remembers what it leaves out
 # (arcs/ereve.yaml, arcs/rien.yaml).
 - id: isaura
@@ -157,7 +161,7 @@
     about.fintan: ["Fintan borrows books about birds and reads them to the eggs. he says it helps. the eggs have not complained."]
     about.eira: ["Eira? i don't know the name."]
     about.caius: ["Caius reads in the library at night with no lamp. i've asked him how. he says the dark's easier to read than people think."]
-    about.wynn: ["Wynn has never returned a book. he's never borrowed one, either. i keep hoping."]
+    about.cadoc: ["Cadoc has never returned a book. he's never borrowed one, either. i keep hoping."]
     about.aldric: ["Aldric borrowed a book of sword forms and brought it back with the corners turned down. every corner."]
     about.linnea: ["Linnea asks for books about Orbis. i give her the ones with pictures. she's never been."]
     about.wren: ["Wren keeps the archive in Ellinia's upper tree. we've written to each other for years about bindings. she's wrong about glue."]
@@ -191,7 +195,7 @@
   questLines: [fintan-nest-feathers, fintan-the-hatchery-path]
   relationships:
     - { persona: isaura, kind: BORROWS_BOOKS_FROM }
-    - { persona: wynn, kind: IS_PESTERED_BY }
+    - { persona: cadoc, kind: IS_PESTERED_BY }
   giftItemIds: [2010000, 2010003]
   dialogue:
     greetFirst: ["oh, hello. sorry, there's straw on me. there's always straw on me.", "hello. quietly, if you don't mind. i've got an egg in my coat."]
@@ -215,7 +219,7 @@
     about.isaura: ["Isaura lends me books about birds. i read them to the eggs. she says nobody's ever read to an egg before. i think that's sad."]
     about.celandine: ["Celandine made me an apron with pockets the right size for eggs. she measured an egg to do it."]
     about.caius: ["Caius walks past the hatchery at night and never wakes a chick. i don't know how. i wake them breathing."]
-    about.wynn: ["Wynn asks me every day when he'll get a mount. i tell him when he's stopped falling off the bridge. he asks again the next day."]
+    about.cadoc: ["Cadoc asks me every day when he'll get a mount. i tell him when he's stopped falling off the bridge. he asks again the next day."]
     about.aldric: ["Aldric's loud. the chicks like him anyway. they like loud things that are kind."]
     about.linnea: ["Linnea brings the chicks the feathers she can't fletch. she won't say so. i know her feathers."]
     about.oda: ["the station master at Ellinia shouts at the ferry when it's late. i sent a feather once. it came back stamped."]
@@ -250,7 +254,7 @@
   rumors: [ereve-the-five-emblems]
   relationships:
     - { persona: isaura, kind: STRAIGHTENS_THE_COLLAR_OF }
-    - { persona: wynn, kind: PATCHES_THE_KNEES_OF }
+    - { persona: cadoc, kind: PATCHES_THE_KNEES_OF }
     - { persona: mirabel, kind: BUYS_THREAD_FROM }
   giftItemIds: [2020002, 2010004]
   dialogue:
@@ -262,7 +266,7 @@
     who: ["Celandine. i sew the knights' coats, cadet to Chief. Neinheart signs the orders, i cut the cloth. five emblems inside every collar, the same as the very first coats. i've stitched them a thousand times."]
     bye: ["mind the hem."]
     thanks: ["thank you. stand up straight."]
-    smallTalk: ["the cadets' collars go limp in the sea wind by noon. slime makes a better starch than anything you can buy. i don't tell Neinheart where it comes from.", "every season Wynn tears the knees out of his trousers before the Empress's review. i've started cutting them with spare knees."]
+    smallTalk: ["the cadets' collars go limp in the sea wind by noon. slime makes a better starch than anything you can buy. i don't tell Neinheart where it comes from.", "every season Cadoc tears the knees out of his trousers before the Empress's review. i've started cutting them with spare knees."]
     speakPlainly: ["plainly: coats, and the people in them."]
     questOffer.celandine-collar-starch: ["the cadets' collars want starch. the slimes north of Ellinia leave the best squishy liquid for it. twelve, and every collar in Ereve stands up straight."]
     questAccept.celandine-collar-starch: ["the ferry to Ellinia, then the field up north of it. they bounce. don't let them bounce on you."]
@@ -279,7 +283,7 @@
     about.isaura: ["Isaura's collar has been crooked since the spring. she reads through every fitting. i've pinned her hem while she turned a page."]
     about.fintan: ["Fintan asked for an apron with pockets for eggs. i measured an egg. it was the strangest fitting i've ever done. it fits beautifully."]
     about.caius: ["Caius wants no buttons that catch the light. i sewed them in black. he checked every one of them in a dark cupboard."]
-    about.wynn: ["Wynn's on his fourth pair of trousers this season. i've stopped charging him. i've started charging the bridge."]
+    about.cadoc: ["Cadoc's on his fourth pair of trousers this season. i've stopped charging him. i've started charging the bridge."]
     about.aldric: ["Aldric's sword arm is an inch longer than the other. i cut his sleeves to match. he's never noticed."]
     about.linnea: ["Linnea wants pockets for arrows. i keep telling her that's a quiver. she says a quiver doesn't have a flap."]
     about.mirabel: ["Mirabel in Ellinia weaves the best thread in Victoria. we've never met. we send each other notes about selvedges."]
@@ -316,7 +320,7 @@
   benchToleranceDays: 3
   paceGap: 2
   relationships:
-    - { persona: wynn, kind: IS_FOLLOWED_AROUND_BY }
+    - { persona: cadoc, kind: IS_FOLLOWED_AROUND_BY }
     - { persona: isaura, kind: READS_IN_THE_DARK_WITH }
   giftItemIds: [2000003, 2010001]
   dialogue:
@@ -357,7 +361,7 @@
     questAccept.caius-clean-firewood: ["the tree dungeon's sixth room."]
     questWaiting.caius-clean-firewood: ["ten."]
     questComplete.caius-clean-firewood: ["ten. no smoke. good."]
-    about.wynn: ["Wynn follows me around to learn how to walk quietly. he hums while he does it. i haven't told him."]
+    about.cadoc: ["Cadoc follows me around to learn how to walk quietly. he hums while he does it. i haven't told him."]
     about.isaura: ["Isaura and i read in the library at night. she has a lamp. i don't. we don't talk. it's the best company in Ereve."]
     about.fintan: ["Fintan's hatchery is the only place on the island quieter than me. i go past it to listen."]
     about.celandine: ["Celandine sewed my buttons in black and tested them in a cupboard. she's thorough."]
@@ -372,8 +376,8 @@
     gift.favorite: ["...that's good. that's a whole night watch, that is."]
     gift.again: ["one a day. i travel light."]
 
-- id: wynn
-  name: Wynn
+- id: cadoc
+  name: Cadoc
   look: { gender: male }
   title: "Thunder Breaker Cadet"
   job: THUNDERBREAKER1
@@ -391,7 +395,7 @@
       - { from: 22, to: 6, materialize: false }
   recruitable: false
   knows: [octopus, green mushroom, green mushroom cap]
-  questLines: [wynn-the-octopus-hold, wynn-kitchen-duty]
+  questLines: [cadoc-the-octopus-hold, cadoc-kitchen-duty]
   rumors: [ereve-the-night-watch]
   relationships:
     - { persona: caius, kind: FOLLOWS_AROUND }
@@ -404,19 +408,19 @@
     idle: ["(punches the air in a fast one-two, overbalances, and catches the railing)", "(checks his knuckle stance in a puddle's reflection, adjusts it, and grins)"]
     noWork: ["nothing today! i'm drilling. Hawkeye says drill till the lightning's bored."]
     nothingDue: ["we're even! i think. are we? we are."]
-    who: ["Wynn! Thunder Breaker cadet, first rank. Hawkeye says i hit like a storm. he also says i aim like one."]
+    who: ["Cadoc! Thunder Breaker cadet, first rank. Hawkeye says i hit like a storm. he also says i aim like one."]
     bye: ["see you! i'll be louder by then."]
     thanks: ["thanks! really!"]
     smallTalk: ["Hawkeye says a Thunder Breaker should land a punch the way a wave lands on a beach. all at once. i'm still more of a puddle.", "i'm on kitchen duty in the knights' mess again. i don't know what i did. i think it was the bridge."]
     speakPlainly: ["plainly! a cadet. a loud one."]
-    questOffer.wynn-the-octopus-hold: ["Hawkeye says i need to learn to hold on when something holds on to me. the octopuses on the construction site north of Kerning hold on to everything. twenty-five of them. show me how?"]
-    questAccept.wynn-the-octopus-hold: ["the ferry to Ellinia, then across to the construction site north of Kerning City, and the top of it. they wiggle!"]
-    questWaiting.wynn-the-octopus-hold: ["twenty-five! they're very wiggly. you can do it."]
-    questComplete.wynn-the-octopus-hold: ["twenty-five! okay. so you don't hold on. you let go first. that's the trick? that's the trick! here, my whole week's pocket money. no, take it."]
-    questOffer.wynn-kitchen-duty: ["kitchen duty. the knights' cook wants green mushroom caps for the stew. twelve. i can't leave the pot or it boils over. it boils over anyway. please?"]
-    questAccept.wynn-kitchen-duty: ["the tree that grew, north of Ellinia, the third one up. or the rocky mountain west of Perion. the green ones. they're grumpy."]
-    questWaiting.wynn-kitchen-duty: ["twelve caps. the pot's boiling over. i'm stirring!"]
-    questComplete.wynn-kitchen-duty: ["twelve! the stew's saved! the cook nearly smiled. nearly! here. it's not stew. the stew's for the knights."]
+    questOffer.cadoc-the-octopus-hold: ["Hawkeye says i need to learn to hold on when something holds on to me. the octopuses on the construction site north of Kerning hold on to everything. twenty-five of them. show me how?"]
+    questAccept.cadoc-the-octopus-hold: ["the ferry to Ellinia, then across to the construction site north of Kerning City, and the top of it. they wiggle!"]
+    questWaiting.cadoc-the-octopus-hold: ["twenty-five! they're very wiggly. you can do it."]
+    questComplete.cadoc-the-octopus-hold: ["twenty-five! okay. so you don't hold on. you let go first. that's the trick? that's the trick! here, my whole week's pocket money. no, take it."]
+    questOffer.cadoc-kitchen-duty: ["kitchen duty. the knights' cook wants green mushroom caps for the stew. twelve. i can't leave the pot or it boils over. it boils over anyway. please?"]
+    questAccept.cadoc-kitchen-duty: ["the tree that grew, north of Ellinia, the third one up. or the rocky mountain west of Perion. the green ones. they're grumpy."]
+    questWaiting.cadoc-kitchen-duty: ["twelve caps. the pot's boiling over. i'm stirring!"]
+    questComplete.cadoc-kitchen-duty: ["twelve! the stew's saved! the cook nearly smiled. nearly! here. it's not stew. the stew's for the knights."]
     about.caius: ["Caius is the best Night Walker in Ereve. he can walk right past me and i don't even know. i follow him around to learn how. he always knows."]
     about.fintan: ["Fintan says i get a mount when i stop falling off the bridge. i've only fallen off twice this week!"]
     about.celandine: ["Celandine sews my trousers. she says i owe her a bridge. i don't know what that means."]

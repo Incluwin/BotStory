@@ -13,7 +13,6 @@
         greet: ["hello. i've been reading everything we have about Snow Island. it isn't much.", "hello. north. everything points north."]
         who: ["Isaura. i keep the Empress's library. the record of the five ends on a blank leaf, and everything Ereve remembers about it points north, to Snow Island. somebody there must know the rest."]
         smallTalk: ["Celandine's fifth emblem is a polearm on snow. Fintan's egg-book says they went by sea from the island of snow. two threads, one direction.", "they say Rien doesn't write things down. they tell them. i've never trusted anything i couldn't read. i may have to start."]
-        questComplete.isaura-the-blank-page: ["into the margins it goes. the record grows a little every time somebody asks. thank you."]
         chapterEnter: ["(pins a small sketch of a polearm on a field of snow to the edge of the blank leaf)"]
     - id: chapter-3
       title: "Somebody in Rien"
@@ -37,7 +36,7 @@
         about.eira: ["Eira of Rien. her grandmother's words are on the Empress's last leaf now. i didn't change one. i wanted to fix a comma. i didn't."]
         questOffer.isaura-the-blank-page: ["the record of the five has its last leaf now, but the margins never fill. ask Celandine about her pattern book and Fintan about the egg-book again. everything Ereve remembers goes in."]
         questComplete.isaura-the-blank-page: ["into the margins it goes. the record grows a little every time somebody asks. thank you."]
-        friend.best: ["your name's in the margin of the record of the five, beside the last leaf. you carried it. it belongs there."]
+        friend.best: ["your name's in the margin of the record of the five, beside the last leaf. small. it belongs there."]
         chapterEnter: ["(writes the last line on the blank leaf in a slow, careful hand, then sits back and blows on the ink)"]
     - id: chapter-5
       title: "A Copy for Rien"
@@ -51,5 +50,5 @@
         about.eira: ["Eira of Rien. her grandmother's words are on the Empress's last leaf, and a copy sits on Rien's shelf. she sends word with travellers. i write it all down."]
         questOffer.isaura-the-blank-page: ["the record of the five has its last leaf now, but the margins never fill. ask Celandine about her pattern book and Fintan about the egg-book again. everything Ereve remembers goes in."]
         questComplete.isaura-the-blank-page: ["into the margins it goes. the record grows a little every time somebody asks. thank you."]
-        friend.best: ["your name's in the margin of the record of the five, beside the last leaf. you carried it. it belongs there."]
+        friend.best: ["your name's in the margin of the record of the five, beside the last leaf. small. it belongs there."]
         chapterEnter: ["(writes 'sent to Rien' on the library card of a small blue-bound book, and files the card with care)"]

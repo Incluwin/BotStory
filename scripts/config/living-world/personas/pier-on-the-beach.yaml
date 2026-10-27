@@ -1,8 +1,8 @@
 # Pier on the Beach cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 2 Residents, none
-# recruitable, no arc. Herb Town's pier, where the Dolphin carries riders down to the Aqua Road and Aquarium. Nerys keeps
+# recruitable, no arc. Herb Town's pier, where the Dolphin carries riders down to the Aqua Road and Aquarium. Ondine keeps
 # the dolphin at this end, as Oriel does at the other (personas/aquarium.yaml); Bora sells Sunniva's pearls to the riders.
-- id: nerys
-  name: Nerys
+- id: ondine
+  name: Ondine
   look: { gender: female }
   title: "Keeper of the Dolphin"
   job: BEGINNER
@@ -19,7 +19,7 @@
       - { from: 20, to: 6, materialize: false }
   recruitable: false
   knows: [aquarium, pinboom, cico]
-  questLines: [nerys-the-sharp-unknown, nerys-the-other-end, nerys-the-oxygen-tank]
+  questLines: [ondine-the-sharp-unknown, ondine-the-other-end, ondine-the-oxygen-tank]
   rumors: [pier-on-the-beach-the-tide]
   relationships:
     - { persona: bora, kind: SHARES_THE_PIER_WITH }
@@ -32,23 +32,23 @@
     idle: ["(sits on the end of the pier with her boots in the water, watching for a fin)", "(coils a long wet rope into a perfect circle, then uncoils it to coil it again)"]
     noWork: ["nothing today. she's fed, the harness is mended, the sea's calm. i'll just sit."]
     nothingDue: ["you owe nothing. pay the dolphin. she takes meso. i've no idea what she does with it."]
-    who: ["Nerys. i keep the dolphin at this end. she carries riders down to the Aqua Road and to Aquarium, and back up to me. Oriel keeps her at the other end. we've been sharing a dolphin for nine years and we've met twice."]
+    who: ["Ondine. i keep the dolphin at this end. she carries riders down to the Aqua Road and to Aquarium, and back up to me. Oriel keeps her at the other end. we've been sharing a dolphin for nine years and we've met twice."]
     bye: ["hold on with your knees."]
     thanks: ["thank you."]
     smallTalk: ["she drops riders at the Sharp Unknown when they've only the small fare. the pinbooms puff up at her there. she hates it. she goes anyway.", "a dolphin's like a tide. you can't hurry her. you can only be on the pier when she comes in."]
     speakPlainly: ["plainly: a pier, a rope, and a dolphin who does what she likes."]
-    questOffer.nerys-the-sharp-unknown: ["the pinbooms at the Sharp Unknown puff up and spike her every time she drops a rider. she comes back with her nose sore. twenty-five of them, please. gently. they don't mean it. they're just round."]
-    questAccept.nerys-the-sharp-unknown: ["ride her down on the small fare. she'll leave you at the Sharp Unknown. the spiky round ones. and the coral hill above it, if you've the breath."]
-    questWaiting.nerys-the-sharp-unknown: ["twenty-five. her nose is still sore."]
-    questComplete.nerys-the-sharp-unknown: ["twenty-five. she came back this morning without a scratch and did a loop at the end of the pier. she hasn't done that in a year. thank you."]
-    questOffer.nerys-the-other-end: ["Oriel keeps her at the Aquarium end. we write notes on the harness. the sea gets at them. would you ride down and ask her, properly, what she's been feeding her? she comes back fat and happy and won't touch my fish."]
-    questAccept.nerys-the-other-end: ["ride her down to Aquarium. the Department Store. Oriel's the one talking to the dolphins. she'll be talking to them."]
-    questWaiting.nerys-the-other-end: ["what's Oriel feeding her? i need to know. i'm jealous."]
-    questComplete.nerys-the-other-end: ["shrimp? she's been spoiling her with shrimp. ...that's fine. that's fine. i'll get shrimp. thank you. i feel much better. i'm still jealous."]
-    questOffer.nerys-the-oxygen-tank: ["i keep an old oxygen tank on the pier for riders who come off her halfway. the valve seat's worn. sea horse horn makes a seat that doesn't rust. the cicos on the blue seaweed road. ten horns, and the tank's yours. i've a spare."]
-    questAccept.nerys-the-oxygen-tank: ["the Blue Seaweed Road and the fish resting spot off it. the cicos, the little sea horses with the long noses. ten horns."]
-    questWaiting.nerys-the-oxygen-tank: ["ten horns. the tank's hissing."]
-    questComplete.nerys-the-oxygen-tank: ["ten. (fits a horn seat into an old brass valve and turns it shut) ...there. it holds. this one's yours. you've been down there enough to want a breath you didn't bring."]
+    questOffer.ondine-the-sharp-unknown: ["the pinbooms at the Sharp Unknown puff up and spike her every time she drops a rider. she comes back with her nose sore. twenty-five of them, please. gently. they don't mean it. they're just round."]
+    questAccept.ondine-the-sharp-unknown: ["ride her down on the small fare. she'll leave you at the Sharp Unknown. the spiky round ones. and the coral hill above it, if you've the breath."]
+    questWaiting.ondine-the-sharp-unknown: ["twenty-five. her nose is still sore."]
+    questComplete.ondine-the-sharp-unknown: ["twenty-five. she came back this morning without a scratch and did a loop at the end of the pier. she hasn't done that in a year. thank you."]
+    questOffer.ondine-the-other-end: ["Oriel keeps her at the Aquarium end. we write notes on the harness. the sea gets at them. would you ride down and ask her, properly, what she's been feeding her? she comes back fat and happy and won't touch my fish."]
+    questAccept.ondine-the-other-end: ["ride her down to Aquarium. the Department Store. Oriel's the one talking to the dolphins. she'll be talking to them."]
+    questWaiting.ondine-the-other-end: ["what's Oriel feeding her? i need to know. i'm jealous."]
+    questComplete.ondine-the-other-end: ["shrimp? she's been spoiling her with shrimp. ...that's fine. that's fine. i'll get shrimp. thank you. i feel much better. i'm still jealous."]
+    questOffer.ondine-the-oxygen-tank: ["i keep an old oxygen tank on the pier for riders who come off her halfway. the valve seat's worn. sea horse horn makes a seat that doesn't rust. the cicos on the blue seaweed road. twenty cicos, ten horns, and the tank's yours. i've a spare."]
+    questAccept.ondine-the-oxygen-tank: ["the Blue Seaweed Road and the fish resting spot off it. the cicos, the little sea horses with the long noses. ten horns."]
+    questWaiting.ondine-the-oxygen-tank: ["ten horns. the tank's hissing."]
+    questComplete.ondine-the-oxygen-tank: ["ten. (fits a horn seat into an old brass valve and turns it shut) ...there. it holds. this one's yours. you've been down there enough to want a breath you didn't bring."]
     about.bora: ["Bora sells pearls at the end of the pier. she tells every rider exactly what each one is. they still haggle. she still wins."]
     about.oriel: ["Oriel keeps her at the Aquarium end. we've met twice in nine years. we write on the harness. she draws dolphins in the corners. i've kept every one."]
     about.maren: ["Maren came up on her years ago, off the navy cutters, chasing red-nose pirates. she's never ridden back down. she still looks at the sea like it owes her something."]
@@ -82,7 +82,7 @@
   questLines: [bora-poison-poopas, bora-sunnivas-bag, bora-seal-teeth]
   rumors: [pier-on-the-beach-the-tide]
   relationships:
-    - { persona: nerys, kind: SHARES_THE_PIER_WITH }
+    - { persona: ondine, kind: SHARES_THE_PIER_WITH }
     - { persona: sunniva, kind: SELLS_THE_PEARLS_OF }
     - { persona: sookja, kind: TRADES_A_PEARL_A_MONTH_WITH }
   giftItemIds: [4000156, 4000158]
@@ -109,7 +109,7 @@
     questAccept.bora-seal-teeth: ["the turban shell hill and the west sea fork. the sparkers. they buzz."]
     questWaiting.bora-seal-teeth: ["ten teeth. three people asked for cheap pearls this morning."]
     questComplete.bora-seal-teeth: ["ten. i'll tell every one of them it's a seal tooth. they'll buy it anyway. thank you."]
-    about.nerys: ["Nerys keeps the dolphin. she talks to it more than to me. i don't mind. it talks back less than i do."]
+    about.ondine: ["Ondine keeps the dolphin. she talks to it more than to me. i don't mind. it talks back less than i do."]
     about.sunniva: ["Sunniva dives the pearls and sends them up on the dolphin. i've met her four times. she's always got sand in her hair and one good pearl in her fist."]
     about.sookja: ["Sookja in Herb Town gives me a jar of peach tea every month. i give her one pearl. she's never once worn it. she keeps it in the tea tin. i think that's the best place for a pearl."]
     aboutUnknown: ["never bought a pearl from me. there's still time."]

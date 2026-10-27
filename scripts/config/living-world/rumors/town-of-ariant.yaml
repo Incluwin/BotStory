@@ -24,9 +24,9 @@
     requiresArc: { arc: zahra-the-red-silk, chapterAtLeast: chapter-3 }
   setsFlagOnListeners: ariant.heard-silk
   lines:
-    - { by: idris, text: "that's red silk on your knee, Zahra. palace red. in the open street." }
+    - { by: idris, text: "palace red, in the quarter, in the open street. you've a nerve, Zahra." }
     - { by: zahra, text: "it was lost to sand, Idris. the palace wrote so itself. you can't take back what's lost." }
-    - { by: idris, text: "and you're cutting it for the tent." }
-    - { by: zahra, text: "every scrap. when they're dressed in it, you'll run the word out to Zarek. not a letter. the word." }
-    - { by: idris, text: "...i'll run it. it'll be the happiest thing that's ever been in my satchel." }
-    - { by: zahra, text: "then run it fast. it's waited eleven years under a floor." }
+    - { by: idris, text: "and it's the tent's now." }
+    - { by: zahra, text: "every scrap. whenever the tent comes to dance in it, you run the word out to Zarek. not a letter. the word." }
+    - { by: idris, text: "...i'll run it. it's the happiest thing that's ever been in my satchel." }
+    - { by: zahra, text: "then run it fast. good news has waited under enough floors." }

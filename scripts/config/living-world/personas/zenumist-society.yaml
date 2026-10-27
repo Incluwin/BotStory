@@ -1,9 +1,9 @@
 # Zenumist Society cast (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): the Zenumist hall off Magatia's square.
-# 2 residents, 1 recruitable (Ines, after her glass and her terms heard at the hidden room door). Ines owns the
+# 2 residents, 1 recruitable (Oriane, after her glass and her terms heard at the hidden room door). Oriane owns the
 # societies' arc (arcs/zenumist-society.yaml): an apprentice of each house, a generation after Gilda and Aurel, and one
 # proving on one table. Ids in quests/zenumist-society.yaml.
-- id: ines
-  name: Ines
+- id: oriane
+  name: Oriane
   look: { gender: female }
   title: "Apprentice Alchemist of the Zenumist"
   job: FP_WIZARD
@@ -21,9 +21,9 @@
       - { from: 22, to: 7, materialize: false }
   recruitable: true
   knows: [triple rumo, cube slime, zenumist society]
-  contract: ines-the-open-flame
-  questLines: [ines-the-cracking-glass, ines-the-zenumist-cape, ines-one-page-two-names]
-  arc: ines-the-shared-proving
+  contract: oriane-the-open-flame
+  questLines: [oriane-the-cracking-glass, oriane-the-zenumist-cape, oriane-one-page-two-names]
+  arc: oriane-the-shared-proving
   rumors: [zenumist-the-doorkeepers-rule]
   benchToleranceDays: 2
   paceGap: 3
@@ -39,7 +39,7 @@
     idle: ["(holds a small flame cupped in her bare palm and squints at it like a stubborn student)", "(scribbles a note, crosses it out, and writes the same note again much larger)"]
     noWork: ["nothing today. i'm thinking. Vael says thinking's the dangerous part. she's right. i'm doing it anyway."]
     nothingDue: ["we're square. i don't keep debts. Zenumists keep everything in jars. i'm trying not to."]
-    who: ["Ines. apprentice alchemist of the Zenumist. fire's my element and the society's my family. both of them want me to be quieter. i'm not going to be."]
+    who: ["Oriane. apprentice alchemist of the Zenumist. fire's my element and the society's my family. both of them want me to be quieter. i'm not going to be."]
     bye: ["mind the Alcadno on your way out. no. don't mind them. say hello."]
     thanks: ["oh, thank you!"]
     smallTalk: ["every spring the apprentices of each house make a proving. one piece of your own work, shown to your own house. a hundred years of provings, and every one of them done behind its own door. i don't like doors.", "Vael buys Alcadno metal on the quiet. everyone knows. nobody says. Gilda and Aurel spent twenty years on one bench, in notes. i'm not waiting twenty years. i'm not waiting twenty minutes."]
@@ -51,18 +51,18 @@
     refuse.bond: ["i don't lend my fire to strangers. i'd lend it to you soon. not yet."]
     refuse.flags: ["two things. help me with my cracking glass first. then come by the hidden room door some evening and hear what i tell Phineas. after that, ask."]
     refuseOwnErrand: ["my proving. you can watch. from back there. further."]
-    questOffer.ines-the-cracking-glass: ["my proving piece is a flame that lives in glass and never goes out. the flame works. the glass doesn't. it cracks. the triple rumos in the lower units carry the society's best flasks. twenty-five rumos, twelve flasks? i'll crack them all and find out why."]
-    questAccept.ines-the-cracking-glass: ["down through the Zenumist institute, units one-oh-two and one-oh-three. the triple ones. they come in threes. so do the flasks, if you're lucky."]
-    questWaiting.ines-the-cracking-glass: ["twelve flasks. i've cracked my last one. i'm holding the flame in my hand. it's fine. it's fine."]
-    questComplete.ines-the-cracking-glass: ["twelve. ...cracked, cracked, cracked. it isn't the glass. nothing Zenumist can hold this much heat. it wants a cage of Alcadno metal round it. Vael would buy one in an alley. i'm not buying anything in an alley."]
-    questOffer.ines-the-zenumist-cape: ["every Zenumist wears the society's cape, sealed with gelatin so sparks slide off. mine's a sieve. i've set it alight twice. the cube slimes in units one-oh-one and one-oh-two are gelatin all the way through. twenty-five slimes, twelve gelatins? i'll seal one for you too."]
-    questAccept.ines-the-zenumist-cape: ["units one-oh-one and one-oh-two. the cube slimes. they wobble when you hit them. don't apologise. Aurel apologises. it's embarrassing."]
-    questWaiting.ines-the-zenumist-cape: ["twelve gelatins. my cape's smoking. slightly."]
-    questComplete.ines-the-zenumist-cape: ["twelve. sealed. here. a Zenumist's cape. sparks slide right off it. you're not Zenumist, so don't tell Phineas. tell everyone else."]
-    questOffer.ines-one-page-two-names: ["the proving's at noon. Ferro's hand and my flame on one table in the square. his mithril round my glass, our gelatin on his fingertips. i need three yeses. Ferro's, the Alcadno record's, and our archive's. would you ask them?"]
-    questAccept.ines-one-page-two-names: ["Ferro, in the Alcadno hall. Mathilde keeps their record, in the same hall. and Aurel, our archivist, by the Zenumist door in the mornings or by Phyllia after. Aurel will cry. let him."]
-    questWaiting.ines-one-page-two-names: ["three yeses. it's nearly noon. it's always nearly noon."]
-    questComplete.ines-one-page-two-names: ["noon. both pieces on one table in the square. Ferro's hand picked up my lamp and didn't crack the glass, and my flame didn't go out. both houses watched. Mathilde wrote it with one pen, Aurel with the other. one proving. two names. one page. ...i'm going to sit down now. i didn't realise i'd been standing for a hundred years."]
+    questOffer.oriane-the-cracking-glass: ["my proving piece is a flame that lives in glass and never goes out. the flame works. the glass doesn't. it cracks. the triple rumos in the lower units carry the society's best flasks. twenty-five rumos, twelve flasks? i'll crack them all and find out why."]
+    questAccept.oriane-the-cracking-glass: ["down through the Zenumist institute, units one-oh-two and one-oh-three. the triple ones. they come in threes. so do the flasks, if you're lucky."]
+    questWaiting.oriane-the-cracking-glass: ["twelve flasks. i've cracked my last one. i'm holding the flame in my hand. it's fine. it's fine."]
+    questComplete.oriane-the-cracking-glass: ["twelve. ...cracked, cracked, cracked. it isn't the glass. nothing Zenumist can hold this much heat. it wants a cage of Alcadno metal round it. Vael would buy one in an alley. i'm not buying anything in an alley."]
+    questOffer.oriane-the-zenumist-cape: ["every Zenumist wears the society's cape, sealed with gelatin so sparks slide off. mine's a sieve. i've set it alight twice. the cube slimes in units one-oh-one and one-oh-two are gelatin all the way through. twenty-five slimes, twelve gelatins? i'll seal one for you too."]
+    questAccept.oriane-the-zenumist-cape: ["units one-oh-one and one-oh-two. the cube slimes. they wobble when you hit them. don't apologise. Aurel apologises. it's embarrassing."]
+    questWaiting.oriane-the-zenumist-cape: ["twelve gelatins. my cape's smoking. slightly."]
+    questComplete.oriane-the-zenumist-cape: ["twelve. sealed. here. a Zenumist's cape. sparks slide right off it. you're not Zenumist, so don't tell Phineas. tell everyone else."]
+    questOffer.oriane-one-page-two-names: ["the proving's at noon. Ferro's hand and my flame on one table in the square. his mithril round my glass, our gelatin on his fingertips. i need three yeses. Ferro's, the Alcadno record's, and our archive's. would you ask them?"]
+    questAccept.oriane-one-page-two-names: ["Ferro, in the Alcadno hall. Mathilde keeps their record, in the same hall. and Aurel, our archivist, by the Zenumist door in the mornings or by Phyllia after. Aurel will cry. let him."]
+    questWaiting.oriane-one-page-two-names: ["three yeses. it's nearly noon. it's always nearly noon."]
+    questComplete.oriane-one-page-two-names: ["noon. both pieces on one table in the square. Ferro's hand picked up my lamp and didn't crack the glass, and my flame didn't go out. both houses watched. Mathilde wrote it with one pen, Aurel with the other. one proving. two names. one page. ...i'm going to sit down now. i didn't realise i'd been standing for a hundred years."]
     about.ferro: ["Ferro's the Alcadno apprentice. he punches things to see if they're well made. he punched my bench. it held. he looked so pleased. i haven't decided if i like him. i've decided i'm going to work with him."]
     about.phineas: ["Phineas keeps the door. he recites the rules every evening like prayers. he's never once stopped me going out it. i think the rules are for the door, not for him."]
     about.vael: ["Vael taught me fire. she also taught me that everyone knows and nobody says. i liked the first lesson better."]
@@ -99,7 +99,7 @@
   questLines: [phineas-the-squeaking-door, phineas-the-boy-in-the-hidden-room]
   rumors: [zenumist-the-doorkeepers-rule]
   relationships:
-    - { persona: ines, kind: KEEPS_THE_DOOR_FOR }
+    - { persona: oriane, kind: KEEPS_THE_DOOR_FOR }
     - { persona: mott, kind: OILED_BY }
     - { persona: aurel, kind: NODS_TO }
   giftItemIds: [4000353, 2022001]
@@ -112,7 +112,7 @@
     who: ["Phineas. i keep the door of the Zenumist Society. forty-one years. i know every rule of the house by heart. there are a hundred and twelve. i've broken three. i keep a list of those too."]
     bye: ["mind the step. it's rule one. nobody minds rule one."]
     thanks: ["the door thanks you. i'll pass it on."]
-    smallTalk: ["rule forty: no Alcadno brass past this threshold. it says nothing about Alcadno anything else. i've read it every morning for forty-one years to be sure.", "Ines goes out the door every evening and comes back late. the rule says the door shuts at ten. it doesn't say who shuts it. i shut it at eleven."]
+    smallTalk: ["rule forty: no Alcadno brass past this threshold. it says nothing about Alcadno anything else. i've read it every morning for forty-one years to be sure.", "Oriane goes out the door every evening and comes back late. the rule says the door shuts at ten. it doesn't say who shuts it. i shut it at eleven."]
     speakPlainly: ["plainly: a door, a hundred and twelve rules, and an old man who likes most of them."]
     questOffer.phineas-the-squeaking-door: ["the society door squeaks. it's squeaked forty-one years. i've only just noticed it squeaks less in the mornings. somebody's oiling it. ask Mott the sweeper if it's him. if it is, i'd like to say thank you. i'd like to say it through someone else."]
     questAccept.phineas-the-squeaking-door: ["Mott. he sweeps both houses. he's on the lower east streets of Magatia, mornings and evenings, with a broom and an opinion."]
@@ -122,7 +122,7 @@
     questAccept.phineas-the-boy-in-the-hidden-room: ["down through the institute, units one-oh-one and one-oh-three, for the rumos. the hidden room's through the door behind me. knock. he won't answer. go in anyway."]
     questWaiting.phineas-the-boy-in-the-hidden-room: ["twenty-five, and the boy. is he eating?"]
     questComplete.phineas-the-boy-in-the-hidden-room: ["writing, and a plate with crumbs on it? ...good. crumbs is eating. rule nineteen says the doorkeeper minds his own business. i've been minding that boy's since he was small."]
-    about.ines: ["Ines goes out the door every evening and comes back after it shuts. i shut it an hour late. the rules don't say who shuts it. she's the best apprentice the house has had in forty years. don't tell her. she'd set something on fire."]
+    about.oriane: ["Oriane goes out the door every evening and comes back after it shuts. i shut it an hour late. the rules don't say who shuts it. she's the best apprentice the house has had in forty years. don't tell her. she'd set something on fire."]
     about.ferro: ["the Alcadno apprentice waves at the Zenumist door every morning from across the square. nobody's waved at my door in forty-one years. i've started lifting one finger back. it's not a wave. it's a finger."]
     about.mott: ["Mott sweeps both houses. he's the only man allowed through both doors. i used to think the rules allowed it. i've checked. the rules never thought of it."]
     about.aurel: ["Aurel keeps the archive. he walks past my door every morning at the same time and nods. we've nodded for twenty years. it's a very good nod."]

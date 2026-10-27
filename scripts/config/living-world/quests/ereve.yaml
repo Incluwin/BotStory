@@ -137,27 +137,27 @@
     - { id: lining, type: DELIVER, to: celandine, take: { itemId: 4000005, count: 10 } }
   rewards: { meso: 2000, exp: 1000, bondPoints: 10 }
 
-# ---- Wynn, Thunder Breaker cadet ----
-- id: wynn-the-octopus-hold
-  persona: wynn
+# ---- Cadoc, Thunder Breaker cadet ----
+- id: cadoc-the-octopus-hold
+  persona: cadoc
   title: "Holding On"
   length: SHORT
   requires: { level: { min: 11 } }
   steps:
     - { id: talk, type: TALK }
     - { id: octopuses, type: KILL_MOBS, mobIds: [1120100], count: 25, mapIds: [102040000, 102040001] }
-    - { id: report, type: DELIVER, to: wynn }
+    - { id: report, type: DELIVER, to: cadoc }
   rewards: { meso: 3500, exp: 1600, bondPoints: 25, items: [{ itemId: 2000002, count: 15 }] }
 
-- id: wynn-kitchen-duty
-  persona: wynn
+- id: cadoc-kitchen-duty
+  persona: cadoc
   title: "Kitchen Duty"
   length: SHORT
-  requires: { level: { min: 14 }, questsCompleted: [wynn-the-octopus-hold] }
+  requires: { level: { min: 14 }, questsCompleted: [cadoc-the-octopus-hold] }
   steps:
     - { id: talk, type: TALK }
     - { id: caps, type: COLLECT_ITEM, itemId: 4000012, count: 12 }
-    - { id: stew, type: DELIVER, to: wynn, take: { itemId: 4000012, count: 12 } }
+    - { id: stew, type: DELIVER, to: cadoc, take: { itemId: 4000012, count: 12 } }
   rewards: { meso: 4000, exp: 2200, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
 
 # ---- Caius (recruit; earrings Amethyst / Leaf / Celestial) ----

@@ -75,7 +75,7 @@
   requires: { level: { min: 30 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: winifred, type: TALK_TO, persona: winifred, say: ["a story from a real sky sailor, in his own hand? the children will be impossible for a week. tell him thank you. tell him they've already drawn his ship. it has nine sails and a cat."] }
+    - { id: winifred, type: TALK_TO, persona: winifred, say: ["another story from Tibalt, in his own hand? the children will be impossible for a week. tell him thank you. tell him they've drawn his ship again. nine sails now, and a cat."] }
     - { id: report, type: DELIVER, to: tibalt }
   rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
 

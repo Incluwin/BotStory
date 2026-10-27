@@ -41,7 +41,7 @@
   steps:
     - { id: talk, type: TALK }
     - { id: osmund, type: TALK_TO, persona: osmund, say: ["the record of that glass. i'll read it, this once, because it's asked for the right way round. Midnight Harbor, the year 2099, a lamp lit in a window. the singer: Liv, born in Orbis, through the Tera Forest gate at seventeen. the listener: her granddaughter, Calla. ...take that to Solveig first. gently."] }
-    - { id: solveig, type: TALK_TO, persona: solveig, say: ["Liv. ...Liv lived. she kept a lamp by a sea and sang my song to her granddaughter. here. take the glass to the girl. tell her Liv's mother is at the temple door. tell her i'll write by every ship. i've walked the wrong road long enough."] }
+    - { id: solveig, type: TALK_TO, persona: solveig, say: ["Liv. ...Liv lived. she kept a lamp by a sea and sang my song to her granddaughter. here. take the glass to the girl. tell her Liv's mother is at the temple door. tell her i'll write with anybody going down to the gate. i've walked the wrong road long enough."] }
     - { id: home, type: DELIVER, to: calla }
   rewards: { meso: 40000, exp: 60000, bondPoints: 60, items: [{ itemId: 2000005, count: 10 }], worldFlags: [neo.gran.home] }
 
@@ -155,7 +155,7 @@
   persona: dashiell
   title: "The Ship over Leafre"
   length: SHORT
-  requires: { level: { min: 88 } }
+  requires: { level: { min: 90 } }
   steps:
     - { id: talk, type: TALK }
     - { id: guards, type: KILL_MOBS, mobIds: [8140511], count: 30, mapIds: [240070600, 240070601] }

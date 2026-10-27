@@ -16,7 +16,6 @@
         idle: ["(scrapes a yeti horn hollow with a short knife, blows through it, frowns, and scrapes again)", "(sets a cerebes tooth into a board of pegged holes and counts the row under his breath)"]
         smallTalk: ["Brenna says horn cracks in the heat down here unless it's tempered in the lava's breath. i don't know what that means. she does. that's enough.", "the man at the gate listens down the valley at dusk. Torsten. six years i've known his name. i've never heard his voice."]
         questOffer.hrafn-a-horn-for-the-door: ["a horn line wants spares. the passage eats them. twelve more yeti horns from up by Jeff's gate, and tell Torsten the line's coming."]
-        questComplete.hrafn-a-horn-for-the-door: ["twelve. spares for the line. thank you. ...he still listens at dusk? good."]
         chapterEnter: ["(lays a row of hollowed yeti horns along the ledge by the door, longest to shortest)"]
       unlocks:
         rumors: [door-to-zakum-the-horn]

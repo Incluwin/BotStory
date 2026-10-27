@@ -7,7 +7,7 @@
     everyDays: 1
   setsFlagOnListeners: temple.heard-liesl
   lines:
-    - { by: liesl, text: "you stood at the far door all morning, Caedmon. nothing came through." }
+    - { by: liesl, text: "you stood at the door to the roads all morning, Caedmon. nothing came through." }
     - { by: caedmon, text: "nothing came through because i stood there." }
     - { by: liesl, text: "or because nothing was coming." }
     - { by: caedmon, text: "you went past me at dawn with a full quiver and came back with an empty one. something was coming." }

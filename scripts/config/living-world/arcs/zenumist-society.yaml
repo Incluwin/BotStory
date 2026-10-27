@@ -1,11 +1,11 @@
 # Magatia societies arc (wave 4), a generation after Gilda and Aurel: a Zenumist apprentice whose proving flame needs an
 # Alcadno cage, and an Alcadno apprentice whose hand needs Zenumist softness. He walks the mithril through the Zenumist
 # front door in daylight (alcadno-society: ferro-in-daylight, world flag magatia.front-door.walked, once per server), and
-# they prove on one table in the square with both names on one page of both houses' books (ines-one-page-two-names,
+# they prove on one table in the square with both names on one page of both houses' books (oriane-one-page-two-names,
 # world flag magatia.proving.shared, once per server). Gilda and Aurel are touched only by an errand to Aurel and gossip;
 # nothing here waits on their bench.
-- id: ines-the-shared-proving
-  persona: ines
+- id: oriane-the-shared-proving
+  persona: oriane
   chapters:
     - id: chapter-1
       title: "Two Provings"
@@ -13,20 +13,19 @@
       title: "Glass That Cracks"
       dialogueOverrides:
         greet: ["hello. i need Alcadno metal. i'm going to ask for it. out loud. in the square.", "you're back. i've been glaring at the Alcadno door all morning. it hasn't opened. i'll glare harder."]
-        who: ["Ines. apprentice alchemist of the Zenumist. my proving flame needs an Alcadno cage, and i won't buy one in an alley the way everyone does. somebody has to walk it through the front door in daylight. i'm hoping it's the Alcadno apprentice. he's very stubborn. so am i."]
+        who: ["Oriane. apprentice alchemist of the Zenumist. my proving flame needs an Alcadno cage, and i won't buy one in an alley the way everyone does. somebody has to walk it through the front door in daylight. i'm hoping it's the Alcadno apprentice. he's very stubborn. so am i."]
         smallTalk: ["the Alcadno apprentice is Ferro. he's building a hand that can hold an egg. it crushes them. it wants something soft on the fingertips. we make soft. they make strong. it isn't complicated. it's only a hundred years old.", "Vael says she can get me mithril by tomorrow, no questions. i said no. she looked at me like i'd grown a second head. i might have. it's a better head."]
-        questComplete.ines-the-cracking-glass: ["twelve. ...cracked, cracked, cracked. it's not the glass. it wants an Alcadno cage, like i thought. i'm still not buying one in an alley."]
         chapterEnter: ["(sets a cracked flask on the sill with its flame still burning inside, and stares across the square at the Alcadno door)"]
     - id: chapter-3
       title: "In Daylight"
       enterWhen: { flags: [magatia.front-door.walked] }
       dialogueOverrides:
         greet: ["he walked it through the front door. at noon. Phineas held the door. half the house won't speak to Phineas. he's delighted.", "hello! the cage fits. the flame's happy. the glass is happy. i'm terrified."]
-        who: ["Ines. apprentice alchemist of the Zenumist. an Alcadno walked mithril through our front door in daylight, and the cage round my flame is his. now i want the proving on one table, both houses watching. i'm not good at waiting. i'm getting worse."]
+        who: ["Oriane. apprentice alchemist of the Zenumist. an Alcadno walked mithril through our front door in daylight, and the cage round my flame is his. now i want the proving on one table, both houses watching. i'm not good at waiting. i'm getting worse."]
         idle: ["(fits a fine mithril cage around a glowing flask and turns it slowly in the light)", "(holds a small flame cupped in her bare palm and squints at it like a stubborn student)"]
         smallTalk: ["Ferro carried the mithril through our door at noon, and i carried gelatin through theirs at one. both houses are pretending it didn't happen. both houses are talking about nothing else.", "it's proving season. i want one table, both pieces, both names. Mathilde keeps the Alcadno record. Ferro's asking her. he asks things like he's knocking down a wall."]
-        questOffer.ines-the-cracking-glass: ["the cage holds, but the flame still eats a flask a week. the triple rumos in the lower units carry the society's best. twenty-five rumos, twelve flasks? spares."]
-        questComplete.ines-the-cracking-glass: ["twelve. spares, for inside the cage. it holds them now. thank you."]
+        questOffer.oriane-the-cracking-glass: ["the cage holds, but the flame still eats a flask a week. the triple rumos in the lower units carry the society's best. twenty-five rumos, twelve flasks? spares."]
+        questComplete.oriane-the-cracking-glass: ["twelve. spares, for inside the cage. it holds them now. thank you."]
         chapterEnter: ["(fits a delicate mithril cage around a glowing flask and turns it slowly in the light)"]
       unlocks:
         rumors: [alcadno-the-record]
@@ -35,12 +34,12 @@
       enterWhen: { flags: [magatia.proving.shared] }
       dialogueOverrides:
         greet: ["one page, two names. it's in both books. i've checked both. twice.", "hello! the flame's still going. it hasn't gone out once. neither have i."]
-        who: ["Ines. apprentice alchemist of the Zenumist. Ferro and i made our provings on one table in the square, and both houses wrote both our names on one page. the first in a hundred years. i still don't like doors. i like them better open."]
+        who: ["Oriane. apprentice alchemist of the Zenumist. Ferro and i made our provings on one table in the square, and both houses wrote both our names on one page. the first in a hundred years. i still don't like doors. i like them better open."]
         idle: ["(holds up a caged flask whose flame burns steady and blue, and smiles at it)", "(waves across the square at the Alcadno hall, and somebody waves back)"]
         smallTalk: ["next spring's apprentices are asking if they can prove together too. Phineas says the rules don't forbid it. Mathilde says the record takes what happens. it's going to happen.", "Gilda and Aurel came to watch the proving. they sat on their bench at the edge of the square, very straight, with the tin between them. i'm not saying anything. i'm smiling, very loudly."]
         speakPlainly: ["plainly: one flame, one hand, one page."]
         about.ferro: ["Ferro. his hand picked up my lamp in front of both houses and didn't crack the glass. i've decided i like him. don't tell him. he'd punch something to celebrate."]
-        questOffer.ines-the-cracking-glass: ["the cage holds, but the flame still eats a flask a week. the triple rumos in the lower units carry the society's best. twenty-five rumos, twelve flasks? spares."]
-        questComplete.ines-the-cracking-glass: ["twelve. spares, for inside the cage. it holds them now. thank you."]
+        questOffer.oriane-the-cracking-glass: ["the cage holds, but the flame still eats a flask a week. the triple rumos in the lower units carry the society's best. twenty-five rumos, twelve flasks? spares."]
+        questComplete.oriane-the-cracking-glass: ["twelve. spares, for inside the cage. it holds them now. thank you."]
         friend.best: ["the flame that never goes out. the first one's on your windowsill. the second one's Ferro's. he knows he's second. he's pretending not to mind."]
         chapterEnter: ["(writes two names on a scrap of paper, one with each hand, and pins it to the Zenumist door)"]

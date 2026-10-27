@@ -15,7 +15,6 @@
         greet: ["hello. i'm cutting red. don't tell anyone. tell everyone. i haven't decided which.", "you're back. hold this end. no, the other end. it's silk. it's slippery."]
         who: ["Zahra. i sew for the quarter. there's a bolt of palace silk on my table that lay under my floor for eleven years, and i'm cutting it into costumes for the Tent of the Entertainers. my daughter's in the palace and my nephew's on the roofs. one of them's going to be very proud of me. i'm not sure which."]
         smallTalk: ["red silk, palace red, eleven years under my floor. Kasim's father carried it in off the road one night and said 'for the quarter'. i spent eleven years deciding what 'for the quarter' means. it means the tent.", "i haven't cut silk like this since i was a girl sewing for Zarek. the scissors remember. my hands are slower."]
-        questComplete.zahra-bells-for-the-hems: ["fifteen. listen to them. the red's going to ring when it turns."]
         chapterEnter: ["(lifts a loose board in her doorway and draws out a bolt of crimson silk, shaking eleven years of dust off it)"]
     - id: chapter-3
       title: "Lost to Sand"

@@ -50,7 +50,7 @@
     questWaiting.calla-the-harbor-listener: ["eight radars. i've cleared a space for the listener."]
     questComplete.calla-the-harbor-listener: ["eight! i clipped them in where Bettany marked. listen. ...that's the harbor. that's the foghorn. that's the same night. it's always the same night, isn't it. ...i don't hear gran. i don't know what i'd be listening for."]
     questOffer.calla-grans-name: ["Solveig at the temple has gran's song in a glass. an Eye of Time had it. it's mine. the gate took it and it went there. will you bring it to me? and the temple scribe reads the records. ask him whose song it is. i want gran's name back."]
-    questAccept.calla-grans-name: ["the Leafre ship goes by the Temple of Time. Three Doors. the scribe first, then Solveig. she'll want to know too."]
+    questAccept.calla-grans-name: ["Corba at Leafre Station flies people up to the Temple of Time. Three Doors. the scribe first, then Solveig. she'll want to know too."]
     questWaiting.calla-grans-name: ["did you get it? did he tell you her name?"]
     questComplete.calla-grans-name: ["(holds the glass to her ear) ...Liv. gran's name was Liv. she sang this every night the lamp was lit. i've got her face back. ...Solveig is gran's mother? then i've got somebody. here. gran said the gate goes home. she meant it."]
     about.augustin: ["Augustin keeps the logbook. he gave me a page of my own. i write the date at the top every morning so i don't lose any more of me."]
@@ -63,7 +63,7 @@
     aboutUnknown: ["i don't know them. i don't know most people here yet."]
     friend.close: ["you can have the second-best spot by the gate. it's next to mine."]
     friend.best: ["if i ever get home, i'll tell everybody about you. and if i don't, i've got you here. that's not nothing."]
-    famed: ["Augustin says people talk about you on the ship. good things. i told him i knew already."]
+    famed: ["Augustin says people talk about you at Leafre Station. good things. i told him i knew already."]
     defamed: ["somebody said something mean about you. i told Dashiell. he said he'd glare at them. he glares really hard."]
     gift: ["for me? thank you!"]
     gift.favorite: ["oh! we had these in 2099! the same! well, nearly. thank you!"]
@@ -93,7 +93,7 @@
   relationships:
     - { persona: calla, kind: LENDS_A_PAGE_TO }
     - { persona: bettany, kind: ARGUES_WITH }
-    - { persona: hessa, kind: GREW_UP_WITH }
+    - { persona: hessa, kind: WRITES_TO }
   giftItemIds: [2022001, 2020013]
   dialogue:
     greetFirst: ["name, and which way? through, or back? i log both. i'm Augustin. that part isn't in the log.", "a traveller. good morning. or evening. the gate makes it hard to say."]
@@ -120,7 +120,7 @@
     about.dashiell: ["Dashiell scouts the sky for Leafre. he logs the great ship of 2503 in a book of his own. his handwriting's a disgrace. his eyes aren't."]
     about.solveig: ["Solveig, at the temple. years ago she asked to read one line in my book. i let her. she's never asked for another. i'd not have refused her."]
     about.osmund: ["Osmund at the temple and i write about ink. he thinks beetle horn is common. it is. it holds."]
-    about.hessa: ["Hessa in Leafre and i were young together. she's kept that egg forty winters. i've kept this book fifty. neither of us knows when to stop. past a point, it's a good quality."]
+    about.hessa: ["Hessa in Leafre sends me a line now and then about her egg, and i copy it into the margin of the log. it's the only page that isn't about the gate. i read it more than the others."]
     aboutUnknown: ["not in the log. which only means they've never come this way."]
     friend.close: ["you've a column of your own now. not many do."]
     friend.best: ["if you ever go through and stay, i'll write it kindly. if you come back, i'll write it gladly. either way, i'll write it myself."]

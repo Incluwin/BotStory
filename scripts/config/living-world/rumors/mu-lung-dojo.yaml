@@ -10,12 +10,10 @@
   lines:
     - { by: shen, text: "the door's open, master Guo." }
     - { by: guo, text: "it's always open, Shen. that's what a door's for." }
-    - { by: shen, text: "the master asks after you. every year, on the day of the notice. through So Gong." }
-    - { by: guo, text: "and what do you tell him?" }
+    - { by: shen, text: "the master has asked after you every year since the notice went up. through So Gong." }
+    - { by: guo, text: "and what have you told him?" }
     - { by: shen, text: "the truth. that you came. that you sat. that you watched them go up." }
     - { by: guo, text: "...all true." }
-    - { by: shen, text: "a note would get up thirty-eight floors faster than a year." }
-    - { by: guo, text: "you're a very patient doorman, Shen. and a very impatient man." }
 
 - id: mu-lung-dojo-twenty-nine
   participants: [lianhua, shen]

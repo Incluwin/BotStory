@@ -3,7 +3,7 @@
 # 261020600, A-3 261020700), mithril mutae 4110302 (piece of mithril 4000359; area A-1 261020100, B-1 261020200), roid
 # 5110301 (wires 4000364; area C-1 261020300), the Zenumist Society hall 261000010.
 # Gear: Ferro's Alcadno's Cape 1102136 L35.
-# ferro-in-daylight is the middle beat of Ines's arc (arcs/zenumist-society.yaml) and happens once per server.
+# ferro-in-daylight is the middle beat of Oriane's arc (arcs/zenumist-society.yaml) and happens once per server.
 
 # ---- Ferro, apprentice engineer of the Alcadno (recruitable; kill proof) --------------------------------------------
 
@@ -40,13 +40,13 @@
   persona: ferro
   title: "In Daylight"
   length: MEDIUM
-  requires: { level: { min: 44 }, notFlags: [magatia.front-door.walked], questsCompleted: [ferro-knuckles-on-iron, ines-the-cracking-glass] }
+  requires: { level: { min: 44 }, notFlags: [magatia.front-door.walked], questsCompleted: [ferro-knuckles-on-iron, oriane-the-cracking-glass] }
   steps:
     - { id: talk, type: TALK }
     - { id: mutae, type: KILL_MOBS, mobIds: [4110302], count: 20, mapIds: [261020100, 261020200] }
     - { id: mithril, type: COLLECT_ITEM, itemId: 4000359, count: 10 }
     - { id: phineas, type: TALK_TO, persona: phineas, say: ["an Alcadno parcel at the Zenumist door, in plain daylight? rule forty says no Alcadno brass past this threshold. that's mithril. rule forty says nothing about mithril. ...tell the boy to come himself. tell him i'll hold the door."] }
-    - { id: ines, type: TALK_TO, persona: ines, say: ["mithril? from Ferro? not through Vael, not under a coat? ...tell him to bring it himself. at noon. through the front. i'll be standing in the door so everyone sees."] }
+    - { id: oriane, type: TALK_TO, persona: oriane, say: ["mithril? from Ferro? not through Vael, not under a coat? ...tell him to bring it himself. at noon. through the front. i'll be standing in the door so everyone sees."] }
     - { id: walk, type: DELIVER, to: ferro, take: { itemId: 4000359, count: 10 } }
   rewards: { meso: 15000, exp: 16000, bondPoints: 60, worldFlags: [magatia.front-door.walked] }
 

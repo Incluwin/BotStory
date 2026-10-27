@@ -55,6 +55,8 @@
     about.eira: ["Eira fed me soup till i remembered how to smile. she tells the story of the heroes leaving to anyone who sits still. i sat still. it's a good story."]
     about.saga: ["Saga copies my stance by the Giant Polearm every morning. hers is better. don't tell her i said so. she knows."]
     about.kjeld: ["Kjeld and i stand watch when the Murukuns come down. he points, i swing. he's said maybe ten words to me. all of them useful."]
+    about.ansgar: ["Ansgar lent me this coat when i came out of the ice. he tells everyone it's his. it is. i'm keeping it."]
+    about.tove: ["Tove's penguins sit under my polearm like it's a tree. i've stopped moving it. they looked hurt."]
     aboutUnknown: ["never met them. i've mostly met penguins."]
 
 # ---- Wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10): +6 Residents, 1 recruitable (Brynja). Eira, Tove, Ansgar,
@@ -94,7 +96,7 @@
     idle: ["(pulls an old patched shawl closer and hums something with no words)", "(watches the snow come down past the library door as if she were counting it)"]
     noWork: ["nothing today, dear. sit with me instead. that's work enough."]
     nothingDue: ["you owe me nothing, dear. a visit now and then."]
-    who: ["Eira. i'm the oldest in Rien. my grandmother told me about the day the heroes left, and her grandmother told her, and so on back to the one who stood on the hill and watched. nobody wrote it down. we don't, here. we tell it."]
+    who: ["Eira. i'm the oldest in Rien. my grandmother told me about the day the heroes left, and her grandmother told her, and so on back to the girl who stood on the shore and watched them go. nobody wrote it down. we don't, here. we tell it."]
     bye: ["mind the ice, dear."]
     thanks: ["bless you, dear."]
     smallTalk: ["grandmother said it was a grey morning when they left. she always started there. she said if you get the weather right, the rest follows.", "the Murupias in the second field have the warmest fur on the island. grandmother's shawl is half Murupia by now. the other half is darning."]
@@ -437,7 +439,7 @@
     about.ingrid: ["there's a halberdier at Lith Harbor, Ingrid. she spars with me on the dock while the boat turns round. she's never once let me win. i like her."]
     aboutUnknown: ["never met them. i haven't met most people. i'm working on it."]
     friend.close: ["wherever you go, i'll go. you only have to say."]
-    friend.best: ["you got me off the island. i'll never be able to say what that means. i'll keep the cold off your back instead."]
+    friend.best: ["if you ever take me off this island, i'll keep the cold off your back the whole way."]
     famed: ["even on the boat they're talking about you. i made them start again from the beginning."]
     defamed: ["somebody's saying things. Ansgar will tell me who. then i'll have a word."]
     gift: ["oh. thanks."]

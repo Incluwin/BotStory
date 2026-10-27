@@ -5,34 +5,34 @@
 # 230030001), poison poopa 4230201 (Crystal Gorge 230010100, Red Coral Forest 230010200, Turban Shell Hill 230010300),
 # sparker 4230123 (seal tooth 4000156; Turban Shell Hill, the west sea fork 230010400). Errands: Oriel and Sunniva in
 # Aquarium's Department Store (wave 3).
-# Gear: Nerys's Oxygen Tank 1102061 (L30 cape), a friendship-4 gift scaled by friendship.
+# Gear: Ondine's Oxygen Tank 1102061 (L30 cape), a friendship-4 gift scaled by friendship.
 
-# ---- Nerys, keeper of the dolphin ---------------------------------------------------------------------------------------
+# ---- Ondine, keeper of the dolphin ---------------------------------------------------------------------------------------
 
-- id: nerys-the-sharp-unknown
-  persona: nerys
+- id: ondine-the-sharp-unknown
+  persona: ondine
   title: "A Sore Nose"
   length: SHORT
   requires: { level: { min: 20 } }
   steps:
     - { id: talk, type: TALK }
     - { id: pinbooms, type: KILL_MOBS, mobIds: [2230108], count: 25, mapIds: [230030200, 230030100] }
-    - { id: report, type: DELIVER, to: nerys }
+    - { id: report, type: DELIVER, to: ondine }
   rewards: { meso: 5000, exp: 3000, bondPoints: 35 }
 
-- id: nerys-the-other-end
-  persona: nerys
+- id: ondine-the-other-end
+  persona: ondine
   title: "The Other End of the Rope"
   length: SHORT
   requires: { level: { min: 22 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: oriel, type: TALK_TO, persona: oriel, say: ["Nerys sent you? the pier lady! hello! what do i feed her? shrimp. from the krips by the seaweed tower. lots of shrimp. tell her i'm sorry. tell her i'm not sorry. tell her the dolphin says hello."] }
-    - { id: report, type: DELIVER, to: nerys }
+    - { id: oriel, type: TALK_TO, persona: oriel, say: ["Ondine sent you? the pier lady! hello! what do i feed her? shrimp. from the krips by the seaweed tower. lots of shrimp. tell her i'm sorry. tell her i'm not sorry. tell her the dolphin says hello."] }
+    - { id: report, type: DELIVER, to: ondine }
   rewards: { meso: 5000, exp: 3500, bondPoints: 35 }
 
-- id: nerys-the-oxygen-tank
-  persona: nerys
+- id: ondine-the-oxygen-tank
+  persona: ondine
   title: "A Breath You Didn't Bring"
   length: SHORT
   requires: { level: { min: 30 }, friendship: 4 }
@@ -40,7 +40,7 @@
     - { id: talk, type: TALK }
     - { id: cicos, type: KILL_MOBS, mobIds: [2230106], count: 20, mapIds: [230030000, 230030001] }
     - { id: horns, type: COLLECT_ITEM, itemId: 4000163, count: 10 }
-    - { id: valve, type: DELIVER, to: nerys, take: { itemId: 4000163, count: 10 } }
+    - { id: valve, type: DELIVER, to: ondine, take: { itemId: 4000163, count: 10 } }
   rewards:
     meso: 7000
     exp: 5000

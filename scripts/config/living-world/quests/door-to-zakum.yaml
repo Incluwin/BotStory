@@ -134,7 +134,7 @@
     - { id: talk, type: TALK }
     - { id: firebombs, type: KILL_MOBS, mobIds: [5100002], count: 25, mapIds: [211042000, 211042200] }
     - { id: flames, type: COLLECT_ITEM, itemId: 4000081, count: 10 }
-    - { id: vigdis, type: TALK_TO, persona: vigdis, say: ["tempered? good. then they won't split in the passage. i'll hang them on my way up. one at every stretch between the door and the sharp cliffs, two in the passage. it's the one that swallows people. the gate's horn is Hrafn's to send."] }
+    - { id: vigdis, type: TALK_TO, persona: vigdis, say: ["Brenna's tempering them? good. tempered horn won't split in the passage. tell her i'll take them up on my next climb. one at every stretch between the door and the sharp cliffs, two in the passage. it's the one that swallows people. the gate's horn is Hrafn's to send."] }
     - { id: temper, type: DELIVER, to: brenna, take: { itemId: 4000081, count: 10 } }
   rewards: { meso: 16000, exp: 17000, bondPoints: 60, items: [{ itemId: 2000002, count: 20 }], worldFlags: [el-nath.horns.hung] }
 

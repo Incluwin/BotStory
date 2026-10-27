@@ -31,7 +31,7 @@
   steps:
     - { id: talk, type: TALK }
     - { id: mushrooms, type: KILL_MOBS, mobIds: [5250000], count: 25, mapIds: [300020100, 300020200] }
-    - { id: teodor, type: TALK_TO, persona: teodor, say: ["the haze line? this morning it stood at the foot of the mushroom hill, three paces further than yesterday. tell her to draw it in pencil. it'll move again by tonight."] }
+    - { id: casimir, type: TALK_TO, persona: casimir, say: ["the haze line? this morning it stood at the foot of the mushroom hill, three paces further than yesterday. tell her to draw it in pencil. it'll move again by tonight."] }
     - { id: report, type: DELIVER, to: ottavia }
   rewards: { meso: 15000, exp: 16000, bondPoints: 40 }
   onComplete: { arcAdvance: { arc: ottavia-the-map-of-the-forest, to: chapter-3 } }
@@ -101,12 +101,12 @@
 
 - id: ewan-supper-for-the-mountain
   persona: ewan
-  title: "Supper for the Mountain"
+  title: "A Pinch off the Mountain"
   length: SHORT
   requires: { level: { min: 40 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: maelis, type: TALK_TO, persona: maelis, say: ["supper? ...he sends it every night and i never go in. tell him the boar was good. tell him i'll come in when the mountain's quiet. it's never quiet."] }
+    - { id: maelis, type: TALK_TO, persona: maelis, say: ["the lick? ...it's the boars'. it's why they stay up the mountain and out of his pot. tell him a handful a week, from me, and he's never to come looking for it. never."] }
     - { id: report, type: DELIVER, to: ewan }
   rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
 
@@ -122,10 +122,10 @@
     - { id: pile, type: DELIVER, to: ewan, take: { itemId: 4000438, count: 15 } }
   rewards: { meso: 9000, exp: 8000, bondPoints: 10 }
 
-# ---- Teodor, herbalist of the poison haze ---------------------------------------------------------------------------
+# ---- Casimir, herbalist of the poison haze ---------------------------------------------------------------------------
 
-- id: teodor-spores-under-glass
-  persona: teodor
+- id: casimir-spores-under-glass
+  persona: casimir
   title: "Spores Under Glass"
   length: SHORT
   requires: { level: { min: 52 } }
@@ -133,11 +133,11 @@
     - { id: talk, type: TALK }
     - { id: mushrooms, type: KILL_MOBS, mobIds: [5250000], count: 25, mapIds: [300020100, 300020200] }
     - { id: spores, type: COLLECT_ITEM, itemId: 4000437, count: 12 }
-    - { id: glass, type: DELIVER, to: teodor, take: { itemId: 4000437, count: 12 } }
+    - { id: glass, type: DELIVER, to: casimir, take: { itemId: 4000437, count: 12 } }
   rewards: { meso: 15000, exp: 16000, bondPoints: 35 }
 
-- id: teodor-leather-masks
-  persona: teodor
+- id: casimir-leather-masks
+  persona: casimir
   title: "Masks Against the Haze"
   length: SHORT
   requires: { level: { min: 54 } }
@@ -145,19 +145,19 @@
     - { id: talk, type: TALK }
     - { id: boars, type: KILL_MOBS, mobIds: [5250002], count: 20, mapIds: [300010400] }
     - { id: hides, type: COLLECT_ITEM, itemId: 4000440, count: 10 }
-    - { id: masks, type: DELIVER, to: teodor, take: { itemId: 4000440, count: 10 } }
+    - { id: masks, type: DELIVER, to: casimir, take: { itemId: 4000440, count: 10 } }
   rewards: { meso: 15000, exp: 17000, bondPoints: 35 }
 
-- id: teodor-more-spores
-  persona: teodor
+- id: casimir-more-spores
+  persona: casimir
   title: "The Book Grows"
   length: SHORT
   repeatable: true
-  requires: { level: { min: 52 }, questsCompleted: [teodor-spores-under-glass] }
+  requires: { level: { min: 52 }, questsCompleted: [casimir-spores-under-glass] }
   steps:
     - { id: talk, type: TALK }
     - { id: spores, type: COLLECT_ITEM, itemId: 4000437, count: 15 }
-    - { id: glass, type: DELIVER, to: teodor, take: { itemId: 4000437, count: 15 } }
+    - { id: glass, type: DELIVER, to: casimir, take: { itemId: 4000437, count: 15 } }
   rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
 
 # ---- Rosalind, fairy jeweller (her earrings) ------------------------------------------------------------------------
