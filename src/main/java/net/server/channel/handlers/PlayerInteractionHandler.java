@@ -31,7 +31,6 @@ import client.inventory.manipulator.InventoryManipulator;
 import client.inventory.manipulator.KarmaManipulator;
 import config.YamlConfig;
 import constants.game.GameConstants;
-import constants.id.ItemId;
 import constants.inventory.ItemConstants;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
@@ -50,7 +49,7 @@ import server.maps.FieldLimit;
 import server.maps.HiredMerchant;
 import server.maps.MapObject;
 import server.maps.MiniGame;
-import server.maps.MiniGame.MiniGameType;
+import server.maps.MiniGameRules;
 import server.maps.PlayerShop;
 import server.maps.PlayerShopItem;
 import server.maps.reservation.CharacterSpaceReservation;
@@ -164,81 +163,15 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                 byte createType = p.readByte();
                 if (createType == 3) {  // trade
                     Trade.startTrade(chr);
-                } else if (createType == 1) { // omok mini game
-                    int status = establishMiniroomStatus(chr, true);
-                    if (status > 0) {
-                        chr.sendPacket(PacketCreator.getMiniRoomError(status));
-                        return;
-                    }
-
+                } else if (createType == 1 || createType == 2) { // omok, match cards (MiniGameRules)
                     String desc = p.readString();
-                    String pw;
-
-                    if (p.readByte() != 0) {
-                        pw = p.readString();
-                    } else {
-                        pw = "";
-                    }
-
+                    String pw = p.readByte() != 0 ? p.readString() : "";
                     int type = p.readByte();
-                    if (type > 11) {
-                        type = 11;
-                    } else if (type < 0) {
-                        type = 0;
-                    }
-                    if (!chr.haveItem(ItemId.MINI_GAME_BASE + type)) {
-                        chr.sendPacket(PacketCreator.getMiniRoomError(6));
-                        return;
-                    }
-
-                    MiniGame game = new MiniGame(chr, desc, pw);
-                    chr.setMiniGame(game);
-                    game.setPieceType(type);
-                    game.setGameType(MiniGameType.OMOK);
-                    chr.getMap().addMapObject(game);
-                    chr.getMap().broadcastMessage(PacketCreator.addOmokBox(chr, 1, 0));
-                    game.sendOmok(c, type);
-                } else if (createType == 2) { // matchcard
-                    int status = establishMiniroomStatus(chr, true);
-                    if (status > 0) {
-                        chr.sendPacket(PacketCreator.getMiniRoomError(status));
-                        return;
-                    }
-
-                    String desc = p.readString();
-                    String pw;
-
-                    if (p.readByte() != 0) {
-                        pw = p.readString();
+                    if (createType == 1) {
+                        MiniGameRules.createOmok(chr, desc, pw, type);
                     } else {
-                        pw = "";
+                        MiniGameRules.createMatchCard(chr, desc, pw, type);
                     }
-
-                    int type = p.readByte();
-                    if (type > 2) {
-                        type = 2;
-                    } else if (type < 0) {
-                        type = 0;
-                    }
-                    if (!chr.haveItem(ItemId.MATCH_CARDS)) {
-                        chr.sendPacket(PacketCreator.getMiniRoomError(6));
-                        return;
-                    }
-
-                    MiniGame game = new MiniGame(chr, desc, pw);
-                    game.setPieceType(type);
-                    if (type == 0) {
-                        game.setMatchesToWin(6);
-                    } else if (type == 1) {
-                        game.setMatchesToWin(10);
-                    } else if (type == 2) {
-                        game.setMatchesToWin(15);
-                    }
-                    game.setGameType(MiniGameType.MATCH_CARD);
-                    chr.setMiniGame(game);
-                    chr.getMap().addMapObject(game);
-                    chr.getMap().broadcastMessage(PacketCreator.addMatchCardBox(chr, 1, 0));
-                    game.sendMatchCard(c, type);
                 } else if (createType == 4 || createType == 5) { // shop
                     if (!GameConstants.isFreeMarketRoom(chr.getMapId())) {
                         chr.sendPacket(PacketCreator.getMiniRoomError(15));
@@ -349,25 +282,7 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                     } else if (ob instanceof MiniGame game) {
                         p.skip(1);
                         String pw = p.available() > 1 ? p.readString() : "";
-
-                        if (game.checkPassword(pw)) {
-                            if (game.hasFreeSlot() && !game.isVisitor(chr)) {
-                                game.addVisitor(chr);
-                                chr.setMiniGame(game);
-                                switch (game.getGameType()) {
-                                    case OMOK:
-                                        game.sendOmok(c, game.getPieceType());
-                                        break;
-                                    case MATCH_CARD:
-                                        game.sendMatchCard(c, game.getPieceType());
-                                        break;
-                                }
-                            } else {
-                                chr.sendPacket(PacketCreator.getMiniRoomError(2));
-                            }
-                        } else {
-                            chr.sendPacket(PacketCreator.getMiniRoomError(22));
-                        }
+                        MiniGameRules.visit(chr, game, pw);
                     } else if (ob instanceof HiredMerchant merchant && chr.getHiredMerchant() == null) {
                         merchant.visitShop(chr);
                     }
@@ -382,10 +297,7 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                         shop.chat(c, p.readString());
                     }
                 } else if (chr.getMiniGame() != null) {
-                    MiniGame game = chr.getMiniGame();
-                    if (game != null) {
-                        game.chat(c, p.readString());
-                    }
+                    MiniGameRules.chat(chr, p.readString());
                 } else if (merchant != null) {
                     merchant.sendMessage(chr, p.readString());
                 }
@@ -441,97 +353,28 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                     chr.getMap().broadcastMessage(PacketCreator.spawnHiredMerchantBox(merchant));
                 }
             } else if (mode == Action.READY.getCode()) {
-                MiniGame game = chr.getMiniGame();
-                game.broadcast(PacketCreator.getMiniGameReady(game));
+                MiniGameRules.ready(chr, true);
             } else if (mode == Action.UN_READY.getCode()) {
-                MiniGame game = chr.getMiniGame();
-                game.broadcast(PacketCreator.getMiniGameUnReady(game));
+                MiniGameRules.ready(chr, false);
             } else if (mode == Action.START.getCode()) {
-                MiniGame game = chr.getMiniGame();
-                if (game.getGameType().equals(MiniGameType.OMOK)) {
-                    game.minigameMatchStarted();
-                    game.broadcast(PacketCreator.getMiniGameStart(game, game.getLoser()));
-                    chr.getMap().broadcastMessage(PacketCreator.addOmokBox(game.getOwner(), 2, 1));
-                } else if (game.getGameType().equals(MiniGameType.MATCH_CARD)) {
-                    game.minigameMatchStarted();
-                    game.shuffleList();
-                    game.broadcast(PacketCreator.getMatchCardStart(game, game.getLoser()));
-                    chr.getMap().broadcastMessage(PacketCreator.addMatchCardBox(game.getOwner(), 2, 1));
-                }
+                MiniGameRules.start(chr);
             } else if (mode == Action.GIVE_UP.getCode()) {
-                MiniGame game = chr.getMiniGame();
-                if (game.getGameType().equals(MiniGameType.OMOK)) {
-                    if (game.isOwner(chr)) {
-                        game.minigameMatchVisitorWins(true);
-                    } else {
-                        game.minigameMatchOwnerWins(true);
-                    }
-                } else if (game.getGameType().equals(MiniGameType.MATCH_CARD)) {
-                    if (game.isOwner(chr)) {
-                        game.minigameMatchVisitorWins(true);
-                    } else {
-                        game.minigameMatchOwnerWins(true);
-                    }
-                }
+                MiniGameRules.giveUp(chr);
             } else if (mode == Action.REQUEST_TIE.getCode()) {
-                MiniGame game = chr.getMiniGame();
-                if (!game.isTieDenied(chr)) {
-                    if (game.isOwner(chr)) {
-                        game.broadcastToVisitor(PacketCreator.getMiniGameRequestTie(game));
-                    } else {
-                        game.broadcastToOwner(PacketCreator.getMiniGameRequestTie(game));
-                    }
-                }
+                MiniGameRules.requestTie(chr);
             } else if (mode == Action.ANSWER_TIE.getCode()) {
-                MiniGame game = chr.getMiniGame();
-                if (p.readByte() != 0) {
-                    game.minigameMatchDraw();
-                } else {
-                    game.denyTie(chr);
-
-                    if (game.isOwner(chr)) {
-                        game.broadcastToVisitor(PacketCreator.getMiniGameDenyTie(game));
-                    } else {
-                        game.broadcastToOwner(PacketCreator.getMiniGameDenyTie(game));
-                    }
-                }
+                MiniGameRules.answerTie(chr, p.readByte() != 0);
             } else if (mode == Action.SKIP.getCode()) {
-                MiniGame game = chr.getMiniGame();
-                if (game.isOwner(chr)) {
-                    game.broadcast(PacketCreator.getMiniGameSkipOwner(game));
-                } else {
-                    game.broadcast(PacketCreator.getMiniGameSkipVisitor(game));
-                }
+                MiniGameRules.skip(chr);
             } else if (mode == Action.MOVE_OMOK.getCode()) {
                 int x = p.readInt(); // x point
                 int y = p.readInt(); // y point
                 int type = p.readByte(); // piece ( 1 or 2; Owner has one piece, visitor has another, it switches every game.)
-                chr.getMiniGame().setPiece(x, y, type, chr);
+                MiniGameRules.moveOmok(chr, x, y, type);
             } else if (mode == Action.SELECT_CARD.getCode()) {
                 int turn = p.readByte(); // 1st turn = 1; 2nd turn = 0
                 int slot = p.readByte(); // slot
-                MiniGame game = chr.getMiniGame();
-                int firstslot = game.getFirstSlot();
-                if (turn == 1) {
-                    game.setFirstSlot(slot);
-                    if (game.isOwner(chr)) {
-                        game.broadcastToVisitor(PacketCreator.getMatchCardSelect(game, turn, slot, firstslot, turn));
-                    } else {
-                        game.getOwner().sendPacket(PacketCreator.getMatchCardSelect(game, turn, slot, firstslot, turn));
-                    }
-                } else if ((game.getCardId(firstslot)) == (game.getCardId(slot))) {
-                    if (game.isOwner(chr)) {
-                        game.broadcast(PacketCreator.getMatchCardSelect(game, turn, slot, firstslot, 2));
-                        game.setOwnerPoints();
-                    } else {
-                        game.broadcast(PacketCreator.getMatchCardSelect(game, turn, slot, firstslot, 3));
-                        game.setVisitorPoints();
-                    }
-                } else if (game.isOwner(chr)) {
-                    game.broadcast(PacketCreator.getMatchCardSelect(game, turn, slot, firstslot, 0));
-                } else {
-                    game.broadcast(PacketCreator.getMatchCardSelect(game, turn, slot, firstslot, 1));
-                }
+                MiniGameRules.selectCard(chr, turn, slot);
             } else if (mode == Action.SET_MESO.getCode()) {
                 chr.getTrade().setMeso(p.readInt());
             } else if (mode == Action.SET_ITEMS.getCode()) {
@@ -867,25 +710,11 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                     shop.banPlayer(p.readString());
                 }
             } else if (mode == Action.EXPEL.getCode()) {
-                MiniGame miniGame = chr.getMiniGame();
-                if (miniGame != null && miniGame.isOwner(chr)) {
-                    Character visitor = miniGame.getVisitor();
-
-                    if (visitor != null) {
-                        visitor.closeMiniGame(false);
-                        visitor.sendPacket(PacketCreator.getMiniGameClose(true, 5));
-                    }
-                }
+                MiniGameRules.expel(chr);
             } else if (mode == Action.EXIT_AFTER_GAME.getCode()) {
-                MiniGame miniGame = chr.getMiniGame();
-                if (miniGame != null) {
-                    miniGame.setQuitAfterGame(chr, true);
-                }
+                MiniGameRules.leaveAfterGame(chr, true);
             } else if (mode == Action.CANCEL_EXIT_AFTER_GAME.getCode()) {
-                MiniGame miniGame = chr.getMiniGame();
-                if (miniGame != null) {
-                    miniGame.setQuitAfterGame(chr, false);
-                }
+                MiniGameRules.leaveAfterGame(chr, false);
             }
         } finally {
             c.releaseClient();
