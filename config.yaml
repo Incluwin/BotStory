@@ -1099,6 +1099,15 @@ living_world:
     BOSS_EVENT_SCRIPTS: "BalrogBattle,BalrogBattle_Easy,ZakumBattle,HorntailBattle,PinkBeanBattle,ScargaBattle,ShowaBattle,PapulatusBattle,LatanicaBattle,TD_Battle1,TD_Battle2,TD_Battle3,TD_Battle4,TD_Battle5"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
+    # Tell audit (2026-10-26, docs/BOT_CONCEPT_PLAN.md C2): measures how bot-like the bots look - reaction times to
+    # new mobs and chat questions, each citizen's chat cadence and repeated lines, idle bots stacked on one spot, time
+    # online and AFK on fields, repeated walk routes, the HP point bots drink at, when they recast buffs, and deaths per
+    # class. GET /runtime/tells shows each value with its "looks human" band and a red/amber/green verdict; every hour
+    # an audit.tells row goes to living_event_log with the build sha; tools\tells-report.ps1 compares two builds.
+    # Technical: collectors sit at existing chokepoints (AgentTellProbe for the Agent engine; ChatterEngine,
+    # PresenceScheduler and the death hook), add to bounded running totals, and ride the population social tick for the
+    # minute sample and the hourly fold. Read at boot. false = the kill switch: nothing is measured or written.
+    TELL_AUDIT_ENABLED: false
     # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
     # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
     # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,

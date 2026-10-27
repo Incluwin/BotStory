@@ -1714,6 +1714,33 @@ public final class LivingStore {
         }
     }
 
+    /** A living_event_log row written for no character (an hourly audit row): when, and its detail. */
+    public record WorldEvent(long atMs, String detail) {
+    }
+
+    /**
+     * The newest {@code limit} rows of {@code kind} written for no character, oldest first (the tell audit's history);
+     * empty when the read fails. character_id NULL leads idx_living_event_character, so this reads only those rows.
+     */
+    public List<WorldEvent> worldEvents(String kind, int limit) {
+        String sql = SqlTime.utc("SELECT at, detail FROM living_event_log WHERE character_id IS NULL AND kind = ?"
+                + " ORDER BY id DESC LIMIT ?");
+        List<WorldEvent> rows = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, kind);
+            ps.setInt(2, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new WorldEvent(SqlTime.get(rs, 1), rs.getString(2)));
+                }
+            }
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("living_event_log read of {} failed", kind, failure);
+        }
+        java.util.Collections.reverse(rows);
+        return rows;
+    }
+
     /**
      * One living_event_log row's kind and detail; read as a GM level record ({@link #latestGmLevel}), {@code kept} is
      * true when any release of that record was a keep (a {@code gm.level.release} row with the detail {@code keep}).

@@ -34,6 +34,7 @@ import server.knowledge.IntList;
 import server.knowledge.KnownWorld;
 import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorld;
+import server.living.audit.TellAudit;
 import server.living.config.LivingContent;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Cohort;
@@ -571,6 +572,7 @@ public final class PresenceScheduler {
     private void book(CitizenSession session) {
         Citizen citizen = population.citizen(session.characterId);
         if (citizen != null) {
+            TellAudit.session(session.characterId, session.startedAtMs, System.currentTimeMillis());
             int minutes = (int) Math.max(0L, (Math.min(System.currentTimeMillis(), session.endsAtMs) - session.startedAtMs) / 60_000L);
             population.save(citizen.withLedger(System.currentTimeMillis(), citizen.accruedExp(), citizen.scheduledMinutes() + minutes));
             if (!session.journal.isEmpty()) {
@@ -920,6 +922,9 @@ public final class PresenceScheduler {
         session.lastPlanAtMs = now;
         if (random.nextInt(100) < 15) {
             session.afkUntilMs = now + (5 + random.nextInt(11)) * 60_000L;
+            if (TellAudit.active() != null) {
+                TellAudit.afk(population.fields().kind(session.mapId), session.afkUntilMs - now);
+            }
             population.chatter().event(ChatterEngine.Event.of("afk", session.mapId, session.channel).self(session));
             if (session.entry != null) {
                 AgentMovementCommandRuntime.stop(session.entry);

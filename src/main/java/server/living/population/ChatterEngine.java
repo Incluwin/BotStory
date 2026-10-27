@@ -11,6 +11,7 @@ import server.agents.capabilities.dialogue.AgentChatTextSanitizer;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.integration.AgentPresence;
+import server.living.audit.TellAudit;
 import server.living.population.PopulationContent.Intent;
 import server.living.population.PopulationContent.Lobby;
 import server.maps.MapleMap;
@@ -486,6 +487,7 @@ public final class ChatterEngine {
                     default -> AgentDialogueTransportRuntime.sayMapNow(agent, clean);
                 }
                 linesSpoken.incrementAndGet();
+                TellAudit.chatLine(session.characterId, session.mapId, channel, clean, System.currentTimeMillis());
                 session.journal.add("said", "said \"" + clean + "\"");
                 remember(session.name() + " [" + channel + " " + population.fields().name(session.mapId) + "]: " + clean);
                 log.debug("[chatter] {} ({}) @{}: {}", session.name(), channel, session.mapId, clean);

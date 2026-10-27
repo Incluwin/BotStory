@@ -8,6 +8,7 @@ import net.server.Server;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import net.server.world.World;
+import server.agents.capabilities.behavior.AgentTellProbe;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
 import server.agents.social.conversation.AgentSocialDialogueRuntime;
 import server.agents.social.conversation.AgentSocialDialogueRuntime.Styled;
@@ -253,6 +254,7 @@ public final class ContentChat {
         long[] think = think(answer);
         long base = think[0] + (long) (rng.nextDouble() * (think[1] - think[0])) + (long) msPerChar * text.length();
         long total = Math.min(MAX_DELAY_MS, Math.round(base * (1 - JITTER + 2 * JITTER * rng.nextDouble())));
+        AgentTellProbe.chatReply(total);
         if (total <= SPLIT_AFTER_MS) {
             return List.of(new Line(text, total));
         }

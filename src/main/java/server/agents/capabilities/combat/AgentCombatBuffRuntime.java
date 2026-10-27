@@ -21,6 +21,7 @@ import constants.skills.NightLord;
 import constants.skills.Paladin;
 import constants.skills.Shadower;
 import server.StatEffect;
+import server.agents.capabilities.behavior.AgentTellProbe;
 import server.agents.capabilities.dialogue.AgentCombatDialogueReporter;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.integration.SkillGateway;
@@ -343,6 +344,7 @@ public final class AgentCombatBuffRuntime {
             AgentSkillBuffDebugStateRuntime.rememberAction(entry, System.currentTimeMillis(), readinessSummary);
             return false;
         }
+        int recastPercent = AgentTellProbe.on() ? recastPercent(bot, skill.getId(), fx, now) : -1;
         if (!AgentSupportSpecialMoveExecutor.dispatch(bot, skill, skillLevel)) {
             AgentSkillBuffDebugStateRuntime.rememberAction(
                     entry,
@@ -350,6 +352,9 @@ public final class AgentCombatBuffRuntime {
                     AgentCombatSupportPolicy.supportSpecialMoveFailedSummary(
                             AgentCombatDialogueReporter.combatSkillLabel(skill.getId())));
             return false;
+        }
+        if (recastPercent >= 0) {
+            AgentTellProbe.buffRecast(recastPercent);
         }
 
         AgentSkillShowcase.used(entry, bot, skill.getId());
@@ -373,5 +378,15 @@ public final class AgentCombatBuffRuntime {
                 AgentCombatSupportPolicy.supportCastSummary(
                         AgentCombatDialogueReporter.combatSkillLabel(skill.getId())));
         return true;
+    }
+
+    /** How far through its duration the bot's own running cast of this buff is, in percent (the tell audit); else -1. */
+    private static int recastPercent(Character bot, int skillId, StatEffect fx, long now) {
+        long dur = fx.getDuration();
+        if (dur <= 0 || fx.getStatups().isEmpty() || !bot.hasBuffFromSourceid(skillId)) {
+            return -1;
+        }
+        Long startedAt = bot.getBuffedStarttime(fx.getStatups().get(0).getLeft());
+        return startedAt == null ? -1 : (int) Math.max(0, Math.min(100, (now - startedAt) * 100 / dur));
     }
 }

@@ -323,6 +323,28 @@ It also carries the auditor's status, which `GET /runtime/companions/audit` retu
 the roster row (ACTIVE: seated again; BENCHED/AWAY: taken out of the party), logs `companion.drift` to
 `living_event_log`, and tries once per episode (a repair that does not hold is logged once more as stuck).
 
+## Tell audit
+
+How bot-like the bots look, per build (docs/BOT_CONCEPT_PLAN.md C2). Off unless `living_world.TELL_AUDIT_ENABLED`
+(read at boot). It measures from the boot on, from where bots already act: the reaction to a new set of mobs
+(`AgentCombatBehaviorRuntime.responseReady`; a bot with no behaviour calibration, which only the Maple Island cohort
+configures, acts on the tick it first sees them and is timed at 0 ms) and a content chat reply's delay
+(`ContentChat.timed`), each citizen's gaps
+between chatter lines and a line said again on one map within 10 min (`ChatterEngine`), idle bots standing 3 or more
+within 30 px (a minute sample of every loaded bot), each citizen's share of the last 7 days online and AFK spells by
+map kind (`PresenceScheduler`), the route of each host-started walk (`AgentMapWalk`, hashed per bot, from and to map),
+the HP point autopot drinks at and how far through a buff it is recast, and bot deaths per class and activity with the
+bot-hours behind them. Deaths are not a tell: they are the guard the imperfections work (F8) is held to.
+
+`GET /runtime/tells` gives each measure's value, its "looks human" band and a verdict (`GREEN`, `AMBER`, `RED`,
+`NO_DATA` until it has enough samples, `INFO`). The red lines are the plan's (per-bot reaction CV under 0.25, 5th
+percentile under 150 ms, over 60% of repeat walks retraced, over 80% of drinks or recasts at one value, a citizen
+online over 20 h a day, any AFK over 2 min on a field); the amber margins are priors for the 24 h baseline to settle
+(`server.living.audit.TellBands`). Every hour an `audit.tells` row (no character) goes to `living_event_log`:
+`b=<build> h=<hours> <code>=<value>:<G|A|R|-|i> ... d=<class>:<deaths>/<botHours>,... da=field:n,boss:n,instance:n`.
+The build is the checkout's HEAD at boot. `tools\tells-report.ps1` compares two builds from those rows
+(`GET /runtime/tells/history`), or two saved `/runtime/tells` JSON files; with no arguments, the two newest builds.
+
 ## Authoring
 
 MapleEdit has a **Living World** page (`/living`): the content tree with every id, a one-file
@@ -427,6 +449,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 | client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `tools/wz-patcher/residents.py`, `MapleEdit/app/living_world_quests.py` |
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
+| tell audit | `server.living.audit.*`, Agent seam `AgentTellProbe`, `AdminTellsReader` (`/runtime/tells`), `tools\tells-report.ps1` |
 
 ## Not done yet (from the plan)
 
