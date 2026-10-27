@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 2,
+  "profileId": "orbis-park",
+  "mapId": 200000200,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -205,
+    "middleMaxY": 132,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "in00", "weight": 30 },
+    { "name": "east00", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -2100, "y": 143, "seatId": -1 },
+    { "x": -1770, "y": -67, "seatId": -1 },
+    { "x": -1430, "y": -67, "seatId": -1 },
+    { "x": -995, "y": 143, "seatId": -1 },
+    { "x": -555, "y": 143, "seatId": -1 },
+    { "x": -330, "y": -67, "seatId": -1 },
+    { "x": -85, "y": 143, "seatId": -1 },
+    { "x": 170, "y": 143, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1930, "y": 143 },
+    { "x": -1845, "y": 143 },
+    { "x": -1760, "y": 143 },
+    { "x": -1675, "y": 143 },
+    { "x": -1505, "y": 143 },
+    { "x": -1420, "y": 143 },
+    { "x": -1250, "y": 143 },
+    { "x": -355, "y": 143 }
+  ],
+  "npcSpots": [
+    { "npcId": 2010004, "offsetX": -85 },
+    { "npcId": 1002103, "offsetX": 85 },
+    { "npcId": 2012018, "offsetX": 85 },
+    { "npcId": 2010003, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-hide1", "type": "PORTAL", "minX": -784, "minY": -905, "maxX": -714, "maxY": -805, "excludesOccupancy": true },
+    { "id": "portal-hide1-1", "type": "PORTAL", "minX": -936, "minY": -1828, "maxX": -866, "maxY": -1728, "excludesOccupancy": true },
+    { "id": "portal-east00", "type": "PORTAL", "minX": 247, "minY": 71, "maxX": 387, "maxY": 196, "excludesOccupancy": true },
+    { "id": "door-in01", "type": "DOOR", "minX": -1709, "minY": -253, "maxX": -1589, "maxY": -138, "excludesOccupancy": true },
+    { "id": "portal-in00", "type": "PORTAL", "minX": -241, "minY": -139, "maxX": -101, "maxY": -14, "excludesOccupancy": true },
+    { "id": "door-in02", "type": "DOOR", "minX": -263, "minY": -814, "maxX": -143, "maxY": -699, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -560, "minY": -665, "maxX": -470, "maxY": -350, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": -889, "minY": -263, "maxX": -799, "maxY": 153, "excludesOccupancy": true },
+    { "id": "ladder-2", "type": "LADDER", "minX": -47, "minY": -125, "maxX": 43, "maxY": 153, "excludesOccupancy": true },
+    { "id": "ladder-3", "type": "LADDER", "minX": -1618, "minY": -125, "maxX": -1528, "maxY": 153, "excludesOccupancy": true },
+    { "id": "npc-2010004", "type": "NPC_LANE", "minX": -1219, "minY": -355, "maxX": -1089, "maxY": -225, "excludesOccupancy": true },
+    { "id": "npc-2012010", "type": "NPC_LANE", "minX": -1013, "minY": -295, "maxX": -883, "maxY": -165, "excludesOccupancy": true },
+    { "id": "npc-2012018", "type": "NPC_LANE", "minX": -821, "minY": 53, "maxX": -691, "maxY": 183, "excludesOccupancy": true },
+    { "id": "npc-1002103", "type": "NPC_LANE", "minX": -545, "minY": 53, "maxX": -415, "maxY": 183, "excludesOccupancy": true },
+    { "id": "npc-2010003", "type": "NPC_LANE", "minX": -493, "minY": -697, "maxX": -363, "maxY": -567, "excludesOccupancy": true },
+    { "id": "npc-9010022", "type": "NPC_LANE", "minX": -316, "minY": 53, "maxX": -176, "maxY": 183, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -2270, "y": 143, "seatId": -1 }, { "x": -2185, "y": 143, "seatId": -1 }, { "x": -2100, "y": 143, "seatId": -1 }, { "x": -2015, "y": 143, "seatId": -1 }] },
+    { "id": "middle-west-street", "label": "Middle west street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1855, "y": -67, "seatId": -1 }, { "x": -1770, "y": -67, "seatId": -1 }, { "x": -1685, "y": -67, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1515, "y": -67, "seatId": -1 }, { "x": -1430, "y": -67, "seatId": -1 }] },
+    { "id": "by-ericsson", "label": "By Ericsson", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1165, "y": 143, "seatId": -1 }, { "x": -1080, "y": 143, "seatId": -1 }, { "x": -995, "y": 143, "seatId": -1 }, { "x": -910, "y": 143, "seatId": -1 }] },
+    { "id": "by-captain-al", "label": "By Captain Al", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -625, "y": 143, "seatId": -1 }, { "x": -555, "y": 143, "seatId": -1 }] },
+    { "id": "middle-east-street", "label": "Middle east street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -415, "y": -67, "seatId": -1 }, { "x": -330, "y": -67, "seatId": -1 }, { "x": -245, "y": -67, "seatId": -1 }] },
+    { "id": "by-neve", "label": "By Neve", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -255, "y": -607, "seatId": -1 }, { "x": -170, "y": -607, "seatId": -1 }, { "x": -85, "y": -607, "seatId": -1 }, { "x": 0, "y": -607, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -170, "y": 143, "seatId": -1 }, { "x": -85, "y": 143, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 85, "y": 143, "seatId": -1 }, { "x": 170, "y": 143, "seatId": -1 }] },
+    { "id": "beside-corporal-wilson", "label": "Beside Corporal Wilson", "district": "UPPER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -1069, "y": -265, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "orbis-park-corporal-wilson", "type": "GENERAL_SHOP", "npcId": 2010004, "destinationMapId": 0,
+      "approachPoints": [{ "x": -1069, "y": -265 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-ericsson-crowd", "venueId": "by-ericsson", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "middle-east-street-crowd", "venueId": "middle-east-street", "attractionWeight": 110, "softCapacity": 2, "hardCapacity": 3 }
+  ]
+}

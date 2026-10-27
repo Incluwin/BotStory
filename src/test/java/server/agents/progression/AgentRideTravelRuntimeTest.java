@@ -31,6 +31,7 @@ class AgentRideTravelRuntimeTest {
     private static final int TRAIN_PLATFORM_GATE = 200000121;
     private static final int TRAIN_PLATFORM = 200000120;
     private static final int LEAFRE_PLATFORM = 240000110;
+    private static final int LEAFRE_STATION_ENTRANCE = 240000100;
     private static final int KERNING_SUBWAY = 103000100;
     private static final int NEW_LEAF_CITY = 600000000;
     private static final int HAK_TO_MU_LUNG = 200090300;
@@ -195,9 +196,12 @@ class AgentRideTravelRuntimeTest {
 
     @Test
     void anErrandToTheSellerNeverBoardsARideWhoseTicketItLacks() {
-        mapId = LEAFRE_PLATFORM; // no walk leads off it: only the ride to Orbis, which needs a ticket
+        mapId = LEAFRE_PLATFORM; // the ride to Orbis needs a ticket; Mue sells it past the platform's exit (dracoout)
 
-        assertEquals(AgentVictoriaRouteRuntime.Status.NO_ROUTE, travel(ORBIS, 1_000L).status());
+        AgentVictoriaRouteRuntime.TravelOutcome outcome = travel(ORBIS, 1_000L);
+
+        assertEquals(AgentVictoriaRouteRuntime.Status.MOVING, outcome.status());
+        assertEquals(LEAFRE_STATION_ENTRANCE, outcome.nextMapId(), "it walks out to the seller first");
         verify(gateway, never()).runNpcScript(any(), anyInt(), any(int[].class));
     }
 

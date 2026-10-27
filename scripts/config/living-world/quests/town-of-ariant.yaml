@@ -1,0 +1,157 @@
+# The Town of Ariant quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own
+# data: bellamoa 2100105 (snake rattle 4000328; White Rock Desert 260010300, Bellamoa's Cave 260010301), meerkat 2100108
+# (stiff feather 4003004 at 20%; outside the north entrance 260020000, north desert road 1 260020100), scorpion 2110301
+# (Sahel 2 260020600, the desert of dreams 260020620, Sahel 1 260020700), dark sand dwarf 3110301 (the desert of serenity
+# 260020610, the desert of dreams 260020620), Rocky Hill 260010401 (off the Scorching Desert, the Red Scorpions' door),
+# Pyramid Dunes 926010000 (the piramid00 portal on Sahel 3); Magatia's homunculus 7110301 (units 202/203
+# 261010102/261010103) and homunscullo 8110300 (unit 202).
+# Gear: Kasim's belts of Nett's Pyramid, Pharaoh Belt 1132012 L40 / The Immortal Pharaoh Belt 1132013 L80.
+# The arc's last beat (zahra-red-under-the-lanterns) happens once per server; its middle beat is Yusra's
+# (quests/ariant-castle.yaml).
+
+# ---- Zahra, seamstress of the residential quarter: her arc ---------------------------------------------------------
+
+- id: zahra-bells-for-the-hems
+  persona: zahra
+  title: "Bells for the Hems"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bellamoas, type: KILL_MOBS, mobIds: [2100105], count: 25, mapIds: [260010300, 260010301] }
+    - { id: rattles, type: COLLECT_ITEM, itemId: 4000328, count: 15 }
+    - { id: hems, type: DELIVER, to: zahra, take: { itemId: 4000328, count: 15 } }
+  rewards: { meso: 5000, exp: 3500, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: zahra-the-red-silk, to: chapter-2 } }
+
+- id: zahra-measure-the-tent
+  persona: zahra
+  title: "Measured in the Sun"
+  length: SHORT
+  requires: { level: { min: 22 }, questsCompleted: [zahra-bells-for-the-hems] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepita, type: TALK_TO, persona: pepita, say: ["measure me? hold still? i've never held still in my life. ...arms out. like this? tell her i grew. tell her i'm sorry i grew."] }
+    - { id: rafi, type: TALK_TO, persona: rafi, say: ["a costume? tell her loose sleeves. fire likes a loose sleeve. no. fire likes a tight sleeve. i like a loose one. ...tell her tight. she'll know what i mean."] }
+    - { id: zarek, type: TALK_TO, persona: zarek, say: ["a new coat? from Zahra? ...tell her my chest is what it was thirty years ago. it isn't. tell her that anyway. she'll know the real number. she always did."] }
+    - { id: numbers, type: DELIVER, to: zahra }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 35 }
+
+- id: zahra-bandit-red
+  persona: zahra
+  title: "Sand-Bandit Red"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yasmin, type: TALK_TO, persona: yasmin, say: ["sand-bandit red? Zahra asked for it by that name? ...nobody's said that name to me out loud in years. here. two skeins. it's the red i sold Sefa, once. tell her the dye's the same as it ever was. so's the reason."] }
+    - { id: sash, type: DELIVER, to: zahra }
+  rewards: { meso: 4000, exp: 3000, bondPoints: 30 }
+
+- id: zahra-red-under-the-lanterns
+  persona: zahra
+  title: "Red Under the Lanterns"
+  length: MEDIUM
+  requires: { level: { min: 28 }, flags: [ariant.heard-silk], notFlags: [ariant.silk.worn], questsCompleted: [zahra-measure-the-tent] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zarek, type: TALK_TO, persona: zarek, say: ["the quarter? tonight? in red? ...forty years i've waited to say yes to that. tell her we'll come in through the east door at dusk. tell her to light every lantern she owns. and tell her i won't drop one. not this time."] }
+    - { id: darius, type: TALK_TO, persona: darius, say: ["the night the tent plays the quarter? i'm off duty that night. i've just decided. i'll be at the back of the crowd. i'll see a great deal of red silk and i'll see nothing. tell her both."] }
+    - { id: kasim, type: TALK_TO, persona: kasim, say: ["i'll be on the roofs. if anyone from the palace comes down the street, i whistle twice. nobody will come. i'll whistle anyway. it's a good whistle."] }
+    - { id: lanterns, type: DELIVER, to: zahra }
+  rewards: { meso: 12000, exp: 10000, bondPoints: 60, items: [{ itemId: 2022155, count: 10 }], worldFlags: [ariant.silk.worn] }
+
+# ---- Idris, palace messenger ----------------------------------------------------------------------------------------
+
+- id: idris-quills-for-the-quarter
+  persona: idris
+  title: "Quills for the Quarter"
+  length: SHORT
+  requires: { level: { min: 27 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: meerkats, type: KILL_MOBS, mobIds: [2100108], count: 25, mapIds: [260020000, 260020100] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 8 }
+    - { id: quills, type: DELIVER, to: idris, take: { itemId: 4003004, count: 8 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 35 }
+
+- id: idris-a-letter-for-the-wardrobe
+  persona: idris
+  title: "A Letter for the Wardrobe"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yusra, type: TALK_TO, persona: yusra, say: ["a letter from my mother? by a visitor's hand, because the palace reads hers? ...thank you. tell Idris i read it twice. tell her the wardrobe's cold and i'm warm."] }
+    - { id: report, type: DELIVER, to: idris }
+  rewards: { meso: 4000, exp: 3000, bondPoints: 30 }
+
+- id: idris-the-caravan-post
+  persona: idris
+  title: "The Quarter's Post"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tariq, type: TALK_TO, persona: tariq, say: ["the quarter's post? a sack, every dusk, off the Magatia road. half for the palace men, half for the quarter. the quarter's half comes off the camel first. the palace can wait. it's got shade. tell Idris the station door at dusk, same as always."] }
+    - { id: report, type: DELIVER, to: idris }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 30 }
+
+# ---- Kasim, sand-bandit lookout (recruitable; Nett's Pyramid belts) -------------------------------------------------
+
+- id: kasim-named-for-the-small-ones
+  persona: kasim
+  title: "Named for the Small Ones"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: scorpions, type: KILL_MOBS, mobIds: [2110301], count: 30, mapIds: [260020600, 260020620, 260020700] }
+    - { id: rock, type: VISIT_MAP, mapIds: [260010401] }
+    - { id: report, type: DELIVER, to: kasim }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 30 }
+
+- id: kasim-the-pharaoh-belt
+  persona: kasim
+  title: "The Pharaoh's Belt"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 5, questsCompleted: [kasim-named-for-the-small-ones] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dwarves, type: KILL_MOBS, mobIds: [3110301], count: 30, mapIds: [260020610, 260020620] }
+    - { id: dunes, type: VISIT_MAP, mapIds: [926010000] }
+    - { id: belt, type: DELIVER, to: kasim }
+  rewards:
+    meso: 40000
+    exp: 40000
+    bondPoints: 35
+    gear:
+      - { pool: [1132012], scrolls: [{ success: 100 }] }
+
+- id: kasim-the-immortal-pharaoh
+  persona: kasim
+  title: "The Immortal Pharaoh"
+  length: LONG
+  requires: { level: { min: 80 }, friendship: 10, questsCompleted: [kasim-the-pharaoh-belt] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: homunculi, type: KILL_MOBS, mobIds: [7110301], count: 30, mapIds: [261010102, 261010103] }
+    - { id: scullos, type: KILL_MOBS, mobIds: [8110300], count: 5, mapIds: [261010102] }
+    - { id: belt, type: DELIVER, to: kasim }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { pool: [1132013], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: kasim-my-fathers-rule
+  persona: kasim
+  title: "My Father's Rule"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sefa, type: TALK_TO, persona: sefa, say: ["Kasim's father? ...two years he rode with us. never took a cup of water off anyone. not even when we were dry. tell the boy that. and tell him i see him on the roofs. i'm watching. he knows."] }
+    - { id: report, type: DELIVER, to: kasim }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 35 }

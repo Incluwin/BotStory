@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "profileId": "zenumist-society",
+  "mapId": 261000010,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 20,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -255,
+    "middleMaxY": 22,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -19, "y": 33, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [],
+  "npcSpots": [
+    { "npcId": 2111000, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-down00", "type": "PORTAL", "minX": -253, "minY": -39, "maxX": -113, "maxY": 86, "excludesOccupancy": true },
+    { "id": "door-in00", "type": "DOOR", "minX": 46, "minY": -323, "maxX": 166, "maxY": -208, "excludesOccupancy": true },
+    { "id": "portal-out00", "type": "PORTAL", "minX": 22, "minY": -37, "maxX": 162, "maxY": 88, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -471, "minY": -313, "maxX": -381, "maxY": -61, "excludesOccupancy": true },
+    { "id": "npc-2111000", "type": "NPC_LANE", "minX": -369, "minY": -199, "maxX": -239, "maxY": -69, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "zenumist-hidden-room-door", "label": "Zenumist - Hidden Room door", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -105, "y": -255, "seatId": -1 }, { "x": -35, "y": -255, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -104, "y": 33, "seatId": -1 }, { "x": -19, "y": 33, "seatId": -1 }] },
+    { "id": "zenumist-hidden-room-entrance", "label": "Zenumist - Hidden Room entrance", "district": "UPPER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 6, "y": -255, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "zenumist-society-zenumist-hidden-room", "type": "OTHER", "npcId": 0, "destinationMapId": 261000011,
+      "approachPoints": [{ "x": 6, "y": -255 }],
+      "services": ["enter"] }
+  ],
+  "hotspots": []
+}

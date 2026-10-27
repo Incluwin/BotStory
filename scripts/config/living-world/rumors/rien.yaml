@@ -1,0 +1,29 @@
+# Rien rumors (wave 4). Each pair is awake together at its spot in those hours (personas/rien.yaml).
+- id: rien-the-warm-road
+  participants: [brynja, ansgar]
+  where: { town: rien, spot: "venue:by-pusla" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: rien.heard-brynja
+  lines:
+    - { by: ansgar, text: "you've been staring at the boat again, Brynja." }
+    - { by: brynja, text: "the boat's been staring at me. it goes to Lith Harbor every day and i never stay on it." }
+    - { by: ansgar, text: "the cold doesn't stop at the shore, you know. you'll miss it." }
+    - { by: brynja, text: "then i'll take some with me. whoever takes me off this island gets a polearm at their back the whole way, and the warmest things in Rien besides." }
+    - { by: ansgar, text: "i'll tell anyone who asks. i'll tell anyone who doesn't." }
+    - { by: brynja, text: "you tell everyone everything, Ansgar. that's why i said it in front of you." }
+
+- id: rien-the-old-story
+  participants: [eira, saga]
+  where: { town: rien, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [17, 18]
+    everyDays: 1
+  lines:
+    - { by: saga, text: "tell it again, Grandmother Eira. the leaving part." }
+    - { by: eira, text: "a grey morning, little one. four went down to the shore. one went up into the ice." }
+    - { by: saga, text: "why did one stay?" }
+    - { by: eira, text: "because somebody had to be here when the dark came back. grandmother always said that part slowly." }
+    - { by: saga, text: "i'd have stayed too." }
+    - { by: eira, text: "i know you would. that's why i keep telling it." }

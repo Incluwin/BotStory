@@ -1,0 +1,295 @@
+# Amoria quests (wave 4). Fields: the purple plains 680010000/680010100 (blue snail 100101 blue snail shell 4000000, red
+# snail 130101 red snail shell 4000016, slime 210100 squishy liquid 4000004, orange mushroom 1210102 orange mushroom
+# cap 4000001, dark stump 1110101 leaf 4000005 on 680010100 only); Purplewood Forest 670000100/670000200 and the plains
+# (sakura cellion 9400509 cellion tail 4000070 at 20%); Purplewood only (indigo eye 9400515, crystal boar 9400516: kill
+# only, no usable drops). Henesys fields past Thomas Swift: Monkey Forest 100040101-100040110 (lupin 3210800 lupin doll
+# 4000026 / lupin's banana 4000029 / stiff feather 4003004 at 20% on 100040101-100040103 and 100040110, zombie lupin
+# 4230101 cursed doll 4000031 on 100040101, 100040103-100040106) and the Forest of Evil 100040105/100040106 (malady
+# 5300100 malady's experimental frog 4000041). The thread's Amoria beats: Pernille's errand to Hadrik in Lith Harbor
+# and her answer, sent from Florina's look-out shed 110010000; both happen once per server. The recruits give gloves
+# and hats made for the player's class in Amoria's band (30-50).
+
+# ---- Pernille: forty springs (arcs/amoria.yaml, with arcs/florina-beach.yaml) ----
+- id: pernille-garlands-for-the-steps
+  persona: pernille
+  title: "Garlands for the Chapel Door"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [1110101], count: 20, mapIds: [680010100] }
+    - { id: leaves, type: COLLECT_ITEM, itemId: 4000005, count: 15 }
+    - { id: garland, type: DELIVER, to: pernille, take: { itemId: 4000005, count: 15 } }
+  rewards: { meso: 1500, exp: 1200, bondPoints: 30, items: [{ itemId: 2000001, count: 15 }] }
+
+- id: pernille-what-the-sea-said
+  persona: pernille
+  title: "What the Sea Said"
+  length: MEDIUM
+  requires: { level: { min: 30 }, questsCompleted: [pernille-garlands-for-the-steps], flags: [amoria.letter.read], notFlags: [amoria.gull.remembered] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hadrik, type: TALK_TO, persona: hadrik, say: ["the Silver Gull. i was a boy on her deck. spring storm off Florina, forty years back. she went down. i went over the side first. the bosun came in after me. Aurelio. he got me to a spar. he didn't get one for himself. ...tell her that."] }
+    - { id: back, type: DELIVER, to: pernille }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 40, items: [{ itemId: 2000002, count: 20 }], worldFlags: [amoria.gull.remembered] }
+
+- id: pernille-forty-years-late
+  persona: pernille
+  title: "Forty Years Late"
+  length: LONG
+  requires: { level: { min: 35 }, questsCompleted: [pernille-garlands-for-the-steps], flags: [amoria.gull.remembered, amoria.heard-steps], notFlags: [florina.answer.sent] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: marisol, type: TALK_TO, persona: marisol, say: ["a letter for the sea? from Pernille? ...oh. i know the tide for it. the evening ebb runs out past the point, right where the Gull went down. come up to the look-out shed with me. we'll send it together."] }
+    - { id: shed, type: VISIT_MAP, mapIds: [110010000] }
+    - { id: gone, type: DELIVER, to: pernille }
+  rewards: { meso: 20000, exp: 20000, bondPoints: 50, items: [{ itemId: 2000004, count: 5 }], worldFlags: [florina.answer.sent] }
+
+# ---- Rafael (recruit; gloves for the player's class in Amoria's band) ----
+- id: rafael-the-cellion-run
+  persona: rafael
+  title: "A Fast Morning"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cellions, type: KILL_MOBS, mobIds: [9400509], count: 30, mapIds: [670000100, 670000200, 680010000, 680010100] }
+    - { id: done, type: DELIVER, to: rafael }
+  rewards: { meso: 8000, exp: 8000, bondPoints: 30, flags: [rafael.intro.done] }
+
+- id: rafael-gloves-for-the-forest
+  persona: rafael
+  title: "Gloves for the Forest"
+  length: MEDIUM
+  requires: { level: { min: 30 }, friendship: 5, questsCompleted: [rafael-the-cellion-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cellions, type: KILL_MOBS, mobIds: [9400509], count: 30, mapIds: [670000100, 670000200, 680010000, 680010100] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000070, count: 10 }
+    - { id: lining, type: DELIVER, to: rafael, take: { itemId: 4000070, count: 10 } }
+  rewards:
+    meso: 20000
+    exp: 15000
+    bondPoints: 35
+    gear:
+      - { pool: [1082006, 1082052, 1082049, 1082043, 1082189], scrolls: [{ success: 100 }] }
+
+- id: rafael-gloves-for-the-challenge
+  persona: rafael
+  title: "Gloves for the Challenge"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 7, questsCompleted: [rafael-gloves-for-the-forest] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [9400516], count: 30, mapIds: [670000100, 670000200] }
+    - { id: eyes, type: KILL_MOBS, mobIds: [9400515], count: 30, mapIds: [670000100, 670000200] }
+    - { id: earned, type: DELIVER, to: rafael }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 50
+    gear:
+      - { pool: [1082024, 1082063, 1082072, 1082075, 1082192], scrolls: [{ success: 60 }] }
+
+- id: rafael-gloves-for-the-long-road
+  persona: rafael
+  title: "Gloves for the Long Road"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [rafael-gloves-for-the-challenge] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: maladies, type: KILL_MOBS, mobIds: [5300100], count: 40, mapIds: [100040105, 100040106] }
+    - { id: walked, type: DELIVER, to: rafael }
+  rewards:
+    meso: 45000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1082010, 1082081, 1082084, 1082066, 1082232], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: rafael-cellion-tails
+  persona: rafael
+  title: "Tails for Moony's Cloths"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 }, questsCompleted: [rafael-the-cellion-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000070, count: 10 }
+    - { id: cloths, type: DELIVER, to: rafael, take: { itemId: 4000070, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }
+
+# ---- Liesel (recruit; hats for the player's class in Amoria's band) ----
+- id: liesel-the-forest-watch
+  persona: liesel
+  title: "The Staring Road"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [9400515], count: 30, mapIds: [670000100, 670000200] }
+    - { id: done, type: DELIVER, to: liesel }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 30 }
+
+- id: liesel-a-hat-for-the-chapel
+  persona: liesel
+  title: "A Hat for the Chapel"
+  length: MEDIUM
+  requires: { level: { min: 35 }, friendship: 5, questsCompleted: [liesel-the-forest-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 30, mapIds: [100040101, 100040102, 100040103, 100040110] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000026, count: 10 }
+    - { id: children, type: DELIVER, to: liesel, take: { itemId: 4000026, count: 10 } }
+  rewards:
+    meso: 22000
+    exp: 17000
+    bondPoints: 35
+    gear:
+      - { pool: [1002048, 1002142, 1002138, 1002177, 1002994], scrolls: [{ success: 100 }] }
+
+- id: liesel-a-hat-for-the-blessing
+  persona: liesel
+  title: "A Hat for the Blessing"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 7, questsCompleted: [liesel-a-hat-for-the-chapel] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zombies, type: KILL_MOBS, mobIds: [4230101], count: 30, mapIds: [100040101, 100040103, 100040104, 100040105, 100040106] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000031, count: 10 }
+    - { id: blessed, type: DELIVER, to: liesel, take: { itemId: 4000031, count: 10 } }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 50
+    gear:
+      - { pool: [1002093, 1002154, 1002169, 1002184, 1002628], scrolls: [{ success: 60 }] }
+
+- id: liesel-a-hat-for-the-cathedral
+  persona: liesel
+  title: "A Hat for the Cathedral"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [liesel-a-hat-for-the-blessing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: maladies, type: KILL_MOBS, mobIds: [5300100], count: 30, mapIds: [100040105, 100040106] }
+    - { id: frogs, type: COLLECT_ITEM, itemId: 4000041, count: 10 }
+    - { id: fountain, type: DELIVER, to: liesel, take: { itemId: 4000041, count: 10 } }
+  rewards:
+    meso: 45000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1002086, 1002217, 1002213, 1002209, 1002676], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: liesel-cursed-dolls
+  persona: liesel
+  title: "There Are Always More Curses"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 40 }, questsCompleted: [liesel-the-forest-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000031, count: 10 }
+    - { id: burned, type: DELIVER, to: liesel, take: { itemId: 4000031, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }
+
+# ---- Clotilde ----
+- id: clotilde-sugared-caps
+  persona: clotilde
+  title: "Sugared Caps"
+  length: SHORT
+  requires: { level: { min: 8 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [1210102], count: 20, mapIds: [680010000, 680010100] }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000001, count: 15 }
+    - { id: sugar, type: DELIVER, to: clotilde, take: { itemId: 4000001, count: 15 } }
+  rewards: { meso: 1200, exp: 900, bondPoints: 30, items: [{ itemId: 2000000, count: 20 }] }
+
+- id: clotilde-a-cake-for-the-groom
+  persona: clotilde
+  title: "A Cake for the Groom"
+  length: SHORT
+  requires: { level: { min: 35 }, questsCompleted: [clotilde-sugared-caps] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 20, mapIds: [100040101, 100040102, 100040103, 100040110] }
+    - { id: bananas, type: COLLECT_ITEM, itemId: 4000029, count: 15 }
+    - { id: loaf, type: DELIVER, to: clotilde, take: { itemId: 4000029, count: 15 } }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }
+
+# ---- Lorenzo ----
+- id: lorenzo-a-ring-box
+  persona: lorenzo
+  title: "A Box for a Ring"
+  length: SHORT
+  requires: { level: { min: 5 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [130101], count: 15, mapIds: [680010000, 680010100] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000016, count: 15 }
+    - { id: box, type: DELIVER, to: lorenzo, take: { itemId: 4000016, count: 15 } }
+  rewards: { meso: 800, exp: 600, bondPoints: 30, items: [{ itemId: 2000000, count: 15 }] }
+
+- id: lorenzo-practice-for-the-challenge
+  persona: lorenzo
+  title: "Practice for the Challenge"
+  length: SHORT
+  requires: { level: { min: 36 }, questsCompleted: [lorenzo-a-ring-box] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [9400516], count: 20, mapIds: [670000100, 670000200] }
+    - { id: eyes, type: KILL_MOBS, mobIds: [9400515], count: 20, mapIds: [670000100, 670000200] }
+    - { id: notes, type: DELIVER, to: lorenzo }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }
+
+# ---- Ines ----
+- id: ines-polish-from-the-plains
+  persona: ines
+  title: "Polish from the Plains"
+  length: SHORT
+  requires: { level: { min: 6 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [210100], count: 20, mapIds: [680010000, 680010100] }
+    - { id: liquid, type: COLLECT_ITEM, itemId: 4000004, count: 15 }
+    - { id: polish, type: DELIVER, to: ines, take: { itemId: 4000004, count: 15 } }
+  rewards: { meso: 1000, exp: 800, bondPoints: 30, items: [{ itemId: 2000003, count: 15 }] }
+
+- id: ines-cellion-tail-cloth
+  persona: ines
+  title: "The Softest Cloth"
+  length: SHORT
+  requires: { level: { min: 32 }, questsCompleted: [ines-polish-from-the-plains] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cellions, type: KILL_MOBS, mobIds: [9400509], count: 25, mapIds: [670000100, 670000200, 680010000, 680010100] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000070, count: 8 }
+    - { id: cloth, type: DELIVER, to: ines, take: { itemId: 4000070, count: 8 } }
+  rewards: { meso: 8000, exp: 8000, bondPoints: 35, items: [{ itemId: 2000006, count: 10 }] }
+
+# ---- Valentin ----
+- id: valentin-blue-ink
+  persona: valentin
+  title: "Blue Ink"
+  length: SHORT
+  requires: { level: { min: 3 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [100101], count: 15, mapIds: [680010000, 680010100] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000000, count: 15 }
+    - { id: ink, type: DELIVER, to: valentin, take: { itemId: 4000000, count: 15 } }
+  rewards: { meso: 600, exp: 400, bondPoints: 30, items: [{ itemId: 2000000, count: 10 }] }
+
+- id: valentin-a-new-quill
+  persona: valentin
+  title: "A New Quill"
+  length: SHORT
+  requires: { level: { min: 35 }, questsCompleted: [valentin-blue-ink] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 20, mapIds: [100040101, 100040102, 100040103, 100040110] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 5 }
+    - { id: quill, type: DELIVER, to: valentin, take: { itemId: 4003004, count: 5 } }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }

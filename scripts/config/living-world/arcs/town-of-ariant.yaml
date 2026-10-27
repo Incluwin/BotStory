@@ -1,0 +1,61 @@
+# Ariant arc (wave 4), across the three Ariant maps: a bolt of palace silk the sand bandits brought in off the road eleven
+# years ago, cut by the quarter's seamstress into costumes for the Tent of the Entertainers (tent), found written off as
+# 'lost to sand' in the queen's wardrobe ledger by her daughter (castle; yusra-the-silk-ledger, world flag
+# ariant.silk.unmissed, once per server), and worn the night the tent plays the quarter again, forty years after Zarek
+# dropped a torch in the town square (zahra-red-under-the-lanterns, world flag ariant.silk.worn, once per server). The last
+# chapter only reads wave 2's ariant.well.flowing for flavour; nothing here waits on it.
+- id: zahra-the-red-silk
+  persona: zahra
+  chapters:
+    - id: chapter-1
+      title: "Under the Floor"
+    - id: chapter-2
+      title: "Bells for the Hems"
+      dialogueOverrides:
+        greet: ["hello. i'm cutting red. don't tell anyone. tell everyone. i haven't decided which.", "you're back. hold this end. no, the other end. it's silk. it's slippery."]
+        who: ["Zahra. i sew for the quarter. there's a bolt of palace silk on my table that lay under my floor for eleven years, and i'm cutting it into costumes for the Tent of the Entertainers. my daughter's in the palace and my nephew's on the roofs. one of them's going to be very proud of me. i'm not sure which."]
+        smallTalk: ["red silk, palace red, eleven years under my floor. Kasim's father carried it in off the road one night and said 'for the quarter'. i spent eleven years deciding what 'for the quarter' means. it means the tent.", "i haven't cut silk like this since i was a girl sewing for Zarek. the scissors remember. my hands are slower."]
+        chapterEnter: ["(lifts a loose board in her doorway and draws out a bolt of crimson silk, shaking eleven years of dust off it)"]
+    - id: chapter-3
+      title: "Lost to Sand"
+      enterWhen: { flags: [ariant.silk.unmissed] }
+      dialogueOverrides:
+        greet: ["the palace wrote it off. 'lost to sand.' eleven years and nobody looked. i'm sewing in the street now.", "hello. come and hold the lantern. i'm on the last hems."]
+        who: ["Zahra. i sew for the quarter. the palace lost a bolt of red silk to the sand eleven years ago, and wrote it down so. i'm cutting what was lost into costumes for the tent, in the open street. you can't take back what's lost."]
+        idle: ["(sews in the open street, a length of crimson silk across her knees and pins in her mouth)", "(holds a finished sleeve up to the light and runs her thumb along the seam)"]
+        smallTalk: ["Yusra found it in the old ledger. 'one bolt crimson silk, lost to sand on the road.' lost. not stolen. nobody's looking. nobody ever looked.", "the tent hasn't played inside the walls since Zarek dropped a torch in the town square forty years ago. nobody was hurt. the palace never forgot. i'm going to give the quarter something better to remember."]
+        questComplete.zahra-bells-for-the-hems: ["fifteen. listen to them. the red's going to ring when it turns."]
+        questComplete.zahra-measure-the-tent: ["Pepita grew. Rafi wants tight sleeves, which means loose. Zarek's chest is what it was thirty years ago, which means it isn't. good. i can finish."]
+        chapterEnter: ["(spreads the red silk across her knees in the open street, pins in her mouth, and doesn't look up when anyone passes)"]
+      unlocks:
+        rumors: [ariant-town-the-word-goes-out]
+    - id: chapter-4
+      title: "Red Under the Lanterns"
+      enterWhen: { flags: [ariant.silk.worn] }
+      dialogueOverrides:
+        greet: ["the lanterns are still up. i'm not taking them down. let the palace come and take them down.", "hello! there's red thread all over the quarter. i keep finding it in the bread."]
+        who: ["Zahra. i sew for the quarter. i cut eleven years of palace silk into costumes, and the tent played our street in it, the first time inside the walls in forty years. the palace says nothing. the palace says the silk was lost to sand. i agree with the palace."]
+        idle: ["(picks a scrap of red silk off the doorstep, smooths it flat, and tucks it into her sleeve)", "(hums the tune the tent played in the street, threading a needle in time)"]
+        smallTalk: ["Zarek dropped nothing. seven torches. he cried after, in the street, with the whole quarter watching. he says it was the smoke. it was the best night in forty years.", "Darius stood at the back, off duty, eating a pastry. somebody saw a lamp at a palace window, and a shape behind it clapping. nobody's saying who. everybody knows."]
+        speakPlainly: ["plainly: a needle, a doorway, and one very red night."]
+        questOffer.zahra-bells-for-the-hems: ["the tent danced half the bells off their hems in our street. they want more. the bellamoas in the White Rock Desert carry the best rattles in Nihal. twenty-five of them, fifteen rattles?"]
+        questComplete.zahra-bells-for-the-hems: ["fifteen. listen to them. next time the tent comes down our street, they'll ring."]
+        questOffer.zahra-measure-the-tent: ["after a night like that, every costume wants letting out. the tent, out past the east entrance. Pepita, Rafi and Zarek. go and get their numbers. they'll lie. bring me the lies."]
+        questComplete.zahra-measure-the-tent: ["Pepita grew again. Rafi wants tight sleeves, which means loose. Zarek's chest is what it was thirty years ago, which means it isn't. good. i'll let them out."]
+        friend.best: ["the last scrap of the red is in your coat lining. i put it there last week. you didn't notice. that's how you know it's sewn right."]
+        chapterEnter: ["(hangs the last paper lantern over her doorway and lights it, though it isn't dark yet)"]
+    - id: chapter-5
+      title: "Water and Red"
+      enterWhen: { flags: [ariant.silk.worn, ariant.well.flowing] }
+      dialogueOverrides:
+        greet: ["the lanterns are still up, and there's water in the market well. the quarter's never had a year like it in my life.", "hello! there's red thread all over the quarter. i keep finding it in the bread."]
+        who: ["Zahra. i sew for the quarter. i cut eleven years of palace silk into costumes, and the tent played our street in it, the first time inside the walls in forty years. the palace says nothing. the palace says the silk was lost to sand. i agree with the palace."]
+        idle: ["(picks a scrap of red silk off the doorstep, smooths it flat, and tucks it into her sleeve)", "(hums the tune the tent played in the street, threading a needle in time)"]
+        smallTalk: ["Zarek dropped nothing. seven torches. he cried after, in the street, with the whole quarter watching. he says it was the smoke. it was the best night in forty years.", "the well in the market sings again, Nadira says. Zarek wants the tent to dance by it on the first hot night. i'm sewing blue this time. water blue. the red stays where it is."]
+        speakPlainly: ["plainly: a needle, a doorway, red silk and well water."]
+        questOffer.zahra-bells-for-the-hems: ["the tent danced half the bells off their hems in our street. they want more. the bellamoas in the White Rock Desert carry the best rattles in Nihal. twenty-five of them, fifteen rattles?"]
+        questComplete.zahra-bells-for-the-hems: ["fifteen. listen to them. next time the tent comes down our street, they'll ring."]
+        questOffer.zahra-measure-the-tent: ["after a night like that, every costume wants letting out. the tent, out past the east entrance. Pepita, Rafi and Zarek. go and get their numbers. they'll lie. bring me the lies."]
+        questComplete.zahra-measure-the-tent: ["Pepita grew again. Rafi wants tight sleeves, which means loose. Zarek's chest is what it was thirty years ago, which means it isn't. good. i'll let them out."]
+        friend.best: ["the last scrap of the red is in your coat lining. i put it there last week. you didn't notice. that's how you know it's sewn right."]
+        chapterEnter: ["(dips a scrap of red silk in a cup of water from the market well and watches the colour hold)"]

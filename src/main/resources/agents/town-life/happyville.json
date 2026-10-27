@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "profileId": "happyville",
+  "mapId": 209000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -84,
+    "middleMaxY": 143,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 10,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "sp", "weight": 100 }
+  ],
+  "restSpots": [
+    { "x": -570, "y": 154, "seatId": -1 },
+    { "x": 55, "y": 154, "seatId": -1 },
+    { "x": 340, "y": 154, "seatId": -1 },
+    { "x": 1275, "y": 154, "seatId": -1 },
+    { "x": 2040, "y": 154, "seatId": -1 },
+    { "x": 3130, "y": 154, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -400, "y": 154 },
+    { "x": -315, "y": 154 },
+    { "x": -200, "y": 154 },
+    { "x": 1615, "y": 154 },
+    { "x": 2210, "y": 154 },
+    { "x": 2280, "y": 154 },
+    { "x": 2875, "y": 154 }
+  ],
+  "npcSpots": [
+    { "npcId": 2002001, "offsetX": -85 },
+    { "npcId": 2001001, "offsetX": -85 },
+    { "npcId": 9310058, "offsetX": 133 },
+    { "npcId": 9250053, "offsetX": 111 },
+    { "npcId": 9220005, "offsetX": 111 },
+    { "npcId": 2001003, "offsetX": -85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-h001", "type": "PORTAL", "minX": -421, "minY": -367, "maxX": -351, "maxY": -267, "excludesOccupancy": true },
+    { "id": "portal-chimney01", "type": "PORTAL", "minX": 2332, "minY": -386, "maxX": 2442, "maxY": -276, "excludesOccupancy": true },
+    { "id": "portal-chimney00", "type": "PORTAL", "minX": -283, "minY": 94, "maxX": -213, "maxY": 194, "excludesOccupancy": true },
+    { "id": "portal-h002", "type": "PORTAL", "minX": 1070, "minY": -298, "maxX": 1140, "maxY": -198, "excludesOccupancy": true },
+    { "id": "portal-h003", "type": "PORTAL", "minX": 2434, "minY": -252, "maxX": 2504, "maxY": -152, "excludesOccupancy": true },
+    { "id": "portal-h001-1", "type": "PORTAL", "minX": 830, "minY": 92, "maxX": 900, "maxY": 192, "excludesOccupancy": true },
+    { "id": "portal-h002-1", "type": "PORTAL", "minX": 146, "minY": 92, "maxX": 216, "maxY": 192, "excludesOccupancy": true },
+    { "id": "portal-h003-1", "type": "PORTAL", "minX": 1749, "minY": 92, "maxX": 1819, "maxY": 192, "excludesOccupancy": true },
+    { "id": "portal-chimney00-1", "type": "PORTAL", "minX": 2599, "minY": 94, "maxX": 2669, "maxY": 194, "excludesOccupancy": true },
+    { "id": "portal-chimney00-2", "type": "PORTAL", "minX": 2232, "minY": -340, "maxX": 2302, "maxY": -240, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 2333, "minY": -381, "maxX": 2423, "maxY": -65, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": 2296, "minY": -145, "maxX": 2386, "maxY": 164, "excludesOccupancy": true },
+    { "id": "ladder-2", "type": "LADDER", "minX": 2295, "minY": 90, "maxX": 2385, "maxY": 164, "excludesOccupancy": true },
+    { "id": "npc-2002000", "type": "NPC_LANE", "minX": -762, "minY": 15, "maxX": -632, "maxY": 145, "excludesOccupancy": true },
+    { "id": "npc-9201030", "type": "NPC_LANE", "minX": -499, "minY": -116, "maxX": -369, "maxY": 14, "excludesOccupancy": true },
+    { "id": "npc-9201033", "type": "NPC_LANE", "minX": -199, "minY": 63, "maxX": -69, "maxY": 193, "excludesOccupancy": true },
+    { "id": "npc-2001001", "type": "NPC_LANE", "minX": 118, "minY": 63, "maxX": 248, "maxY": 193, "excludesOccupancy": true },
+    { "id": "npc-9250051", "type": "NPC_LANE", "minX": 413, "minY": 58, "maxX": 601, "maxY": 188, "excludesOccupancy": true },
+    { "id": "npc-2002001", "type": "NPC_LANE", "minX": 656, "minY": 63, "maxX": 786, "maxY": 193, "excludesOccupancy": true },
+    { "id": "npc-2001002", "type": "NPC_LANE", "minX": 809, "minY": 63, "maxX": 1126, "maxY": 193, "excludesOccupancy": true },
+    { "id": "npc-9220005", "type": "NPC_LANE", "minX": 1371, "minY": 64, "maxX": 1553, "maxY": 194, "excludesOccupancy": true },
+    { "id": "npc-2001003", "type": "NPC_LANE", "minX": 1719, "minY": 63, "maxX": 1849, "maxY": 193, "excludesOccupancy": true },
+    { "id": "npc-9105003", "type": "NPC_LANE", "minX": 1770, "minY": -177, "maxX": 1900, "maxY": -47, "excludesOccupancy": true },
+    { "id": "npc-2001000", "type": "NPC_LANE", "minX": 2383, "minY": 63, "maxX": 2605, "maxY": 193, "excludesOccupancy": true },
+    { "id": "npc-9250053", "type": "NPC_LANE", "minX": 2623, "minY": 64, "maxX": 2805, "maxY": 194, "excludesOccupancy": true },
+    { "id": "npc-9250054", "type": "NPC_LANE", "minX": 2891, "minY": 61, "maxX": 3027, "maxY": 191, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-rupi", "label": "By Rupi", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -740, "y": 154, "seatId": -1 }, { "x": -655, "y": 154, "seatId": -1 }, { "x": -570, "y": 154, "seatId": -1 }, { "x": -485, "y": 154, "seatId": -1 }] },
+    { "id": "by-simon", "label": "By Simon", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -30, "y": 154, "seatId": -1 }, { "x": 55, "y": 154, "seatId": -1 }] },
+    { "id": "by-branch-snowman", "label": "By Branch Snowman", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 255, "y": 154, "seatId": -1 }, { "x": 340, "y": 154, "seatId": -1 }, { "x": 410, "y": 154, "seatId": -1 }] },
+    { "id": "by-roodolph", "label": "By Roodolph", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1190, "y": 154, "seatId": -1 }, { "x": 1275, "y": 154, "seatId": -1 }, { "x": 1360, "y": 154, "seatId": -1 }] },
+    { "id": "by-straw-hat-snowman", "label": "By Straw Hat Snowman", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1870, "y": 154, "seatId": -1 }, { "x": 1955, "y": 154, "seatId": -1 }, { "x": 2040, "y": 154, "seatId": -1 }, { "x": 2125, "y": 154, "seatId": -1 }] },
+    { "id": "upper-east-ledges", "label": "Upper east ledges", "district": "UPPER", "platformKind": "MINI", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 1930, "y": -193, "seatId": -1 }, { "x": 2113, "y": -209, "seatId": -1 }] },
+    { "id": "by-bicho", "label": "By Bicho", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 3045, "y": 154, "seatId": -1 }, { "x": 3130, "y": 154, "seatId": -1 }] },
+    { "id": "beside-rudi", "label": "Beside Rudi", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 806, "y": 154, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "happyville-rudi", "type": "GENERAL_SHOP", "npcId": 2002001, "destinationMapId": 0,
+      "approachPoints": [{ "x": 806, "y": 154 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-roodolph-crowd", "venueId": "by-roodolph", "attractionWeight": 150, "softCapacity": 2, "hardCapacity": 3 },
+    { "id": "by-branch-snowman-crowd", "venueId": "by-branch-snowman", "attractionWeight": 110, "softCapacity": 2, "hardCapacity": 3 }
+  ]
+}

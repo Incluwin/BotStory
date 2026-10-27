@@ -1,0 +1,33 @@
+# Kerning Square contracts (wave 4): mall security's wig price once the player has walked her round and heard Juno on
+# her, and a record clerk's kill proof on his intro quest's records.
+- id: zara-the-night-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [zara.intro.done, ksq.heard-zara]
+  price:
+    meso: 20000
+    items: [{ itemId: 4000526, count: 20 }]
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 8000 }
+
+- id: felix-the-encore
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [felix.intro.done]
+  price:
+    meso: 20000
+    proof: { killMobs: { mobIds: [4300009, 4300010], count: 50 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 8000 }

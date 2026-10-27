@@ -51,4 +51,397 @@
     questAccept.torvin-murukun-cull: ["the Dangerous Forest. they hit hard for fluff."]
     questWaiting.torvin-murukun-cull: ["twenty-five Murukuns. the forest past the fields."]
     questComplete.torvin-murukun-cull: ["Lilin says thank you. she said it three times, actually. here, this is from both of us."]
+    about.brynja: ["Brynja was born here and wants out. i woke up here and stayed. we spar on the upper street and argue about which of us has it backwards."]
+    about.eira: ["Eira fed me soup till i remembered how to smile. she tells the story of the heroes leaving to anyone who sits still. i sat still. it's a good story."]
+    about.saga: ["Saga copies my stance by the Giant Polearm every morning. hers is better. don't tell her i said so. she knows."]
+    about.kjeld: ["Kjeld and i stand watch when the Murukuns come down. he points, i swing. he's said maybe ten words to me. all of them useful."]
+    about.ansgar: ["Ansgar lent me this coat when i came out of the ice. he tells everyone it's his. it is. i'm keeping it."]
+    about.tove: ["Tove's penguins sit under my polearm like it's a tree. i've stopped moving it. they looked hurt."]
     aboutUnknown: ["never met them. i've mostly met penguins."]
+
+# ---- Wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10): +6 Residents, 1 recruitable (Brynja). Eira, Tove, Ansgar,
+# Kjeld and Saga are townsfolk and always here; Brynja follows CYGNUS_ARAN_CAREERS_ENABLED like Torvin. Eira carries
+# Rien's spoken memory of the day the heroes left, which Ereve's record of the five leaves blank (arcs/rien.yaml,
+# arcs/ereve.yaml).
+- id: eira
+  name: Eira
+  look: { gender: female }
+  title: "Rien's Oldest"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: rien
+    routine:
+      - { from: 8, to: 12, spot: "venue:library-1st-floor-door", activity: LINGER }
+      - { from: 12, to: 16, spot: "venue:by-lilin", activity: SOCIALIZE }
+      - { from: 16, to: 20, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 20, to: 22, spot: "venue:library-1st-floor-door", activity: REST }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [murupia, murupia's furball, snow-covered field 2]
+  questLines: [eira-the-hearth-shawl, eira-the-copy-from-ereve, eira-on-rien-shelf]
+  arc: eira-the-day-they-left
+  rumors: [rien-the-old-story]
+  relationships:
+    - { persona: saga, kind: TELLS_THE_STORY_TO }
+    - { persona: isaura, kind: IS_WRITTEN_DOWN_BY }
+    - { persona: torvin, kind: FEEDS_SOUP_TO }
+  giftItemIds: [2022001, 2010003]
+  dialogue:
+    greetFirst: ["come here where i can see you, dear. my eyes are older than the snow. ah. a new face. welcome to Rien.", "sit down a moment. everyone in Rien sits with me a moment. it's a rule. i made it."]
+    greet: ["there you are, dear.", "hello, dear. sit.", "ah, you. good. my hands are cold. talk to me while they warm."]
+    idle: ["(pulls an old patched shawl closer and hums something with no words)", "(watches the snow come down past the library door as if she were counting it)"]
+    noWork: ["nothing today, dear. sit with me instead. that's work enough."]
+    nothingDue: ["you owe me nothing, dear. a visit now and then."]
+    who: ["Eira. i'm the oldest in Rien. my grandmother told me about the day the heroes left, and her grandmother told her, and so on back to the girl who stood on the shore and watched them go. nobody wrote it down. we don't, here. we tell it."]
+    bye: ["mind the ice, dear."]
+    thanks: ["bless you, dear."]
+    smallTalk: ["grandmother said it was a grey morning when they left. she always started there. she said if you get the weather right, the rest follows.", "the Murupias in the second field have the warmest fur on the island. grandmother's shawl is half Murupia by now. the other half is darning."]
+    speakPlainly: ["plainly, dear: an old woman with a story."]
+    questOffer.eira-the-hearth-shawl: ["my grandmother's shawl is wearing through at the shoulder. the Murupias in Snow-covered Field 2 shed the warmest fur on the island. twelve tufts, dear, and i'll darn it tonight."]
+    questAccept.eira-the-hearth-shawl: ["out past the first field, the second one. they're round and they're grumpy. so am i in the mornings."]
+    questWaiting.eira-the-hearth-shawl: ["twelve tufts, dear. my shoulder's cold."]
+    questComplete.eira-the-hearth-shawl: ["oh, that's soft. that'll last another winter. so will i, now. here, dear. take this. and come and sit with me sometimes."]
+    questOffer.eira-the-copy-from-ereve: ["they say the Empress's people in Ereve keep a book about the heroes. grandmother couldn't read, and neither could hers. bring me what it says, dear. i'll tell you whether it's right."]
+    questAccept.eira-the-copy-from-ereve: ["the boat to Lith Harbor, across to Ellinia, and the sky ferry to Ereve. ask for whoever keeps the book. somebody always keeps the book."]
+    questWaiting.eira-the-copy-from-ereve: ["have you brought what the book says? read it to me slowly, dear."]
+    questComplete.eira-the-copy-from-ereve: ["'and the fifth slept in the ice of Snow Island, and the others...' and then nothing? oh, dear. that's not where it stops. that's not where it stops at all. tell her so. tell her to send somebody who'll listen."]
+    questOffer.eira-on-rien-shelf: ["Isaura's written grandmother's words into the Empress's book, and she's bound a copy for Rien. go and fetch it, dear. put it in our library, on the first floor, where people can reach it. then come and tell me it's there."]
+    questAccept.eira-on-rien-shelf: ["Ereve, by the boat and the ferry. then back here, and in through the library door. the first floor. not up high. people should be able to reach it."]
+    questWaiting.eira-on-rien-shelf: ["is it on the shelf, dear? where people can reach it?"]
+    questComplete.eira-on-rien-shelf: ["on the shelf. in grandmother's words. written down, after all this time. ...she'd have laughed. she'd have said nobody needs to read it, they only need to be told. and then she'd have gone in to look at it. here, dear. thank you. thank you."]
+    about.saga: ["Saga wants to be a hero. she asks for the story every evening and i tell it every evening. one day she'll tell it, and she'll get it right."]
+    about.isaura: ["Isaura? i don't know the name, dear."]
+    about.torvin: ["Torvin came out of the ice with no memory and a polearm. i fed him soup till he remembered how to smile. he's still working on the rest."]
+    about.tove: ["Tove counts the penguins three times a day and gets a different number every time. the penguins move, dear. that's the trouble with penguins."]
+    about.ansgar: ["Ansgar tells everybody everything. if you want the whole island to know a thing, tell Ansgar. if you don't, tell me."]
+    about.kjeld: ["Kjeld stands at the edge of the Dangerous Forest all day and looks at the trees. his mother did it before him. it's the same trees."]
+    about.brynja: ["Brynja looks at the boat the way grandmother said the four looked at the sea. she'll go. they always go, the ones who look like that."]
+    aboutUnknown: ["i don't know them, dear. bring them to sit with me."]
+    friend.close: ["you sit with me like family now, dear. i'll tell you the parts i don't tell everyone."]
+    friend.best: ["when i'm gone, dear, somebody has to tell it. i'd like it to be you. you and Saga."]
+    famed: ["the whole island says your name, dear. i say it too. i say it kindly."]
+    defamed: ["people talk, dear. i've been talked about for eighty years. it washes off."]
+    gift: ["oh, for me? bless you, dear."]
+    gift.favorite: ["oh, that's warm in the belly. that's a long winter evening, that is."]
+    gift.again: ["one a day, dear. i'm old, not greedy."]
+
+- id: tove
+  name: Tove
+  look: { gender: female }
+  title: "Penguin Herder"
+  job: BEGINNER
+  level: { min: 12, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: rien
+    routine:
+      - { from: 7, to: 13, spot: "venue:by-pusla", activity: LINGER }
+      - { from: 13, to: 16, materialize: false }
+      - { from: 16, to: 20, spot: "venue:by-pusla", activity: SOCIALIZE }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [muru, muru's furball, dangerous forest]
+  questLines: [tove-nest-lining, tove-the-stray-chick]
+  relationships:
+    - { persona: saga, kind: COUNTS_PENGUINS_WITH }
+    - { persona: ansgar, kind: GETS_FISH_FROM }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["forty-one, forty-two... oh! hello! now i've lost count. it's fine. i always lose count.", "hello! don't step on that one. or that one. hello!"]
+    greet: ["hello! forty-something!", "oh, hi! have you seen a small one? there's always a small one.", "hello!"]
+    idle: ["(counts penguins on her fingers, runs out of fingers, and starts again)", "(scoops up a penguin chick that has wandered too far and sets it back with the others)"]
+    noWork: ["nothing today! everybody's where they should be. that never lasts."]
+    nothingDue: ["all square! like a flock in a line."]
+    who: ["Tove. i herd the penguins. well. i follow them around and they let me think i'm in charge. Pusla says that's what herding is."]
+    bye: ["bye! don't step on anybody!"]
+    thanks: ["oh, thank you!"]
+    smallTalk: ["the chicks sleep on Muru fluff. the Murus don't mind losing it. they grow it back by morning. i wish i could do that with socks.", "Ansgar gives the penguins the little fish he can't sell. they follow him down the street. he pretends he doesn't like it."]
+    speakPlainly: ["plainly! penguins. lots."]
+    questOffer.tove-nest-lining: ["the chicks' nests want lining. the Murus in the Dangerous Forest past town drop the softest fluff. twelve furballs? the chicks will sleep all night. so will i."]
+    questAccept.tove-nest-lining: ["the Dangerous Forest, the near part. the Murus are little. they're fine. they're fluffy."]
+    questWaiting.tove-nest-lining: ["twelve furballs! the chicks are shivering. no they're not. but they might!"]
+    questComplete.tove-nest-lining: ["oh, they're perfect! look, that one's asleep already! here, from the penguins. they'd say thank you. they'd say it loudly."]
+    questOffer.tove-the-stray-chick: ["one's gone. a small one. i counted twice. well, i got two different numbers. but one's gone. Saga says she saw it go. ask her where? and then go and look?"]
+    questAccept.tove-the-stray-chick: ["Saga's about town all day. she sees everything. she says so."]
+    questWaiting.tove-the-stray-chick: ["did you find it? the small one?"]
+    questComplete.tove-the-stray-chick: ["it was in the second field? sitting on a snowdrift, looking at the Murupias? that's my small one. it's always looking at something. thank you! now i've got forty-something again!"]
+    about.eira: ["Grandmother Eira tells the heroes story every evening. the penguins come and sit for it. they like the part about the sea."]
+    about.ansgar: ["Ansgar feeds my penguins the little fish. then he tells everyone he didn't."]
+    about.kjeld: ["Kjeld chases the chicks out of the forest when they wander. he says he doesn't. i've seen him. he carries them home in his hat."]
+    about.saga: ["Saga helps me count. she counts higher than me. i think she makes some of them up."]
+    about.brynja: ["Brynja walks down to the dock every morning and the penguins walk with her. i think they want to go too."]
+    about.torvin: ["Torvin's polearm is very tall. the penguins think it's a tree. they sit under it."]
+    aboutUnknown: ["don't know them! do they like penguins?"]
+    friend.close: ["the penguins know your step now. they come when you come. that's a big thing, for penguins."]
+    friend.best: ["i named a chick after you. it's the small one. it's always looking at something. like you."]
+    famed: ["the whole island's talking about you! the penguins too! well. squawking."]
+    defamed: ["somebody said a mean thing about you. the penguins pecked their boots. i didn't stop them."]
+    gift: ["oh! for me? thank you!"]
+    gift.favorite: ["oh, i love that! i'm not sharing it with the penguins. maybe a bit."]
+    gift.again: ["one a day! the penguins get jealous."]
+
+- id: ansgar
+  name: Ansgar
+  look: { gender: male }
+  title: "Ice Fisher"
+  job: BEGINNER
+  level: { min: 18, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: rien
+    routine:
+      - { from: 10, to: 14, spot: "venue:by-puno", activity: LINGER }
+      - { from: 14, to: 18, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 18, to: 22, spot: "venue:by-pusla", activity: SOCIALIZE }
+      - { from: 22, to: 10, materialize: false }
+  recruitable: false
+  knows: [murumuru, snow-covered field 3, lith harbor]
+  questLines: [ansgar-holes-in-the-ice, ansgar-fish-for-the-galley]
+  rumors: [rien-the-warm-road]
+  relationships:
+    - { persona: brynja, kind: KEEPS_NO_SECRETS_FOR }
+    - { persona: tove, kind: FEEDS_THE_PENGUINS_OF }
+    - { persona: mirel, kind: SELLS_FISH_TO }
+  giftItemIds: [2020004, 2010004]
+  dialogue:
+    greetFirst: ["a new face! wait till i tell everybody. i'm telling everybody. hello!", "hello! you came on the boat? how was the boat? was it cold? i'll tell people it was cold."]
+    greet: ["hello! news?", "you! good. i've got news. have you got news?", "hello, hello."]
+    idle: ["(stamps his feet, blows on his hands, and checks a coil of line for knots)", "(tells a passing penguin something in a low voice, then looks round to see who else heard)"]
+    noWork: ["nothing today. the holes are open, the fish are slow, and i've told everyone everything already."]
+    nothingDue: ["we're square! i'll tell people that too."]
+    who: ["Ansgar. i fish through the ice out past the fields before the sun's up. then i come back and tell Rien everything i heard on the way. somebody has to."]
+    bye: ["come back with news!"]
+    thanks: ["thanks! i'll mention it."]
+    smallTalk: ["the Murumurus in the third field sit on my fishing holes. they like the cold coming up. i like my fish coming up. we've talked about it.", "my fish go over on the boat to Lith Harbor. the ship's cook there swears by them. i swear by her. it works out."]
+    speakPlainly: ["plainly: fish, and news."]
+    questOffer.ansgar-holes-in-the-ice: ["the Murumurus in Snow-covered Field 3 are sitting on my holes again. twenty-five of them moved along, and i can fish this week. go on. i'll tell everyone you did it."]
+    questAccept.ansgar-holes-in-the-ice: ["the third field, out past the second. they're the big round ones on the ice. they won't move for asking."]
+    questWaiting.ansgar-holes-in-the-ice: ["twenty-five! i've already told people you're doing it."]
+    questComplete.ansgar-holes-in-the-ice: ["all clear! i caught three this morning. i've told everyone it was you. here."]
+    questOffer.ansgar-fish-for-the-galley: ["the ship's cook at Lith Harbor, Mirel, takes my smoked ice-fish. the last box went over on the boat and nobody's said if it got there. go and ask her? and ask her what she wants next time."]
+    questAccept.ansgar-fish-for-the-galley: ["the boat at the dock past the fields, all the way to Lith Harbor. she's by the general store. follow the smell of soup."]
+    questWaiting.ansgar-fish-for-the-galley: ["did it get there? what did she say? exactly, now."]
+    questComplete.ansgar-fish-for-the-galley: ["she said that? 'best fish on the boat'? i'm telling everyone. i'm telling the fish. here, for the crossing."]
+    about.eira: ["Eira tells one story and tells it right. i tell a hundred and get them all a bit wrong. between us, Rien's covered."]
+    about.tove: ["Tove can't count past forty-something. the penguins know. they move around on purpose."]
+    about.kjeld: ["Kjeld says three words a day. i've written every one of them down. i'm saving them for a story."]
+    about.saga: ["Saga wants to be a hero. i told the whole island. now the whole island calls her hero. she pretends she hates it."]
+    about.brynja: ["Brynja wants to go over on the boat and stay. i've told everyone. she told me to. she's clever like that."]
+    about.torvin: ["Torvin turned up out of the ice with no coat. i lent him one. he's still wearing it. i tell people it's mine."]
+    about.mirel: ["Mirel's the ship's cook at Lith Harbor. she takes my fish and sends back jokes in the empty box. the jokes are terrible. i tell them anyway."]
+    aboutUnknown: ["never heard of them. that's rare. i'll ask around."]
+    friend.close: ["i'll tell you the news first now. before anyone. even before the penguins."]
+    friend.best: ["i've got a fishing hole with your name on it. i cut the name in the ice myself. it melts. i cut it again."]
+    famed: ["everybody's talking about you! i started half of it. it was all true."]
+    defamed: ["i heard what they're saying. i'm telling everyone it's not true. i'm very good at telling everyone."]
+    gift: ["oh, thanks! i'll tell people."]
+    gift.favorite: ["ha! now that's a fisherman's breakfast. i'm not telling anyone about this one."]
+    gift.again: ["one a day! i've got a reputation."]
+
+- id: kjeld
+  name: Kjeld
+  look: { gender: male }
+  title: "Sentry of the Dangerous Forest"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: rien
+    routine:
+      - { from: 6, to: 9, spot: "venue:lower-west-street", activity: REST }
+      - { from: 9, to: 12, spot: "venue:by-lilin", activity: LINGER }
+      - { from: 12, to: 20, materialize: false }
+      - { from: 20, to: 23, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [murukun, murukun's furball, dangerous forest]
+  questLines: [kjeld-the-long-round, kjeld-boot-lining]
+  relationships:
+    - { persona: torvin, kind: STANDS_WATCH_WITH }
+    - { persona: saga, kind: CHASES_HOME }
+  giftItemIds: [2022001, 2000001]
+  dialogue:
+    greetFirst: ["halt. ...fine. you're not a Murukun. go on through.", "you're new. i watch the forest. i'll watch you too, a bit. nothing personal."]
+    greet: ["hm. you.", "all quiet.", "nothing came out of the trees."]
+    idle: ["(stares at the treeline past the village without blinking for a long time)", "(stamps one cold foot, then the other, then the first one again)"]
+    noWork: ["nothing. the forest's quiet. i don't trust it."]
+    nothingDue: ["square."]
+    who: ["Kjeld. i stand at the edge of the Dangerous Forest and watch it. my mother watched it before me. nothing much comes out. somebody has to be there when something does."]
+    bye: ["eyes on the trees."]
+    thanks: ["mm. thanks."]
+    smallTalk: ["the Murukuns come down out of the forest when they're hungry. they're always hungry. so am i, on watch.", "the sentry boots are thin. Murukun fur in the soles and you can stand all day. without it you stand half a day and hop the rest."]
+    speakPlainly: ["plainly: trees. watching them."]
+    questOffer.kjeld-the-long-round: ["the long round. out through the second field, twenty Murupias thinned on the way, then on to the third field to look at the ice. come back and tell me nothing's there. it's always nothing. you still go."]
+    questAccept.kjeld-the-long-round: ["Snow-covered Field 2, then 3. keep your eyes up."]
+    questWaiting.kjeld-the-long-round: ["twenty Murupias, and a look at the third field."]
+    questComplete.kjeld-the-long-round: ["nothing there? good. that's what i wanted to hear. that's what i always want to hear. here."]
+    questOffer.kjeld-boot-lining: ["ten Murukun furballs from the Dangerous Forest? my soles are thin again."]
+    questAccept.kjeld-boot-lining: ["the deep part of the forest. they hit back."]
+    questWaiting.kjeld-boot-lining: ["ten."]
+    questComplete.kjeld-boot-lining: ["ten. warm feet. i can stand all day again."]
+    about.eira: ["Eira watched the forest before my mother did. she says the trees were smaller. i don't believe her. i don't argue."]
+    about.tove: ["Tove's chicks wander into the forest. i carry them back. don't tell anyone."]
+    about.ansgar: ["Ansgar talks. i listen. it works."]
+    about.saga: ["Saga sneaks out to the fields. i chase her home. she's quicker every week. that worries me."]
+    about.brynja: ["Brynja watches the boat. i watch the trees. we stand back to back on the street some evenings. it's restful."]
+    about.torvin: ["Torvin stands watch with me when the Murukuns come down. he swings, i point. it works."]
+    aboutUnknown: ["not from round here."]
+    friend.close: ["you can stand watch with me. it's boring. the good kind."]
+    friend.best: ["if anything ever comes out of those trees, i'll send for you first. then Torvin."]
+    famed: ["people talk about you. good things. i don't say much. i'm saying this."]
+    defamed: ["people talk. trees don't. i trust trees."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["that's warm. that's a whole watch, that is."]
+    gift.again: ["one a day. i'm on duty."]
+
+- id: saga
+  name: Saga
+  look: { gender: female }
+  title: "A Girl Who Wants to Be a Hero"
+  job: BEGINNER
+  level: { min: 7, max: 9 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: rien
+    routine:
+      - { from: 7, to: 11, spot: "venue:by-giant-polearm", activity: LINGER }
+      - { from: 11, to: 16, spot: "venue:lower-central-street", activity: STROLL }
+      - { from: 16, to: 20, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [murupa, snow-covered field 1, murupa's furball]
+  questLines: [saga-hero-practice, saga-the-heroes-names]
+  rumors: [rien-the-old-story]
+  relationships:
+    - { persona: eira, kind: ASKS_FOR_THE_STORY }
+    - { persona: brynja, kind: WANTS_TO_BE }
+    - { persona: torvin, kind: COPIES_THE_STANCE_OF }
+  giftItemIds: [2001001, 2020002]
+  dialogue:
+    greetFirst: ["halt! who goes there! ...a hero? are you a hero? you look like one. i'm going to be one.", "hi! do you want to see my polearm? it's a stick. it's a polearm stick."]
+    greet: ["hi! hero practice today?", "you're back! i did forty swings!", "hello! i'm guarding the Giant Polearm. from nobody. but still."]
+    idle: ["(swings a stick in a careful circle, the way the polearm fighters do, and nearly falls over)", "(stands very straight next to the Giant Polearm, as if to see who's taller)"]
+    noWork: ["nothing today! i'm practising. heroes practise. Grandmother Eira says so."]
+    nothingDue: ["you don't owe me anything! heroes don't count."]
+    who: ["Saga! i'm going to be a hero. like the ones who left. Grandmother Eira tells me about them every night. she's not my grandmother. she's everybody's."]
+    bye: ["bye! be heroic!"]
+    thanks: ["thank you! that's heroic!"]
+    smallTalk: ["one of the heroes stayed. in the ice. so somebody would be here when the dark came back. i'd have stayed. i'm good at waiting. i'm not. but i'd try.", "Torvin lets me copy his stance. he says mine's better. i think he's being nice. i think mine's better."]
+    speakPlainly: ["plainly! hero. future hero. hero in training."]
+    questOffer.saga-hero-practice: ["show me how a real hero fights? the Murupas in Snow-covered Field 1 are just outside town. fifteen! i'll watch from the gate. i won't go out. Grandmother Eira made me promise."]
+    questAccept.saga-hero-practice: ["out the east side of town, the first field. the round blue ones. i'm watching!"]
+    questWaiting.saga-hero-practice: ["fifteen! i'm counting! i've counted three!"]
+    questComplete.saga-hero-practice: ["fifteen! you didn't even look scared! how do you not look scared? oh. you practise not looking scared. i'm going to practise that. here, this is all my savings."]
+    questOffer.saga-the-heroes-names: ["what were the heroes called? nobody knows! Grandmother Eira knows everything. ask her for me? she says i'm too little for that part. you're not little."]
+    questAccept.saga-the-heroes-names: ["she sits by the library in the mornings, and by Lilin after lunch, and with me in the evenings."]
+    questWaiting.saga-the-heroes-names: ["what did she say? what were they called?"]
+    questComplete.saga-the-heroes-names: ["...whoever goes when somebody has to? so anybody could be one? so i could be one! i'm going to be one. here, this is my best snowball. no, it'll melt. here, this is mesos."]
+    about.eira: ["Grandmother Eira's not my grandmother. she's everybody's. she tells the best story in the world. it's true, too."]
+    about.tove: ["Tove lets me help count the penguins. i'm better at it. i'm not allowed to say that."]
+    about.ansgar: ["Ansgar told the whole island i'm going to be a hero. now everybody calls me hero. i love it. don't tell him."]
+    about.kjeld: ["Kjeld always catches me going out to the fields. always! i'm getting quicker."]
+    about.brynja: ["Brynja's going to leave the island and be a hero somewhere. i'm guarding her till she goes. then i'm going to be her."]
+    about.torvin: ["Torvin came out of the ice like the hero who stayed! he says he isn't. he would say that."]
+    aboutUnknown: ["i don't know them! are they a hero?"]
+    friend.close: ["you can be my hero teacher. you already are. i decided."]
+    friend.best: ["when i'm a hero, i'm going to tell everybody you taught me. first thing."]
+    famed: ["everybody says you're a hero! i said it first! i did!"]
+    defamed: ["someone said a bad thing about you. i told them heroes don't listen to that. then i stuck my tongue out."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["WOW. that's a hero's lunch!"]
+    gift.again: ["one a day! Grandmother Eira says."]
+
+- id: brynja
+  name: Brynja
+  look: { gender: female }
+  title: "Aran Who Watches the Boat"
+  job: ARAN2
+  level: { min: 30, max: 32 }
+  strength: SEASONED
+  loadout: lith-polearm-l30
+  personality: efficient-v1
+  home:
+    town: rien
+    routine:
+      - { from: 11, to: 14, spot: "venue:by-giant-polearm", activity: LINGER }
+      - { from: 14, to: 18, spot: "venue:upper-west-street", activity: SHOW_OFF }
+      - { from: 18, to: 22, spot: "venue:by-pusla", activity: SOCIALIZE }
+      - { from: 22, to: 24, spot: "venue:lower-central-street", activity: REST }
+      - { from: 0, to: 11, materialize: false }
+  recruitable: true
+  knows: [ribbon pig, wild boar, jr. wraith]
+  contract: brynja-the-warm-road
+  questLines: [brynja-the-first-shore, brynja-ice-jeans, brynja-old-raggedy-cape, brynja-cape-of-warmness, brynja-boar-tusks]
+  rumors: [rien-the-warm-road]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: ansgar, kind: CONFIDES_IN_ON_PURPOSE }
+    - { persona: saga, kind: IS_GUARDED_BY }
+    - { persona: ingrid, kind: SPARS_WITH }
+  giftItemIds: [2010001, 2020001]
+  dialogue:
+    greetFirst: ["you came on the boat? what's it like at the other end? no, wait, tell me later. hello.", "hello. you've been off the island. i can tell. you don't hunch against the wind."]
+    greet: ["hey.", "you. good. tell me something about somewhere else.", "back. was the crossing rough?"]
+    idle: ["(runs through a polearm combo, faster each time, and ends facing the dock)", "(watches the boat go out past the fields until it's gone, then looks away)"]
+    noWork: ["nothing today. i've done my combos. i've looked at the boat. that's my day."]
+    nothingDue: ["we're square."]
+    who: ["Brynja. born in Rien, raised in the Giant Polearm's shadow. Maha says i fight like the old stories. every Aran in Rien grows up on those stories. i want to see where they went."]
+    bye: ["stay warm. wherever."]
+    thanks: ["thanks."]
+    smallTalk: ["Rien keeps a chest of warm things for anyone who leaves the island. nobody's opened it in a long time. i've got the key.", "i go over to Victoria on the morning boat and come back on the last. i've never stayed the night. i'm working up to it."]
+    speakPlainly: ["plainly: i want off this island."]
+    offer: ["fifteen thousand for the road, and i'm yours till it ends. i'll keep the cold off your back. Ansgar will have told you."]
+    join: ["finally. lead on. i've been keeping up with the boat for years. i'll keep up with you."]
+    bench: ["three days. then i'm back to watching the boat."]
+    leave: ["back to Rien. that was the best road i've walked."]
+    refuse.bond: ["i don't know you yet. walk somewhere with me first."]
+    refuse.flags: ["come by Pusla's of an evening and hear what Ansgar and i say about the boat. then ask me."]
+    refuseOwnErrand: ["that's my own walk. you don't pay for that."]
+    questOffer.brynja-the-first-shore: ["walk the first shore with me. the boat lands at Lith Harbor, and there's a beach of pigs past the three-way road. twenty-five ribbon pigs. i want to fight something that isn't fluff."]
+    questAccept.brynja-the-first-shore: ["the boat to Lith Harbor, then the three-way road and the hidden path down to the beach. they've got ribbons. they're still pigs."]
+    questWaiting.brynja-the-first-shore: ["twenty-five. not fluff. pigs."]
+    questComplete.brynja-the-first-shore: ["twenty-five. you made it look like walking. i'll get there. here. for the boat fare."]
+    questOffer.brynja-ice-jeans: ["Rien's chest has a pair of ice jeans in it. warm all the way down. i'll open it for you if you'll walk the hunting grounds past Henesys with me. thirty green mushrooms. they spin at you."]
+    questAccept.brynja-ice-jeans: ["the Henesys hunting grounds, the second and the third. the green ones. they spin."]
+    questWaiting.brynja-ice-jeans: ["thirty. let them spin."]
+    questComplete.brynja-ice-jeans: ["thirty. here. ice jeans, out of Rien's chest. the safe scrolls, every one took. the cold won't find your knees."]
+    questOffer.brynja-old-raggedy-cape: ["the next thing in the chest is a cape. old and raggedy and warmer than anything new. the wild boars east of Perion would tear it to bits. thirty of them, and twelve tusks to stitch the toggles."]
+    questAccept.brynja-old-raggedy-cape: ["east of Perion, the far end of the rocky mountain, and the land of wild boar off it. they charge. stand to one side."]
+    questWaiting.brynja-old-raggedy-cape: ["twelve tusks. the toggles are waiting."]
+    questComplete.brynja-old-raggedy-cape: ["twelve. the old raggedy cape, with boar-tusk toggles. the sixties, every one took. it's older than both of us. it'll outlast us too."]
+    questOffer.brynja-cape-of-warmness: ["the last thing in Rien's chest. the cape of warmness. it wants a new lining. the jr. wraiths in Kerning's subway wear tablecloths of real wool. thirty of them, twelve cloths."]
+    questAccept.brynja-cape-of-warmness: ["Kerning City, down into the subway, the first and second lines. they're little ghosts. they're cold. their tablecloths aren't."]
+    questWaiting.brynja-cape-of-warmness: ["twelve cloths. the chest's open."]
+    questComplete.brynja-cape-of-warmness: ["twelve. lined. the cape of warmness, the last thing in Rien's chest. two tens and the rest sixties, every one took. wherever you go now, you'll be warm. that's what Rien gives the ones who leave."]
+    questOffer.brynja-boar-tusks: ["ten boar tusks? the chest wants toggles again."]
+    questAccept.brynja-boar-tusks: ["east of Perion. stand to one side."]
+    questWaiting.brynja-boar-tusks: ["ten."]
+    questComplete.brynja-boar-tusks: ["ten. good. thanks."]
+    about.ansgar: ["Ansgar tells everybody everything. so when i want everybody to know a thing, i say it in front of him."]
+    about.saga: ["Saga follows me to the dock every morning. she says she's guarding me. i let her. somebody should."]
+    about.eira: ["Eira tells the story of the heroes leaving. i've heard it a hundred times. it's the only story on this island that ends somewhere else."]
+    about.torvin: ["Torvin woke up in the ice and walked into Rien. i've lived here my whole life and never walked out. we swap stories. his are shorter."]
+    about.tove: ["Tove's penguins follow me to the dock too. i think they want to go. i think they're like me."]
+    about.kjeld: ["Kjeld watches the forest. i watch the boat. we stand back to back on the street some evenings and don't say anything."]
+    about.ingrid: ["there's a halberdier at Lith Harbor, Ingrid. she spars with me on the dock while the boat turns round. she's never once let me win. i like her."]
+    aboutUnknown: ["never met them. i haven't met most people. i'm working on it."]
+    friend.close: ["wherever you go, i'll go. you only have to say."]
+    friend.best: ["if you ever take me off this island, i'll keep the cold off your back the whole way."]
+    famed: ["even on the boat they're talking about you. i made them start again from the beginning."]
+    defamed: ["somebody's saying things. Ansgar will tell me who. then i'll have a word."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh, that's good. that's a warm meal for a cold crossing."]
+    gift.again: ["one a day. i'll go soft."]

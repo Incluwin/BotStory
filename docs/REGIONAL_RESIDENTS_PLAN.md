@@ -2,8 +2,9 @@
 
 Phase F ("regional Residents") of `docs/LIVING_RPG_PLAN.md` and `docs/POPULATED_SERVER_PLAN.md` section 8.
 How Residents are authored is in `docs/LIVING_WORLD_GUIDE.md`; this plan says what changes off Victoria, what wave 1
-(Orbis, El Nath, Ludibrium), wave 2 (Leafre, Mu Lung, Herb Town, Ariant, Magatia) and wave 3 (New Leaf City, Omega
-Sector, Korean Folk Town, Aquarium, Singapore, Zipangu; section 9) contain, and what to check after each is deployed.
+(Orbis, El Nath, Ludibrium), wave 2 (Leafre, Mu Lung, Herb Town, Ariant, Magatia), wave 3 (New Leaf City, Omega
+Sector, Korean Folk Town, Aquarium, Singapore, Zipangu; section 9) and wave 4 (the rest of Ossyria and its outposts;
+section 10) contain, and what to check after each is deployed.
 
 ## 1. Where things stood
 
@@ -254,7 +255,7 @@ complete for when it is.**
 
 1. **Quest log, with the deploy.** `living_world.QUEST_LOG_MIRROR` is already on, and the new quests have quest-log
    ids (wave 1: 83, 30197-30279; wave 2: 124, 30285-30408; wave 3: 180, 30409-30588 of the block 30409-30799
-   reserved for it), so a player who takes one before their client has the
+   reserved for it; wave 4: 171, 31100-31270 of the block 31100-31449), so a player who takes one before their client has the
    matching Quest.wz entries sees it nameless in the quest log (the server itself needs no Quest.wz entry). Run
    `tools\living-world-client.bat "<client folder>"` (or MapleEdit `living_world_quests.py` and deploy Quest.wz + Etc.wz)
    right after the restart and ship the patch. Since the quest-step-progress merge the exporter also writes each step's
@@ -273,6 +274,11 @@ complete for when it is.**
      `showa-town` at 18 server time; `aquarium-hall` and `aquarium-store` at 10-11; `new-leaf-city` twice, at 12 and
      at 18 (its 25 are never all in town at one hour: Ramona and Hollis are out at noon, Moxie, Brody, Delphine, Duke and
      Cosmo at 18).
+   - Wave 4: at 18 server time `!world wake three-doors`, `tera-forest-time-gate`, `ereve`, `altaire-camp`,
+     `ludibrium-village`, `orbis-park`, `town-of-ariant`, `ariant-castle`, `tent-of-the-entertainers`,
+     `zenumist-society`, `alcadno-society`, `ice-valley-ii`, `door-to-zakum`, `mu-lung-dojo`, `pier-on-the-beach`
+     (every cast is home then); `rien` at 11 (its only hour with all seven in town). Ereve's and Rien's knights and
+     Aran appear only while Cygnus/Aran careers are on.
 
 `portrait-npc-ids.yaml` held 54 ids before wave 1, so the 18 friendship-only Victoria Residents added 2026-10-02
 (Isolde, Mirabel, ...) still borrow portraits too; the same re-export fixes them. The new ids file and the
@@ -570,3 +576,478 @@ Village (Malaysia) belong to another session.
 Wave 1 and wave 2 are untouched apart from one Leafre quest: `hessa-carry-it-home` counts its Nest Golems only in
 the Dangerous Dragon Nest below the peak. A `VISIT_MAP` step advances only when its map is entered while it is the
 current step, so golems killed on the peak itself left the player standing there with the visit still open.
+
+## 10. Wave 4: Ossyria remainder
+
+Asked for 2026-10-25 ("Residents in every town and sub-area"; sub-areas only on safe outpost maps: camp or hub maps
+with NPCs and few or no mobs). Waves 1-3 and the Masteria casts cover most towns; this wave takes the rest of Ossyria
+and its outposts, from the coordinator's town audit (section 1.3 of its `TOWN_AUDIT.md`). Victoria's remainder and the
+route graph are other sessions' work. Branch `feat/ossyria-remainder`, quest-log id block 31100-31449.
+
+### 10.1 Where they live
+
+A Resident lives on one map (its TownLife profile), so each outpost gets a profile of its own, generated with
+`tools\town-life-profiles.bat generate <map>=<id> --index` like wave 3's Aquarium interiors (none is in the ambient
+deployment, so citizen traffic is unchanged).
+
+| Profile (new unless noted) | Map | Why this map | Venues |
+|---|---|---|---|
+| `three-doors` | 270000000 Three Doors | the Temple of Time's hub: town, no mobs, the Temple Keeper, the way to Memory Lane. 270000100 (the temple itself) has no NPC and 6 venues | 9 |
+| `tera-forest-time-gate` | 240070000 Tera Forest Time Gate | Neo City's every era map has mob spawns (lv 70-95) and its mob-free maps are boss-instance copies, so **Neo City's cast lives at the Time Gate**, which is also the Tera Forest outpost | 3 |
+| `ereve`, `rien` (existing) | 130000000, 140000000 | +5 and +6 Residents | 8, 14 |
+| `altaire-camp` (existing, 0 Residents) | 300000000 Altaire Camp | Ellin Forest's camp | 14 |
+| `mu-lung-dojo` | 925020000 Mu Lung Dojo Entrance | the lobby: town, no mobs | 6 |
+| `ice-valley-ii` | 211040200 Ice Valley II | Jeff and Glibber. Yetis spawn on the four lower layers (y -239 to -1490), so its Residents keep to the upper venues (`upper-west-street`, `upper-central-street`, `by-glibber`, `beside-glibber`, y -1745 and above) | 11 |
+| `door-to-zakum` | 211042300 The Door to Zakum | Adobis; no mobs | 6 |
+| `orbis-park` | 200000200 Orbis Park | 6 NPCs, no mobs | 10 |
+| `ludibrium-village` | 220000300 Ludibrium Village | town, no mobs | 14 |
+| `town-of-ariant` | 260000200 The Town of Ariant | town, 9 NPCs, no mobs | 14 |
+| `ariant-castle` | 260000300 Ariant Castle | town, no mobs | 6 |
+| `tent-of-the-entertainers` | 260010600 Tent of the Entertainers | Karcasa. Nine desert rabbits spawn on the ground (y 275), so its Residents keep to the upper venues (`middle-west-street`, `by-karcasa`, `upper-central-street`, `upper-east-street`) | 8 |
+| `zenumist-society`, `alcadno-society` | 261000010, 261000020 | town, no mobs | 3, 2 |
+| `pier-on-the-beach` | 251000100 Pier on the Beach | the dolphin to Aquarium; no mobs | 1 |
+
+13 new profiles (`AgentTownLifeProfileRepositoryTest`: 50 -> 63) and 14 borrowed-portrait towns in
+`ResidentDialogue.PORTRAITS` (the 13, plus Altaire Camp, which had no Residents; Ereve and Rien have theirs).
+
+### 10.2 Cast
+
+56 Residents, 17 recruitable. The kit is wave 1's. All sixteen weapon lines already have three regional tiers, so the
+friendship gear here is armour and accessories, each in its place's level band and chosen so no earlier Resident
+gives the same piece: the Temple of Time continues Della's coats and Perrin's earrings past L100, and the outposts give
+the pieces their places are known for (the Dojo's belts, Zakum's helmet and capes, the Altaire earrings, the Toymaker
+set, the two societies' capes, the Icarus capes, Nett's Pyramid belts).
+
+| Place | Resident | Role (job, level) | Recruit | Friendship gear |
+|---|---|---|---|---|
+| Temple of Time | Solveig | pilgrim of the Road of Regrets, arc owner | - | - |
+| Temple of Time | Osmund | scribe to the Record Keeper | - | Timeless hat for the player's class L120 |
+| Temple of Time | Ilsabet | a traveller who slept through thirty years on the Leafre ship | - | - |
+| Temple of Time | Caedmon | guardian-knight of the three doors (Hero 120) | yes | coats L100 / L110 / Timeless suits L120 (Della's line) |
+| Temple of Time | Liesl | oblivion hunter (Sniper 112) | yes | earrings Rose L90 / Sword L100 / Timeless L120 (Perrin's line) |
+| Neo City (Time Gate) | Calla | a girl from Neo City's 2099 who came back through the gate, arc owner | - | - |
+| Neo City (Time Gate) | Augustin | Leafre's keeper of the gate's logbook, Andy's friend | - | - |
+| Neo City (Time Gate) | Bettany | Omega tinker studying the gate's machinery | - | - |
+| Neo City (Time Gate) | Tobiah | scavenger of the ruined eras (Outlaw 88) | yes | Time Traveler's Circlet L93 |
+| Neo City (Time Gate) | Dashiell | dragon-knight scout of Leafre (Dragon Knight 92) | yes | - |
+| Ereve | Isaura | archivist of the Empress's library, arc owner | - | - |
+| Ereve | Fintan | groom of Kiridu's hatchery | - | - |
+| Ereve | Celandine | tailor of the knights' uniforms | - | - |
+| Ereve | Caius | Night Walker (2, 34) | yes | earrings Amethyst L15 / Leaf L25 / Celestial L40 |
+| Ereve | Cadoc | Thunder Breaker cadet (1, 18) | - | - |
+| Rien | Eira | Rien's oldest, who saw the heroes leave, arc owner | - | - |
+| Rien | Tove | penguin herder | - | - |
+| Rien | Ansgar | ice fisher | - | - |
+| Rien | Brynja | Aran (2, 32) | yes | Ice Jeans L16 / Old Raggedy Cape L25 / Cape of Warmness L35 |
+| Rien | Kjeld | sentry of the Dangerous Forest | - | - |
+| Rien | Saga | a girl who wants to be a hero | - | - |
+| Altaire Camp | Ottavia | the expedition's cartographer, arc owner | - | - |
+| Altaire Camp | Larkin | fairy-born forager | - | - |
+| Altaire Camp | Rosalind | fairy jeweller | - | earrings Moonstar L45 / Altair L50 / Glittering Altaire L50 |
+| Altaire Camp | Ewan | camp cook | - | - |
+| Altaire Camp | Casimir | herbalist of the poison haze | - | - |
+| Altaire Camp | Maelis | huntress of Boulder Mountain (Hunter 58) | yes | Icarus Capes (1) / (2) / (3) L42 |
+| Altaire Camp | Gaspard | stone-breaker (Page 55) | yes | - |
+| Mu Lung Dojo | Shen | the Dojo's doorman | - | - |
+| Mu Lung Dojo | Lianhua | challenger of the Dojo floors (Marauder 75) | yes | belts Blue L45 / Red L60 / Black L75 |
+| Mu Lung Dojo | Guo | retired master who lost to Mu Gong | - | - |
+| Ice Valley II | Torsten | relief guard at Jeff's gate (Crusader 72) | yes | Gordon's Magic Iron L50 |
+| Ice Valley II | Agnetha | runner of potions up to Glibber | - | - |
+| The Door to Zakum | Hrafn | the watch at the door, Sigrun's second (Crusader 95) | yes | Zakum Helmet L50 / Wrath of El Nath L100 / Shroud of Zakum L120 |
+| The Door to Zakum | Brenna | Adobis's lava-reader | - | - |
+| The Door to Zakum | Vigdis | guide through the Dead Mine and the Cave of Trial (Bandit 55) | - | - |
+| Orbis Park | Odalys | keeper of the park | - | - |
+| Orbis Park | Tibalt | retired sailor of the sky ships | - | - |
+| Orbis Park | Saffi | pixie hunter (Cleric 50) | yes | - |
+| Ludibrium Village | Alder | toymaker | - | Toymaker Cap L40, Toymaker Cape L40 |
+| Ludibrium Village | Winifred | the village schoolteacher | - | - |
+| Ludibrium Village | Rollo | toy-soldier enthusiast (Fighter 45) | yes | - |
+| The Town of Ariant | Zahra | seamstress of the residential quarter | - | - |
+| The Town of Ariant | Idris | palace messenger | - | - |
+| The Town of Ariant | Kasim | sand-bandit lookout (Bandit 50) | yes | Pharaoh Belt L40 / The Immortal Pharaoh Belt L80 |
+| Ariant Castle | Yusra | handmaiden of the palace | - | - |
+| Ariant Castle | Darius | castle guard (Spearman 40) | - | - |
+| Tent of the Entertainers | Pepita | juggler | - | Smiling Mask L25, Crying Mask L25 |
+| Tent of the Entertainers | Rafi | fire-eater (Fire/Poison Wizard 30) | yes | - |
+| Tent of the Entertainers | Zarek | old ringmaster | - | - |
+| Zenumist Society | Oriane | apprentice alchemist (Fire/Poison Wizard 40) | yes | Zenumist's Cape L35 |
+| Zenumist Society | Phineas | doorkeeper of the society | - | - |
+| Alcadno Society | Ferro | apprentice engineer (Brawler 45) | yes | Alcadno's Cape L35 |
+| Alcadno Society | Mathilde | the society's archivist | - | - |
+| Pier on the Beach | Ondine | the dolphin's keeper | - | Oxygen Tank L30 |
+| Pier on the Beach | Bora | pearl seller of the pier | - | - |
+
+Ereve's and Rien's knights and Aran (Caius, Cadoc, Brynja) follow `CYGNUS_ARAN_CAREERS_ENABLED` like
+Aldric, Linnea and Torvin; the townsfolk there are always present. Recruits are earned the five ways (item price,
+kill proof after the intro quest, day rate, rumor alone, rumor on top of the intro quest), spread across the wave.
+
+### 10.3 Threads
+
+Two pairs of places share a story, and five places have their own. Every arc's last beat, and each middle beat whose
+lines would read wrong on a second run, happens once per server (`requires.notFlags`); `ArcFinalBeatOncePerServerTest`
+pins the fourteen. Earlier waves are never gated by this one: their Residents speak a line in a new quest's TALK_TO
+step, and those who know a new Resident well gain one `about.<new>` line each (additions only, true in every chapter
+of their own arcs) in `aquarium`, `ariant`, `el-nath`, `herb-town`, `leafre`, `ludibrium`, `magatia`, `mu-lung`,
+`omega-sector` and `orbis`. Victoria's files belong to the Victoria session, so Ellinia's Isolde, Mirabel, Oda,
+Thessaly and Wren and Lith Harbor's Ingrid and Mirel still answer `aboutUnknown` about Casimir, Celandine, Fintan,
+Larkin, Isaura, Ottavia, Brynja and Ansgar, who mention them. The other ties without a line back are one-sided on
+purpose (the old Resident has no reason to know the new one).
+
+Oriane, Ondine, Casimir and Cadoc were first written as Ines, Nerys, Teodor and Wynn; they were renamed (ids, quest ids,
+quest-log keys, flags and lines) before merge because `feat/victoria-remainder` gives those ids to its own Residents.
+
+- *The Temple of Time and Neo City.* Solveig's daughter Liv went through the Tera Forest gate at seventeen and lived her
+  life out in Neo City's 2099; Calla is Liv's granddaughter, pushed back through the gate the night the overlords came,
+  and the gate took her memory of Liv's face, name and lullaby. The lullaby turns up in an Eye of Time's hourglass on
+  Memory Lane (`solveig-the-song-in-the-glass`, `temple.song.found`); Calla's listener hears Midnight Harbor's one night
+  (`calla-the-harbor-listener`, `neo.harbor.heard`); Solveig traces the song to the girl at the gate
+  (`solveig-the-girl-at-the-gate`, `temple.song.traced`), and Osmund reads the glass's record aloud, once
+  (`calla-grans-name`, `neo.gran.home`).
+- *Ereve and Rien.* Isaura keeps the Empress library's record of the five heroes, which ends on a blank leaf; Eira has Rien's spoken memory of the day they left. The player carries Ereve's copy
+  north (`isaura-the-blank-page`, `eira-the-copy-from-ereve`), Eira's words back (`isaura-in-her-words`), and a copy of
+  the finished record to Rien's library shelf (`eira-on-rien-shelf`). The arc is carried by townsfolk only, so it works
+  with Cygnus/Aran careers off.
+- *Altaire Camp.* Ottavia's map of Ellin Forest has blank edges: trees that walk, a haze line that moves, and a forest
+  without a name (`ottavia-the-walking-trees`, `ottavia-the-haze-line`, then `ottavia-a-name-on-the-map` after hearing
+  the haze rumor).
+- *The Ariant maps.* A bolt of the palace's red silk that sand bandits brought in off the road eleven years ago, under
+  Zahra's floor: Yusra finds it written off in the palace's old ledgers as lost to sand (`yusra-the-silk-ledger`), and the Tent plays inside the town
+  walls in it for the first time in forty years (`zahra-red-under-the-lanterns`). A last chapter of Zahra's reads Nadira's
+  `ariant.well.flowing` for flavour only.
+- *The two societies.* Oriane (Zenumist) and Ferro (Alcadno), apprentices a generation after Gilda and Aurel, walk in at
+  the other house's front door in daylight (`ferro-in-daylight`) and sign one proving page together
+  (`oriane-one-page-two-names`).
+- *The El Nath outposts.* Hrafn hangs a line of yeti horns up the road so a call from the door is heard at Jeff's gate,
+  where Torsten stands relief (`brenna-tempered-in-the-breath`, then `hrafn-the-first-call`).
+- *The Dojo.* Guo lost to Mu Gong fifty years ago and walked out without bowing (`shen-a-note-for-the-top-floor`, then
+  `guo-the-bow`).
+
+| Arc | Chapters (gate) |
+|---|---|
+| `solveig-the-road-of-regrets` | The Road of Regrets / A Song by the Sea (`temple.song.found`) / The Girl at the Gate (`temple.song.traced`) / Set Down (`neo.gran.home`) |
+| `calla-the-harbor-light` | The Girl at the Gate / The Same Night (`neo.harbor.heard`) / Somebody Has Gran's Song (`temple.song.traced`) / Liv (`neo.gran.home`) |
+| `isaura-the-record-of-the-five` | The Record of the Five / Pointing North (`ereve.record.searched`) / Somebody in Rien (`rien.copy.read`) / In Her Words (`ereve.page.written`) / A Copy for Rien (`rien.book.shelved`) |
+| `eira-the-day-they-left` | Grandmother's Story / What the Book Says (`rien.copy.read`) / Told to Ereve (`ereve.page.written`) / On Rien's Shelf (`rien.book.shelved`) |
+| `ottavia-the-map-of-the-forest` | Blank Edges / Trees That Walk (her first quest) / Drawn in Pencil (her second; unlocks the haze rumor) / Ellin's Forest (`altaire.forest.named`) |
+| `zahra-the-red-silk` | Under the Floor / Bells for the Hems (her first quest) / Lost to Sand (`ariant.silk.unmissed`) / Red Under the Lanterns (`ariant.silk.worn`) / Water and Red (`ariant.silk.worn` and wave 2's `ariant.well.flowing`) |
+| `oriane-the-shared-proving` | Two Provings / Glass That Cracks (her first quest) / In Daylight (`magatia.front-door.walked`) / One Page, Two Names (`magatia.proving.shared`) |
+| `hrafn-the-horn-line` | Out of Earshot / Yeti Horn (his horn quest) / One at Every Stretch (`el-nath.horns.hung`) / The Gate Answers (`el-nath.horns.answered`) |
+| `guo-the-unbowed` | Fifty Years on the Bench / The Old Gi (his first quest) / The Belt on the Wall (`mu-lung-dojo.belt.kept`) / The Bow (`mu-lung-dojo.guo.bowed`) |
+
+| Rumor | Cast, spot, hours | Sets on listeners |
+|---|---|---|
+| `temple-the-far-door` | Caedmon, Liesl on Three Doors' lower west street, 18-20 | `temple.heard-liesl` (Liesl's contract) |
+| `temple-thirty-years` | Ilsabet, Osmund on the lower central street, 19-20, every 2 days | - |
+| `time-gate-the-sack` | Tobiah, Dashiell by the Time Gate, 19-21 | - |
+| `time-gate-the-casing` | Augustin, Bettany by Andy, 13 | - |
+| `ereve-the-five-emblems` | Isaura, Celandine by Cygnus, 18-20 | - |
+| `ereve-the-night-watch` | Caius, Cadoc by Neinheart, 20-21, every 2 days | - |
+| `rien-the-warm-road` | Brynja, Ansgar by Pusla, 19-21 | `rien.heard-brynja` (Brynja's contract) |
+| `rien-the-old-story` | Eira, Saga on the lower west street, 17-18 | - |
+| `altaire-the-haze-line` | Ottavia, Casimir on the lower west street, 19-21, from Ottavia's chapter 2 | `altaire.heard-haze` (her last quest) |
+| `altaire-supper-talk` | Ewan, Gaspard on the lower east street, 18-20, every 2 days | - |
+| `ludibrium-village-the-parade` | Rollo, Alder, Winifred on the lower central benches, 19-20, every 2 days | - |
+| `orbis-park-after-the-hunt` | Saffi, Odalys on the lower west street, 19-20 | `orbis-park.heard-saffi` (Saffi's contract) |
+| `orbis-park-the-east-wind` | Tibalt, Odalys on the lower west street, 21, every 2 days | - |
+| `ariant-town-kasims-terms` | Zahra, Kasim at the residential area 1 door, 17-18 | `ariant.heard-kasim` (Kasim's contract) |
+| `ariant-town-the-word-goes-out` | Zahra, Idris on the lower central street, 19-21, from Zahra's chapter 3 | `ariant.heard-silk` (her last quest) |
+| `ariant-castle-the-night-watch` | Yusra, Darius by Tigun, 19-21, every 2 days | - |
+| `ariant-tent-the-old-show` | Pepita, Zarek on the Tent's upper east street, 18-20, every 2 days | - |
+| `zenumist-the-doorkeepers-rule` | Oriane, Phineas at the hidden room door, 20-21 | `zenumist.heard-oriane` (Oriane's contract) |
+| `alcadno-the-record` | Ferro, Mathilde on the lower central street, 19-20, from Oriane's chapter 3 | `magatia.heard-proving` (Oriane's last quest) |
+| `ice-valley-ii-the-runner` | Torsten, Agnetha by Glibber, 16-17, every 2 days | - |
+| `door-to-zakum-the-watch` | Hrafn, Vigdis by Adobis, 18 | `door-to-zakum.heard-hrafn` (Hrafn's contract) |
+| `door-to-zakum-the-horn` | Hrafn, Brenna by Adobis, 19, from Hrafn's chapter 2 | - |
+| `mu-lung-dojo-the-unbowed` | Guo, Shen on the lower west street, 18-19, from Guo's chapter 2 | `mu-lung-dojo.heard-shen` (Shen's middle beat) |
+| `mu-lung-dojo-twenty-nine` | Lianhua, Shen on the lower central street, 16-17, every 2 days | - |
+| `pier-on-the-beach-the-tide` | Ondine, Bora on the pier, 16-17 | - |
+
+**Recruits.** Kill proof after the intro quest: Caedmon (60 Memory Guardians), Caius (50 Bubblings), Maelis (60
+Primitive Boars), Ferro (40 reinforced iron mutae), Torsten (60 Dark Pepes). Item price: Tobiah (10 Afterlord chained
+tires), Rollo (30 toy drums), Rafi (20 Flaming Deserts). Day rate: Dashiell (140k), Gaspard (45k), Lianhua (90k). Rumor
+alone: Brynja, Kasim. Rumor on top of the intro quest: Liesl (25 green cloths), Hrafn (20 Bain's spiky collars),
+Saffi and Oriane (meso only). Each `refuse.flags` line names what its contract still needs.
+
+**Gear notes.** Gaspard is a Page, whose bot build learns only Sword Mastery, so he breaks stone with the flat of a
+two-handed sword rather than a hammer. Hrafn's last tier (the Shroud of Zakum) asks for Zakum himself: the kill step
+counts Zakum's last body (8800002), which the altar summons in Java (`MapleMap.spawnZakum`), so the offline lint reports
+it as never spawning (the wave's one new lint warning). The society capes have no upgrade slots; the Dojo and Pyramid
+belts, masks, pendant and Oxygen Tank are given as they are.
+
+### 10.4 Routes
+
+The routes session (`feat/routes-malaysia`, not merged when this was written) adds the Temple of Time (Corba, 2082003,
+at Leafre Station flies the rider through the `templeenter` portal to the temple and back), the Door to Zakum
+(through Jeff, level 50 and up, then on foot through the Dead Mine) and Altaire Camp (the Time Control Room's
+`move_elin`). It leaves the Dojo lobby instance-only (the Dojo NPC warps by floor; the lobby's exit is a script) and
+Ereve and Rien out of the agent graph (their docks are not joined to the towns by plain portals both ways). So until
+it is merged, and for the Dojo, Ereve and Rien after it, `call <recruit>` from elsewhere finds no way to Caedmon,
+Liesl, Hrafn, Maelis, Gaspard, Lianhua, Caius or Brynja's homes; inside their own maps, and for players on foot,
+everything works. Adding Three Doors and the Time Gate to the citizen regions' towns waits for both merges.
+
+### 10.5 Live checks after deploy
+
+1. **Boot.** `!world census`: 269 personas (56 more), towns include three-doors=5, tera-forest-time-gate=5, ereve=7,
+   rien=7, altaire-camp=7, the outposts 2-3 each; no living-world lint errors in the boot log.
+2. **They live there.** Wake each town at the hours in section 6.2 and `!world residents`: each Resident materializes
+   at its venue. Ice Valley II's and the Tent's casts stand only on the upper platforms, above the yetis and the desert
+   rabbits; Ereve's Caius and Cadoc and Rien's Brynja only while Cygnus/Aran careers are on, and the Isaura/Eira arc
+   still runs with them off.
+3. **Talk.** `hi Calla`, `who are you`, `tell me about Augustin`, double-click Guo: the NPC window shows the name, a
+   borrowed portrait of that place's stock townspeople (own portrait after section 6.2) and the menu.
+4. **The time thread.** A level 90 character with Neo City's 2021 and 2099 open (Nex quests 3719 and 3724): in 2099,
+   `calla-the-harbor-listener` (radars from the overlords); Corba's flight from Leafre Station to the Temple, then on
+   Memory Lane 1 (open without the Temple Keeper's quests), `solveig-the-song-in-the-glass`; then
+   `solveig-the-girl-at-the-gate` and `calla-grans-name` (Osmund, then Solveig, then Calla). The first finisher of the
+   song and listener quests hears their reveal lines; both last chapters open together; a second character is no
+   longer offered either last beat. The Temple's later quests sit at or above the level of the Temple Keeper quest
+   that opens their stretch (`scripts/portal/timeQuest.js`; 3501 at 91 up to 3517 at 128).
+5. **A cross-island errand.** A level 15-20 character: `isaura-the-blank-page` in Ereve, the sky ferry and the Lith
+   Harbor ship to Rien for `eira-the-copy-from-ereve`, back for `isaura-in-her-words`, `eira-on-rien-shelf` (the Rien
+   library visit).
+6. **A recruit of each kind.** Kill proof: Torsten ("proof: 10/60 kills" every ten Dark Pepes). Day rate: Lianhua in
+   the Dojo lobby, 90,000. Rumor alone: stand at the Town of Ariant's residential area 1 door 17-18 for
+   `ariant-town-kasims-terms`, then `Kasim join me`. Rumor and items: Hrafn (be by Adobis at 18 for
+   `door-to-zakum-the-watch`, his intro quest, 20 Bain's spiky collars).
+7. **Friendship gear.** `!world bond <player> lianhua 110`, level 45, `lianhua-blue-belt`: a Blue Belt; `!world bond
+   ... caedmon 110` on two classes, level 100, `caedmon-green-steel`: each class's L100 coat with seven 100% scrolls
+   taken; `!world bond ... rosalind 110`, level 45: Moonstar Earrings.
+8. **Rumors.** `ludibrium-village-the-parade`, `orbis-park-the-east-wind`, `ariant-tent-the-old-show`,
+   `pier-on-the-beach-the-tide` at their hours (or `!world rumor play <id>`); listeners get the flags above.
+9. **Hrafn's Shroud.** With a Zakum expedition (companions or humans), `hrafn-shroud-of-zakum`'s kill step completes
+   when Zakum's last body dies for everyone in the party who hit it.
+
+
+## 11. Wave 4: Victoria and Maple Island remainder
+
+Asked for 2026-10-25 (the coordinator's town audit, section 1.3): Residents in every town and sub-area, sub-areas only
+on safe outpost maps (a camp or hub map with NPCs and few or no mobs). Waves 1-3 covered the seven Victoria towns and
+Ossyria, Masteria and the World Tour; this wave takes what is left on Victoria Island and Maple Island. Branch
+`feat/victoria-remainder` (off a435dc14b); quest-log id block 30800-31099.
+
+### 11.1 Places
+
+| Place | Profile (map) | Fields and levels | Residents | Note |
+|---|---|---|---|---|
+| Florina Beach | `florina-beach` (110000000), existing | Lupin, Lorang 37, Tortie 46, Clang 48 (110010000-110040000) | 7, 2 recruits | bots cannot route here yet (11.6) |
+| Amoria | `amoria` (680000000), existing | Purple Plains 2-15, Purplewood Forest: Sakura Cellion 33, Indigo Eye 38, Crystal Boar 40 | 7, 2 recruits (a married couple) | the Amorian Challenge needs married players |
+| Kerning Square | `kerning-square` (103040000), new | bubble teas 35-37, claw games and perfumes 38-42, mannequins 43-45, records and amplifiers 46-49, Spirit of Rock 49 | 5, 2 recruits | the KerningTrain ride, in no route catalog (11.6) |
+| Mushroom Castle | `mushroom-castle` (106020000 Mushroom Forest Field), new | Renegade Spores, Poison Mushroom 30, Intoxicated Pig 31, Helmet Pepe 32, Royal Guard Pepe 33 | 5, 2 recruits | the scripted portal in Henesys's Empty House (11.6) |
+| Free Market | `free-market` (910000000, the entrance), new | none (a hub every town opens onto); quests send players across Victoria, L15-60 | 4 | knowledge routes only |
+| Excavation Site | `excavation-camp` (101030104 Excavation Site <Camp>), new | Ghost Stumps and masks 19-24, Remains <Tomb> 44-57, Officer and Commander Skeletons 63-73 | 4, 2 recruits | Shuang's Sharenian (Guild PQ) gate stands here |
+| Amherst | `amherst` (1000000), new | snails, shrooms, slimes, Orange Mushroom 1-8 | 4 | Maple Island: no recruits, L1-10 |
+| Southperry | `southperry` (2000000), new | the field west of Southperry 2-8 | 3 | Shanks's ship to Lith Harbor |
+| Mushroom Town | `mushroom-town` (10000), new | Snail Hunting Grounds 1-2 | 3 | the first town a new Explorer sees |
+| Happyville | `happyville` (209000000), new | none (an event town; Rooney in every Victoria town takes players there all year) | 3 | seasonal flavour, no recruits, no arc |
+
+**Left out.** Ant Tunnel Park (105070001) has 58 mob spawns: it is a field, not an outpost, so it gets no Residents
+(Sleepywood's cast already covers the tunnel). The audit's other Victoria sub-areas have no outpost map. The eight new
+profiles were generated with `tools\town-life-profiles.bat generate` (each checks 0 errors, 0 warnings); none is in
+`ambient-deployment.json`, so citizen traffic is unchanged, as with the Aquarium interiors.
+
+### 11.2 Decisions
+
+Wave 3's conventions hold: about a third recruitable (none on Maple Island or in Happyville), regional arcs whose last
+beats happen once per server (`requires.notFlags`), and friendship gear in each place's level band. Every weapon line
+already has three regional tiers, so this wave's recruits give armour and accessories made for the player's class
+(`pool`, never the giver's own piece, so `ContentLintFriendshipTest` still counts 49 weapon Residents). Recruits reuse
+existing loadouts. Maple Island Residents greet new players with L1-10 errands; the island's one Victoria tie is
+Marta's leaving list, which goes to Olwen in Lith Harbor.
+
+### 11.3 Cast
+
+| Place | Resident | Role (job, level) | Recruit (how earned) | Friendship gear |
+|---|---|---|---|---|
+| Florina Beach | Marisol | beachcomber, arc owner | - | - |
+| Florina Beach | Teodor | lifeguard who counts the swimmers in and out | - | - |
+| Florina Beach | Nerys | clears the clangs off the Hot Sand (Bandit 42) | kill proof: 60 clangs + 20k | earrings L40 / L45 / L50 |
+| Florina Beach | Ronan | ex-deckhand of the Florina ferry (Brawler 44) | day rate: 40k | capes L35 / L42 / L50 |
+| Florina Beach | Lulu | sunshade renter | - | - |
+| Florina Beach | Abel | old fisherman of the look-out shed | - | - |
+| Florina Beach | Tansy | a girl who builds a sandcastle every day | - | - |
+| Amoria | Pernille | keeper of the chapel flowers, arc owner | - | - |
+| Amoria | Rafael | newlywed; Liesel healed him in Purplewood Forest, the Challenge was their first run married (Fighter 40) | items: 20 cellion tails + 15k | gloves for the player's class L30 / L40 / L50 |
+| Amoria | Liesel | newlywed, Rafael's wife (Cleric 40) | rumor only: hear the newlyweds + 30k | hats for the player's class L35 / L40 / L50 |
+| Amoria | Clotilde | wedding-cake baker | - | - |
+| Amoria | Lorenzo | waits at the Challenge door for someone to marry | - | - |
+| Amoria | Ines | Moony's apprentice ring-polisher | - | - |
+| Amoria | Valentin | a poet who writes other people's vows | - | - |
+| Kerning Square | Bao | noodle-cart keeper of the old night market, arc owner | - | - |
+| Kerning Square | Juno | night janitor of the mall | - | - |
+| Kerning Square | Zara | mall security (Bandit 46) | intro and rumor, items: hear Juno on her, 20 mannequin wigs + 20k | tops for the player's class L35 / L40 / L50 |
+| Kerning Square | Felix | record-shop clerk (Hunter 46) | kill proof: 50 records (Latest Hits, Greatest Oldies) + 20k | bottoms for the player's class L40 / L50 / L60 |
+| Kerning Square | Kiko | bubble-tea boy, Bao's grandson | - | - |
+| Mushroom Castle | Wilmot | royal baker, a Henesys boy who came through the Empty House, arc owner | - | - |
+| Mushroom Castle | Primrose | lady-in-waiting to Princess Violetta | - | - |
+| Mushroom Castle | Percival | the one human knight of the mushroom guard (Page 34) | intro + day rate 25k | shoes for the player's class L35 (King Pepe) / L40 / L50 |
+| Mushroom Castle | Fern | pupil of the Secretary of Magic (Cleric 33) | items: 30 poison mushroom caps + 10k | earrings L30 / L35 / L40 |
+| Mushroom Castle | Barley | swineherd of the intoxicated pigs | - | - |
+| Free Market | Gilbert | retired merchant who remembers every price | - | - |
+| Free Market | Sofie | runner between the market rooms | - | - |
+| Free Market | Marguerite | pitch-caller at the entrance | - | - |
+| Free Market | Basil | lost-and-found keeper | - | - |
+| Excavation Site | Edmund | camp archaeologist of Sharenian, arc owner | - | - |
+| Excavation Site | Halla | guard of the tomb road (Spearman 55) | kill proof: 60 mummydogs + 25k | helmets for the player's class L45 / L50 / L60 |
+| Excavation Site | Wick | night watch of the dig sites (Rogue 24) | rumor only: hear Nell on him + 15k | shoes for the player's class L20 / L25 / L30 |
+| Excavation Site | Nell | camp cook | - | - |
+| Amherst | Bettina | baker of Rainbow Street | - | - |
+| Amherst | Moe | retired gate guard | - | - |
+| Amherst | Sunny | teacher of the map and the signposts | - | - |
+| Amherst | Pockets | a boy who trades snail shells | - | - |
+| Southperry | Marta | Shanks's clerk, keeps the leaving list | - | - |
+| Southperry | Ned | fisherman of the pier | - | - |
+| Southperry | Elodie | a girl who wants to leave and is afraid to | - | - |
+| Mushroom Town | Tilly | everyone's first friend | - | - |
+| Mushroom Town | Rufus | cabbage farmer | - | - |
+| Mushroom Town | Wynn | a boy practising magic on snails | - | - |
+| Happyville | Noelle | Rudi's niece, hangs the ornaments | - | - |
+| Happyville | Kris | sled-maker | - | - |
+| Happyville | Ingeborg | knits mufflers for travellers | - | - |
+
+45 Residents, 10 recruitable (of the 35 off Maple Island). Rafael and Liesel are a lore couple (`spouse:`, both
+recruitable), so an owner can field a fourth married pair for the Amorian Challenge. Each recruit is earned a
+different way: an item price (Rafael, Fern), a kill proof on its intro quest's monster (Nerys, Felix, Halla), a day
+rate (Ronan, Percival after his intro), a rumor alone (Liesel, Wick), or a rumor on top of the intro quest with an item
+price (Zara).
+
+### 11.4 Threads
+
+- *Florina Beach and Amoria: the Silver Gull's letter.* Marisol finds a sealed bottle in the lorangs' shallows, forty
+  years at sea, addressed to "Pernille, the chapel steps, Amoria" (`marisol-the-sealed-bottle`, world flag
+  `florina.bottle.found`). Pernille has laid a flower on the chapel steps every first morning of spring for forty
+  years for a sailor who said he would write and never did; the letter says he did (`marisol-to-the-chapel-steps`,
+  `amoria.letter.read`). She asks the sea what happened: Hadrik in Lith Harbor was a boy on the Silver Gull's deck
+  when it went down off Florina, and its bosun went over the side after him (`pernille-what-the-sea-said`, the one
+  Victoria errand, `amoria.gull.remembered`). Pernille writes her answer forty years late and Marisol sends it out on
+  the tide from the look-out shed (`pernille-forty-years-late`, `florina.answer.sent`).
+- *Kerning Square: the night market.* The mall stands where Kerning's night market was. Bao kept her noodle cart in the
+  lobby when the stalls were moved out; the market's sign was walled into the eighth floor (`bao-the-old-sign`,
+  `ksq.sign.found`), and Sadie, Kerning's foreman, poured that floor and kept the market's bell
+  (`bao-the-poured-floor`, the Victoria errand, `ksq.bell.found`). With both, the market opens one night a week in
+  the lobby (`bao-the-lobby-corner`, `ksq.market.back`).
+- *Mushroom Castle: the cake.* Wilmot came through the Empty House in Henesys as a boy and never went back. He has been
+  ordered to bake a wedding cake nobody wants (`wilmot-a-cake-for-no-one`, `mc.cake.refused`); he bakes one for the
+  kingdom instead, with the Henesys caps Brisa still sends him (`wilmot-caps-from-home`, the Victoria errand,
+  `mc.caps.sent`), and serves it to the guards on the castle wall (`wilmot-the-kingdoms-cake`, `mc.cake.served`).
+- *Excavation Site: the buried name.* Every Sharenian stone in the tombs has its king's name chiselled off. Edmund
+  traces the chisel marks (`edmund-the-chisel-marks`, `excav.marks.read`); Ossa's Perion diggers turned up the one
+  stone that kept it (`edmund-ossas-stone`, the Victoria errand, `excav.name.found`); and the name goes back on the
+  camp's board after a night at the Remains <Cliff> (`edmund-the-name-said-aloud`, `excav.name.restored`).
+
+| Arc | Chapters (gate) |
+|---|---|
+| `marisol-the-sealed-bottle` | Bottles / The Sealed One (`florina.bottle.found`) / Read on the Steps (`amoria.letter.read`) / Out on the Tide (`florina.answer.sent`) |
+| `pernille-forty-springs` | Forty Springs / He Wrote (`amoria.letter.read`) / What the Sea Said (`amoria.gull.remembered`) / Yes (`florina.answer.sent`) |
+| `bao-the-night-market` | The Cart / The Sign (`ksq.sign.found`) / The Bell (`ksq.bell.found`) / Market Night (`ksq.market.back`) |
+| `wilmot-the-kingdoms-cake` | Ordered / Refused (`mc.cake.refused`) / Caps From Home (`mc.caps.sent`) / Served (`mc.cake.served`) |
+| `edmund-the-buried-name` | Chisel Marks / Read (`excav.marks.read`) / Found (`excav.name.found`) / Said Aloud (`excav.name.restored`) |
+
+Once per server (`ArcFinalBeatOncePerServerTest`): the finales `pernille-forty-years-late`, `bao-the-lobby-corner`,
+`wilmot-the-kingdoms-cake` and `edmund-the-name-said-aloud`, and the middle beats whose lines would be wrong on a
+second run (`pernille-what-the-sea-said`, `bao-the-poured-floor`, `wilmot-caps-from-home`, `edmund-ossas-stone`).
+The first beat of each thread, which a later quest lists in `questsCompleted`, stays open to every player.
+
+| Rumor | Cast, spot, hours | Sets on listeners |
+|---|---|---|
+| `florina-the-tide-line` | Marisol, Abel, from Marisol's chapter 2 | - |
+| `florina-the-hot-sand` | Nerys, Ronan, every 2 days | - |
+| `amoria-the-chapel-steps` | Pernille, Clotilde, from Pernille's chapter 2 | `amoria.heard-steps` (Pernille's last quest) |
+| `amoria-the-newlyweds` | Rafael, Liesel | `amoria.heard-liesel` (Liesel's contract) |
+| `ksq-the-night-shift` | Juno, Zara | `ksq.heard-zara` (Zara's contract) |
+| `ksq-the-cart` | Bao, Kiko, from Bao's chapter 2 | `ksq.heard-cart` (Bao's last quest) |
+| `mc-the-kitchen` | Wilmot, Primrose, from Wilmot's chapter 2 | `mc.heard-kitchen` (Wilmot's last quest) |
+| `excav-the-cookfire` | Nell, Wick | `excav.heard-wick` (Wick's contract) |
+| `excav-the-board` | Edmund, Halla, from Edmund's chapter 2 | `excav.heard-board` (Edmund's last quest) |
+| `fm-the-price-of-things` | Gilbert, Marguerite, every 2 days | - |
+| `amherst-the-gate` | Moe, Sunny, every 2 days | - |
+
+### 11.5 Victoria and wave 1-3 touch points
+
+No existing persona changes. The four Victoria errands (Hadrik, Sadie, Brisa, Ossa) and Marta's leaving list (Olwen)
+are `TALK_TO` steps whose lines live in the quest's `say`.
+
+### 11.6 Route needs (the routes session's files)
+
+Agents cannot route to Florina Beach, Kerning Square or Mushroom Castle today (town audit 1.2); Maple Island and
+Happyville are in neither graph. Until the routes session adds those legs, `call <name>` from elsewhere finds no way
+for Nerys and Ronan (Florina), Zara and Felix (Kerning Square) or Percival and Fern (Mushroom Castle); inside their
+towns they work, and a recruit follows its owner through the portals and rides the owner takes. Amoria (Thomas
+Swift's leg) and the Excavation Site are already in the agent graph. Asked of the routes session, not edited here:
+the Pason/Pison boat Lith Harbor <-> Florina Beach, the KerningTrain ride 103000100 <-> 103000310 and the scripted
+portal `TD_MC_first` in 100000002 for the agent graph and `travel.yaml`, and Amoria's Thomas Swift leg for
+`travel.yaml`. All four are on `feat/routes-malaysia` (c3d8ce3ca, 2026-10-26), not merged yet.
+
+Mushroom Castle's door checks stock quest 2260 (or 2300-2310 under way), and the router takes a bot through it only
+when the bot passes that check. A Resident who lives behind it has been through it: `ResidentHomeGates` marks its home
+town's gate quest completed on its character (no actions, no rewards) when it is dressed and whenever the roster or
+bench loads it as a companion, so Percival and Fern can be routed home. Kerning Square joins Victoria's citizen towns
+in `regions.yaml` after both branches merge (the routes session noted it for the coordinator).
+
+### 11.7 As built
+
+45 Residents, 10 recruitable, 127 quests (quest-log ids 30800-30926 of the block 30800-31099), 10 contracts, 5 arcs,
+11 rumors, no new loadouts. Content files: `{personas,quests,contracts,arcs,rumors}/` `florina-beach.yaml`,
+`amoria.yaml`, `kerning-square.yaml`, `mushroom-castle.yaml`, `excavation-camp.yaml`; `{personas,quests,rumors}/`
+`free-market.yaml`, `maple-island.yaml` (Amherst, Southperry and Mushroom Town); `{personas,quests}/happyville.yaml`.
+Outside the content: the eight TownLife profiles and their `index.json` lines, borrowed portraits for the ten places in
+`ResidentDialogue.PORTRAITS` (Mushroom Castle borrows Henesys folk: its townspeople are mushrooms), and the pinned
+counts (`AgentTownLifeProfileRepositoryTest` 58 profiles, `ContentLintLootTermsTest` 79 contracts,
+`ArcFinalBeatOncePerServerTest` the eight beats in 11.4).
+
+What the server's own data changed while writing:
+
+- **Felix's kill proof** counts 50 records (Latest Hits Compilation, Greatest Oldies), not Spirits of Rock: the Spirit
+  of Rock is a 250,000 HP boss, one per room, in event copies June opens only while Blake's stock quests 2286-2288
+  run. No quest needs those rooms; Bao's sign is behind the record racks of the open area A (103040400).
+- **Tops and bottoms**: Zara's go L35 / L40 / L50 (no top, bottom or overall exists at L41-47); Felix's go L40 / L50 /
+  L60, above his L44 intro. Halla's helmets are gated L45 / L50 / L60 and give the L40-42, L50 and L60 pieces (only
+  warriors have helmets at 45 and 55); pirates get a no-job hat where every pirate hat is already some armourer's.
+  Fern's earrings go L30 / L35 / L40, above her L30 intro.
+- **The Amorian Challenge admits only married players** (`AmoriaPQ.js`, `onlyMarriedPlayers`): Rafael and Liesel met
+  in Purplewood Forest on the road to Amos, married at the cathedral, and the Challenge was their first run as a
+  couple; Lorenzo wants a spouse because the door will not open for him alone.
+- **Closing lines** (engine, `QuestLedger.complete`): a quest's `questComplete` line is read before its world flag
+  moves the giver's arc, so the player who opens a chapter hears the base line and the new chapter's override is for
+  the players who come after (`QuestClosingLineTest`). Seven wave-3 beats had the same shape and are fixed with it.
+- **Mushroom Castle's door** checks quest 2260 (11.6, `ResidentHomeGates`), and its towers and wall need stock quest
+  2324, the end of the Secretaries' chain (`gotocastle.js`), and the steep downhill a poison spore at the vines; every
+  quest that goes there says so.
+- **Maple Island's road is one-way** (Mushroom Town -> Amherst -> Southperry, no portal back from 20000-50000) and most
+  island fields have no way in: Snail Hunting Grounds II/III, the Tomato Field, the Snail Gardens and the field west of
+  Southperry are islands, and the Adventurer Training Center opens only during Mai's stock quests 1041-1044. Island
+  quests use Dangerous Forest 50000 (snails) and 1010000 (blue snails, shrooms, orange mushrooms); Mushroom Town's
+  quests are all level 1, unchained, and finish in Amherst (a kill, a visit or an introduction).
+- **The Hill of Christmas** copies 209000004-209000015 have no way in; Happyville's visits list 209000001-209000003,
+  which the three snowmen open.
+
+### 11.8 Live checks after deploy
+
+1. **Boot.** `!world census`: 45 personas more than before the merge; towns include florina-beach=7, amoria=7,
+   kerning-square=5, mushroom-castle=5, free-market=4, excavation-camp=4, amherst=4, southperry=3, mushroom-town=3,
+   happyville=3; no living-world lint errors in the boot log.
+2. **They live there.** `!world wake <town>` for the ten profiles at 18 server time, `!world residents`: each Resident
+   materializes at its venue, never at the profile's fallback spot. Nerys, Ronan, Rafael, Liesel, Zara, Felix,
+   Percival, Fern, Halla and Wick wear their loadouts. Nobody stands in Ant Tunnel Park.
+3. **Talk.** `hi Marisol`, `who are you`, `tell me about Abel`, double-click Wilmot: the NPC window shows the name, a
+   borrowed townsperson portrait and the menu.
+4. **Maple Island, a new character.** Create an Explorer: Tilly greets it in Mushroom Town, her quest finishes in
+   Amherst; at level 8 in Southperry `marta-the-leaving-list`, reach 10, take Shanks's ship, talk to Olwen in Lith
+   Harbor: the quest completes there with Marta's note (never needs the island again).
+5. **The Silver Gull thread.** Level 40: `marisol-the-sealed-bottle` (lorangs at Florina), `marisol-to-the-chapel-steps`
+   (Pernille in Amoria reads it), Pernille's `pernille-what-the-sea-said` (Hadrik in Lith Harbor), stand by the chapel
+   steps for `amoria-the-chapel-steps`, then `pernille-forty-years-late` (Marisol, the look-out shed, back to
+   Pernille): both arcs' last chapters open together; a second character is offered neither Pernille quest again.
+   Bao's (Sadie in Kerning City), Wilmot's (Brisa in Henesys) and Edmund's (Ossa in Perion) threads are the same shape.
+6. **A recruit of each kind.** Kill proof: Halla (`halla-the-tomb-road`, then 60 mummydogs counted after the offer).
+   Day rate: Ronan, 40,000. Rumor only: stand by Moony in Amoria at 19-21 until `amoria-the-newlyweds` plays, then
+   `Liesel join me`, 30,000. Items: Fern (30 poison mushroom caps). Rumor on top of the intro, with items: Zara.
+7. **The couple.** Recruit Rafael and Liesel together: both show as married (`Character.isMarried()`), and a party
+   with them can enter the Amorian Challenge.
+8. **Friendship gear.** `!world bond <player> percival 110`, level 35, `percival-king-pepe-shoes`: the hand-in gives the
+   class's King Pepe shoes with every 100% scroll taken; `!world bond <player> nerys 110`, level 40: Blue Moon earrings.
+9. **Rumors** at their hours (or `!world rumor play <id>`): `florina-the-hot-sand`, `ksq-the-night-shift`,
+   `excav-the-cookfire`, `fm-the-price-of-things`, `amherst-the-gate`; listeners get the flags in 11.4.
+10. **Recall.** `call Halla` from Henesys works; `call Nerys`, `call Zara`, `call Percival` from another town find no
+    way until the routes session's legs land (11.6). After that merge: recruit Percival, walk out to Henesys with him, `Percival
+    go train` at a Mushroom Castle field: he walks back in through the Empty House (log: his gate quest marked
+    completed on first load), where a character without quest 2260 is told "A strange force is blocking you".

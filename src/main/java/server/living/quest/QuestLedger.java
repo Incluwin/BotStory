@@ -670,6 +670,9 @@ public final class QuestLedger {
         if (giver != null && reward.bondPoints() != 0) {
             world.bonds().addPoints(chr, giver, reward.bondPoints(), "quest " + quest.id());
         }
+        // the closing line of the chapter the quest was completed in: a chapter this completion opens (its world flag, or
+        // onComplete) overrides it for the players who come after, not for the one who opened it
+        List<String> closingLines = giver == null ? List.of() : world.arcs().lines(giver, "questComplete." + quest.id());
         if (quest.onComplete() != null && giver != null) {
             world.arcs().advance(giver, quest.onComplete().to(), "quest " + quest.id() + " by " + chr.getName(), false);
         }
@@ -678,8 +681,7 @@ public final class QuestLedger {
         world.questLog().completed(chr, quest);
         chr.dropMessage(5, "Quest complete: " + quest.title() + ".");
         if (giver != null) {
-            List<String> lines = world.arcs().lines(giver, "questComplete." + quest.id());
-            String closing = lines.isEmpty() ? "that settles it." : pick(lines, chr);
+            String closing = closingLines.isEmpty() ? "that settles it." : pick(closingLines, chr);
             LivingTalk.open(chr, ResidentDialogue.portraitOf(giver))
                     .say(closing)
                     .ok("#e" + quest.title() + "#n complete.\r\n\r\n" + rewardSummary(reward, gear))

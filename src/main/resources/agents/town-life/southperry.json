@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 2,
+  "profileId": "southperry",
+  "mapId": 2000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -196,
+    "middleMaxY": 295,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 195, "y": 527, "seatId": -1 },
+    { "x": 528, "y": 47, "seatId": -1 },
+    { "x": 650, "y": 527, "seatId": -1 },
+    { "x": 953, "y": 47, "seatId": -1 },
+    { "x": 1245, "y": 527, "seatId": -1 },
+    { "x": 2068, "y": 296, "seatId": -1 },
+    { "x": 2508, "y": 287, "seatId": -1 },
+    { "x": 3326, "y": -194, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": 820, "y": 527 },
+    { "x": 1415, "y": 527 },
+    { "x": 1670, "y": 407 },
+    { "x": 1925, "y": 407 },
+    { "x": 2010, "y": 407 },
+    { "x": 2095, "y": 407 },
+    { "x": 2180, "y": 407 }
+  ],
+  "npcSpots": [
+    { "npcId": 20002, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -88, "minY": 453, "maxX": 52, "maxY": 578, "excludesOccupancy": true },
+    { "id": "door-in00", "type": "DOOR", "minX": 870, "minY": 459, "maxX": 990, "maxY": 574, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 2912, "minY": -666, "maxX": 3002, "maxY": -186, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": 2916, "minY": -1028, "maxX": 3006, "maxY": -594, "excludesOccupancy": true },
+    { "id": "ladder-2", "type": "LADDER", "minX": 2915, "minY": -1138, "maxX": 3005, "maxY": -951, "excludesOccupancy": true },
+    { "id": "ladder-3", "type": "LADDER", "minX": 1531, "minY": 49, "maxX": 1621, "maxY": 477, "excludesOccupancy": true },
+    { "id": "npc-20002", "type": "NPC_LANE", "minX": 283, "minY": 437, "maxX": 413, "maxY": 567, "excludesOccupancy": true },
+    { "id": "npc-9010000", "type": "NPC_LANE", "minX": 1740, "minY": 317, "maxX": 1870, "maxY": 447, "excludesOccupancy": true },
+    { "id": "npc-22000", "type": "NPC_LANE", "minX": 3276, "minY": -190, "maxX": 3406, "maxY": -60, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-biggs", "label": "By Biggs", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 110, "y": 527, "seatId": -1 }, { "x": 195, "y": 527, "seatId": -1 }, { "x": 280, "y": 527, "seatId": -1 }] },
+    { "id": "middle-west-street", "label": "Middle west street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 358, "y": 47, "seatId": -1 }, { "x": 443, "y": 47, "seatId": -1 }, { "x": 528, "y": 47, "seatId": -1 }, { "x": 613, "y": 47, "seatId": -1 }] },
+    { "id": "armor-store-door", "label": "Southperry Armor Store door", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 480, "y": 527, "seatId": -1 }, { "x": 565, "y": 527, "seatId": -1 }, { "x": 650, "y": 527, "seatId": -1 }, { "x": 735, "y": 527, "seatId": -1 }] },
+    { "id": "middle-west-street-2", "label": "Middle west street 2", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 783, "y": 47, "seatId": -1 }, { "x": 868, "y": 47, "seatId": -1 }, { "x": 953, "y": 47, "seatId": -1 }, { "x": 1038, "y": 47, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1075, "y": 527, "seatId": -1 }, { "x": 1160, "y": 527, "seatId": -1 }, { "x": 1245, "y": 527, "seatId": -1 }, { "x": 1330, "y": 527, "seatId": -1 }] },
+    { "id": "lower-central-street-2", "label": "Lower central street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1983, "y": 353, "seatId": -1 }, { "x": 2068, "y": 296, "seatId": -1 }, { "x": 2153, "y": 287, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2338, "y": 287, "seatId": -1 }, { "x": 2423, "y": 287, "seatId": -1 }, { "x": 2508, "y": 287, "seatId": -1 }, { "x": 2593, "y": 287, "seatId": -1 }] },
+    { "id": "upper-east-street", "label": "Upper east street", "district": "UPPER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 2681, "y": -913, "seatId": -1 }, { "x": 2766, "y": -930, "seatId": -1 }, { "x": 2851, "y": -948, "seatId": -1 }] },
+    { "id": "middle-east-street", "label": "Middle east street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2878, "y": 107, "seatId": -1 }, { "x": 2963, "y": 107, "seatId": -1 }, { "x": 3048, "y": 107, "seatId": -1 }, { "x": 3133, "y": 107, "seatId": -1 }] },
+    { "id": "upper-east-street-2", "label": "Upper east street 2", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 3021, "y": -983, "seatId": -1 }, { "x": 3106, "y": -1000, "seatId": -1 }, { "x": 3191, "y": -1017, "seatId": -1 }, { "x": 3276, "y": -1035, "seatId": -1 }] },
+    { "id": "by-shanks", "label": "By Shanks", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 3156, "y": -168, "seatId": -1 }, { "x": 3241, "y": -167, "seatId": -1 }, { "x": 3326, "y": -194, "seatId": -1 }, { "x": 3411, "y": -197, "seatId": -1 }] },
+    { "id": "middle-east-street-2", "label": "Middle east street 2", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 3303, "y": 107, "seatId": -1 }, { "x": 3388, "y": 107, "seatId": -1 }, { "x": 3473, "y": 107, "seatId": -1 }, { "x": 3558, "y": 107, "seatId": -1 }] },
+    { "id": "upper-east-street-3", "label": "Upper east street 3", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 3411, "y": -197, "seatId": -1 }, { "x": 3496, "y": -221, "seatId": -1 }, { "x": 3581, "y": -254, "seatId": -1 }, { "x": 3666, "y": -288, "seatId": -1 }] },
+    { "id": "armor-store-entrance", "label": "Southperry Armor Store entrance", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 1030, "y": 527, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "southperry-armor-store", "type": "ARMOR_SHOP", "npcId": 0, "destinationMapId": 2000001,
+      "approachPoints": [{ "x": 1030, "y": 527 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "armor-store-door-crowd", "venueId": "armor-store-door", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-central-street-2-crowd", "venueId": "lower-central-street-2", "attractionWeight": 110, "softCapacity": 2, "hardCapacity": 3 }
+  ]
+}

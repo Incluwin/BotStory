@@ -1,0 +1,38 @@
+# Rien arc (wave 4): an old woman's spoken memory of the day the heroes left, the Empress's record that stops at the ice
+# (arcs/ereve.yaml), and the copy that comes home to Rien's library. Its chapters move with Ereve's on shared world
+# flags; reading the copy (eira-the-copy-from-ereve) and the last beat (eira-on-rien-shelf) happen once per server
+# (quests/rien.yaml).
+- id: eira-the-day-they-left
+  persona: eira
+  chapters:
+    - id: chapter-1
+      title: "Grandmother's Story"
+    - id: chapter-2
+      title: "What the Book Says"
+      enterWhen: { flags: [rien.copy.read] }
+      dialogueOverrides:
+        greet: ["there you are, dear. they read me the Empress's book. it stops in the wrong place.", "hello, dear. sit. i've been thinking about that book all day."]
+        who: ["Eira. i'm the oldest in Rien. the Empress's people wrote the heroes down in a book, and it stops at the ice, as if that's the end. that's not the end. grandmother told it all the way to the shore. i'll tell it to whoever comes to hear it."]
+        smallTalk: ["a book that stops at the ice. fancy that. the ice was the middle, dear. grandmother always said the middle's where people stop listening.", "they'd like me to write it down. i said, send somebody to listen. writing is only listening that's gone cold."]
+        about.isaura: ["Isaura keeps the Empress's book in Ereve. she sent me her copy, every word. she'd give the whole shelf for one line, she says. i'll give her the whole story for nothing. she only has to hear it."]
+        chapterEnter: ["(folds her hands in her lap and looks out of the library door toward the sea for a long while)"]
+    - id: chapter-3
+      title: "Told to Ereve"
+      enterWhen: { flags: [ereve.page.written] }
+      dialogueOverrides:
+        greet: ["hello, dear. grandmother's story is written in the Empress's book now. imagine that.", "there you are. sit. Isaura wrote it down, every word. she sent word she didn't change one."]
+        who: ["Eira. i'm the oldest in Rien. my grandmother's story of the day the heroes left is written in the Empress's own book in Ereve now, the way she told it. nobody in Rien ever wrote it down. somebody in Ereve finally listened."]
+        smallTalk: ["Isaura's binding a copy for Rien. a book, here, for us. i've told everyone. Ansgar's told everyone twice.", "a grey morning, four to the shore, one up into the ice, and the one on the hill looked back once. it reads very well, they tell me. it tells better."]
+        about.isaura: ["Isaura of Ereve wrote grandmother's words into the Empress's book, every one. she's binding a copy for Rien. she wanted to fix a comma, she says. she didn't. i like her."]
+        chapterEnter: ["(laughs softly, wipes her eyes with the corner of her shawl, and says 'written down, grandmother. imagine.')"]
+    - id: chapter-4
+      title: "On Rien's Shelf"
+      enterWhen: { flags: [rien.book.shelved] }
+      dialogueOverrides:
+        greet: ["hello, dear. have you been in to see the book? the first floor of the library, where people can reach it.", "there you are. sit. the children have been reading grandmother's words out loud. that's the right way."]
+        who: ["Eira. i'm the oldest in Rien. grandmother's story is in the Empress's book in Ereve, and a copy sits on our own shelf in the library, where anybody can reach it. i still tell it, of course. a book's no good by a fire."]
+        idle: ["(sits by the library door with a blue-bound book on her knee, not reading it, only keeping it company)", "(watches the snow come down past the library door as if she were counting it)"]
+        smallTalk: ["Saga reads the book to me in the evenings now. she does the voices. grandmother never did the voices. it's better with the voices.", "a book on a shelf and a story by the fire. grandmother would have said we need both. she'd have said it twice, to be sure."]
+        about.isaura: ["Isaura of Ereve. she wrote grandmother's words into the Empress's book and sent us a copy, bound in blue. it's on our shelf. she says she'll come and see it one day. i'll tell her the story while she does."]
+        friend.best: ["when i'm gone, dear, somebody has to tell it. there's a book now. but a book can't tell it. you and Saga can."]
+        chapterEnter: ["(sets a small blue-bound book on her lap, rests both hands on it, and closes her eyes)"]

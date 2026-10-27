@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "profileId": "alcadno-society",
+  "mapId": 261000020,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 17,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -162,
+    "middleMaxY": -5,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -77, "y": 6, "seatId": -1 },
+    { "x": 293, "y": 6, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": 463, "y": 6 }
+  ],
+  "npcSpots": [
+    { "npcId": 2111001, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-down00", "type": "PORTAL", "minX": 484, "minY": -109, "maxX": 624, "maxY": 16, "excludesOccupancy": true },
+    { "id": "door-in00", "type": "DOOR", "minX": -130, "minY": -229, "maxX": -10, "maxY": -114, "excludesOccupancy": true },
+    { "id": "portal-out00", "type": "PORTAL", "minX": -391, "minY": -65, "maxX": -251, "maxY": 60, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -258, "minY": -220, "maxX": -168, "maxY": 16, "excludesOccupancy": true },
+    { "id": "npc-2111001", "type": "NPC_LANE", "minX": -67, "minY": -84, "maxX": 63, "maxY": 46, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-maed", "label": "By Maed", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -162, "y": 6, "seatId": -1 }, { "x": -77, "y": 6, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 123, "y": 6, "seatId": -1 }, { "x": 208, "y": 6, "seatId": -1 }, { "x": 293, "y": 6, "seatId": -1 }, { "x": 378, "y": 6, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "lower-central-street-crowd", "venueId": "lower-central-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 2,
+  "profileId": "amherst",
+  "mapId": 1000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 33,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -56,
+    "middleMaxY": 263,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 30 },
+    { "name": "east00", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 360, "y": 274, "seatId": -1 },
+    { "x": 815, "y": 214, "seatId": -1 },
+    { "x": 1432, "y": 154, "seatId": -1 },
+    { "x": 2038, "y": 274, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": 20, "y": 274 },
+    { "x": 1687, "y": 154 }
+  ],
+  "npcSpots": [
+    { "npcId": 12101, "offsetX": 85 },
+    { "npcId": 2103, "offsetX": -85 },
+    { "npcId": 10000, "offsetX": 85 },
+    { "npcId": 12000, "offsetX": -85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -136, "minY": 202, "maxX": 4, "maxY": 327, "excludesOccupancy": true },
+    { "id": "door-in00", "type": "DOOR", "minX": 598, "minY": -124, "maxX": 718, "maxY": -9, "excludesOccupancy": true },
+    { "id": "door-in02", "type": "DOOR", "minX": 1219, "minY": 86, "maxX": 1339, "maxY": 201, "excludesOccupancy": true },
+    { "id": "portal-east00", "type": "PORTAL", "minX": 2127, "minY": 200, "maxX": 2267, "maxY": 325, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 873, "minY": -114, "maxX": 963, "maxY": 164, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": 1844, "minY": -144, "maxX": 1934, "maxY": 104, "excludesOccupancy": true },
+    { "id": "npc-12101", "type": "NPC_LANE", "minX": 38, "minY": 184, "maxX": 168, "maxY": 314, "excludesOccupancy": true },
+    { "id": "npc-10000", "type": "NPC_LANE", "minX": 482, "minY": 184, "maxX": 612, "maxY": 314, "excludesOccupancy": true },
+    { "id": "npc-2103", "type": "NPC_LANE", "minX": 1036, "minY": 64, "maxX": 1166, "maxY": 194, "excludesOccupancy": true },
+    { "id": "npc-12000", "type": "NPC_LANE", "minX": 1545, "minY": 64, "maxX": 1675, "maxY": 194, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-pio", "label": "By Pio", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 275, "y": 274, "seatId": -1 }, { "x": 360, "y": 274, "seatId": -1 }, { "x": 445, "y": 274, "seatId": -1 }] },
+    { "id": "weapon-store-door", "label": "Amherst Weapon Store door", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 302, "y": -56, "seatId": -1 }, { "x": 387, "y": -56, "seatId": -1 }, { "x": 472, "y": -56, "seatId": -1 }, { "x": 557, "y": -56, "seatId": -1 }] },
+    { "id": "by-maria", "label": "By Maria", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 700, "y": 274, "seatId": -1 }, { "x": 815, "y": 214, "seatId": -1 }] },
+    { "id": "department-store-door", "label": "Amherst Department Store door", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1347, "y": 154, "seatId": -1 }, { "x": 1432, "y": 154, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1868, "y": 274, "seatId": -1 }, { "x": 1953, "y": 274, "seatId": -1 }, { "x": 2038, "y": 274, "seatId": -1 }, { "x": 2123, "y": 274, "seatId": -1 }] },
+    { "id": "weapon-store-entrance", "label": "Amherst Weapon Store entrance", "district": "UPPER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 758, "y": -56, "seatId": -1 }] },
+    { "id": "department-store-entrance", "label": "Amherst Department Store entrance", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 1179, "y": 154, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "amherst-weapon-store", "type": "WEAPON_SHOP", "npcId": 0, "destinationMapId": 1000001,
+      "approachPoints": [{ "x": 758, "y": -56 }],
+      "services": ["browse", "buy", "sell"] },
+    { "id": "amherst-department-store", "type": "GENERAL_SHOP", "npcId": 0, "destinationMapId": 1000003,
+      "approachPoints": [{ "x": 1179, "y": 154 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-pio-crowd", "venueId": "by-pio", "attractionWeight": 150, "softCapacity": 2, "hardCapacity": 3 },
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

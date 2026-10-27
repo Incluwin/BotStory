@@ -1,0 +1,56 @@
+# Florina Beach arc: a sealed bottle forty years at sea, addressed to the chapel steps in Amoria, and the answer that
+# goes back out on the tide. It shares its flags with Amoria's arc (arcs/amoria.yaml): its third chapter waits on the
+# letter read on the chapel steps, its last on Pernille's answer, whose quest happens once per server
+# (quests/amoria.yaml).
+- id: marisol-the-sealed-bottle
+  persona: marisol
+  chapters:
+    - id: chapter-1
+      title: "Bottles"
+    - id: chapter-2
+      title: "The Sealed One"
+      enterWhen: { flags: [florina.bottle.found] }
+      dialogueOverrides:
+        greet: ["hello! i've still got it. the bottle. i keep looking at it.", "hi. i haven't opened it. it isn't mine to open."]
+        who: ["Marisol. i comb the beach. i found a sealed bottle in the lorangs' shallows, a silver gull pressed in the wax and a letter inside, for somebody called Pernille, at the chapel steps in Amoria. it's been at sea a long time. the glass has gone cloudy."]
+        idle: ["(holds a cloudy green bottle up to the light and reads the address through the glass again)", "(sets the bottle on a folded towel and sits beside it, keeping the sun off it)"]
+        smallTalk: ["Abel says the gull in the wax is the Silver Gull's seal. a ship. she went down off the point when he was young. he went quiet after.", "a letter in a bottle. sailors do that when a ship's in trouble, Abel says. so something gets home."]
+        speakPlainly: ["plainly: a letter that needs carrying."]
+        about.pernille: ["i don't know her. 'Pernille, the chapel steps, Amoria.' that's all it says on the outside. i hope she's still there."]
+        questOffer.marisol-the-sealed-bottle: ["the lorangs are back in the shallows. where there was one bottle there might be another. keep thirty off me and i'll wade out and look."]
+        questComplete.marisol-the-sealed-bottle: ["nothing this time. a crab and a boot. that's beachcombing. here, for your trouble."]
+        chapterEnter: ["(wraps the sealed bottle in her scarf and holds it in her lap like something asleep)"]
+    - id: chapter-3
+      title: "Read on the Steps"
+      enterWhen: { flags: [amoria.letter.read] }
+      dialogueOverrides:
+        greet: ["hello! she got it. Pernille. somebody was still there.", "hi. i keep thinking about those steps."]
+        who: ["Marisol. i comb the beach. i found a letter in a bottle, forty years at sea, and it got to the woman it was written for. Pernille, the chapel steps, Amoria. she was still there. she'd been there the whole time."]
+        idle: ["(lines up her empty bottles on the shed shelf, one by one, and smiles at the gap in the middle)", "(writes something on a scrap of paper, rolls it up, and doesn't put it in anything)"]
+        smallTalk: ["the letter was from the Silver Gull's bosun. Pernille keeps it by the chapel flowers and has people read it to her. i'd like to hear it one day. i've never been up the hill.", "Abel and the Gull: he told me once, by the shed. not a word since. when i ask, he mends the same net over and over."]
+        speakPlainly: ["plainly: a letter got home."]
+        about.pernille: ["Pernille. she keeps the chapel flowers in Amoria. she waited forty years for a letter and the sea brought it to me. i've never met her. i feel like i have."]
+        questOffer.marisol-the-sealed-bottle: ["the lorangs are back in the shallows. where there was one bottle there might be another. keep thirty off me and i'll wade out and look."]
+        questComplete.marisol-the-sealed-bottle: ["nothing this time. a crab and a boot. that's beachcombing. here, for your trouble."]
+        questOffer.marisol-to-the-chapel-steps: ["Pernille keeps the letter by the chapel flowers now. she asks everyone up from the beach to read it to her. would you go? she likes a new voice."]
+        questAccept.marisol-to-the-chapel-steps: ["Pison's boat, the road to Henesys, and Thomas Swift. she'll be by the chapel flowers."]
+        questWaiting.marisol-to-the-chapel-steps: ["did you read it to her? slowly? she likes it slowly."]
+        questComplete.marisol-to-the-chapel-steps: ["(a newer note from Marisol, folded in with the letter by the chapel flowers) 'for whoever just read it to her. thank you for going up the hill. i still haven't. she'll have it by heart soon. she won't mind. there's something in your pack. Marisol.'"]
+        chapterEnter: ["(lines her empty bottles up on the shed shelf, leaving a gap in the middle where the sealed one stood)"]
+    - id: chapter-4
+      title: "Out on the Tide"
+      enterWhen: { flags: [florina.answer.sent] }
+      dialogueOverrides:
+        greet: ["hello. it went out on the tide. her answer. i watched it go.", "hi. the tide was perfect that night. it knew."]
+        who: ["Marisol. i comb the beach. a letter came in on my tide forty years late, and the answer went back out on it. Pernille's. from the look-out shed, past the point, where the Silver Gull went down. i don't pick everything up any more. some things i send."]
+        idle: ["(stands at the tide line at dusk, shading her eyes, watching the point)", "(takes an empty bottle down from the shed shelf, turns it in her hands, and puts it back)"]
+        smallTalk: ["Abel came out to the shed when we sent it. he took his cap off. he didn't say anything. he didn't have to.", "i don't know where it'll wash up. maybe nowhere. maybe it doesn't have to. it said yes. that's the part that matters."]
+        speakPlainly: ["plainly: some things you pick up. some things you send."]
+        about.pernille: ["Pernille. she keeps the chapel flowers in Amoria. she waited forty years for a letter. she wrote her answer and i sent it out on the tide for her. she said yes. of course she said yes."]
+        questOffer.marisol-the-sealed-bottle: ["the lorangs are back in the shallows. where there was one bottle there might be another. keep thirty off me and i'll wade out and look."]
+        questComplete.marisol-the-sealed-bottle: ["nothing this time. a crab and a boot. that's beachcombing. here, for your trouble."]
+        questOffer.marisol-to-the-chapel-steps: ["Pernille keeps the letter by the chapel flowers now. she asks everyone up from the beach to read it to her. would you go? she likes a new voice."]
+        questAccept.marisol-to-the-chapel-steps: ["Pison's boat, the road to Henesys, and Thomas Swift. she'll be by the chapel flowers."]
+        questWaiting.marisol-to-the-chapel-steps: ["did you read it to her? slowly? she likes it slowly."]
+        questComplete.marisol-to-the-chapel-steps: ["(a newer note from Marisol, folded in with the letter by the chapel flowers) 'for whoever just read it to her. thank you for going up the hill. i still haven't. she'll have it by heart soon. she won't mind. there's something in your pack. Marisol.'"]
+        chapterEnter: ["(stands at the tide line at dusk with her shoes in her hand, watching the point until it's dark)"]

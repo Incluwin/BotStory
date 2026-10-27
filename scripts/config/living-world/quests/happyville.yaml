@@ -1,0 +1,90 @@
+# Happyville quests (wave 4). Happyville (209000000) and the Hill of Christmas have no monsters and the Extra Frosty
+# Snow Zone's snow blower drops nothing, so each errand fetches a common Victoria drop at L10-30 and most end with a
+# visit to the Hill. Only three Hill maps have a way in: the Branch, Metal Bucket and Straw Hat Snowmen in the square
+# warp to 209000001, 209000002 and 209000003 (209000004-209000015 have no portal or script in), so the visits name those
+# three. The drops: Red Snail 130101 (Red Snail Shell 4000016) all over Victoria's low fields;
+# Ribbon Pig 1210101 (Pig's Ribbon 4000002) on Henesys Hunting Ground II-III 104040001/104040002; Bubbling 1210103
+# (Bubbling's Huge Bubble 4000037) on Dungeon, Southern Forest IV 100040004 and Caution Falling Down 103010001; Axe Stump
+# 1130100 (Firewood 4000018) on West Rocky Mountain II-III 102020100/102020200; Wooden Mask 2230110 (Wooden Board
+# 4000196) on Excavation Site I-III 101030101-101030103; Wild Boar 2230102 (Stiff Feather 4003004) on the Land of Wild
+# Boar 101040001 and Land of Wild Boar II 101030001.
+
+# ---- Noelle ----
+- id: noelle-shells-for-the-tree
+  persona: noelle
+  title: "Shells for the Trees"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000016, count: 20 }
+    - { id: hill, type: VISIT_MAP, mapIds: [209000001, 209000002, 209000003] }
+    - { id: paint, type: DELIVER, to: noelle, take: { itemId: 4000016, count: 20 } }
+  rewards: { meso: 1500, exp: 1200, bondPoints: 30, items: [{ itemId: 2020028, count: 5 }] }
+
+- id: noelle-glass-baubles
+  persona: noelle
+  title: "Glass Baubles"
+  length: SHORT
+  requires: { level: { min: 16 }, questsCompleted: [noelle-shells-for-the-tree] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bubblings, type: KILL_MOBS, mobIds: [1210103], count: 20, mapIds: [100040004, 103010001] }
+    - { id: bubbles, type: COLLECT_ITEM, itemId: 4000037, count: 12 }
+    - { id: hill, type: VISIT_MAP, mapIds: [209000001, 209000002, 209000003] }
+    - { id: baubles, type: DELIVER, to: noelle, take: { itemId: 4000037, count: 12 } }
+  rewards: { meso: 3000, exp: 2800, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+# ---- Kris ----
+- id: kris-firewood-slats
+  persona: kris
+  title: "Slats of Firewood"
+  length: SHORT
+  requires: { level: { min: 17 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [1130100], count: 20, mapIds: [102020100, 102020200] }
+    - { id: firewood, type: COLLECT_ITEM, itemId: 4000018, count: 15 }
+    - { id: slats, type: DELIVER, to: kris, take: { itemId: 4000018, count: 15 } }
+  rewards: { meso: 3000, exp: 2800, bondPoints: 30, items: [{ itemId: 2020013, count: 5 }] }
+
+- id: kris-old-wood-runners
+  persona: kris
+  title: "Old Wood Runners"
+  length: SHORT
+  requires: { level: { min: 23 }, questsCompleted: [kris-firewood-slats] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: masks, type: KILL_MOBS, mobIds: [2230110], count: 20, mapIds: [101030101, 101030102, 101030103] }
+    - { id: boards, type: COLLECT_ITEM, itemId: 4000196, count: 10 }
+    - { id: runners, type: DELIVER, to: kris, take: { itemId: 4000196, count: 10 } }
+    - { id: hill, type: VISIT_MAP, mapIds: [209000001, 209000002, 209000003] }
+    - { id: ride, type: DELIVER, to: kris }
+  rewards: { meso: 5000, exp: 4800, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }
+
+# ---- Ingeborg ----
+- id: ingeborg-ribbon-trim
+  persona: ingeborg
+  title: "Ribbon Trim"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [1210101], count: 20, mapIds: [104040001, 104040002] }
+    - { id: ribbons, type: COLLECT_ITEM, itemId: 4000002, count: 15 }
+    - { id: trim, type: DELIVER, to: ingeborg, take: { itemId: 4000002, count: 15 } }
+  rewards: { meso: 1500, exp: 1200, bondPoints: 30, items: [{ itemId: 2022006, count: 10 }] }
+
+- id: ingeborg-down-for-the-lining
+  persona: ingeborg
+  title: "Down for the Lining"
+  length: SHORT
+  requires: { level: { min: 26 }, questsCompleted: [ingeborg-ribbon-trim] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [2230102], count: 25, mapIds: [101040001, 101030001] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 15 }
+    - { id: lining, type: DELIVER, to: ingeborg, take: { itemId: 4003004, count: 15 } }
+    - { id: snowman, type: VISIT_MAP, mapIds: [209000001, 209000002, 209000003] }
+    - { id: holding, type: DELIVER, to: ingeborg }
+  rewards: { meso: 5000, exp: 5000, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }

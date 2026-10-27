@@ -1,0 +1,133 @@
+# Alcadno Society cast (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): the Alcadno hall off Magatia's square.
+# 2 residents, 1 recruitable (Ferro, for a share of the reinforced iron mutae after his own test). Ferro's daylight walk to
+# the Zenumist door turns the societies' arc (arcs/zenumist-society.yaml). Ids in quests/alcadno-society.yaml.
+- id: ferro
+  name: Ferro
+  look: { gender: male }
+  title: "Apprentice Engineer of the Alcadno"
+  job: BRAWLER
+  level: { min: 43, max: 45 }
+  strength: SEASONED
+  loadout: alcadno-knuckle-l43
+  personality: efficient-v1
+  home:
+    town: alcadno-society
+    routine:
+      - { from: 6, to: 9, spot: "venue:by-maed", activity: SHOW_OFF }
+      - { from: 9, to: 17, materialize: false }
+      - { from: 17, to: 19, spot: "venue:lower-central-street", activity: SHOW_OFF }
+      - { from: 19, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: true
+  knows: [reinforced iron mutae, mithril mutae, alcadno society]
+  contract: ferro-the-proving-ground
+  questLines: [ferro-knuckles-on-iron, ferro-the-alcadno-cape, ferro-in-daylight]
+  rumors: [alcadno-the-record]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: oriane, kind: RIVAL_OF }
+    - { persona: mathilde, kind: RECORDED_BY }
+    - { persona: kipp, kind: TRAINS_WITH }
+    - { persona: gilda, kind: TIMES }
+  giftItemIds: [4000357, 2020001]
+  dialogue:
+    greetFirst: ["hold still. ...no, it's fine, i was going to punch the wall, not you. i test things. hello. Ferro. Alcadno.", "a visitor. you look well made. i won't test it. i'd like to."]
+    greet: ["hello! i punched a door today. the door won.", "you're back. watch this. no, watch my hand. the brass one. it moved."]
+    idle: ["(flexes a brass-and-leather mechanical hand on the bench, finger by finger, frowning at the third one)", "(taps the hall wall twice with his knuckles, listens, and nods approvingly at it)"]
+    noWork: ["nothing today. the hand's in pieces. so's my patience."]
+    nothingDue: ["we're square. i measured."]
+    who: ["Ferro. apprentice engineer of the Alcadno. i build things, then hit them, then build them better. i'm making a hand that can hold an egg without breaking it. it's broken forty eggs. Mathilde's written all forty down."]
+    bye: ["hit the door on your way out. gently. it's a good door."]
+    thanks: ["thanks. solid."]
+    smallTalk: ["the trick to a hand isn't strength. it's knowing when to stop. a fist knows when to start. it took me two years to learn the difference. the hand's still learning.", "the Zenumist make soft things. we make strong things. a hand needs both. that's not politics. that's engineering."]
+    speakPlainly: ["plainly: a fist, a spanner, and a hand that's learning."]
+    offer: ["twenty thousand, and forty of the reinforced iron mutae in area A-3, put down after we shake on it. you hit them, i'll know. the floor tells me."]
+    join: ["good. i'll go first. i punch first. it's an Alcadno thing."]
+    bench: ["three days. after that my hand starts building things without me."]
+    leave: ["done. back to the bench. the hand's waiting."]
+    refuse.bond: ["i don't fight next to things i haven't tested. you're untested."]
+    refuse.flags: ["test my iron first. the reinforced mutae in area A-3, then count the jars over the Zenumist door for me. then we'll talk."]
+    refuseOwnErrand: ["my test. you can hold the egg."]
+    questOffer.ferro-knuckles-on-iron: ["the reinforced iron mutae in area A-3 are the best test of a fist in Magatia. thirty of them. then a favour: count the jars over the Zenumist door. an Alcadno who stands in their hall counting gets shown out. a visitor doesn't."]
+    questAccept.ferro-knuckles-on-iron: ["down through the Alcadno institute, area A-3, the reinforced ones. then across the square, into the Zenumist hall. look up over the door. count."]
+    questWaiting.ferro-knuckles-on-iron: ["thirty, and the jars. how many?"]
+    questComplete.ferro-knuckles-on-iron: ["seven jars? sealed, over the door? ...we've got one gear over ours. of course they've got seven jars. i'd like to see inside them. i'd like to see inside everything."]
+    questOffer.ferro-the-alcadno-cape: ["every Alcadno wears the society cape. the clasp is steel, hammered from what the iron mutae shed. mine's bent. i punched something with it. twenty-five iron mutae, fifteen pieces of steel? i'll make you one. it'll be straighter than mine."]
+    questAccept.ferro-the-alcadno-cape: ["areas B-3 and A-3. the plain iron mutae this time. their steel's softer. better for a clasp."]
+    questWaiting.ferro-the-alcadno-cape: ["fifteen pieces. the clasp needs hammering. so do i."]
+    questComplete.ferro-the-alcadno-cape: ["fifteen. hammered. here. an Alcadno cape. the clasp won't bend. i tested it. on the wall. the wall's fine."]
+    questOffer.ferro-in-daylight: ["Oriane needs Alcadno metal to cage her flame. anyone else would sneak it over. i'm not sneaking. twenty of the mithril mutae in A-1 and B-1, ten pieces of their mithril, and then go ahead of me. ask Phineas if he'll open the Zenumist door to an Alcadno. ask Oriane if she'll take it from my hand."]
+    questAccept.ferro-in-daylight: ["the Alcadno institute, areas A-1 and B-1. the mithril mutae. then the Zenumist hall across the square. Phineas keeps the door. Oriane is there of an evening. ask them both. plainly."]
+    questWaiting.ferro-in-daylight: ["ten pieces, Phineas, Oriane. i'm standing by our door. i'm ready to walk."]
+    questComplete.ferro-in-daylight: ["they both said bring it myself. ...fine. noon. the front door. i'm going to knock very politely and then walk in like i own the floor. if i don't come back, the hand's yours."]
+    about.oriane: ["Oriane. the Zenumist apprentice. she set my sleeve alight across the square once. to get my attention, she says. it worked. a flame and a hand. we'd be stupid not to."]
+    about.mathilde: ["Mathilde keeps the Alcadno record. she's written down every egg my hand's broken. she says the record takes what happens. i'm going to give it something worth taking."]
+    about.gilda: ["Gilda keeps the society clocks. she's never late. she leaves the labs at seven every evening for a bench in the square. i've timed it. i'm an engineer. it's what we do."]
+    about.kipp: ["Kipp guards the labs. he lets me punch the old blast doors on his rounds. he says they've never had a better test. they've never had a worse one either."]
+    aboutUnknown: ["never tested them."]
+    friend.close: ["you're on my list. 'things that held'. it's a short list."]
+    friend.best: ["when the hand's done, the first thing it shakes is yours. after Oriane's. she'd set it on fire otherwise."]
+    famed: ["both houses are talking about you. i've measured it. it's loud."]
+    defamed: ["people are saying things. i'd test them. most of them would break."]
+    gift: ["oh. thanks. solid."]
+    gift.favorite: ["oh, that's useful. that's going on the bench. right by the hand."]
+    gift.again: ["one's plenty. the bench is full of parts."]
+
+- id: mathilde
+  name: Mathilde
+  look: { gender: female }
+  title: "Archivist of the Alcadno"
+  job: BEGINNER
+  level: { min: 50, max: 50 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: alcadno-society
+    routine:
+      - { from: 7, to: 12, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 12, to: 14, materialize: false }
+      - { from: 14, to: 19, spot: "venue:by-maed", activity: SOCIALIZE }
+      - { from: 19, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [roid, alcadno society, magatia]
+  questLines: [mathilde-wire-for-the-spines, mathilde-hedda-retired]
+  rumors: [alcadno-the-record]
+  relationships:
+    - { persona: ferro, kind: RECORDS }
+    - { persona: hedda, kind: RECORDS_THE_LIFE_OF }
+    - { persona: aurel, kind: READS_THE_MARGINS_OF }
+  giftItemIds: [4000364, 2020016]
+  dialogue:
+    greetFirst: ["name, house, and business. ...a visitor. i'll write 'visitor'. it's the most interesting word i've written all week.", "welcome to the Alcadno Society. i keep the record. if it happened here, it's in my book. if it isn't in my book, it didn't happen. that's the theory."]
+    greet: ["good day. noted.", "you're back. i've a line for you already. it says 'returned'."]
+    idle: ["(writes a careful line in a heavy steel-spined ledger, blots it, and reads it back under her breath)", "(runs a finger down a column of dates, stops, and taps one twice)"]
+    noWork: ["nothing today. the record's up to date. that's never true. it's true for an hour."]
+    nothingDue: ["you owe the record nothing. i've checked."]
+    who: ["Mathilde. archivist of the Alcadno. i keep the record: every proving, every patent, every accident, every apology. there are more accidents than apologies. that's the Alcadno for you."]
+    bye: ["mind the stairs. there's an entry in the record about the stairs. it's long."]
+    thanks: ["noted. with thanks."]
+    smallTalk: ["the record takes what happens. not what's wished, not what's whispered. what happens. it's the most honest thing in Magatia. it's also the dullest. those are related.", "the Zenumist keep their memory in jars. we keep ours in steel-spined books. their archivist writes in green. i write in black. i read his notes in the margin of a borrowed formula once. he has lovely threes."]
+    speakPlainly: ["plainly: a ledger, a pen, and a hundred years of things that happened."]
+    questOffer.mathilde-wire-for-the-spines: ["the old ledgers are coming apart at the spines. Alcadno books are stitched with wire, not thread. the roids in area C-1 are wired all the way through. twenty-five roids, twelve coils?"]
+    questAccept.mathilde-wire-for-the-spines: ["down through the Alcadno institute to area C-1. the roids. they spark. stand off to the side. the record has an entry about standing in front of them."]
+    questWaiting.mathilde-wire-for-the-spines: ["twelve coils. a ledger lost its last forty years this morning. onto the floor."]
+    questComplete.mathilde-wire-for-the-spines: ["twelve. stitched. a hundred years of the Alcadno, back in its covers. i've written you into the margin. in black. it's permanent."]
+    questOffer.mathilde-hedda-retired: ["Hedda's entry in the record ends with one word: 'retired'. forty years an engineer, and the record says 'retired'. i'd like to write what she's doing now. ask her. the record should be accurate. and kinder."]
+    questAccept.mathilde-hedda-retired: ["Hedda. by the lower east benches of Magatia in the mornings, by Rosen of an afternoon. she'll be holding a bird. ask her plainly."]
+    questWaiting.mathilde-hedda-retired: ["what's she doing? the line's waiting."]
+    questComplete.mathilde-hedda-retired: ["'building a bird.' and leave the rest for later. ...i'll write it exactly that way. 'Hedda. building a bird.' that's the best line in the record."]
+    about.ferro: ["Ferro's the Alcadno apprentice. i've recorded forty eggs his hand has broken. most of what he does involves something breaking. some of it involves something being built. i keep a separate page for that."]
+    about.hedda: ["Hedda was an Alcadno engineer forty years. her entry in the record is the longest i keep. it ends with one word. i'm trying to give it a better one."]
+    about.aurel: ["the Zenumist archivist. green ink, lovely threes. i knew his handwriting long before i knew his face. that's the right order, for archivists."]
+    about.oriane: ["the Zenumist apprentice. she came across the square once and asked me if the Alcadno record has ever had a Zenumist name in it. i said the record takes what happens. she said 'good' and left. i wrote that down."]
+    aboutUnknown: ["not in the record. yet."]
+    friend.close: ["you've a page in the record now. your own. it's mostly blank. that's the best kind."]
+    friend.best: ["if i'm ever gone, ask for the record. read the margins first. that's where i put the true things."]
+    famed: ["the record notes you're well thought of. i've underlined it."]
+    defamed: ["the record notes you're not well thought of. it notes most people that way at some point. it moves on. so do i."]
+    gift: ["noted. thank you."]
+    gift.favorite: ["oh, that's thoughtful. that goes on the shelf by the ledger. noted, with pleasure."]
+    gift.again: ["one's plenty. the record shows you already did."]

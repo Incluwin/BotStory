@@ -185,6 +185,7 @@ public class MapleMap {
     private float footholdSpeed = 1.0f;
     private int fieldLimit = 0;
     private boolean swim = false;
+    private boolean fly = false;
     private int mobCapacity = -1;
     private MonsterAggroCoordinator aggroMonitor = null;   // aggroMonitor activity in sync with itemMonitor
     private ScheduledFuture<?> itemMonitor = null;
@@ -4364,6 +4365,15 @@ public class MapleMap {
 
     public void setSwim(boolean swim) {
         this.swim = swim;
+    }
+
+    /** {@code info/fly}: the dragon flights between Leafre Station and the Temple of Time, where riders fly. */
+    public boolean isFly() {
+        return fly;
+    }
+
+    public void setFly(boolean fly) {
+        this.fly = fly;
     }
 
     public void allowSummonState(boolean b) {

@@ -1,0 +1,201 @@
+# Orbis Park cast (wave 4): the park on Orbis's west side. 3 residents, 1 recruitable (Saffi the pixie hunter, once the
+# player has hunted with her and heard Odalys on her). No arc; gossip ties to Orbis's wave-1 cast (personas/orbis.yaml)
+# and to Ludibrium Village. Ids in quests/orbis-park.yaml.
+- id: odalys
+  name: Odalys
+  look: { gender: female }
+  title: "Keeper of the Park"
+  job: BEGINNER
+  level: { min: 28, max: 28 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: orbis-park
+    routine:
+      - { from: 6, to: 11, spot: "venue:middle-west-street", activity: STROLL }
+      - { from: 11, to: 14, spot: "venue:by-ericsson", activity: REST }
+      - { from: 14, to: 19, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [orbis park, sentinel, fierry's tentacle]
+  questLines: [odalys-the-fierries, odalys-shell-edging, odalys-cuttings-from-the-steps]
+  rumors: [orbis-park-after-the-hunt, orbis-park-the-east-wind]
+  relationships:
+    - { persona: tibalt, kind: WATERS_THE_ROSES_WITH }
+    - { persona: saffi, kind: SITS_WITH_IN_THE_EVENINGS }
+    - { persona: ottilie, kind: TRADES_CUTTINGS_WITH }
+    - { persona: aster, kind: RETURNS_HATS_TO }
+  giftItemIds: [4000058, 4000068]
+  dialogue:
+    greetFirst: ["oh! mind the bed. no, the other bed. that one's just dirt. it's going to be tulips. it's thinking about it.", "hello, hello. you've the look of someone who walked through the park without seeing it. everybody does the first time. look down. there. see?"]
+    greet: ["hello! the roses are out. two of them. it's a start.", "you're back. wipe your boots. no, on the grass. the grass likes it."]
+    idle: ["(kneels at the edge of a flower bed and pushes a seed into the earth with one finger, very precisely)", "(holds a watering can at arm's length and squints up at the clouds, deciding whether to bother)"]
+    noWork: ["nothing today. everything's planted. now it's the waiting part. i'm terrible at the waiting part."]
+    nothingDue: ["you owe me nothing. well. you trod on a crocus. we'll call it even."]
+    who: ["Odalys. i keep the park. the beds, the paths, the benches, and every hat the wind takes off Orbis, which ends up in my hedges sooner or later. a garden in the clouds. everything has to be tied down. even the roses."]
+    bye: ["keep to the paths! the beds bite. no, they don't. keep to the paths anyway."]
+    thanks: ["oh, thank you. that's lovely. that's a whole flower bed of lovely."]
+    smallTalk: ["the fierries out in the cloud parks pull up my bulbs and leave them lying about. they don't eat them. they just like pulling. i've known children like that.", "i find a hat in the hedge every morning. every single morning. i take them back to Aster. she says the wind's her best customer."]
+    speakPlainly: ["plainly: a park, a lot of dirt, and a great deal of hope."]
+    questOffer.odalys-the-fierries: ["the fierries out in the cloud parks have been up my blue beds again. twenty-five of them, please. and their tentacles, twelve, if you can stand it. cut, they root like vine cuttings. i'll train them up the railings. serves them right."]
+    questAccept.odalys-the-fierries: ["out through Orbis to the cloud parks. the fierries, the little floaty ones with the tentacles. they're in most of the parks. they're cheeky. be cheekier."]
+    questWaiting.odalys-the-fierries: ["twelve tentacles. the railings are bare and the blue beds are sulking."]
+    questComplete.odalys-the-fierries: ["twelve! oh, they're still wriggling. good. that means they'll take. by spring the railings will be green and the fierries will have to look at it."]
+    questOffer.odalys-shell-edging: ["the beds want edging. the sentinels down Orbis Tower have shells that never chip. twenty-five of them, twelve shellpieces, and my tulips will finally know where they stop."]
+    questAccept.odalys-shell-edging: ["down Orbis Tower, the fourteenth to the seventeenth floors. the sentinels. the plain ones, not the fire or the ice. those crack."]
+    questWaiting.odalys-shell-edging: ["twelve shellpieces. the tulips are wandering."]
+    questComplete.odalys-shell-edging: ["twelve. look at that. a proper edge. the tulips will stay put now. they won't. but they'll know they ought to."]
+    questOffer.odalys-cuttings-from-the-steps: ["Ottilie keeps flowers all the way up the hill steps in Orbis. the blue ones. i've wanted cuttings for years and i've never once had the nerve to ask. would you?"]
+    questAccept.odalys-cuttings-from-the-steps: ["Ottilie, in Orbis. by Moppie in the mornings, the middle benches at midday, the top of the hill steps in the evening. she'll be watching the sky. ask her gently."]
+    questWaiting.odalys-cuttings-from-the-steps: ["did she say yes? did she say which ones?"]
+    questComplete.odalys-cuttings-from-the-steps: ["the blue ones from the third step, watered at dusk when the ship comes in. ...oh. i'll do exactly that. every dusk. she's very kind. i knew she would be. that's why i was scared to ask."]
+    about.tibalt: ["Tibalt sailed the sky ships for forty years and now he sits in my park telling me which way the wind's blowing. he's always right. it's very annoying. he waters the roses when i'm not looking."]
+    about.saffi: ["Saffi comes down from the cloud parks every evening covered in pixie glitter and sits with me by the west street. she's patched up half of Orbis. she's never once let me thank her properly."]
+    about.ottilie: ["Ottilie keeps the hill steps in Orbis. the flowers on those steps are the best in the city. i'd never tell her. she knows."]
+    about.aster: ["Aster makes hats. the wind takes them. i find them in my hedges and take them back. she says i'm her best supplier. i've never sold her anything."]
+    about.winifred: ["Winifred teaches the school in Ludibrium's village. we write. i send her pressed flowers for her lessons. she sends me drawings the children did of me. i'm very tall in all of them."]
+    aboutUnknown: ["never seen them in the park."]
+    friend.close: ["i've named a rose after you. it's a small one. it's very determined."]
+    friend.best: ["there's a bench by the west street with nobody's name on it. it's yours now. i'll keep the moss off it."]
+    famed: ["the whole park's talking about you. well, Tibalt is. it's the same thing."]
+    defamed: ["they're saying hard things about you. weeds. pull them, they grow back. pull them anyway."]
+    gift: ["oh! for me? thank you."]
+    gift.favorite: ["oh, that's useful. that's going straight in the potting shed."]
+    gift.again: ["one a day, please. the potting shed's full."]
+
+- id: tibalt
+  name: Tibalt
+  look: { gender: male }
+  title: "Retired Sailor of the Sky Ships"
+  job: BEGINNER
+  level: { min: 52, max: 52 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: orbis-park
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-captain-al", activity: SOCIALIZE }
+      - { from: 12, to: 15, spot: "venue:middle-central-street", activity: REST }
+      - { from: 15, to: 19, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:lower-west-street", activity: REST }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [jr. pepe, jr. pepe's fish, orbis]
+  questLines: [tibalt-a-taste-of-the-sea, tibalt-the-crew-page, tibalt-a-story-for-the-school]
+  rumors: [orbis-park-the-east-wind]
+  relationships:
+    - { persona: odalys, kind: WATERS_THE_ROSES_FOR }
+    - { persona: saffi, kind: PATCHED_UP_BY }
+    - { persona: corliss, kind: SIGNED_THE_BOOK_OF }
+    - { persona: winifred, kind: SENDS_STORIES_TO }
+  giftItemIds: [4000088, 2022002]
+  dialogue:
+    greetFirst: ["wind's from the west today. you came in on it, by the look of you. sit. the bench doesn't rock. i miss that.", "a new face. you've got ship legs. no, you haven't. i'm being kind. sit down."]
+    greet: ["hello. the Ludibrium run's on time. i can hear it.", "you again. good. somebody to tell the weather to."]
+    idle: ["(licks a finger and holds it up to the wind, then nods to himself as if the wind had agreed)", "(ties and unties a sailor's knot in a length of cord, over and over, without looking at it)"]
+    noWork: ["nothing today. the wind's steady. a steady wind's a day off."]
+    nothingDue: ["you owe me nothing. a sailor pays his own way. and his friends'."]
+    who: ["Tibalt. forty years on the sky ships out of Orbis. the Ludibrium run mostly, the long haul to Leafre when they were short. my knees went before the wind did. now i sit in the park and read the weather for nobody. well. for Odalys's roses."]
+    bye: ["fair winds. mind the edge. the edge doesn't mind you."]
+    thanks: ["aye. good. thank you."]
+    smallTalk: ["forty years in the sky and i never once saw the sea. the little pepes at the bottom of Orbis Tower carry fish that smell of it. i asked a lad to bring me one once. i cried a bit. don't tell Odalys.", "the station book's got my name on forty years of crew pages. Corliss keeps it. i've never asked to see it. i'd like to know it's still there."]
+    speakPlainly: ["plainly: an old sailor, a bench, and a wind that's always talking."]
+    questOffer.tibalt-a-taste-of-the-sea: ["i'd like to smell the sea before my nose goes the way of my knees. the jr. pepes at the foot of Orbis Tower carry little fish. twenty-five of them, twelve fish? i'll cook them on the bench. Odalys will complain."]
+    questAccept.tibalt-a-taste-of-the-sea: ["down Orbis Tower, all the way, the first and second floors. the jr. pepes. little blue penguins with very serious faces. they've never seen the sea either."]
+    questWaiting.tibalt-a-taste-of-the-sea: ["twelve fish. i can nearly smell them from here. i can't. i'm imagining it."]
+    questComplete.tibalt-a-taste-of-the-sea: ["...that's the sea. that's what it smells like. forty years over the clouds and it's a penguin's fish that brings it. here. take something for your trouble. take the fish too, after. no, leave me the fish."]
+    questOffer.tibalt-the-crew-page: ["Corliss at the station keeps the crew pages. forty years of mine. would you ask him if my name's still in the book? i'd go myself. the station stairs and my knees aren't speaking."]
+    questAccept.tibalt-the-crew-page: ["Corliss, at the station entrance in Orbis. most of the day, but for midday on the benches. the one with the ledger and the patient face."]
+    questWaiting.tibalt-the-crew-page: ["is it there? you can tell me if it isn't."]
+    questComplete.tibalt-the-crew-page: ["'the book remembers him better than it remembers me.' ...he said that? well. well. i'll sit here a while. you go on."]
+    questOffer.tibalt-a-story-for-the-school: ["Winifred's children in Ludibrium's village want another sailor's story. i've written one. it's mostly true. would you take it to her? the ship's no trouble for you. it's no trouble for me either. it's the gangplank."]
+    questAccept.tibalt-a-story-for-the-school: ["the Ludibrium ship from the station, then west through Ludibrium to the village. Winifred. by Chico in the afternoon, on the central benches in the evening. she'll look at you like you're late. you're not."]
+    questWaiting.tibalt-a-story-for-the-school: ["did she read it? did she laugh at the part with the cloud whale? there wasn't a cloud whale. there is in the story."]
+    questComplete.tibalt-a-story-for-the-school: ["nine sails now, and a cat? ...she never had a cat. she's got one now, i suppose. good. every ship ought to have a cat."]
+    about.odalys: ["Odalys keeps the park. she talks to the flowers. i talk to the wind. between us we're very good company for anyone who doesn't need answering."]
+    about.saffi: ["Saffi patched my knee when it went on the park steps. she told me it was the knee of a sailor twice my age. i said that's about right. she laughed. she doesn't laugh much."]
+    about.corliss: ["Corliss keeps the station book. forty years of my crew pages in it. he's never once got a name wrong. that's a kind of loyalty, writing a man's name right."]
+    about.winifred: ["Winifred teaches the children in Ludibrium's village. i send them stories. they send me drawings of my ship. it gets more sails every time."]
+    about.fitch: ["Fitch runs the post down to El Nath on foot. i've told him the ships are faster. he says the ships don't go there. he's right. it's a terrible design flaw."]
+    aboutUnknown: ["never sailed with them."]
+    friend.close: ["i've taught you three knots without you noticing. you'll notice one day, in a storm. you'll think of me."]
+    friend.best: ["if they ever let me back on a deck, you'll be on the crew page under me. Corliss will write it right."]
+    famed: ["they're talking well of you. fair winds."]
+    defamed: ["they're talking hard of you. head into it. that's how you get through weather."]
+    gift: ["oh, aye. thank you."]
+    gift.favorite: ["oh, that's useful. that goes in the sea chest."]
+    gift.again: ["one a day. the sea chest's only small."]
+
+- id: saffi
+  name: Saffi
+  look: { gender: female }
+  title: "Pixie Hunter"
+  job: CLERIC
+  level: { min: 48, max: 50 }
+  strength: SEASONED
+  loadout: orbis-park-wand-l48
+  personality: efficient-v1
+  home:
+    town: orbis-park
+    routine:
+      - { from: 6, to: 9, spot: "venue:by-neve", activity: LINGER }
+      - { from: 9, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: true
+  knows: [lunar pixie, luster pixie, star pixie]
+  contract: saffi-the-park-share
+  questLines: [saffi-the-lunar-pixies, saffi-a-word-with-vesna, saffi-moonpieces]
+  rumors: [orbis-park-after-the-hunt]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: odalys, kind: SITS_WITH_IN_THE_EVENINGS }
+    - { persona: tibalt, kind: PATCHED_UP }
+    - { persona: vesna, kind: HUNTS_THE_PARKS_OF }
+  giftItemIds: [4000060, 2000006]
+  dialogue:
+    greetFirst: ["hold still. you're scratched. pixies? no. a hedge. fine. you'll live. hello.", "a new face. let me see your hands. good. no glitter. you haven't been up the cloud parks yet. you will."]
+    greet: ["hello. no new scratches? good.", "you again. sit. i've got pixie glitter in places glitter shouldn't be."]
+    idle: ["(wraps a strip of clean linen around her own knuckles, flexes the hand, and nods)", "(shakes out her cloak and watches a little cloud of pixie glitter drift away on the wind)"]
+    noWork: ["nothing today. the parks are quiet. nobody's bleeding. that's a good day in my trade."]
+    nothingDue: ["you owe me nothing. stay unscratched. that's payment."]
+    who: ["Saffi. i hunt pixies in the cloud parks. not for sport. they steal, they scratch, and every so often they knock somebody off an edge. i heal whoever they've got at, and then i go and have a word with the pixies."]
+    bye: ["mind the edges. and the giggling. the giggling means they've seen you."]
+    thanks: ["fine. good. go on."]
+    smallTalk: ["star pixies steal, lunar pixies steal and giggle, luster pixies don't bother giggling. Vesna says that. it's the one thing we agree on.", "the lunar pixies' moonpieces, ground fine, make a salve for pixie scratches. there's a joke in that. the pixies don't get it."]
+    speakPlainly: ["plainly: a wand, some linen, and a lot of pixies."]
+    offer: ["forty thousand. i'll keep you standing. you keep the pixies off me. that's a fair split."]
+    join: ["good. stay where i can reach you. i can't heal what i can't reach."]
+    bench: ["two days. then somebody in the parks gets scratched and i've got to go."]
+    leave: ["that's my time. the parks need me back."]
+    refuse.bond: ["i don't know you yet. i don't follow people i don't know into the clouds."]
+    refuse.flags: ["hunt the lunar pixies with me once first. thirty, out in the cloud parks. and sit by the west street some evening while Odalys and i are talking. hear what she says about me. then ask."]
+    refuseOwnErrand: ["my hunt. you can carry the linen."]
+    questOffer.saffi-the-lunar-pixies: ["the lunar pixies have been pushing people off the cloud park edges. as a joke. thirty of them, please. and come back in one piece. that's the whole job."]
+    questAccept.saffi-the-lunar-pixies: ["out through Orbis to the cloud parks, and the strolling paths. the lunar pixies. purple, a moon on a stick. they giggle before they shove. listen for it."]
+    questWaiting.saffi-the-lunar-pixies: ["thirty. and all of you. let me see your hands when you're back."]
+    questComplete.saffi-the-lunar-pixies: ["thirty, and you're in one piece. hands. ...good. two scratches. hold still. there. that's how i like a hunt to end."]
+    questOffer.saffi-a-word-with-vesna: ["Vesna wardens the cloud parks. i hunt them. we don't talk much. i need to know where the lunar pixies have moved to. would you ask her? she'll tell you. she won't tell me."]
+    questAccept.saffi-a-word-with-vesna: ["Vesna, in Orbis. the lower west street in the mornings, by Staff Sergeant Charlie in the afternoon, the central street at night. she'll be showing off. let her."]
+    questWaiting.saffi-a-word-with-vesna: ["well? where are they?"]
+    questComplete.saffi-a-word-with-vesna: ["past the fourth park. ...and she said thank you? once? she'll know what for. so do i. she's never said it to me. she said it to you. that'll do."]
+    questOffer.saffi-moonpieces: ["fifteen moonpieces for the salve? i'm always short. somebody's always scratched."]
+    questAccept.saffi-moonpieces: ["the lunar pixies, in the cloud parks."]
+    questWaiting.saffi-moonpieces: ["fifteen."]
+    questComplete.saffi-moonpieces: ["fifteen. salve for a month. thank you."]
+    about.odalys: ["Odalys keeps the park. she sits with me in the evenings and doesn't ask how the hunt went. she just looks at my hands. that's the right question."]
+    about.tibalt: ["Tibalt did his knee on the park steps and told me it was a sailor's knee. it was a stubborn old man's knee. i fixed it anyway."]
+    about.vesna: ["Vesna wardens the cloud parks. she keeps the pixies in, i keep the people out of hospital. we've never once agreed on how many pixies is too many. we've never once argued about it either."]
+    about.fitch: ["Fitch runs the post through the cloud parks. the pixies steal his letters. i get them back. he brings me oranges from El Nath. i don't know where he finds oranges in El Nath."]
+    aboutUnknown: ["never patched them up."]
+    friend.close: ["i've put a roll of linen by for you. it's got your name on it. you'll want it one day."]
+    friend.best: ["if you ever go off an edge up there, i'll be the one who comes down after you. i always am. but for you i'll run."]
+    famed: ["they're saying good things about you. don't let it go to your head. heads are hard to heal."]
+    defamed: ["they're saying hard things about you. hold still. that'll pass."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's useful. that goes in the satchel."]
+    gift.again: ["one a day. the satchel's for linen."]

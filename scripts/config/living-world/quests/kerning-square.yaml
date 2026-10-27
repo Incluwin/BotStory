@@ -1,0 +1,257 @@
+# Kerning Square quests (wave 4). Fields: 1st/2nd floor 103040100-103040103 (cherry bubble tea 3400000 cherry bubble
+# 4000539 20% on 103040100/101/103, mango bubble tea 3400001 mango bubble 4000541 60% on 103040101-103, melon bubble tea
+# 3400002 melon bubble 4000540 20% on 103040102); 3rd/4th floor 103040200-103040203, kill only (yeti doll claw game
+# 3400003 on 103040200, jr. pepe doll claw game 3400005 on 103040201, transformed doll claw game 3400007 on
+# 103040202/203, blue/yellow/pink perfume 4300000/4300002/4300004); 5th/6th floor 103040300-103040303 (kid mannequin
+# 4300006 bunny suit 4000525 on 103040300/301/303, female mannequin 4300007 wig 4000526 on 103040301/302, male mannequin
+# 4300008 fedora 4000527 40% on 103040302/303); 7th/8th floor area A 103040400 (latest hits compilation 4300009 record
+# 4000528, greatest oldies 4300010 record 4000529, also in the area B/C rooms 103040410-103040429). Spirit of Rock
+# 4300013 is a boss (250,000 HP, one per room): the area D rooms 103040430-103040439 and the VIP area C rooms
+# 103040460-103040469 are the RockSpirit event's copies, opened by June only while Blake's quests 2286-2288 run, so no
+# quest here needs it: Bao's sign is behind the records of the open area A. The recruits give armour made for the
+# player's class: Zara tops L35 / L40 / L50 (nothing exists at L41-47); Felix, whose intro is L44, bottoms L40 / L50 /
+# L60 (an overall where the class has none: magicians L38 / L48 / L58; pirates the same L40 and L50 overalls as Zara,
+# the only ones v83 has, and the Black Royal Barone at L60).
+
+# ---- Bao: the night market (arcs/kerning-square.yaml) ----
+- id: bao-the-noodle-cart
+  persona: bao
+  title: "Sauce for the Cart"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teas, type: KILL_MOBS, mobIds: [3400001], count: 25, mapIds: [103040101, 103040102, 103040103] }
+    - { id: bubbles, type: COLLECT_ITEM, itemId: 4000541, count: 10 }
+    - { id: sauce, type: DELIVER, to: bao, take: { itemId: 4000541, count: 10 } }
+  rewards: { meso: 6000, exp: 7000, bondPoints: 30, items: [{ itemId: 2020011, count: 5 }] }
+
+- id: bao-the-old-sign
+  persona: bao
+  title: "The Old Sign"
+  length: MEDIUM
+  requires: { level: { min: 46 }, questsCompleted: [bao-the-noodle-cart] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hall, type: VISIT_MAP, mapIds: [103040400] }
+    - { id: records, type: KILL_MOBS, mobIds: [4300009, 4300010], count: 30, mapIds: [103040400] }
+    - { id: seen, type: DELIVER, to: bao }
+  rewards: { meso: 18000, exp: 25000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }], worldFlags: [ksq.sign.found] }
+
+- id: bao-the-poured-floor
+  persona: bao
+  title: "The Poured Floor"
+  length: MEDIUM
+  requires: { level: { min: 46 }, questsCompleted: [bao-the-old-sign], notFlags: [ksq.bell.found] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sadie, type: TALK_TO, persona: sadie, say: ["the noodle lady sent you? Bao. she stood in my wet concrete and shouted at my crew for a week. she was right. i pulled the market bell off its pole before the pour. it's been in my site hut nineteen years, under a tarp. here. tell her the floor's still level. i check."] }
+    - { id: bell, type: DELIVER, to: bao }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 50, items: [{ itemId: 2000005, count: 5 }], worldFlags: [ksq.bell.found] }
+
+- id: bao-the-lobby-corner
+  persona: bao
+  title: "Market Night"
+  length: MEDIUM
+  requires: { level: { min: 46 }, questsCompleted: [bao-the-old-sign], flags: [ksq.bell.found, ksq.heard-cart], notFlags: [ksq.market.back] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teas, type: KILL_MOBS, mobIds: [3400000], count: 20, mapIds: [103040100, 103040101, 103040103] }
+    - { id: cherries, type: COLLECT_ITEM, itemId: 4000539, count: 10 }
+    - { id: kiko, type: TALK_TO, persona: kiko, say: ["the bell? for me? grandma said i could ring it? ...okay. okay. dusk. i'll ring it at dusk. i've practised on a spoon my whole life."] }
+    - { id: market, type: DELIVER, to: bao, take: { itemId: 4000539, count: 10 } }
+  rewards: { meso: 25000, exp: 26000, bondPoints: 60, items: [{ itemId: 2020011, count: 10 }], worldFlags: [ksq.market.back] }
+
+# ---- Juno ----
+- id: juno-the-perfume-spills
+  persona: juno
+  title: "Perfume on the Floor"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bottles, type: KILL_MOBS, mobIds: [4300000, 4300002, 4300004], count: 30, mapIds: [103040200, 103040201, 103040202, 103040203] }
+    - { id: mopped, type: DELIVER, to: juno }
+  rewards: { meso: 8000, exp: 8500, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: juno-the-lost-and-found
+  persona: juno
+  title: "Lost and Found"
+  length: SHORT
+  requires: { level: { min: 43 }, questsCompleted: [juno-the-perfume-spills] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mannequins, type: KILL_MOBS, mobIds: [4300006], count: 25, mapIds: [103040300, 103040301, 103040303] }
+    - { id: suits, type: COLLECT_ITEM, itemId: 4000525, count: 10 }
+    - { id: tagged, type: DELIVER, to: juno, take: { itemId: 4000525, count: 10 } }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 35, items: [{ itemId: 2000004, count: 10 }] }
+
+# ---- Zara (recruit; tops for the player's class) ----
+- id: zara-the-claw-round
+  persona: zara
+  title: "The Claw-Game Round"
+  length: SHORT
+  requires: { level: { min: 36 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: KILL_MOBS, mobIds: [3400003], count: 30, mapIds: [103040200] }
+    - { id: done, type: DELIVER, to: zara }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 30, flags: [zara.intro.done] }
+
+- id: zara-the-uniform-top
+  persona: zara
+  title: "A Uniform Top"
+  length: SHORT
+  requires: { level: { min: 35 }, friendship: 5, questsCompleted: [zara-the-claw-round] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dolls, type: KILL_MOBS, mobIds: [3400007], count: 30, mapIds: [103040202, 103040203] }
+    - { id: fitted, type: DELIVER, to: zara }
+  rewards:
+    meso: 15000
+    exp: 14000
+    bondPoints: 35
+    gear:
+      - { pool: [1040029, 1051014, 1050029, 1041051, 1040072, 1041065, 1040061, 1051007, 1052110], scrolls: [{ success: 100 }] }
+
+- id: zara-the-night-coat
+  persona: zara
+  title: "The Night Coat"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 7, questsCompleted: [zara-the-uniform-top] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mannequins, type: KILL_MOBS, mobIds: [4300007], count: 30, mapIds: [103040301, 103040302] }
+    - { id: cut, type: DELIVER, to: zara }
+  rewards:
+    meso: 25000
+    exp: 22000
+    bondPoints: 50
+    gear:
+      - { pool: [1040085, 1041084, 1050036, 1051024, 1040080, 1041082, 1040083, 1041074, 1052113], scrolls: [{ success: 60 }] }
+
+- id: zara-head-of-security
+  persona: zara
+  title: "Head of Security"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [zara-the-night-coat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mannequins, type: KILL_MOBS, mobIds: [4300008], count: 40, mapIds: [103040302, 103040303] }
+    - { id: fedoras, type: COLLECT_ITEM, itemId: 4000527, count: 15 }
+    - { id: felt, type: DELIVER, to: zara, take: { itemId: 4000527, count: 15 } }
+  rewards:
+    meso: 45000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1040088, 1041088, 1050046, 1051031, 1050052, 1051038, 1040095, 1041078, 1052116], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: zara-the-wigs
+  persona: zara
+  title: "Tina's Wigs"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 44 }, questsCompleted: [zara-the-claw-round] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wigs, type: COLLECT_ITEM, itemId: 4000526, count: 10 }
+    - { id: back, type: DELIVER, to: zara, take: { itemId: 4000526, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }
+
+# ---- Felix (recruit; bottoms for the player's class) ----
+- id: felix-the-record-floor
+  persona: felix
+  title: "The Record Floor"
+  length: SHORT
+  requires: { level: { min: 44 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: records, type: KILL_MOBS, mobIds: [4300009, 4300010], count: 30, mapIds: [103040400, 103040410, 103040411, 103040412, 103040413, 103040414, 103040415, 103040416, 103040417, 103040418, 103040419, 103040420, 103040421, 103040422, 103040423, 103040424, 103040425, 103040426, 103040427, 103040428, 103040429] }
+    - { id: done, type: DELIVER, to: felix }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 30, flags: [felix.intro.done] }
+
+- id: felix-the-first-pressing
+  persona: felix
+  title: "First Pressing"
+  length: SHORT
+  requires: { level: { min: 44 }, friendship: 5, questsCompleted: [felix-the-record-floor] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teas, type: KILL_MOBS, mobIds: [3400000], count: 30, mapIds: [103040100, 103040101, 103040103] }
+    - { id: quiet, type: DELIVER, to: felix }
+  rewards:
+    meso: 15000
+    exp: 14000
+    bondPoints: 35
+    gear:
+      - { pool: [1060074, 1061084, 1050037, 1051025, 1060069, 1061081, 1060072, 1061070, 1052113], scrolls: [{ success: 100 }] }
+
+- id: felix-the-b-side
+  persona: felix
+  title: "The B-Side"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 7, questsCompleted: [felix-the-first-pressing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mannequins, type: KILL_MOBS, mobIds: [4300006], count: 30, mapIds: [103040300, 103040301, 103040303] }
+    - { id: flipped, type: DELIVER, to: felix }
+  rewards:
+    meso: 25000
+    exp: 22000
+    bondPoints: 50
+    gear:
+      - { pool: [1060077, 1061087, 1050047, 1051032, 1050051, 1051039, 1060084, 1061078, 1052116], scrolls: [{ success: 60 }] }
+
+- id: felix-the-master-tape
+  persona: felix
+  title: "The Master Tape"
+  length: LONG
+  requires: { level: { min: 60 }, friendship: 10, questsCompleted: [felix-the-b-side] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: oldies, type: KILL_MOBS, mobIds: [4300010], count: 40, mapIds: [103040400, 103040410, 103040411, 103040412, 103040413, 103040414, 103040415, 103040416, 103040417, 103040418, 103040419, 103040420, 103040421, 103040422, 103040423, 103040424, 103040425, 103040426, 103040427, 103040428, 103040429] }
+    - { id: records, type: COLLECT_ITEM, itemId: 4000529, count: 15 }
+    - { id: pressed, type: DELIVER, to: felix, take: { itemId: 4000529, count: 15 } }
+  rewards:
+    meso: 45000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1060080, 1061091, 1050054, 1051045, 1050059, 1051042, 1060088, 1061094, 1052119], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: felix-restock
+  persona: felix
+  title: "Restock the Hits"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 44 }, questsCompleted: [felix-the-record-floor] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hits, type: COLLECT_ITEM, itemId: 4000528, count: 10 }
+    - { id: shelf, type: DELIVER, to: felix, take: { itemId: 4000528, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }
+
+# ---- Kiko ----
+- id: kiko-the-melon-pearls
+  persona: kiko
+  title: "Chewy Melon Bubbles"
+  length: SHORT
+  requires: { level: { min: 36 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teas, type: KILL_MOBS, mobIds: [3400002], count: 25, mapIds: [103040102] }
+    - { id: bubbles, type: COLLECT_ITEM, itemId: 4000540, count: 10 }
+    - { id: cup, type: DELIVER, to: kiko, take: { itemId: 4000540, count: 10 } }
+  rewards: { meso: 6000, exp: 6500, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: kiko-the-claw-machine
+  persona: kiko
+  title: "For the Hat"
+  length: SHORT
+  requires: { level: { min: 38 }, questsCompleted: [kiko-the-melon-pearls] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: KILL_MOBS, mobIds: [3400005], count: 25, mapIds: [103040201] }
+    - { id: hat, type: DELIVER, to: kiko }
+  rewards: { meso: 7000, exp: 7500, bondPoints: 30, items: [{ itemId: 2001001, count: 10 }] }

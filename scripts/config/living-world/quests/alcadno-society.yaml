@@ -1,0 +1,76 @@
+# Alcadno Society quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own
+# data: reinforced iron mutae 4110301 (area A-3 261020700), iron mutae 4110300 (piece of steel 4000357; area B-3
+# 261020600, A-3 261020700), mithril mutae 4110302 (piece of mithril 4000359; area A-1 261020100, B-1 261020200), roid
+# 5110301 (wires 4000364; area C-1 261020300), the Zenumist Society hall 261000010.
+# Gear: Ferro's Alcadno's Cape 1102136 L35.
+# ferro-in-daylight is the middle beat of Oriane's arc (arcs/zenumist-society.yaml) and happens once per server.
+
+# ---- Ferro, apprentice engineer of the Alcadno (recruitable; kill proof) --------------------------------------------
+
+- id: ferro-knuckles-on-iron
+  persona: ferro
+  title: "Knuckles on Iron"
+  length: SHORT
+  requires: { level: { min: 42 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mutae, type: KILL_MOBS, mobIds: [4110301], count: 30, mapIds: [261020700] }
+    - { id: door, type: VISIT_MAP, mapIds: [261000010] }
+    - { id: report, type: DELIVER, to: ferro }
+  rewards: { meso: 13000, exp: 14000, bondPoints: 30, flags: [ferro.intro.done] }
+
+- id: ferro-the-alcadno-cape
+  persona: ferro
+  title: "A Clasp That Won't Bend"
+  length: MEDIUM
+  requires: { level: { min: 35 }, friendship: 5, questsCompleted: [ferro-knuckles-on-iron] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mutae, type: KILL_MOBS, mobIds: [4110300], count: 25, mapIds: [261020600, 261020700] }
+    - { id: steel, type: COLLECT_ITEM, itemId: 4000357, count: 15 }
+    - { id: clasp, type: DELIVER, to: ferro, take: { itemId: 4000357, count: 15 } }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 35
+    gear:
+      - { pool: [1102136], scrolls: [{ success: 100 }] }
+
+- id: ferro-in-daylight
+  persona: ferro
+  title: "In Daylight"
+  length: MEDIUM
+  requires: { level: { min: 44 }, notFlags: [magatia.front-door.walked], questsCompleted: [ferro-knuckles-on-iron, oriane-the-cracking-glass] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mutae, type: KILL_MOBS, mobIds: [4110302], count: 20, mapIds: [261020100, 261020200] }
+    - { id: mithril, type: COLLECT_ITEM, itemId: 4000359, count: 10 }
+    - { id: phineas, type: TALK_TO, persona: phineas, say: ["an Alcadno parcel at the Zenumist door, in plain daylight? rule forty says no Alcadno brass past this threshold. that's mithril. rule forty says nothing about mithril. ...tell the boy to come himself. tell him i'll hold the door."] }
+    - { id: oriane, type: TALK_TO, persona: oriane, say: ["mithril? from Ferro? not through Vael, not under a coat? ...tell him to bring it himself. at noon. through the front. i'll be standing in the door so everyone sees."] }
+    - { id: walk, type: DELIVER, to: ferro, take: { itemId: 4000359, count: 10 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 60, worldFlags: [magatia.front-door.walked] }
+
+# ---- Mathilde, archivist of the Alcadno -----------------------------------------------------------------------------
+
+- id: mathilde-wire-for-the-spines
+  persona: mathilde
+  title: "Wire for the Spines"
+  length: SHORT
+  requires: { level: { min: 52 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: roids, type: KILL_MOBS, mobIds: [5110301], count: 25, mapIds: [261020300] }
+    - { id: wires, type: COLLECT_ITEM, itemId: 4000364, count: 12 }
+    - { id: spines, type: DELIVER, to: mathilde, take: { itemId: 4000364, count: 12 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 35 }
+
+- id: mathilde-hedda-retired
+  persona: mathilde
+  title: "More Than 'Retired'"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hedda, type: TALK_TO, persona: hedda, say: ["what am i doing now? for the record? ...building a bird, dear. write 'building a bird'. leave the rest for later. there's always a later."] }
+    - { id: report, type: DELIVER, to: mathilde }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 30 }

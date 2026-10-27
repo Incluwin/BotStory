@@ -1,0 +1,14 @@
+# Ludibrium Village rumor (wave 4). Its cast is awake together at its spot in those hours (personas/ludibrium-village.yaml).
+- id: ludibrium-village-the-parade
+  participants: [rollo, alder, winifred]
+  where: { town: ludibrium-village, spot: "venue:lower-central-benches" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 2
+  lines:
+    - { by: rollo, text: "the colonel's lost his drum again, Alder." }
+    - { by: alder, text: "the colonel's been losing his drum for twenty-five years. i made him that way." }
+    - { by: winifred, text: "you made him for a five-year-old who wouldn't sit still in my lessons." }
+    - { by: rollo, text: "i sat still. i drew soldiers." }
+    - { by: winifred, text: "in the margins. of every lesson. i've kept a few." }
+    - { by: alder, text: "bring me the colonel in the morning. he'll have his drum back by dinner." }

@@ -1,0 +1,188 @@
+# The Door to Zakum quests (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own data.
+# The El Nath road from Jeff's gate down: werewolf 7130200 (Wolf Territory I/II 211040500/211040600), dark yeti and pepe
+# 8140100 (Dangerous Cliff 211040700), coolie zombie 5130107 (Forest of Dead Trees I-IV 211041100-211041400), flyeye
+# 4230107 (fly-eye wing 4000076; Dead Mine I-IV 211041500-211041800, The Passage 211041900), the cave of trial
+# 211042000/211042100/211042200: jr. cerebes 4230108 (and the Cave Within the Cave 211042101), firebomb 5100002
+# (firebomb flame 4000081; first and third stretches), cerebes 7130001 (cerebes tooth 4000079), bain 8140500 (third
+# stretch). Up top: yeti 6300000 (yeti horn 4000049; Ice Valley I/II 211040100/211040200). Zakum 8800002 is the last
+# body Adobis's expedition brings down (scripts/event/ZakumBattle.js); its clear is a boss event, which advances no
+# party-quest step, so the Shroud counts the kill (lint warns that no map places it: the altar summons it). Errands:
+# Torsten at Jeff's gate (quests/ice-valley-ii.yaml), Maud in El Nath (wave 1).
+# Gear: Hrafn's Zakum Helmet 1002357 L50 / Wrath of El Nath 1102192 L100 / Shroud of Zakum 1102194 L120, his own pieces.
+
+# ---- Hrafn, the watch at the door: his arc, the horn line (arcs/door-to-zakum.yaml; recruitable) ----------------------
+
+- id: hrafn-the-door-dogs
+  persona: hrafn
+  title: "The Door's Dogs"
+  length: SHORT
+  requires: { level: { min: 70 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cerebes, type: KILL_MOBS, mobIds: [7130001], count: 30, mapIds: [211042000, 211042100, 211042200] }
+    - { id: counted, type: DELIVER, to: hrafn }
+  rewards: { meso: 20000, exp: 24000, bondPoints: 30, flags: [hrafn.intro.done] }
+
+- id: hrafn-a-horn-for-the-door
+  persona: hrafn
+  title: "A Horn for the Door"
+  length: MEDIUM
+  requires: { level: { min: 62 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000049, count: 12 }
+    - { id: torsten, type: TALK_TO, persona: torsten, say: ["yeti horn, for Hrafn? the valley's full of yetis and i've a bad shoulder. take him his horns. and tell him i listen down the valley at dusk. i always have."] }
+    - { id: horn, type: DELIVER, to: hrafn, take: { itemId: 4000049, count: 12 } }
+  rewards: { meso: 16000, exp: 17000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: hrafn-the-horn-line, to: chapter-2 } }
+
+- id: hrafn-zakum-helmet
+  persona: hrafn
+  title: "The Helmet That Came Back Up"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 5, questsCompleted: [hrafn-the-door-dogs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: werewolves, type: KILL_MOBS, mobIds: [7130200], count: 20, mapIds: [211040500, 211040600] }
+    - { id: helmet, type: DELIVER, to: hrafn }
+  rewards:
+    meso: 50000
+    exp: 50000
+    bondPoints: 35
+    gear:
+      - { pool: [1002357], scrolls: [{ success: 100 }] }
+
+- id: hrafn-wrath-of-el-nath
+  persona: hrafn
+  title: "The Wrath of El Nath"
+  length: LONG
+  requires: { level: { min: 100 }, friendship: 7, questsCompleted: [hrafn-zakum-helmet] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cliff, type: KILL_MOBS, mobIds: [8140100], count: 15, mapIds: [211040700] }
+    - { id: bains, type: KILL_MOBS, mobIds: [8140500], count: 30, mapIds: [211042200] }
+    - { id: cape, type: DELIVER, to: hrafn }
+  rewards:
+    meso: 220000
+    exp: 220000
+    bondPoints: 50
+    gear:
+      - { pool: [1102192], scrolls: [{ success: 60 }] }
+
+- id: hrafn-shroud-of-zakum
+  persona: hrafn
+  title: "The Shroud of Zakum"
+  length: LONG
+  requires: { level: { min: 120 }, friendship: 10, questsCompleted: [hrafn-wrath-of-el-nath] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zakum, type: KILL_BOSS, mobIds: [8800002], count: 1 }
+    - { id: fell, type: DELIVER, to: hrafn }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { pool: [1102194], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: hrafn-tally-teeth
+  persona: hrafn
+  title: "Pegs for the Board"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 70 }, questsCompleted: [hrafn-the-door-dogs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000079, count: 15 }
+    - { id: pegs, type: DELIVER, to: hrafn, take: { itemId: 4000079, count: 15 } }
+  rewards: { meso: 14000, exp: 13000, bondPoints: 10 }
+
+# The arc's last beat, once per server: the first player to carry the gate's horn up to Torsten sounds the first call
+# for everyone (requires.notFlags names the world flag it sets).
+- id: hrafn-the-first-call
+  persona: hrafn
+  title: "The First Call"
+  length: LONG
+  requires: { level: { min: 62 }, questsCompleted: [hrafn-a-horn-for-the-door], flags: [el-nath.horns.hung], notFlags: [el-nath.horns.answered] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: torsten, type: TALK_TO, persona: torsten, say: ["Hrafn's horn. for the gate. ...it's heavier than it looks. one long at dusk, one long back, three short means come down. right. i'll be at the rail. tell him i've listened six years. tell him i'm ready to answer."] }
+    - { id: listen, type: DELIVER, to: hrafn }
+  rewards: { meso: 30000, exp: 32000, bondPoints: 60, items: [{ itemId: 2000005, count: 10 }], worldFlags: [el-nath.horns.answered] }
+
+# ---- Brenna, lava-reader to Adobis ----------------------------------------------------------------------------------
+
+- id: brenna-smoked-glass
+  persona: brenna
+  title: "Smoked Glass"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flyeyes, type: KILL_MOBS, mobIds: [4230107], count: 25, mapIds: [211041500, 211041600, 211041700, 211041800, 211041900] }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000076, count: 12 }
+    - { id: glass, type: DELIVER, to: brenna, take: { itemId: 4000076, count: 12 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 35 }
+
+# A middle beat, once per server: the horns are tempered and hung once (requires.notFlags names the flag it sets).
+- id: brenna-tempered-in-the-breath
+  persona: brenna
+  title: "Tempered in the Breath"
+  length: MEDIUM
+  requires: { level: { min: 50 }, questsCompleted: [hrafn-a-horn-for-the-door], notFlags: [el-nath.horns.hung] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: firebombs, type: KILL_MOBS, mobIds: [5100002], count: 25, mapIds: [211042000, 211042200] }
+    - { id: flames, type: COLLECT_ITEM, itemId: 4000081, count: 10 }
+    - { id: vigdis, type: TALK_TO, persona: vigdis, say: ["Brenna's tempering them? good. tempered horn won't split in the passage. tell her i'll take them up on my next climb. one at every stretch between the door and the sharp cliffs, two in the passage. it's the one that swallows people. the gate's horn is Hrafn's to send."] }
+    - { id: temper, type: DELIVER, to: brenna, take: { itemId: 4000081, count: 10 } }
+  rewards: { meso: 16000, exp: 17000, bondPoints: 60, items: [{ itemId: 2000002, count: 20 }], worldFlags: [el-nath.horns.hung] }
+
+- id: brenna-wings-for-reading
+  persona: brenna
+  title: "Three Wings a Week"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [brenna-smoked-glass] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000076, count: 12 }
+    - { id: glass, type: DELIVER, to: brenna, take: { itemId: 4000076, count: 12 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }
+
+# ---- Vigdis, guide of the dead mine and the cave of trial ------------------------------------------------------------
+
+- id: vigdis-the-cave-within
+  persona: vigdis
+  title: "The Cave Within the Cave"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: inside, type: VISIT_MAP, mapIds: [211042101] }
+    - { id: pups, type: KILL_MOBS, mobIds: [4230108], count: 25, mapIds: [211042101] }
+    - { id: back, type: DELIVER, to: vigdis }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 35 }
+
+- id: vigdis-the-dead-trees
+  persona: vigdis
+  title: "Where Climbers Turn Back"
+  length: SHORT
+  requires: { level: { min: 55 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: coolies, type: KILL_MOBS, mobIds: [5130107], count: 30, mapIds: [211041100, 211041200, 211041300, 211041400] }
+    - { id: clear, type: DELIVER, to: vigdis }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 35 }
+
+- id: vigdis-a-name-for-the-roll
+  persona: vigdis
+  title: "A Name for the Roll"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: collar, type: VISIT_MAP, mapIds: [211041800] }
+    - { id: maud, type: TALK_TO, persona: maud, say: ["Ivo. Ivo of the lower shaft. ...i've had him on the roll as 'the tall one' for ten years. tell her thank you. i'll read him properly tonight. twice."] }
+    - { id: read, type: DELIVER, to: vigdis }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 35 }

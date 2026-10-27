@@ -1,0 +1,19 @@
+# Maple Island rumors (wave 4). Moe and Sunny are both at Amherst's east gate (lower east street) from 15 to 18
+# (personas/maple-island.yaml). No listener flag: nothing on the island waits on it.
+- id: amherst-the-gate
+  participants: [moe, sunny]
+  where: { town: amherst, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [15, 16, 17]
+    everyDays: 2
+  lines:
+    - { by: moe, text: "you've been at my signpost again." }
+    - { by: sunny, text: "it said 'sea' and pointed at the training center, Moe." }
+    - { by: moe, text: "the sea's past the training center." }
+    - { by: sunny, text: "so is the Split Road. so is Southperry. so is all of Victoria." }
+    - { by: moe, text: "...then it was right four times." }
+    - { by: sunny, text: "now it says 'training center, Split Road, Southperry, sea'. in order. so the new ones know how far." }
+    - { by: moe, text: "it's very long." }
+    - { by: sunny, text: "so's the road." }
+    - { by: moe, text: "...hm. leave the arrow. the arrow was mine." }
+    - { by: sunny, text: "i left the arrow." }

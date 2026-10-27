@@ -63,6 +63,54 @@ legs:
   - { from: 104000000, to: 800000000, npc: 9000020, kind: world-tour, cost: 3000, note: "Lith Harbor -> Mushroom Shrine" }
   # Spinel at the Shrine sends you back where the tour began; with no saved start it is Lith Harbor (9000020.js).
   - { from: 800000000, to: 104000000, npc: 9000020, kind: world-tour, cost: 0, note: "Mushroom Shrine -> back where the tour began (Lith Harbor by default)" }
+  # Malaysia: Spinel at Boat Quay Town, or Audrey's dearer flight from the CBD; Audrey in Kuala Lumpur sends you back
+  # where the tour began (Boat Quay Town by default). Kampung Village is on foot through Muddy Banks and Hibiscus Road,
+  # so Audrey's hop there is a shortcut.
+  - { from: 541000000, to: 550000000, npc: 9000020, kind: world-tour, cost: 10000, note: "Boat Quay Town -> Kuala Lumpur" }
+  - { from: 540000000, to: 550000000, npc: 9201135, kind: plane, cost: 42000, note: "Singapore CBD -> Kuala Lumpur" }
+  - { from: 550000000, to: 541000000, npc: 9201135, kind: world-tour, cost: 0, note: "Kuala Lumpur -> back where the tour began (Boat Quay Town by default)" }
+  - { from: 550000000, to: 551000000, npc: 9201135, kind: taxi, cost: 10000, note: "Kuala Lumpur -> Kampung Village" }
+  - { from: 551000000, to: 550000000, npc: 9201135, kind: taxi, cost: 10000, note: "Kampung Village -> Kuala Lumpur" }
+  # Amoria (Thomas Swift in Henesys and in Amoria)
+  - { from: 100000000, to: 680000000, npc: 9201022, kind: guide, cost: 0, note: "Henesys -> Amoria" }
+  - { from: 680000000, to: 100000000, npc: 9201022, kind: guide, cost: 0, note: "Amoria -> Henesys" }
+  # Kerning Square: the train from the subway's ticket reader; back through Kerning Square Station's exit portal
+  - { from: 103000100, to: 103000310, npc: 1052007, kind: subway, cost: 0, note: "Kerning subway -> Kerning Square Station" }
+  - { from: 103000310, to: 103000100, npc: 0, kind: subway, cost: 0, note: "Kerning Square Station -> Kerning subway" }
+  # El Nath Dungeon: Jeff at Ice Valley II lets level 50 and up down to Sharp Cliff (the way back is a plain portal)
+  - { from: 211040200, to: 211040300, npc: 2030000, kind: guide, cost: 0, note: "Ice Valley II -> Sharp Cliff I (level 50 and up)" }
+  # Temple of Time: the Halfling at Leafre Station makes you a dragon and sets you on the flight; its portals do the rest
+  - { from: 240000110, to: 200090500, npc: 2082003, kind: guide, cost: 0, note: "Leafre Station -> the flight to the Temple of Time" }
+  # Community Repack areas (docs/REPACK_IMPORT_PLAN.md): only accounts with the Repack game files are let in
+  - { from: 100000000, to: 219000000, npc: 9001000, kind: guide, cost: 0, note: "Henesys -> Coke Town" }
+  - { from: 219000000, to: 100000000, npc: 9001000, kind: guide, cost: 0, note: "Coke Town -> Henesys" }
+  - { from: 800000000, to: 800040000, npc: 9110000, kind: guide, cost: 0, note: "Mushroom Shrine -> Outside Ninja Castle" }
+  - { from: 800040000, to: 800000000, npc: 9110000, kind: guide, cost: 0, note: "Outside Ninja Castle -> Mushroom Shrine" }
+  - { from: 540020100, to: 541020000, npc: 9270030, kind: guide, cost: 0, note: "Suburban Area 2 -> Ulu City Entrance" }
+  - { from: 211040600, to: 211060000, npc: 2020012, kind: guide, cost: 0, note: "Wolf Territory II -> Desolate Moor (Lion King's Castle)" }
+  - { from: 270000000, to: 271000000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Gate to the Future" }
+  - { from: 270000000, to: 272000000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Crack in Time" }
+  - { from: 270000000, to: 272030000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Dimensional Schism" }
+  - { from: 270000000, to: 273000000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Twilight Perion" }
+  - { from: 273000000, to: 270000000, npc: 2142107, kind: guide, cost: 0, note: "Twilight Perion -> Three Doors" }
+  - { from: 270000000, to: 450001000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Nameless Town (Arcane River)" }
+  - { from: 270000000, to: 450002000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Chu Chu Village (Arcane River)" }
+  - { from: 270000000, to: 450003000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Lachelein (Arcane River)" }
+  - { from: 270000000, to: 450005000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Arcana (Arcane River)" }
+  - { from: 270000000, to: 450006130, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Trueffet Square, Morass (Arcane River)" }
+  - { from: 270000000, to: 450007040, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Base Camp, Esfera (Arcane River)" }
+  - { from: 270000000, to: 450009050, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Outpost, Moonbridge (Arcane River)" }
+  - { from: 270000000, to: 450011120, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Crash Site, Labyrinth of Suffering (Arcane River)" }
+  - { from: 270000000, to: 450012000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> World's Sorrow, Limina (Arcane River)" }
+  - { from: 450001000, to: 270000000, npc: 3003111, kind: guide, cost: 0, note: "Nameless Town -> Three Doors" }
+  - { from: 450002000, to: 270000000, npc: 3003150, kind: guide, cost: 0, note: "Chu Chu Village -> Three Doors" }
+  - { from: 450003000, to: 270000000, npc: 3003202, kind: guide, cost: 0, note: "Lachelein -> Three Doors" }
+  - { from: 450005000, to: 270000000, npc: 3003324, kind: guide, cost: 0, note: "Arcana -> Three Doors" }
+  - { from: 450006130, to: 270000000, npc: 3003467, kind: guide, cost: 0, note: "Trueffet Square -> Three Doors" }
+  - { from: 450007040, to: 270000000, npc: 3003533, kind: guide, cost: 0, note: "Esfera Base Camp -> Three Doors" }
+  - { from: 450009050, to: 270000000, npc: 3003570, kind: guide, cost: 0, note: "Moonbridge Outpost -> Three Doors" }
+  - { from: 450011120, to: 270000000, npc: 3003799, kind: guide, cost: 0, note: "Labyrinth Crash Site -> Three Doors" }
+  - { from: 450012000, to: 270000000, npc: 3003952, kind: guide, cost: 0, note: "World's Sorrow -> Three Doors" }
   # Victoria Island regular cabs (beginners pay a tenth)
   - { from: 104000000, to: 100000000, npc: 1002007, kind: taxi, cost: 1000 }
   - { from: 104000000, to: 101000000, npc: 1002007, kind: taxi, cost: 800 }

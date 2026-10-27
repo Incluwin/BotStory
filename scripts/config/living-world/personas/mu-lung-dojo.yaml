@@ -1,0 +1,198 @@
+# Mu Lung Dojo cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 3 Residents, 1
+# recruitable. The Dojo's entrance hall, where the temple board sends challengers and So Gong takes them up thirty-eight
+# floors to Mu Gong. Shen keeps the door; Lianhua climbs every day; Guo, the first to answer Mu Gong's notice fifty years
+# ago, lost at the top and walked out without bowing (arcs/mu-lung-dojo.yaml).
+- id: shen
+  name: Shen
+  look: { gender: male }
+  title: "Doorman of the Dojo"
+  job: BEGINNER
+  level: { min: 38, max: 38 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: mu-lung-dojo
+    routine:
+      - { from: 6, to: 13, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 13, to: 15, materialize: false }
+      - { from: 15, to: 18, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 18, to: 20, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 20, to: 22, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [mu lung dojo, reindeer, mu lung temple]
+  questLines: [shen-hooks-for-the-belts, shen-a-note-for-the-top-floor]
+  rumors: [mu-lung-dojo-the-unbowed, mu-lung-dojo-twenty-nine]
+  relationships:
+    - { persona: guo, kind: OPENS_THE_DOOR_FOR }
+    - { persona: lianhua, kind: COUNTS_THE_FLOORS_OF }
+    - { persona: xiaobo, kind: SENDS_HOME_POLITELY }
+  giftItemIds: [4000288, 2022116]
+  dialogue:
+    greetFirst: ["welcome to the Mu Lung Dojo. shoes by the wall, please. there are thirty-eight floors, and the first is the hardest to start.", "a challenger. bow to the door, please. not to me. to the door."]
+    greet: ["welcome back. shoes by the wall.", "the door's open. it's always open. that's my job."]
+    idle: ["(straightens a row of sandals by the wall, all the toes pointing the same way)", "(bows to the floor door as someone goes through it, and stays bowed a moment after)"]
+    noWork: ["nothing today. the door opens by itself. i only help it."]
+    nothingDue: ["you owe nothing. the Dojo charges in bruises, and So Gong collects those."]
+    who: ["Shen. i keep the door of the Mu Lung Dojo. challengers come up from the board in the temple, take off their shoes, bow, and go through to So Gong and the floors. i open the door. it's a small job. i've done it very well for twelve years."]
+    bye: ["your shoes. don't forget your shoes."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["thirty-eight floors, and the master at the top. most challengers come back down by lunch. Lianhua comes back down by dinner. that's how you can tell.", "every morning i open the door for master Guo. it's my job to open it. what he does with an open door is his."]
+    speakPlainly: ["plainly: a door, and the shoes outside it."]
+    questOffer.shen-hooks-for-the-belts: ["the challengers hang their belts on pegs by the door while they change. the pegs keep snapping. broken deer horn makes a peg that doesn't. the reindeer on the peach farms. twenty-five of them, twelve horns?"]
+    questAccept.shen-hooks-for-the-belts: ["past the sky forest, the peach farms and the foggy forest beside them. the reindeer. they're gentle until they aren't."]
+    questWaiting.shen-hooks-for-the-belts: ["twelve horns. three belts on the floor this morning."]
+    questComplete.shen-hooks-for-the-belts: ["twelve. (fits a horn peg into the wall and hangs a belt on it) ...it holds. thank you. the belts thank you. the floor thanks you."]
+    questOffer.shen-a-note-for-the-top-floor: ["you heard. the master asks after him every year. master Guo won't write a note, so i have. i can't leave the door, and the master's thirty-eight floors up. Lianhua climbs higher than anyone who comes through here. ask her to carry it."]
+    questAccept.shen-a-note-for-the-top-floor: ["Lianhua. upper east in the morning before her climb, or down here after it, bruised. she'll say no. she'll take it."]
+    questWaiting.shen-a-note-for-the-top-floor: ["the note. Lianhua."]
+    questComplete.shen-a-note-for-the-top-floor: ["she came down last night with the note read. the master came down to the twenty-ninth floor himself, to see who was knocking so hard. he read it there, and he said: tell the old man his belt is where he left it. (very quietly) on the wall of the top floor. fifty years. he kept it."]
+    about.guo: ["master Guo has sat on the bench by the west wall every day for longer than i've kept the door. i open it for him every morning. what he does with it is his."]
+    about.lianhua: ["Lianhua is the only challenger who says good morning to the door. she climbs till she's carried down. twenty-nine floors, most days. she bows going in and coming out. i like her very much."]
+    about.xiaobo: ["the Xiaobo boy comes up from Mu Lung every week and asks if he's ready. i tell him to ask Suyin. he goes very quiet and goes home."]
+    aboutUnknown: ["never taken their shoes off here."]
+    friend.close: ["there's a peg by the door with your name on it. for your belt. nobody else has a name."]
+    friend.best: ["if you ever climb all thirty-eight, i'll be at the door when you come down. i'll have your shoes ready."]
+    famed: ["challengers talk about you on the floors. good things. So Gong told me. he never tells me anything."]
+    defamed: ["challengers talk about you on the floors. not kindly. i open the door for everyone."]
+    gift: ["thank you very much."]
+    gift.favorite: ["oh, that's thoughtful. that's going on the shelf by the door, where i can see it."]
+    gift.again: ["one, thank you. the shelf is small."]
+
+- id: lianhua
+  name: Lianhua
+  look: { gender: female }
+  title: "Challenger of the Dojo Floors"
+  job: MARAUDER
+  level: { min: 73, max: 75 }
+  strength: VETERAN
+  loadout: dojo-knuckle-l60
+  personality: efficient-v1
+  home:
+    town: mu-lung-dojo
+    routine:
+      - { from: 6, to: 9, spot: "venue:upper-east-street", activity: SHOW_OFF }
+      - { from: 9, to: 16, materialize: false }
+      - { from: 16, to: 18, spot: "venue:lower-central-street", activity: REST }
+      - { from: 18, to: 22, spot: "venue:upper-east-street", activity: SHOW_OFF }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [mu lung dojo, grizzly, panda]
+  contract: lianhua-day-rate
+  questLines: [lianhua-morning-bears, lianhua-blue-belt, lianhua-red-belt, lianhua-black-belt]
+  rumors: [mu-lung-dojo-twenty-nine]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: suyin, kind: RIVAL_OF }
+    - { persona: guo, kind: CORRECTED_BY }
+    - { persona: shen, kind: BOWS_TO }
+  giftItemIds: [4000285, 2000004]
+  dialogue:
+    greetFirst: ["morning! or evening. i've been up and down twenty-nine floors, i've lost track. are you climbing? climb with me. no, you'll slow me down. climb anyway.", "a new face! going up? take the first ten floors two stairs at a time. after that, take them one at a time and be grateful."]
+    greet: ["twenty-nine. again. ask me tomorrow.", "you're back! what floor did you dream about? i dreamed about thirty."]
+    idle: ["(shadowboxes the empty air in short fast combinations, then stops and checks her left guard)", "(sits on the bottom stair with her eyes shut, counting floors under her breath and flexing her bruised hands)"]
+    noWork: ["nothing today. i'm resting. this is what resting looks like. it's awful."]
+    nothingDue: ["we're square. spar me sometime and we won't be."]
+    who: ["Lianhua. i climb the Dojo. thirty-eight floors and Mu Gong at the top. my best is twenty-nine. i go up every morning and come down every evening, and in between i get hit by things that have trained longer than i've been alive."]
+    bye: ["keep your left up!"]
+    thanks: ["ha! good."]
+    smallTalk: ["the grizzlies in the wild bear areas fight like they've been to the Dojo. i warm up on them every morning. they warm up on me.", "the old man on the bench says my left guard drops after the twentieth floor. it does. i hate that he's right. i've stopped hating it. mostly."]
+    speakPlainly: ["plainly: up the stairs, as far as i can."]
+    offer: ["ninety thousand for a day. a day off the floors is a day i'm not getting better, so it's a dear day. you'll get your money's worth. i hit hard when i'm bored."]
+    join: ["let's go! keep up. no. i'll keep up. you lead."]
+    bench: ["two days. then i'm back on the floors. twenty-nine won't climb itself."]
+    leave: ["that's my day. the floors are waiting. thirty is waiting."]
+    refuse.bond: ["i don't climb beside someone i don't know. on the twentieth floor you find out who people are. i'd rather find out sooner."]
+    refuse.flags: ["warm up on the grizzlies with me first. thirty, before breakfast. then ask."]
+    refuseOwnErrand: ["my floors. you can carry the water."]
+    questOffer.lianhua-morning-bears: ["i warm up on the grizzlies every morning before the floors. come and warm up with me. thirty of them in the wild bear areas. then we'll see about you."]
+    questAccept.lianhua-morning-bears: ["Wild Bear Areas 1 to 3, past the snake area. the brown ones. they hit like an uppercut with a bear on the end."]
+    questWaiting.lianhua-morning-bears: ["thirty. you're not warm yet."]
+    questComplete.lianhua-morning-bears: ["thirty! you're warm. you're very warm. you'd last ten floors. maybe twelve."]
+    questOffer.lianhua-blue-belt: ["this is my blue belt. i earned it the year i first climbed past ten. i'd like you to have it. one thing first: thirty flower serpents in the snake area. they're quick. quick is what the blue floors teach."]
+    questAccept.lianhua-blue-belt: ["the snake area, and where the sky forest ends. the blue ones and the red ones. don't blink."]
+    questWaiting.lianhua-blue-belt: ["thirty serpents. are you blinking?"]
+    questComplete.lianhua-blue-belt: ["thirty, and you didn't blink. the Blue Belt. it isn't armour. it's a promise you'll keep going. i kept it. keep it."]
+    questOffer.lianhua-red-belt: ["the pandas in the bear territories wear red belts. they took them off challengers who lost. bring ten home and put thirty pandas down, and you'll have my red belt. i earned it on the twentieth floor. i'd like it to climb higher than i did."]
+    questAccept.lianhua-red-belt: ["Wild Bear Areas 2 and 3, and the Territory of Wandering Bear past them. the black-and-white ones. they're fat. they're fast. it's a trick."]
+    questWaiting.lianhua-red-belt: ["ten belts, thirty pandas. somebody's losing those belts on purpose."]
+    questComplete.lianhua-red-belt: ["ten belts home. i'll hang them on Shen's pegs; somebody will come for them. ...and this is mine. the Red Belt. it's seen twenty floors. take it past thirty."]
+    questOffer.lianhua-black-belt: ["the Black Belt. So Gong gave me this one last spring. i've never felt it was mine. i'd like it to be yours. two things. twenty-five red-nose captains in the pirate dens past Herb Town, because they fight dirty and so do the top floors. and Suyin's word that you're fit to wear it. she's never given anyone her word. go and get it."]
+    questAccept.lianhua-black-belt: ["the red-nose pirate dens, past Herb Town's old swamp. the ones in the big hats. then Mu Lung, the lower west street in the evening. Suyin. she'll hit you first. that's how she says hello."]
+    questWaiting.lianhua-black-belt: ["twenty-five captains, and Suyin's word."]
+    questComplete.lianhua-black-belt: ["she said yes? ...she said yes. Suyin's never said yes to anything. the Black Belt. it's the last belt there is. there's nothing after it but the floors."]
+    about.suyin: ["Suyin fights in the open where anyone can watch. i fight up stairs where nobody can. we've never fought each other. we both know who'd win. we disagree."]
+    about.guo: ["the old man on the bench watches me go in every morning and tells me what i did wrong when i come out. he's never once been wrong. he lost to Mu Gong, they say. i'd like to lose that well."]
+    about.shen: ["Shen opens the door for me every morning and bows like i'm somebody. i'm not, yet. it helps."]
+    about.fengzi: ["Fengzi in town makes gloves for half of Mu Lung. i wrap my own knuckles. around the twentieth floor i wish i didn't."]
+    aboutUnknown: ["never seen them on the floors."]
+    friend.close: ["i'd let you watch my left guard. i don't let anyone watch my left guard."]
+    friend.best: ["the day i reach the top, you're the first person i'm telling. after the old man. he'd want to know first. he'd pretend he didn't."]
+    famed: ["they talk about you on the floors! good things! i'm jealous. the good kind."]
+    defamed: ["they talk about you on the floors. not nicely. the floors talk about everyone. keep climbing."]
+    gift: ["ha! thanks!"]
+    gift.favorite: ["oh, that's just what you want after a climb. thank you. really."]
+    gift.again: ["one! one's plenty! i've thirty-eight floors to carry it up."]
+
+- id: guo
+  name: Guo
+  look: { gender: male }
+  title: "Retired Master"
+  job: BEGINNER
+  level: { min: 60, max: 60 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mu-lung-dojo
+    routine:
+      - { from: 7, to: 12, spot: "venue:lower-west-street", activity: REST }
+      - { from: 12, to: 14, materialize: false }
+      - { from: 14, to: 20, spot: "venue:lower-west-street", activity: REST }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [mu lung dojo, red porky, grizzly]
+  questLines: [guo-the-old-gi, guo-belts-taken-by-bears, guo-the-bow]
+  arc: guo-the-unbowed
+  rumors: [mu-lung-dojo-the-unbowed]
+  relationships:
+    - { persona: shen, kind: HAS_THE_DOOR_OPENED_BY }
+    - { persona: lianhua, kind: CORRECTS }
+    - { persona: meiwen, kind: WAS_WATCHED_BY }
+  giftItemIds: [2022116, 4000290]
+  dialogue:
+    greetFirst: ["sit, if you like. the bench is long. i've kept my end of it warm a long while.", "a challenger? you've the shoulders for it. you've not the patience. nobody has, at first."]
+    greet: ["sit.", "back again. the bench remembers you."]
+    idle: ["(watches the floor door open and close, his hands folded on his knee)", "(moves his wrist through a slow form, very small, as if no one should see)"]
+    noWork: ["nothing today. i'm old. sitting is my work now. i'm very good at it."]
+    nothingDue: ["you owe an old man nothing. sit a minute. that's plenty."]
+    who: ["Guo. fifty years ago i was the first hand on the master's notice, the morning it went up on the temple board. i climbed to the top. i lost. i walked down thirty-eight floors and out that door, and i've sat on this bench every day since. i've never gone back through."]
+    bye: ["mind the step. it's always the step."]
+    thanks: ["mm. kind."]
+    smallTalk: ["the girl who climbs, Lianhua. her left guard drops after the twentieth floor. mine did too. it took me thirty years to see it.", "they ask why i come every day and never go in. i tell them i like the bench. i do like the bench. that isn't why."]
+    speakPlainly: ["plainly: an old man, a bench, and a door i never went back through."]
+    questOffer.guo-the-old-gi: ["the gi i lost in. i've kept it folded fifty years, and the seams have gone. porcupine spines make the only needles that go through cloth that heavy. thirty porkies in the sky forest, and eight of their spines? i'll tell you why i kept it."]
+    questAccept.guo-the-old-gi: ["the Sky Forest, from its entrance down to the deep part. the red porkies and the black ones. the spines are hard to come by. take your time. i have."]
+    questWaiting.guo-the-old-gi: ["eight spines. the gi's waiting. it's very patient. it's had practice."]
+    questComplete.guo-the-old-gi: ["eight. (threads a spine and begins to sew, slowly) ...i kept it because i didn't bow. when you lose at the top, you bow to the one who beat you. i didn't. i walked down thirty-eight floors in this and out that door, and every morning since i've come back to sit where i can see it. fifty years is a long time to owe a man a bow."]
+    questOffer.guo-belts-taken-by-bears: ["the grizzlies wear yellow belts they took off boys who lost on the practice field. i lost mine to a better man. those boys lost theirs to a bear. bring ten home. i'll see they get back."]
+    questAccept.guo-belts-taken-by-bears: ["the wild bear areas. the brown ones with the belts. ten."]
+    questWaiting.guo-belts-taken-by-bears: ["ten. somewhere a boy's practising with his trousers held up by string."]
+    questComplete.guo-belts-taken-by-bears: ["ten. i'll take them down to the practice field. somebody will cry. it'll be me, probably."]
+    questOffer.guo-the-bow: ["Shen says the master kept my belt on his wall fifty years. a man doesn't keep a belt for someone he's forgotten. i'm going through that door. not to fight. to bow. i'd like Meiwen to know; she was a girl in the crowd the day i walked out. ask her. then tell Shen to open the door, and that i mean it this time."]
+    questAccept.guo-the-bow: ["Meiwen, in Mu Lung. she teaches the forms on the streets, mornings and evenings. then Shen, here. i'll wait. i'm good at waiting. i'm going to stop."]
+    questWaiting.guo-the-bow: ["Meiwen, and Shen. i've my gi on. i look ridiculous. i don't care."]
+    questComplete.guo-the-bow: ["(stands, bows to the bench he has sat on for fifty years, and walks through the open door. a long while later he comes back down, very slowly, his gi folded over one arm) ...i bowed. he bowed back. he's old. i'm old. we had tea on the top floor and said nothing for an hour. the belt's still on his wall. it belongs there. thank you."]
+    about.shen: ["Shen opens that door for me every morning. twelve years. a doorman who thinks a door is a kindness. he's right. don't tell him."]
+    about.lianhua: ["Lianhua climbs the way i climbed. all heart and no left guard. she'll reach the top one day. i'd like to be on this bench when she comes down."]
+    about.meiwen: ["Meiwen teaches the forms in Mu Lung. she was a little girl in the crowd at the door the day i came down. she's the only one left who saw my face that day. she's never once mentioned it. that's kindness."]
+    aboutUnknown: ["never sat on this bench. their loss. it's a good bench."]
+    friend.close: ["you may sit at my end of the bench. it's the warm end."]
+    friend.best: ["if i'd ever had a pupil, i'd have liked one like you. i think i have one now. don't tell the girl who climbs; she'll want a lesson."]
+    famed: ["they speak well of you on the floors. i heard it from the bench. i hear everything from the bench."]
+    defamed: ["they speak ill of you on the floors. i lost once in front of everyone. talk passes."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's thoughtful. an old man notices thoughtful. thank you."]
+    gift.again: ["one's plenty. i'm old, not hungry."]

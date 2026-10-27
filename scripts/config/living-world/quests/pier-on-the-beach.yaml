@@ -1,0 +1,85 @@
+# Pier on the Beach quests (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own data.
+# The Dolphin (2060009) carries riders from the pier down to the Sharp Unknown 230030200 or to Aquarium 230000000. The
+# Aqua Road fields are swim maps (players swim; Residents stay on the pier): pinboom 2230108 (the Sharp Unknown, Mushroom
+# Coral Hill 230030100), cico 2230106 (sea horse horn 4000163; Blue Seaweed Road 230030000, the Fish Resting Spot
+# 230030001), poison poopa 4230201 (Crystal Gorge 230010100, Red Coral Forest 230010200, Turban Shell Hill 230010300),
+# sparker 4230123 (seal tooth 4000156; Turban Shell Hill, the west sea fork 230010400). Errands: Oriel and Sunniva in
+# Aquarium's Department Store (wave 3).
+# Gear: Ondine's Oxygen Tank 1102061 (L30 cape), a friendship-4 gift scaled by friendship.
+
+# ---- Ondine, keeper of the dolphin ---------------------------------------------------------------------------------------
+
+- id: ondine-the-sharp-unknown
+  persona: ondine
+  title: "A Sore Nose"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pinbooms, type: KILL_MOBS, mobIds: [2230108], count: 25, mapIds: [230030200, 230030100] }
+    - { id: report, type: DELIVER, to: ondine }
+  rewards: { meso: 5000, exp: 3000, bondPoints: 35 }
+
+- id: ondine-the-other-end
+  persona: ondine
+  title: "The Other End of the Rope"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: oriel, type: TALK_TO, persona: oriel, say: ["Ondine sent you? the pier lady! hello! what do i feed her? shrimp. from the krips by the seaweed tower. lots of shrimp. tell her i'm sorry. tell her i'm not sorry. tell her the dolphin says hello."] }
+    - { id: report, type: DELIVER, to: ondine }
+  rewards: { meso: 5000, exp: 3500, bondPoints: 35 }
+
+- id: ondine-the-oxygen-tank
+  persona: ondine
+  title: "A Breath You Didn't Bring"
+  length: SHORT
+  requires: { level: { min: 30 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cicos, type: KILL_MOBS, mobIds: [2230106], count: 20, mapIds: [230030000, 230030001] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000163, count: 10 }
+    - { id: valve, type: DELIVER, to: ondine, take: { itemId: 4000163, count: 10 } }
+  rewards:
+    meso: 7000
+    exp: 5000
+    bondPoints: 30
+    gear:
+      - { pool: [1102061] }
+
+# ---- Bora, pearl seller of the pier -------------------------------------------------------------------------------------
+
+- id: bora-poison-poopas
+  persona: bora
+  title: "No Dives, No Pearls"
+  length: SHORT
+  requires: { level: { min: 38 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: poopas, type: KILL_MOBS, mobIds: [4230201], count: 25, mapIds: [230010100, 230010200, 230010300] }
+    - { id: report, type: DELIVER, to: bora }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 35 }
+
+- id: bora-sunnivas-bag
+  persona: bora
+  title: "Wonderful, or Forgotten"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sunniva, type: TALK_TO, persona: sunniva, say: ["Bora sent you? the bag. ...mostly sand, one good one, it's coming up on the dolphin tomorrow. and tell her to stop charging three times what i ask."] }
+    - { id: report, type: DELIVER, to: bora }
+  rewards: { meso: 7000, exp: 5000, bondPoints: 35 }
+
+- id: bora-seal-teeth
+  persona: bora
+  title: "A Pearl, but Cheaper"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 40 }, questsCompleted: [bora-poison-poopas] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000156, count: 10 }
+    - { id: tray, type: DELIVER, to: bora, take: { itemId: 4000156, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }

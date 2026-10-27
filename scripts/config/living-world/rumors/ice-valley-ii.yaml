@@ -1,0 +1,14 @@
+# Ice Valley II rumors (wave 4). Torsten and Agnetha are both by Glibber in those hours (personas/ice-valley-ii.yaml).
+- id: ice-valley-ii-the-runner
+  participants: [torsten, agnetha]
+  where: { town: ice-valley-ii, spot: "venue:by-glibber" }
+  when:
+    serverHours: [16, 17]
+    everyDays: 2
+  lines:
+    - { by: agnetha, text: "forty bottles up and not one broken, Torsten." }
+    - { by: torsten, text: "the yetis are slow today." }
+    - { by: agnetha, text: "the yetis are slow every day. i'm fast." }
+    - { by: torsten, text: "you came up the lower layers on your heels again. i heard you from the gate." }
+    - { by: agnetha, text: "you hear everything from the gate." }
+    - { by: torsten, text: "i listen. it's most of the job." }

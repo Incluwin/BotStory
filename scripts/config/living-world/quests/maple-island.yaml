@@ -1,0 +1,232 @@
+# Maple Island quests (wave 4), levels 1-10, two per Resident. Fields: Dangerous Forest 50000 (snail 100100 snail shell
+# 4000019), the last field before Amherst; Entrance to Adventurer Training Center 1010000 (blue snail 100101 blue snail
+# shell 4000000, shroom 120100 mushroom spore 4000011, orange mushroom 1210102 orange mushroom cap 4000001), out
+# Amherst's east gate; the Split Road of Destiny 1020000 (the five job instructors). Kill steps also list the island's
+# other fields for the same monster (Snail Hunting Ground II/III 40001/40002, Snail Garden 1000004, Tomato Field
+# 1020001, Hunting Ground Middle of the Forest II 1000006, the Field West of Southperry 50001, and Mai's Adventurer
+# Training Center 4 1010400 with its own orange mushroom 9500102), but on this server those fields have no portal in
+# from the road, and the training center opens only during Mai's own quests, so every step can be done from 50000 and
+# 1010000. The road from Mushroom Town (10000 -> 20000 -> 30000 -> 40000 -> 50000 -> Amherst) has no way back, so the
+# Mushroom Town quests end away from their givers (a kill, a map or a word with an Amherst Resident; the giver's closing
+# line is a note, a cabbage leaf or a spell). The ship from Southperry is one way too: Marta's leaving list ends at
+# Olwen in Lith Harbor, and no quest needs the player back on the island.
+
+# ---- Mushroom Town (level 1: both offered at once, neither needs the giver again) ----
+- id: tilly-a-friend-in-amherst
+  persona: tilly
+  title: "A Friend in Amherst"
+  length: SHORT
+  requires: { level: { min: 1 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bettina, type: TALK_TO, persona: bettina, say: ["Tilly sent you? then you're expected. she sends me every new face on the island and every one arrives smiling. here, a roll, still warm. welcome to Amherst, love. go and say hello to Lucas, our chief. he likes to know who's come."] }
+  rewards: { meso: 100, exp: 15, bondPoints: 15, items: [{ itemId: 2000000, count: 5 }] }
+
+- id: tilly-ten-snails
+  persona: tilly
+  title: "Ten Snails, No More"
+  length: SHORT
+  requires: { level: { min: 1 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [100100], count: 10, mapIds: [50000, 40001, 40002, 1000004, 1020001] }
+  rewards: { meso: 200, exp: 25, bondPoints: 20, items: [{ itemId: 2000000, count: 5 }, { itemId: 2010000, count: 3 }] }
+
+- id: rufus-snails-in-the-cabbages
+  persona: rufus
+  title: "Snails in the Cabbages"
+  length: SHORT
+  requires: { level: { min: 1 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [100100], count: 15, mapIds: [50000, 40001, 40002, 1000004, 1020001] }
+  rewards: { meso: 300, exp: 30, bondPoints: 20, items: [{ itemId: 2000000, count: 5 }, { itemId: 2020000, count: 2 }] }
+
+- id: rufus-a-word-for-moe
+  persona: rufus
+  title: "The Cabbages Are Coming"
+  length: SHORT
+  requires: { level: { min: 1 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: moe, type: TALK_TO, persona: moe, say: ["the cabbages are coming? ha! that old weed-puller. thirty springs he's sent me a cabbage by whoever's walking the road. this year it's you. welcome to Amherst, cabbage-carrier."] }
+  rewards: { meso: 150, exp: 15, bondPoints: 15, items: [{ itemId: 2000000, count: 5 }] }
+
+- id: wynn-the-message-spell
+  persona: wynn
+  title: "The Message Spell"
+  length: SHORT
+  requires: { level: { min: 1 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [100100], count: 5, mapIds: [50000, 40001, 40002, 1000004, 1020001] }
+    - { id: amherst, type: VISIT_MAP, mapIds: [1000000] }
+  rewards: { meso: 150, exp: 20, bondPoints: 15, items: [{ itemId: 2000000, count: 3 }, { itemId: 2000003, count: 3 }] }
+
+- id: wynn-a-spell-for-sunny
+  persona: wynn
+  title: "Two N's"
+  length: SHORT
+  requires: { level: { min: 1 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sunny, type: TALK_TO, persona: sunny, say: ["Wynn? two n's. i'll remember. a magician who can already do sparkles. i'll save him the front seat. the front's for magicians. thank you for telling me early."] }
+  rewards: { meso: 100, exp: 15, bondPoints: 15, items: [{ itemId: 2000003, count: 3 }] }
+
+# ---- Amherst ----
+- id: bettina-spores-for-the-starter
+  persona: bettina
+  title: "Spores for the Starter"
+  length: SHORT
+  requires: { level: { min: 3 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spores, type: COLLECT_ITEM, itemId: 4000011, count: 10 }
+    - { id: starter, type: DELIVER, to: bettina, take: { itemId: 4000011, count: 10 } }
+  rewards: { meso: 400, exp: 60, bondPoints: 25, items: [{ itemId: 2000000, count: 10 }, { itemId: 2020001, count: 2 }] }
+
+- id: bettina-rolls-for-the-road
+  persona: bettina
+  title: "Rolls for the Road"
+  length: SHORT
+  requires: { level: { min: 5 }, questsCompleted: [bettina-spores-for-the-starter] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: marta, type: TALK_TO, persona: marta, say: ["rolls from Bettina? every week, without fail. i hand them out at the gangplank. people cry less with bread in their hands. tell her eleven went over this week, and every one had a roll."] }
+    - { id: back, type: DELIVER, to: bettina }
+  rewards: { meso: 700, exp: 120, bondPoints: 30, items: [{ itemId: 2000003, count: 5 }, { itemId: 2000000, count: 5 }] }
+
+- id: moe-the-east-road
+  persona: moe
+  title: "The East Road"
+  length: SHORT
+  requires: { level: { min: 3 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: blue-snails, type: KILL_MOBS, mobIds: [100101], count: 15, mapIds: [1010000, 40001, 40002, 1000004, 1020001] }
+    - { id: report, type: DELIVER, to: moe }
+  rewards: { meso: 500, exp: 80, bondPoints: 25, items: [{ itemId: 2000000, count: 10 }] }
+
+- id: moe-nothing-orange
+  persona: moe
+  title: "Nothing Orange Through the Gate"
+  length: SHORT
+  requires: { level: { min: 7 }, questsCompleted: [moe-the-east-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: orange, type: KILL_MOBS, mobIds: [1210102, 9500102], count: 6, mapIds: [1010000, 1000006, 50001, 1010400] }
+    - { id: report, type: DELIVER, to: moe }
+  rewards: { meso: 1000, exp: 250, bondPoints: 30, items: [{ itemId: 2000000, count: 10 }, { itemId: 2000003, count: 5 }] }
+
+- id: sunny-where-the-roads-split
+  persona: sunny
+  title: "Where the Roads Split"
+  length: SHORT
+  requires: { level: { min: 4 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: split-road, type: VISIT_MAP, mapIds: [1020000] }
+    - { id: report, type: DELIVER, to: sunny }
+  rewards: { meso: 300, exp: 50, bondPoints: 25, items: [{ itemId: 2000003, count: 5 }] }
+
+- id: sunny-the-sea-on-the-map
+  persona: sunny
+  title: "The Sea on the Map"
+  length: SHORT
+  requires: { level: { min: 6 }, questsCompleted: [sunny-where-the-roads-split] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ned, type: TALK_TO, persona: ned, say: ["what's out there? water, then more water. east from the end of the pier, a day's sail. gulls mean you're close. then cliffs, green on top. that's Victoria. tell her exactly that. she'll draw the gulls bigger than the cliffs. she always does."] }
+    - { id: report, type: DELIVER, to: sunny }
+  rewards: { meso: 800, exp: 150, bondPoints: 30, items: [{ itemId: 2000000, count: 10 }] }
+
+- id: pockets-a-fair-trade
+  persona: pockets
+  title: "A Fair Trade"
+  length: SHORT
+  requires: { level: { min: 2 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000019, count: 10 }
+    - { id: trade, type: DELIVER, to: pockets, take: { itemId: 4000019, count: 10 } }
+  rewards: { meso: 300, exp: 40, bondPoints: 25, items: [{ itemId: 2000000, count: 5 }, { itemId: 2010009, count: 1 }] }
+
+- id: pockets-the-blue-ones
+  persona: pockets
+  title: "The Blue Ones"
+  length: SHORT
+  requires: { level: { min: 4 }, questsCompleted: [pockets-a-fair-trade] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000000, count: 15 }
+    - { id: trade, type: DELIVER, to: pockets, take: { itemId: 4000000, count: 15 } }
+  rewards: { meso: 700, exp: 100, bondPoints: 30, items: [{ itemId: 2000003, count: 5 }, { itemId: 2000000, count: 5 }] }
+
+# ---- Southperry ----
+- id: marta-pencil-names
+  persona: marta
+  title: "A Name in Pencil"
+  length: SHORT
+  requires: { level: { min: 6 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: elodie, type: TALK_TO, persona: elodie, say: ["Marta sent you? she keeps my name in pencil. ...i'm not scared of the sea. i'm scared of the other side. nobody comes back to tell you it's all right. you're going, aren't you? you'll be fine. you walked the whole road on your own."] }
+    - { id: report, type: DELIVER, to: marta }
+  rewards: { meso: 600, exp: 150, bondPoints: 25, items: [{ itemId: 2000000, count: 10 }] }
+
+# The island's one Victoria tie: it ends at Olwen, since the ship never brings anyone back (QuestLedger completes a quest
+# on its last step wherever that step happens, with the rewards and Marta's closing line).
+- id: marta-the-leaving-list
+  persona: marta
+  title: "The Leaving List"
+  length: MEDIUM
+  requires: { level: { min: 8 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: level, type: REACH_LEVEL, level: 10 }
+    - { id: olwen, type: TALK_TO, persona: olwen, say: ["Marta's list. ...there. your name, in ink, in her hand. ticked. one more off the boat, none back into the sea. welcome to Victoria Island. mind the ropes."] }
+  rewards: { meso: 2000, exp: 500, bondPoints: 40, items: [{ itemId: 2000000, count: 20 }, { itemId: 2000003, count: 10 }] }
+
+- id: ned-spores-on-the-water
+  persona: ned
+  title: "Spores on the Water"
+  length: SHORT
+  requires: { level: { min: 6 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shrooms, type: KILL_MOBS, mobIds: [120100], count: 20, mapIds: [1010000, 1000006] }
+    - { id: report, type: DELIVER, to: ned }
+  rewards: { meso: 600, exp: 150, bondPoints: 25, items: [{ itemId: 2000000, count: 10 }] }
+
+- id: ned-mushroom-bobbers
+  persona: ned
+  title: "Mushroom Bobbers"
+  length: SHORT
+  requires: { level: { min: 7 }, questsCompleted: [ned-spores-on-the-water] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000001, count: 5 }
+    - { id: bobbers, type: DELIVER, to: ned, take: { itemId: 4000001, count: 5 } }
+  rewards: { meso: 900, exp: 250, bondPoints: 30, items: [{ itemId: 2000003, count: 5 }, { itemId: 2000000, count: 5 }, { itemId: 2020007, count: 2 }] }
+
+- id: elodie-a-map-of-victoria
+  persona: elodie
+  title: "A Map of Victoria"
+  length: SHORT
+  requires: { level: { min: 6 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sunny, type: TALK_TO, persona: sunny, say: ["for Elodie? another one for the stack. tell her i'll draw her as many as she likes. and tell her what i always tell her: the map's the easy part. the walking's the brave part. she's braver than she knows."] }
+    - { id: report, type: DELIVER, to: elodie }
+  rewards: { meso: 500, exp: 150, bondPoints: 25, items: [{ itemId: 2000000, count: 5 }, { itemId: 2000003, count: 5 }] }
+
+- id: elodie-a-shell-bracelet
+  persona: elodie
+  title: "A Shell for Luck"
+  length: SHORT
+  requires: { level: { min: 8 }, questsCompleted: [elodie-a-map-of-victoria] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000000, count: 5 }
+    - { id: bracelet, type: DELIVER, to: elodie, take: { itemId: 4000000, count: 5 } }
+  rewards: { meso: 1000, exp: 300, bondPoints: 30, items: [{ itemId: 2000003, count: 5 }, { itemId: 2000000, count: 10 }] }

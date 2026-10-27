@@ -1,0 +1,32 @@
+# Temple of Time rumors (wave 4). Each pair is awake together at its spot in those hours (personas/three-doors.yaml).
+- id: temple-the-far-door
+  participants: [caedmon, liesl]
+  where: { town: three-doors, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  setsFlagOnListeners: temple.heard-liesl
+  lines:
+    - { by: liesl, text: "you stood at the door to the roads all morning, Caedmon. nothing came through." }
+    - { by: caedmon, text: "nothing came through because i stood there." }
+    - { by: liesl, text: "or because nothing was coming." }
+    - { by: caedmon, text: "you went past me at dawn with a full quiver and came back with an empty one. something was coming." }
+    - { by: liesl, text: "...a few things." }
+    - { by: caedmon, text: "whoever walks the far roads with you, Liesl, comes home. i've never once seen you miss what matters." }
+    - { by: liesl, text: "don't say that where people can hear." }
+    - { by: caedmon, text: "i say it so people can hear." }
+
+- id: temple-thirty-years
+  participants: [ilsabet, osmund]
+  where: { town: three-doors, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 2
+  lines:
+    - { by: ilsabet, text: "Osmund. just one thing from my thirty years. did the Ellinia baker ever marry the milkmaid?" }
+    - { by: osmund, text: "i don't read the records out, Ilsabet." }
+    - { by: ilsabet, text: "you wouldn't be reading. you'd be nodding. or shaking your head." }
+    - { by: osmund, text: "a nod is a kind of reading." }
+    - { by: ilsabet, text: "you just nodded!" }
+    - { by: osmund, text: "i had something in my eye. ink." }
+    - { by: ilsabet, text: "i knew it. i knew they would. you're a love, Osmund." }

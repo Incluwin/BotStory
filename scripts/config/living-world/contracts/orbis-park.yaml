@@ -1,0 +1,15 @@
+# Orbis Park contract (wave 4): a pixie hunter's fee, once the player has hunted with her and heard Odalys on her.
+- id: saffi-the-park-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [saffi.intro.done, orbis-park.heard-saffi]
+  price:
+    meso: 40000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
