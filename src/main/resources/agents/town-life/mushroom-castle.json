@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "profileId": "mushroom-castle",
+  "mapId": 106020000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 28,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 35,
+    "middleMaxY": 95,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "right00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 445, "y": 95, "seatId": -1 },
+    { "x": 1155, "y": 275, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": 20, "y": 95 },
+    { "x": 105, "y": 95 },
+    { "x": 190, "y": 95 },
+    { "x": 630, "y": 155 },
+    { "x": 715, "y": 155 }
+  ],
+  "npcSpots": [
+    { "npcId": 1301000, "offsetX": 90 },
+    { "npcId": 1300004, "offsetX": -102 },
+    { "npcId": 1300007, "offsetX": 86 },
+    { "npcId": 1300005, "offsetX": 95 },
+    { "npcId": 1300003, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-right00", "type": "PORTAL", "minX": 1142, "minY": -94, "maxX": 1282, "maxY": 31, "excludesOccupancy": true },
+    { "id": "portal-left00", "type": "PORTAL", "minX": 1160, "minY": 203, "maxX": 1300, "maxY": 328, "excludesOccupancy": true },
+    { "id": "npc-1300004", "type": "NPC_LANE", "minX": -127, "minY": -56, "maxX": 37, "maxY": 74, "excludesOccupancy": true },
+    { "id": "npc-1300000", "type": "NPC_LANE", "minX": 48, "minY": -118, "maxX": 330, "maxY": 74, "excludesOccupancy": true },
+    { "id": "npc-1301000", "type": "NPC_LANE", "minX": 529, "minY": -56, "maxX": 669, "maxY": 74, "excludesOccupancy": true },
+    { "id": "npc-1300007", "type": "NPC_LANE", "minX": 803, "minY": 124, "maxX": 935, "maxY": 254, "excludesOccupancy": true },
+    { "id": "npc-1300005", "type": "NPC_LANE", "minX": 943, "minY": -116, "maxX": 1093, "maxY": 14, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-secretary-of-domestic-affairs", "label": "By Secretary of Domestic Affairs", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 275, "y": 95, "seatId": -1 }, { "x": 360, "y": 95, "seatId": -1 }, { "x": 445, "y": 95, "seatId": -1 }, { "x": 545, "y": 155, "seatId": -1 }] },
+    { "id": "by-head-security-officer", "label": "By Head Security Officer", "district": "UPPER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 730, "y": 35, "seatId": -1 }, { "x": 815, "y": 35, "seatId": -1 }, { "x": 900, "y": 35, "seatId": -1 }] },
+    { "id": "by-scarrs", "label": "By Scarrs", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1085, "y": 275, "seatId": -1 }, { "x": 1155, "y": 275, "seatId": -1 }] },
+    { "id": "beside-thorr", "label": "Beside Thorr", "district": "UPPER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 509, "y": 35, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "mushroom-castle-thorr", "type": "GENERAL_SHOP", "npcId": 1301000, "destinationMapId": 0,
+      "approachPoints": [{ "x": 509, "y": 35 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-secretary-of-domestic-affairs-crowd", "venueId": "by-secretary-of-domestic-affairs", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}
