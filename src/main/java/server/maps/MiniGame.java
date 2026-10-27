@@ -25,11 +25,15 @@ import client.Character;
 import client.Client;
 import net.packet.Packet;
 import net.server.Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.PacketCreator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 
@@ -38,6 +42,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
  * @author Ronan (HeavenMS)
  */
 public class MiniGame extends AbstractMapObject {
+    private static final Logger log = LoggerFactory.getLogger(MiniGame.class);
     private Character owner;
     private Character visitor;
     private final String password;
@@ -56,6 +61,7 @@ public class MiniGame extends AbstractMapObject {
     private boolean visitorquit, ownerquit;
     private long nextavailabletie = 0;
     private int matchestowin = 0;
+    private volatile MiniGameObserver observer;
 
     public enum MiniGameType {
         UNDEFINED(0), OMOK(1), MATCH_CARD(2);
@@ -82,6 +88,28 @@ public class MiniGame extends AbstractMapObject {
 
     public String getPassword() {
         return this.password;
+    }
+
+    /** Who watches this room for a bot seated in it (MiniGameObserver); null when nobody does. */
+    public void setObserver(MiniGameObserver observer) {
+        this.observer = observer;
+    }
+
+    public MiniGameObserver getObserver() {
+        return observer;
+    }
+
+    /** Tells the observer, if any; its failure never breaks the room. */
+    void observe(Consumer<MiniGameObserver> event) {
+        MiniGameObserver current = observer;
+        if (current == null) {
+            return;
+        }
+        try {
+            event.accept(current);
+        } catch (RuntimeException failure) {
+            log.warn("minigame observer failed", failure);
+        }
     }
 
     public boolean checkPassword(String sentPw) {
@@ -115,10 +143,17 @@ public class MiniGame extends AbstractMapObject {
             owner.sendPacket(PacketCreator.getMatchCardNewVisitor(this, challenger, 1));
             owner.getMap().broadcastMessage(PacketCreator.addMatchCardBox(owner, 2, 0));
         }
+        observe(watcher -> watcher.visitorJoined(this, challenger));
     }
 
-    public void closeRoom(boolean forceClose) {
-        owner.getMap().broadcastMessage(PacketCreator.removeMinigameBox(owner));
+    /** Under the room's lock, as MiniGameRules' steps are: a visit never lands in a room half closed. */
+    public synchronized void closeRoom(boolean forceClose) {
+        observe(watcher -> watcher.closed(this));
+        MapleMap map = owner.getMap();
+        map.broadcastMessage(PacketCreator.removeMinigameBox(owner));
+        if (map.getMapObject(getObjectId()) == this) {
+            map.removeMapObject(this); // a closed room was left in the map's objects for good
+        }
 
         if (forceClose) {
             this.broadcastToOwner(PacketCreator.getMiniGameClose(false, 4));
@@ -134,7 +169,7 @@ public class MiniGame extends AbstractMapObject {
         owner = null;
     }
 
-    public void removeVisitor(boolean forceClose, Character challenger) {
+    public synchronized void removeVisitor(boolean forceClose, Character challenger) {
         if (visitor == challenger) {
             if (isMatchInProgress()) { // owner is winner if visitor leave in progress
                 minigameMatchOwnerWins(true);
@@ -152,6 +187,7 @@ public class MiniGame extends AbstractMapObject {
             } else if (GameType == MiniGameType.MATCH_CARD) {
                 this.getOwner().getMap().broadcastMessage(PacketCreator.addMatchCardBox(owner, 1, 0));
             }
+            observe(watcher -> watcher.visitorLeft(this, challenger));
         }
     }
 
@@ -195,7 +231,7 @@ public class MiniGame extends AbstractMapObject {
 
     private void minigameMatchFinished() {
         updateMiniGameBox();
-
+        Arrays.fill(piece, 0); // every finished game leaves an empty board, a give-up and a tie too (Cosmic PR #294)
         if (ownerquit) {
             owner.closeMiniGame(true);
         } else if (visitorquit) {
@@ -253,6 +289,7 @@ public class MiniGame extends AbstractMapObject {
         }
 
         this.broadcast(PacketCreator.getMiniGameOwnerWin(this, forfeit));
+        observe(watcher -> watcher.matchEnded(this, MiniGameResult.WIN, forfeit));
 
         minigameMatchFinished();
     }
@@ -273,6 +310,7 @@ public class MiniGame extends AbstractMapObject {
         }
 
         this.broadcast(PacketCreator.getMiniGameVisitorWin(this, forfeit));
+        observe(watcher -> watcher.matchEnded(this, MiniGameResult.LOSS, forfeit));
 
         minigameMatchFinished();
     }
@@ -293,6 +331,7 @@ public class MiniGame extends AbstractMapObject {
         }
 
         this.broadcast(PacketCreator.getMiniGameTie(this));
+        observe(watcher -> watcher.matchEnded(this, MiniGameResult.TIE, false));
 
         minigameMatchFinished();
     }
@@ -433,86 +472,44 @@ public class MiniGame extends AbstractMapObject {
         if (piece[slot] == 0) {
             piece[slot] = type;
             this.broadcast(PacketCreator.getMiniGameMoveOmok(this, move1, move2, type));
-            for (int y = 0; y < 15; y++) {
-                for (int x = 0; x < 11; x++) {
-                    if (searchCombo(x, y, type)) {
-                        if (this.isOwner(chr)) {
-                            this.minigameMatchOwnerWins(false);
-                            this.setLoser(0);
-                        } else {
-                            this.minigameMatchVisitorWins(false);
-                            this.setLoser(1);
-                        }
-                        for (int y2 = 0; y2 < 15; y2++) {
-                            for (int x2 = 0; x2 < 15; x2++) {
-                                int slot2 = (y2 * 15 + x2 + 1);
-                                piece[slot2] = 0;
-                            }
-                        }
+            observe(watcher -> watcher.omokMoved(this, chr, move1, move2, type));
+            // the whole board in all four directions; the old scan stopped at column 10 (Cosmic PR #294)
+            boolean won = false;
+            for (int y = 0; y < 15 && !won; y++) {
+                for (int x = 0; x < 15 && !won; x++) {
+                    for (int direction = 0; direction < 4 && !won; direction++) {
+                        won = searchCombo(x, y, type, direction);
                     }
                 }
             }
-            for (int y = 0; y < 15; y++) {
-                for (int x = 4; x < 15; x++) {
-                    if (searchCombo2(x, y, type)) {
-                        if (this.isOwner(chr)) {
-                            this.minigameMatchOwnerWins(false);
-                            this.setLoser(0);
-                        } else {
-                            this.minigameMatchVisitorWins(false);
-                            this.setLoser(1);
-                        }
-                        for (int y2 = 0; y2 < 15; y2++) {
-                            for (int x2 = 0; x2 < 15; x2++) {
-                                int slot2 = (y2 * 15 + x2 + 1);
-                                piece[slot2] = 0;
-                            }
-                        }
-                    }
+            if (won) {
+                if (this.isOwner(chr)) {
+                    this.minigameMatchOwnerWins(false);
+                    this.setLoser(0);
+                } else {
+                    this.minigameMatchVisitorWins(false);
+                    this.setLoser(1);
                 }
             }
         }
     }
 
-    private boolean searchCombo(int x, int y, int type) {
+    /** Five of {@code type} from {@code x},{@code y}: right, down, down-right or down-left, inside the board. */
+    private boolean searchCombo(int x, int y, int type, int direction) {
+        int dx = direction == 0 || direction == 2 ? 1 : direction == 3 ? -1 : 0;
+        int dy = direction == 0 ? 0 : 1;
+        int endX = x + 4 * dx;
+        int endY = y + 4 * dy;
+        if (endX < 0 || endX >= 15 || endY >= 15) {
+            return false;
+        }
         int slot = y * 15 + x + 1;
         for (int i = 0; i < 5; i++) {
-            if (piece[slot + i] == type) {
-                if (i == 4) {
-                    return true;
-                }
-            } else {
-                break;
+            if (piece[slot + i * dx + i * dy * 15] != type) {
+                return false;
             }
         }
-        for (int j = 15; j < 17; j++) {
-            for (int i = 0; i < 5; i++) {
-                if (piece[slot + i * j] == type) {
-                    if (i == 4) {
-                        return true;
-                    }
-                } else {
-                    break;
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean searchCombo2(int x, int y, int type) {
-        int slot = y * 15 + x + 1;
-        for (int j = 14; j < 15; j++) {
-            for (int i = 0; i < 5; i++) {
-                if (piece[slot + i * j] == type) {
-                    if (i == 4) {
-                        return true;
-                    }
-                } else {
-                    break;
-                }
-            }
-        }
-        return false;
+        return true;
     }
 
     public String getDescription() {

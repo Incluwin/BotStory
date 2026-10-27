@@ -44,7 +44,7 @@ server correctness, agent farming, economy accuracy, or runtime hardening.
 
 | PR | Status | Applicability | Decision | Notes |
 |---|---|---:|---|---|
-| [#294](https://github.com/P0nk/Cosmic/pull/294) Fix omok `searchCombo` logic | open | medium | pending | Fixes minigame win detection/reset. Not agent-critical unless agents later use minigames. |
+| [#294](https://github.com/P0nk/Cosmic/pull/294) Fix omok `searchCombo` logic | open | medium | accepted | Applied 2026-10-26 for everyone (decision D10, docs/BOT_CONCEPT_PLAN.md F5a): the win scan covers all 15 columns in four directions without wrapping, and every finished game clears the board. `MiniGameOmokWinFixTest`. |
 | [#330](https://github.com/P0nk/Cosmic/pull/330) Enable null to remove `server_message` | open | medium | accepted-modified | Added packet-level null-to-empty safety for server messages. |
 | [#331](https://github.com/P0nk/Cosmic/pull/331) Quest mob count modifier | open | medium | split-before-use | Useful concept, but patch mixes quest-count config with unrelated WZ path behavior. If used, split manually. |
 | [#274](https://github.com/P0nk/Cosmic/pull/274) Mob Rate | open | medium | reference-only | Similar to desired spawn-rate config. Use as reference; preferred design is global default plus per-map/per-set overrides. |
