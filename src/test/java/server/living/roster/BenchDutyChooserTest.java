@@ -169,6 +169,27 @@ class BenchDutyChooserTest {
     }
 
     @Test
+    void itCampsWhereItsOwnerTrainsBestUntilWhatItMeasuresThereSaysOtherwise() {
+        // F2.4: the owner's best map at its level band joins the candidates with a 15% higher prior
+        server.living.habits.OwnerHabitBook habits = mock(server.living.habits.OwnerHabitBook.class);
+        when(world.ownerHabits()).thenReturn(habits);
+        when(habits.trainingMaps(ANN, LEVEL)).thenReturn(List.of(105));
+        List<BenchDutyChooser.Camp> camps = camps(List.of(101, 102));
+
+        BenchDutyChooser.Pick pick = chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, camps);
+        assertEquals(105, pick.campMapId(), "where its owner trains, never hunted by it yet");
+        assertEquals(1.15d - 0.05d * 0.5d, pick.score(), 1e-9, "the prior 15% higher; only its rare death off");
+
+        for (int slice = 0; slice < 20; slice++) {
+            yields.record(key(105), sample(0.6d, 0.02d, 0)); // it measured there: poor for it
+            yields.record(key(101), sample(1.0d, 0.02d, 0));
+            yields.record(key(102), sample(1.0d, 0.02d, 0));
+        }
+        assertTrue(chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, camps).campMapId() != 105,
+                "measured values still win");
+    }
+
+    @Test
     void keepingPaceWithItsOwnerItFarmsMeso() {
         BenchDutyChooser.Pick pick = chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 22, camps(List.of(101, 102)));
 

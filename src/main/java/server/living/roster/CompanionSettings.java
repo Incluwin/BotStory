@@ -78,12 +78,20 @@ public record CompanionSettings(int hpPercent, int mpPercent, AgentLootPolicy.Mo
 
     /**
      * Today's behaviour, with the potion percentages the configuration holds now (within the ones a companion may be
-     * set to, so the page never shows one its number box refuses).
+     * set to, so the page never shows one its number box refuses). While owner habits are on
+     * (living_world.OWNER_HABITS_ENABLED, F2.4) a companion whose owner never chose how it loots loots LIKE_OWNER,
+     * which is ALL until its owner's skips are learned; an owner's own choice of ALL is then written and kept.
      */
     public static CompanionSettings defaults() {
         return new CompanionSettings(percent(AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH),
-                percent(AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH), AgentLootPolicy.Mode.ALL, true, true, true,
-                AgentBuffState.consumablesEnabledByDefault(), null, false);
+                percent(AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH), habitsOn() ? AgentLootPolicy.Mode.LIKE_OWNER
+                : AgentLootPolicy.Mode.ALL, true, true, true, AgentBuffState.consumablesEnabledByDefault(), null, false);
+    }
+
+    /** True while owner habits are on (no living world: off). */
+    public static boolean habitsOn() {
+        server.living.LivingWorld world = server.living.LivingWorld.get();
+        return world != null && world.config().OWNER_HABITS_ENABLED;
     }
 
     /** The settings in {@code json}: the defaults for null, blank or unreadable JSON, and for each bad value. */

@@ -26,7 +26,9 @@ import java.util.function.IntFunction;
  * dispatcher's handler), the one way a camp is measured, and never for a camp measured to kill it once an hour or more
  * than a death is worth. The arm statistics are companion_yield's rows (BenchYieldModel); nothing is kept here. With
  * nothing worth doing it rests. The companion says in one line what it picked and why ({@link #line}). A row on Your
- * call is chosen for again before each of its slices (BenchDutyDispatcher).
+ * call is chosen for again before each of its slices (BenchDutyDispatcher). With owner habits on (F2.4) its owner's
+ * best maps for its level band join the candidates, their TRAIN prior OWNER_HABIT_CAMP_BONUS higher ("I'll camp where
+ * you train"); what slices measure there still decides.
  */
 public final class BenchDutyChooser {
     /** EXP and meso fall this much per level the camp's monsters are below the companion, and faster above it. */
@@ -99,12 +101,21 @@ public final class BenchDutyChooser {
                 candidates.add(camp);
             }
         }
+        int botLevel = Math.max(1, level);
+        // "I'll camp where you train" (F2.4): its owner's best maps at its level band join the candidates
+        List<Integer> ownerMaps = ownerCamps(world, entry, botLevel);
+        for (int mapId : ownerMaps) {
+            if (candidates.stream().noneMatch(known -> known.mapId() == mapId)) {
+                Population population = Population.get();
+                Field field = population == null ? null : population.content().field(mapId);
+                candidates.add(new Camp(mapId, field == null ? 0 : field.mobLevel()));
+            }
+        }
         if (candidates.isEmpty()) {
             return null;
         }
         BenchLedger ledger = world.bench();
         BenchYieldModel yields = world.benchYields();
-        int botLevel = Math.max(1, level);
         boolean train = botLevel < ledger.paceTarget(persona, stage == null ? BondStage.MET : stage, ownerLevel);
         boolean farm = entry == null || ledger.withinDailyCap(entry, 0.0d);
         double catchUp = train ? ledger.catchUp(persona, botLevel, ownerLevel) : 0.0d;
@@ -131,7 +142,8 @@ public final class BenchDutyChooser {
             boolean deadly = samples >= 1.0d && deathCost > 0.0d && deaths >= 1.0d / deathCost;
             double bonus = deadly ? 0.0d : explore * Math.sqrt(Math.log(1.0d + total) / (1.0d + samples));
             if (train) {
-                double exp = yields == null ? baseExp * fit : yields.expPerHour(key, baseExp * fit);
+                double prior = baseExp * fit * (ownerMaps.contains(camp.mapId()) ? 1.0d + world.config().OWNER_HABIT_CAMP_BONUS : 1.0d);
+                double exp = yields == null ? prior : yields.expPerHour(key, prior);
                 double value = catchUp * exp / baseExp;
                 arms.add(new Arm(Assignment.TRAIN, camp, value, value - deathLoss,
                         goesLive(bench, entry, persona, characterId, Assignment.TRAIN, camp.mapId()) ? bonus : 0.0d, samples));
@@ -173,6 +185,26 @@ public final class BenchDutyChooser {
         return new Pick(picked.duty(), picked.camp().mapId(), why, rough, picked.score(), picked.bonus(), roughSamples);
     }
 
+    /**
+     * Its owner's best training maps for {@code level}'s band (OwnerHabitBook.trainingMaps, at most two: fields they
+     * trained on), the ones the population still lists open (not towns, not FieldCatalog.closed); none without a row or
+     * habits.
+     */
+    static List<Integer> ownerCamps(LivingWorld world, RosterEntry entry, int level) {
+        server.living.habits.OwnerHabitBook habits = entry == null ? null : world.ownerHabits();
+        if (habits == null) {
+            return List.of();
+        }
+        Population population = Population.get();
+        List<Integer> out = new ArrayList<>();
+        for (int mapId : habits.trainingMaps(entry.characterId(), level)) {
+            if (population == null || !population.fields().isTown(mapId) && !population.fields().closed(mapId)) {
+                out.add(mapId);
+            }
+        }
+        return out;
+    }
+
     /** The arm with the highest UCB ({@code ucb}) or score; the first on a tie (TRAIN before FARM_MESO, camps in order). */
     private static Arm best(List<Arm> arms, boolean ucb) {
         Arm best = null;
@@ -211,7 +243,7 @@ public final class BenchDutyChooser {
      * How well a camp's monsters fit a companion of {@code level} (the FieldCatalog prior's share of the ledger's rate):
      * 1 at its own level or unknown, less per level below it and faster per level above it, never below FIT_MIN.
      */
-    static double fit(int mobLevel, int level) {
+    public static double fit(int mobLevel, int level) {
         if (mobLevel <= 0) {
             return 1.0d;
         }
@@ -221,7 +253,7 @@ public final class BenchDutyChooser {
     }
 
     /** The prior's deaths an hour: rare against monsters no stronger than the companion, more per level above it. */
-    static double deathPrior(int mobLevel, int level) {
+    public static double deathPrior(int mobLevel, int level) {
         int above = mobLevel <= 0 ? 0 : Math.max(0, mobLevel - level);
         return DEATHS_BASE + above * DEATHS_PER_LEVEL_ABOVE;
     }

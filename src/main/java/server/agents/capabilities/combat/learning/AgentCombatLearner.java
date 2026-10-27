@@ -136,7 +136,8 @@ public final class AgentCombatLearner {
         List<Integer> actions = estimates.worthTrying();
         if (mode != Mode.LIVE) {
             // The adopted live table is shared and read-only; only the arena's own table takes priors.
-            estimates.priors().forEach((action, prior) -> table.seed(context, action, prior));
+            estimates.priors().forEach((action, prior) -> table.seed(context, action,
+                    AgentCombatPriorHint.prior(bot.getId(), action, prior)));
         }
         state.plan(context, actions, reach, estimates.bestDps(), System.currentTimeMillis());
         Integer pick = switch (mode) {

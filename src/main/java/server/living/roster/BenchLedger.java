@@ -255,7 +255,7 @@ public final class BenchLedger {
     }
 
     /** TRAIN's hourly EXP at the prior for a companion of this level (the ledger's rate before any camp is measured). */
-    double expPrior(int level) {
+    public double expPrior(int level) {
         return expPerHour(Math.max(1, level)) * world.config().BENCH_FARM_EFFICIENCY;
     }
 

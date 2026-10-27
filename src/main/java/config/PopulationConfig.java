@@ -221,6 +221,18 @@ public class PopulationConfig {
     /** One reunion greeting per player from all citizens this often. */
     public int MEMORY_GREET_GAP_MS = 300000;
 
+    // Citizens learn where to train (docs/BOT_CONCEPT_PLAN.md F2.1, CitizenSpots)
+    /** Kill switch: false = no stint booked and the uniform random pick among the fitting training fields, as before. */
+    public boolean CITIZEN_SPOT_LEARNING_ENABLED = false;
+    /** The UCB weight: how much a field citizens measured less often is tried anyway (0 = never). */
+    public double CITIZEN_SPOT_EXPLORE = 0.3;
+    /** What a field full to its capacity with loaded citizens costs its score (0 = crowds do not matter). */
+    public double CITIZEN_SPOT_CROWDING = 0.5;
+    /** How sharp the weighted draw is: lower picks the best field more often (0 = always the best). */
+    public double CITIZEN_SPOT_TEMPERATURE = 0.15;
+    /** A TRAIN stint shorter than this is not booked: too short to say what the field pays. */
+    public int CITIZEN_SPOT_MIN_MS = 300000;
+
     // Boss expeditions citizens run themselves (docs/CITIZEN_EXPEDITIONS_PLAN.md)
     /**
      * The bosses BOSS_RUN_BOSSES may name: only those the server moves itself once a bot signed up (Balrog,
@@ -313,6 +325,10 @@ public class PopulationConfig {
                 throw new IllegalArgumentException("population.BOSS_RUN_BOSSES may name only " + CITIZEN_BOSSES
                         + " (bosses the server moves itself), not '" + boss + "'");
             }
+        }
+        if (CITIZEN_SPOT_EXPLORE < 0 || CITIZEN_SPOT_CROWDING < 0 || CITIZEN_SPOT_TEMPERATURE < 0 || CITIZEN_SPOT_MIN_MS < 0) {
+            throw new IllegalArgumentException("population.CITIZEN_SPOT_EXPLORE, CITIZEN_SPOT_CROWDING,"
+                    + " CITIZEN_SPOT_TEMPERATURE and CITIZEN_SPOT_MIN_MS must be >= 0");
         }
     }
 }

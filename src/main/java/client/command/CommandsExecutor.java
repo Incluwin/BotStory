@@ -227,6 +227,7 @@ import client.command.commands.gm6.AgentWorldCommand;
 import client.command.commands.gm6.KpqTestCommand;
 import client.command.commands.gm6.SkillProbeCommand;
 import client.command.commands.gm6.CompanionProbeCommand;
+import client.command.commands.gm6.HabitsCommand;
 import client.command.commands.gm6.GrantCompanionCommand;
 import client.command.commands.gm6.SetLevelCommand;
 import client.command.commands.gm6.StepToCommand;
@@ -694,6 +695,7 @@ public class CommandsExecutor {
         addCommand("kpqtest", 6, KpqTestCommand.class);
         addCommand("skillprobe", 6, SkillProbeCommand.class);
         addCommand("companionprobe", 6, CompanionProbeCommand.class);
+        addCommand("habits", 6, HabitsCommand.class);
         addCommand("grantcompanion", 6, GrantCompanionCommand.class);
         addCommand("setlevel", 6, SetLevelCommand.class);
         addCommand("stepto", 6, StepToCommand.class);

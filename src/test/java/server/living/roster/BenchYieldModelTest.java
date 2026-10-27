@@ -103,6 +103,35 @@ class BenchYieldModelTest {
     }
 
     @Test
+    void citizenStintsAreBookedApartAndSharpenACompanionsPrior() {
+        // F2.1: a citizen's stints go to rows of their own, which a companion's prior is shrunk toward first
+        BenchYieldModel model = game.yields;
+        model.recordCitizen(CAMP, new BenchYieldModel.Sample(0.25d, 2_000L, 0L, 0L, 0)); // a full slice at 8,000 EXP/h
+        model.recordCitizen(CAMP, new BenchYieldModel.Sample(0.25d, 2_000L, 0L, 0L, 1));
+
+        assertNull(model.measured(CAMP), "no companion slice ran there: the bandit's arm stays unmeasured");
+        assertEquals(new YieldRow("WARRIOR", 2, FIELD, 2.0d, 8_000.0d, 0.0d, 0.0d, 2.0d), game.store.citizenYields.get("WARRIOR:2:" + FIELD));
+        assertTrue(game.store.yields.isEmpty(), "never a companion row");
+        double prior = 4_000.0d;
+        double weight = game.config.CITIZEN_YIELD_WEIGHT;
+        double sharpened = BenchYieldModel.shrink(2.0d * weight, 8_000.0d, prior, game.config.BENCH_YIELD_PRIOR_SLICES);
+        assertEquals(sharpened, model.expPerHour(CAMP, prior), 1e-6, "two citizen slices at half weight: halfway to them");
+        assertEquals(BenchYieldModel.shrink(2.0d * weight, 2.0d, 0.05d, game.config.BENCH_YIELD_PRIOR_SLICES),
+                model.deathsPerHour(CAMP, 0.05d), 1e-9, "their deaths too");
+        assertEquals(100.0d, model.mesoPerHour(CAMP, 100.0d), 1e-9, "citizens book no meso: the ledger's prior");
+
+        model.record(CAMP, new BenchYieldModel.Sample(0.25d, 500L, 0L, 0L, 0)); // a companion slice: 2,000 EXP/h
+        assertEquals(BenchYieldModel.shrink(1.0d, 2_000.0d, sharpened, game.config.BENCH_YIELD_PRIOR_SLICES),
+                model.expPerHour(CAMP, prior), 1e-6, "its own measurement shrunk toward the sharpened prior");
+
+        game.config.CITIZEN_YIELD_WEIGHT = 0.0d;
+        assertEquals(BenchYieldModel.shrink(1.0d, 2_000.0d, prior, game.config.BENCH_YIELD_PRIOR_SLICES),
+                model.expPerHour(CAMP, prior), 1e-6, "weight 0: citizen data never touches companions");
+        assertEquals(new BenchYieldModel.Rates(2.0d, 8_000.0d, 0.0d, 0.0d, 2.0d),
+                new BenchYieldModel(game.world).citizenMeasured(CAMP), "read back after a restart");
+    }
+
+    @Test
     void theRatesSurviveARestart() {
         game.yields.record(CAMP, new BenchYieldModel.Sample(0.25d, 1_000L, 500L, 12L, 0));
         game.yields.record(BenchYieldModel.Key.of(0, 5, 104010002), new BenchYieldModel.Sample(0.5d, 300L, 60L, 2L, 1));

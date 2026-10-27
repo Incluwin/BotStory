@@ -228,6 +228,9 @@ final class CompanionCardScreens {
         options.add(unlessCommitted(committed, new Option("Camp somewhere else...", () -> campPicker(owner, persona, null))));
         options.add(new Option("Fighting style...", () -> fightingStyle(owner, persona, "")));
         options.add(new Option("Supplies & loot...", () -> supplies(owner, persona, "")));
+        if (CompanionSettings.habitsOn()) {
+            options.add(new Option("Learned from you...", () -> learned(owner, persona, "")));
+        }
         options.add(new Option("The whole crew...", () -> menus.crews().show(owner, persona)));
         options.add(new Option("Your haul...", () -> haul(owner, persona)));
         options.add(new Option("Your wages...", () -> wages(owner, persona)));
@@ -313,6 +316,9 @@ final class CompanionCardScreens {
         options.add(unlessCommitted(committed, new Option("Camp somewhere else...", () -> campPicker(owner, persona, null))));
         options.add(new Option("Fighting style...", () -> fightingStyle(owner, persona, "")));
         options.add(new Option("Supplies & loot...", () -> supplies(owner, persona, "")));
+        if (CompanionSettings.habitsOn()) {
+            options.add(new Option("Learned from you...", () -> learned(owner, persona, "")));
+        }
         options.add(new Option("Your haul...", () -> haul(owner, persona)));
         options.add(new Option("Your wages...", () -> wages(owner, persona)));
         if (allyHereWith(owner, persona)) { // 2026-10-15 (P20 run 3): hand a short ally potions at its boss
@@ -963,6 +969,41 @@ final class CompanionCardScreens {
                 .back(() -> reopen(owner, persona, "")).show();
     }
 
+    /**
+     * "Learned from you..." (F2.4, decision D7): what it picked up of its owner's habits, in its own words ("you drink at
+     * about 55% hp, so i drink below 55% (not in boss fights)."), and "Forget my habits", which asks once more.
+     */
+    private void learned(Character owner, Persona persona, String note) {
+        RosterEntry entry = row(owner, persona);
+        if (entry == null) {
+            notInRoster(owner, persona);
+            return;
+        }
+        CompanionView view = menus.view(owner, entry);
+        List<String> habits = world.ownerHabits() == null ? List.of()
+                : world.ownerHabits().describe(owner.getId(), own(owner, persona), view.level(), view.jobId());
+        StringBuilder text = new StringBuilder(note(note));
+        if (habits.isEmpty()) {
+            text.append("nothing yet. i'm still watching how you play.\r\n");
+        } else {
+            text.append("#eLearned from you:#n\r\n");
+            habits.forEach(line -> text.append(line).append("\r\n"));
+        }
+        List<Option> options = new ArrayList<>();
+        if (!habits.isEmpty()) {
+            options.add(new Option("Forget my habits", () -> LivingTalk.open(owner, portrait(persona))
+                    .menu("forget everything i noticed about how you play?\r\n", List.of(
+                            new Option("Yes, forget it all", () -> menus.command(owner, "menu.habits.forget",
+                                    () -> world.ownerHabits().forget(owner.getId())
+                                            ? persona.name() + ": ok, clean slate. i'll watch again from here."
+                                            : persona.name() + ": hm, that didn't stick. try again in a bit.",
+                                    line -> learned(owner, persona, line)))))
+                    .back(() -> learned(owner, persona, "")).show()));
+        }
+        LivingTalk.open(owner, portrait(persona)).menu(text.toString(), options)
+                .back(() -> reopen(owner, persona, "")).show();
+    }
+
     /** Its own formation, or with the others for {@code formation} null. */
     private void setFormation(Character owner, Persona persona, CompanionManager.Formation formation) {
         menus.command(owner, "menu.style.formation", () -> said(persona,
@@ -993,13 +1034,22 @@ final class CompanionCardScreens {
             return;
         }
         CompanionSettings own = own(owner, persona);
+        // unset, it drinks at its owner's learned point outside boss fights (F2.4): the page shows that one
+        float[] learned = own.potionsAsConfigured() && world.ownerHabits() != null
+                ? world.ownerHabits().potionThresholds(owner.getId(), own.hpPercent() / 100f, own.mpPercent() / 100f) : null;
+        int hp = learned == null ? own.hpPercent() : Math.round(learned[0] * 100);
+        int mp = learned == null ? own.mpPercent() : Math.round(learned[1] * 100);
+        String like = learned == null ? "" : " (like you)";
         List<Option> options = new ArrayList<>();
-        options.add(stamp.option("Drink an HP potion below " + own.hpPercent() + "%...",
-                () -> potionBox(owner, persona, true, own.hpPercent())));
-        options.add(stamp.option("Drink an MP potion below " + own.mpPercent() + "%...",
-                () -> potionBox(owner, persona, false, own.mpPercent())));
+        options.add(stamp.option("Drink an HP potion below " + hp + "%" + like + "...",
+                () -> potionBox(owner, persona, true, hp)));
+        options.add(stamp.option("Drink an MP potion below " + mp + "%" + like + "...",
+                () -> potionBox(owner, persona, false, mp)));
         options.add(Option.heading("#eWhat I pick up:#n"));
         for (AgentLootPolicy.Mode mode : AgentLootPolicy.Mode.values()) {
+            if (mode == AgentLootPolicy.Mode.LIKE_OWNER && !CompanionSettings.habitsOn()) {
+                continue;
+            }
             options.add(stamp.option(lootLabel(mode) + now(mode == own.loot()), () -> setLoot(owner, persona, mode)));
         }
         boolean leave = own.leaveBossDrops();
@@ -1112,6 +1162,7 @@ final class CompanionCardScreens {
             case OWN_KILLS -> "Only what I hit";
             case QUEST_ONLY -> "Meso and your quest items";
             case NONE -> "Nothing";
+            case LIKE_OWNER -> "What you pick up";
         };
     }
 
@@ -1121,6 +1172,7 @@ final class CompanionCardScreens {
             case OWN_KILLS -> "ok, only what i hit.";
             case QUEST_ONLY -> "ok, only meso and what your quests need.";
             case NONE -> "ok, i'll leave it all to you.";
+            case LIKE_OWNER -> "ok, i'll leave what you always leave.";
         };
     }
 

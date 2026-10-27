@@ -120,6 +120,7 @@ public class PetAutopotProcessor {
                     }
 
                     stat = ItemInformationProvider.getInstance().getItemEffect(toUse.getItemId());
+                    server.living.LivingWorldHooks.potionUsed(chr, toUse.getItemId()); // HP/MP at the drink (F2)
                     hasHpGain = stat.getHp() > 0 || stat.getHpRate() > 0.0;
                     hasMpGain = stat.getMp() > 0 || stat.getMpRate() > 0.0;
 

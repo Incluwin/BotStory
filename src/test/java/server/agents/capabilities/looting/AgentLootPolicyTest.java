@@ -156,6 +156,30 @@ class AgentLootPolicyTest {
     }
 
     @Test
+    void likeOwnerLeavesWhatItsOwnerLeavesButNeverMesoOrWhatTheirQuestsNeed() {
+        // F2.4 (docs/BOT_CONCEPT_PLAN.md): the owner always leaves this category, quest item included
+        installRule();
+        AgentLootPolicy.QuestNeeds skips = (agent, itemId) -> itemId == SNAIL_SHELL || itemId == QUEST_ITEM;
+        AgentLootPolicy.QuestNeeds needs = (agent, itemId) -> itemId == QUEST_ITEM;
+        policies.put(BOT, new AgentLootPolicy.Policy(AgentLootPolicy.Mode.LIKE_OWNER, false, needs, skips));
+
+        MapItem skipped = drop(SNAIL_SHELL, 0, monster(false, false), OWNER);
+        MapItem needed = drop(QUEST_ITEM, 0, monster(false, false), OWNER);
+        MapItem meso = drop(0, 75, monster(false, false), OWNER);
+        MapItem other = drop(4010000, 0, monster(false, false), OWNER);
+
+        assertFalse(AgentLootPolicy.permits(bot, skipped), "left like its owner leaves it");
+        assertTrue(AgentLootPolicy.permits(bot, needed), "what the owner's quests need is never left");
+        assertTrue(AgentLootPolicy.permits(bot, meso), "meso is never left: it never comes to pick up nothing");
+        assertTrue(AgentLootPolicy.permits(bot, other), "everything else, as ALL");
+        assertAllThreeEntryPoints(false, skipped);
+        assertAllThreeEntryPoints(true, needed);
+
+        policies.put(BOT, new AgentLootPolicy.Policy(AgentLootPolicy.Mode.LIKE_OWNER, false, needs));
+        assertTrue(AgentLootPolicy.permits(bot, skipped), "nothing learned: LIKE_OWNER is ALL");
+    }
+
+    @Test
     void leaveBossDropsSkipsABossMonstersDropsWhateverTheMode() {
         installRule();
         MapItem bossItem = drop(SNAIL_SHELL, 0, monster(true, true), BOT);

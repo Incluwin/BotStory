@@ -1,0 +1,74 @@
+# Owner habits (docs/BOT_CONCEPT_PLAN.md F2.4, OwnerHabitBook).
+#
+# A companion that has learned one of its owner's habits says so once, in its own lower-case player voice, while it is
+# out with them: one line per learned habit, never again after (living_owner_habit.said), and none after "forget my
+# habits" until it learns the habit again. Templated lines only, no model call. Placeholders:
+#   potion {hp}     the HP percent the owner drinks at (the median of their kept drinks, never under the HP floor)
+#   loot   {what}   the category's name below, else "stuff like <an item they left>"
+#   sell   {item}   the item's name
+#   camp   {map}    the map's name
+#   skill  {skill}  the skill's name
+# categories: item id / 10000 -> its name in a loot line (plural, lower case). never_skip: categories never learned
+# as a skip, whatever the owner does (scrolls, skill and mastery books, quest items), on top of every quest item and
+# whatever the owner's started quests still need.
+
+lines:
+  potion:
+    - "noticed you pot around {hp}% hp. i'll do the same out here."
+    - "you always drink at like {hp}%, right? i'll go with that."
+    - "ok i see you pot at about {hp}% hp. copying that."
+  loot:
+    - "noticed you never pick up {what}, so i'll leave them too."
+    - "you always walk past {what}. i'll skip them too."
+    - "guess we're not bothering with {what}. leaving them."
+  sell:
+    - "you always sell your {item} at the store, so i'll sell mine when i restock."
+    - "noticed you vendor {item}. i'll sell mine at the shop instead of lugging them back."
+  camp:
+    - "{map} treats you well at my level. i'll camp there when i'm on my own."
+    - "you always train at {map} around my level. i'll hunt there when you're busy."
+  skill:
+    - "you lean on {skill} a lot. i'll try it more when i practice."
+    - "{skill} does most of your damage, huh. gonna work it in more."
+
+categories:
+  100: hats
+  101: face accessories
+  102: eye accessories
+  103: earrings
+  104: tops
+  105: overalls
+  106: bottoms
+  107: shoes
+  108: gloves
+  109: shields
+  110: capes
+  130: one-handed swords
+  131: one-handed axes
+  132: one-handed maces
+  133: daggers
+  137: wands
+  138: staves
+  140: two-handed swords
+  141: two-handed axes
+  142: two-handed maces
+  143: spears
+  144: polearms
+  145: bows
+  146: crossbows
+  147: claws
+  148: knucklers
+  149: guns
+  200: potions
+  201: snacks
+  202: snacks
+  203: return scrolls
+  206: arrows
+  207: throwing stars
+  210: summoning sacks
+  233: bullets
+  400: monster drops
+  401: ores
+  402: jewel ores
+
+never_skip: [204, 228, 229, 403]

@@ -1061,6 +1061,9 @@ public class MapleMap {
             objectRLock.unlock();
         }
 
+        if (!toDisappear.isEmpty()) {
+            server.living.LivingWorldHooks.dropsExpired(this, toDisappear); // left untouched near an owner (F2)
+        }
         for (MapItem mmi : toDisappear) {
             makeDisappearItemFromMap(mmi);
         }

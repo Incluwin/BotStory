@@ -34,7 +34,13 @@ public final class AgentLootPolicy {
          */
         QUEST_ONLY,
         /** Nothing at all. */
-        NONE
+        NONE,
+        /**
+         * Everything but what its host's owner always leaves ({@link Policy#skips}, docs/BOT_CONCEPT_PLAN.md F2.4): meso
+         * and items its host's quests still need ({@link Policy#questNeeds}) are always picked up, so it never comes to
+         * pick up nothing. With no skips it is ALL.
+         */
+        LIKE_OWNER
     }
 
     /** The installed rule. */
@@ -59,10 +65,14 @@ public final class AgentLootPolicy {
 
     /**
      * An Agent's loot policy. {@code leaveBossDrops}: it never picks up a boss monster's drops, whatever the mode
-     * (inside an event instance, only in a boss run). {@code questNeeds}: for QUEST_ONLY, true for an item id its
-     * host's quests still need (null: none).
+     * (inside an event instance, only in a boss run). {@code questNeeds}: for QUEST_ONLY and LIKE_OWNER, true for an
+     * item id its host's quests still need (null: none). {@code skips}: for LIKE_OWNER, true for an item id its host's
+     * owner always leaves (null: none).
      */
-    public record Policy(Mode mode, boolean leaveBossDrops, QuestNeeds questNeeds) {
+    public record Policy(Mode mode, boolean leaveBossDrops, QuestNeeds questNeeds, QuestNeeds skips) {
+        public Policy(Mode mode, boolean leaveBossDrops, QuestNeeds questNeeds) {
+            this(mode, leaveBossDrops, questNeeds, null);
+        }
     }
 
     private static volatile Rule rule;
@@ -115,6 +125,8 @@ public final class AgentLootPolicy {
             case OWN_KILLS -> mob != null
                     && (drop.getOwnerId() == bot.getId() || !mob.isAlive() && mob.isAttackedBy(bot));
             case QUEST_ONLY -> drop.getMeso() > 0
+                    || policy.questNeeds() != null && policy.questNeeds().test(bot, drop.getItemId());
+            case LIKE_OWNER -> drop.getMeso() > 0 || policy.skips() == null || !policy.skips().test(bot, drop.getItemId())
                     || policy.questNeeds() != null && policy.questNeeds().test(bot, drop.getItemId());
         };
     }

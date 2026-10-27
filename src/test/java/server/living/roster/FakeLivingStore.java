@@ -74,6 +74,8 @@ final class FakeLivingStore {
     final Set<Integer> keptFresh = new java.util.LinkedHashSet<>();
     /** "branch:band:camp" -> companion_yield row. */
     final Map<String, YieldRow> yields = new LinkedHashMap<>();
+    /** "branch:band:camp" -> companion_yield row of source 'citizen' (F2.1). */
+    final Map<String, YieldRow> citizenYields = new LinkedHashMap<>();
     /** companion_performance, in the order the rows were added. */
     final List<CompanionRunRow> performance = new ArrayList<>();
     boolean performanceUnreadable;
@@ -196,6 +198,7 @@ final class FakeLivingStore {
             return true;
         });
         when(store.companionYields()).thenAnswer(inv -> List.copyOf(yields.values()));
+        when(store.citizenYields()).thenAnswer(inv -> List.copyOf(citizenYields.values()));
         when(store.stallStock(anyInt(), anyString())).thenAnswer(inv ->
                 new LinkedHashMap<>(stallStock.getOrDefault(key(inv.getArgument(0), inv.getArgument(1)), Map.of())));
         when(store.saveStallStock(anyInt(), anyString(), any())).thenAnswer(inv -> {
@@ -271,6 +274,11 @@ final class FakeLivingStore {
         when(store.saveCompanionYield(any())).thenAnswer(inv -> {
             YieldRow row = inv.getArgument(0);
             yields.put(row.jobBranch() + ":" + row.levelBand() + ":" + row.campMapId(), row);
+            return true;
+        });
+        when(store.saveCitizenYield(any())).thenAnswer(inv -> {
+            YieldRow row = inv.getArgument(0);
+            citizenYields.put(row.jobBranch() + ":" + row.levelBand() + ":" + row.campMapId(), row);
             return true;
         });
         doAnswer(inv -> {

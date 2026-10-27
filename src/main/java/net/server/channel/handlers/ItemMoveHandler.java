@@ -63,7 +63,12 @@ public final class ItemMoveHandler extends AbstractPacketHandler {
             return; // the Adventurer's Roster stays with its owner
         }
 
+        Item dropping = action == 0 && type != null ? c.getPlayer().getInventory(type).getItem(src) : null;
+        short held = dropping == null ? 0 : dropping.getQuantity();
         InventoryManipulator.handleItemMove(c, type, src, action, quantity);
+        if (dropping != null && (c.getPlayer().getInventory(type).getItem(src) != dropping || dropping.getQuantity() < held)) {
+            server.living.LivingWorldHooks.itemDropped(c.getPlayer(), dropping.getItemId()); // an owner's loot taste (F2)
+        }
 
         c.getPlayer().getAutobanManager().spam(6);
     }
