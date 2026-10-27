@@ -250,7 +250,8 @@ public final class LivingWorldHooks {
             return false;
         }
         try {
-            return world.dialogue().onWhisper(speaker, targetName, text);
+            return world.dialogue().onWhisper(speaker, targetName, text)
+                    || server.living.population.PopulationHooks.whisper(speaker, targetName, text); // a citizen (F5c)
         } catch (RuntimeException failure) {
             log.warn("living world whisper hook failed", failure);
             return false;

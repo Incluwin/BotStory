@@ -245,6 +245,20 @@ public final class PopulationHooks {
         };
     }
 
+    /** A human's whisper to a citizen by name (docs/BOT_CONCEPT_PLAN.md F5c); true when a citizen took it. */
+    public static boolean whisper(Character speaker, String targetName, String text) {
+        Population population = Population.get();
+        if (population == null || speaker == null || AgentPresence.isAgent(speaker)) {
+            return false;
+        }
+        try {
+            return population.whispers().onWhisper(speaker, targetName, text);
+        } catch (RuntimeException failure) {
+            log.debug("population whisper hook failed", failure);
+            return false;
+        }
+    }
+
     /** Human map chat near citizens; true when a citizen took it. */
     public static boolean chat(Character speaker, String text) {
         Population population = Population.get();

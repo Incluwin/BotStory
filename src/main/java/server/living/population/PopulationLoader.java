@@ -65,7 +65,12 @@ public final class PopulationLoader {
             // a scroll it was brought passing or failing; and a player who brought it something, met again
             "need.whisper", "need.thanks", "need.got", "need.scroll.pass", "need.scroll.fail", "memory.greet.fulfilled",
             // small imperfections (F8): a short pause on a field (D6), "rez pls?" and the thanks after a Resurrection
-            "brb", "rez.ask.self", "rez.thanks.self");
+            "brb", "rez.ask.self", "rez.thanks.self",
+            // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)
+            "pq.smega", "pq.where", "whisper.join.invited", "whisper.join.where", "whisper.join.full",
+            "whisper.join.level", "whisper.join.party", "whisper.join.wait", "whisper.join.leader", "whisper.ack",
+            "whisper.ack.thanks", "whisper.ack.no", "whisper.ack.question", "whisper.need.yes", "whisper.hi",
+            "whisper.busy", "whisper.training", "whisper.pq", "whisper.shop");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

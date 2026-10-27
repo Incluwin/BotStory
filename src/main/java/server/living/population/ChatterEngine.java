@@ -1,6 +1,8 @@
 package server.living.population;
 
 import client.Character;
+import client.inventory.InventoryType;
+import client.inventory.manipulator.InventoryManipulator;
 import net.server.Server;
 import net.server.guild.Guild;
 import net.server.world.World;
@@ -52,6 +54,10 @@ public final class ChatterEngine {
     private static final String NEED_INTENT = "need.";
     /** The random-basket "B>" talk the needs board replaces while it is on. */
     private static final Set<String> RANDOM_BUY_INTENTS = Set.of("fm.buy", "town.buy");
+    /** The Super Megaphone, a cash item no NPC sells: {@link #megaphone} with consumeItem uses one up (F5c). */
+    static final int SUPER_MEGAPHONE = 5072000;
+    /** A megaphone line with the ear button on, so a player can whisper back with one click ({@link #megaphone}). */
+    private static final String SMEGA_EAR = "smega.ear";
 
     /** Something that may make nearby citizens talk. */
     public static final class Event {
@@ -140,6 +146,15 @@ public final class ChatterEngine {
     private volatile long hourStartMs;
     private final java.util.concurrent.atomic.AtomicLong linesSpoken = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.Deque<String> recent = new java.util.ArrayDeque<>();
+    /** Uses up one Super Megaphone of a citizen's cash tab, false when it has none; tests bring their own. */
+    MegaphoneItems megaphoneItems = ChatterEngine::useSuperMegaphone;
+    /** The time {@link #megaphone} reads; tests bring their own. */
+    java.util.function.LongSupplier megaphoneClock = System::currentTimeMillis;
+
+    /** Takes one megaphone item out of a citizen's bag. */
+    interface MegaphoneItems {
+        boolean use(Character agent);
+    }
 
     ChatterEngine(Population population) {
         this.population = population;
@@ -543,9 +558,10 @@ public final class ChatterEngine {
                             world.buddyChat(online, agent.getId(), agent.getName(), clean);
                         }
                     }
-                    case "smega" -> {
+                    case "smega", SMEGA_EAR -> {
                         Server.getInstance().broadcastMessage(population.world().config().WORLD,
-                                PacketCreator.serverNotice(3, session.channel, agent.getName() + " : " + clean, false));
+                                PacketCreator.serverNotice(3, session.channel, agent.getName() + " : " + clean,
+                                        SMEGA_EAR.equals(channel)));
                         lastSmegaMs = System.currentTimeMillis();
                     }
                     default -> AgentDialogueTransportRuntime.sayMapNow(agent, clean);
@@ -606,8 +622,25 @@ public final class ChatterEngine {
         deliver(session, "map", text, delayMs, atSend);
     }
 
-    /** Whisper to a human from a citizen (used by social and conversation). */
+    /** Whisper to a human from a citizen (used by social and conversation); their whisper back answers it (CitizenWhispers). */
     public void whisper(CitizenSession session, Character human, String text) {
+        whisper(session, human, text, CitizenWhispers.CHAT);
+    }
+
+    /**
+     * {@link #whisper(CitizenSession, Character, String)} opening a thread of {@code topic} ("need", "rival"): the
+     * player's whisper back within WHISPER_THREAD_MS goes to that topic's handler (CitizenWhispers.onReply).
+     */
+    public void whisper(CitizenSession session, Character human, String text, String topic) {
+        CitizenWhispers whispers = population.whispers();
+        if (whispers != null && human != null && session.agent() != null) {
+            whispers.opened(session.characterId, human.getId(), topic, System.currentTimeMillis());
+        }
+        whisperReply(session, human, text);
+    }
+
+    /** A citizen's answer to a player's whisper (CitizenWhispers): opens no thread of its own. */
+    public void whisperReply(CitizenSession session, Character human, String text) {
         Character agent = session.agent();
         if (agent == null || human == null || human.getClient() == null) {
             return;
@@ -631,6 +664,39 @@ public final class ChatterEngine {
             smegasThisHour = 0;
         }
         return smegasThisHour < population.config().CHATTER_SMEGA_PER_HOUR && now - lastSmegaMs > 600_000L;
+    }
+
+    /**
+     * A citizen's own megaphone line (docs/BOT_CONCEPT_PLAN.md F5c: a short PQ party's "LF1M KPQ"; rival crews): one slot
+     * of {@code CHATTER_SMEGA_PER_HOUR} and the same 10-minute gap the random megaphones keep, one counter for both. The
+     * filled {@code text} is typed in its voice without typos (a megaphone costs: people read it over) and goes out as a
+     * Super Megaphone with the ear button on. With {@code consumeItem} it uses up one Super Megaphone of its cash tab.
+     * False, and nothing sent, when chatter is off, the cap or the gap blocks, or it has no megaphone to use.
+     */
+    public boolean megaphone(CitizenSession from, String text, boolean consumeItem) {
+        Character agent = from == null || from.virtual ? null : from.agent();
+        if (!population.config().CHATTER_ENABLED || agent == null || text == null || text.isBlank()) {
+            return false;
+        }
+        long now = megaphoneClock.getAsLong();
+        synchronized (this) {
+            if (!smegaAllowed(now) || consumeItem && !megaphoneItems.use(agent)) {
+                return false;
+            }
+            smegasThisHour++;
+            lastSmegaMs = now; // the gap starts now, so no other megaphone gets in during its typing delay
+        }
+        String rendered = population.voices().renderAnswer(from.citizen, text, now, false);
+        deliver(from, SMEGA_EAR, rendered, population.voices().delayMs(from.citizen, rendered));
+        return true;
+    }
+
+    private static boolean useSuperMegaphone(Character agent) {
+        if (agent.getClient() == null || agent.getItemQuantity(SUPER_MEGAPHONE, false) <= 0) {
+            return false;
+        }
+        InventoryManipulator.removeById(agent.getClient(), InventoryType.CASH, SUPER_MEGAPHONE, 1, false, false);
+        return true;
     }
 
     private void smegaCadence(long now) {

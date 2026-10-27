@@ -94,6 +94,10 @@ public final class CitizenPartyQuests {
         long heldUntilMs;
         int refusals;
         final Set<Integer> toldProblem = new HashSet<>();
+        /** LF megaphones its leader sent (PartyMegaphones, F5c). */
+        int megaphones;
+        /** Human id -> when the leader invited them because they whispered for a seat (CitizenWhispers, F5c). */
+        final Map<Integer, Long> whisperedIn = new HashMap<>();
 
         Forming(String questKey, int channel, int mapId, int leaderId, long formedAtMs) {
             this.questKey = questKey;
@@ -148,6 +152,24 @@ public final class CitizenPartyQuests {
     /** A boss run ended (AgentBossRunHost.Rule.runEnded), queued for the tick. */
     record BossEnded(String sessionId, boolean started, boolean cleared, String reason) { }
 
+    /** What a citizen does with a player's whisper for a seat (whisperJoin). */
+    enum JoinAnswer {
+        /** Invited: the seat waits for the answer as a lobby invite's does. */
+        INVITED,
+        /** It leads no forming party: the whisper is ordinary talk. */
+        NOT_FORMING,
+        /** It is in a forming party someone else leads. */
+        MEMBER,
+        FULL,
+        LEVEL,
+        /** The player is in a party already. */
+        IN_PARTY,
+        /** An invite to another player is still out. */
+        INVITE_OUT,
+        /** The player is in an event instance, or the invite did not go out. */
+        BUSY
+    }
+
     private final Population population;
     private final Map<String, CitizenPqDoor> doors;
     private final Random random;
@@ -172,6 +194,7 @@ public final class CitizenPartyQuests {
     /** Quest key -> {runs, clears, failures} since boot. */
     private final Map<String, int[]> tally = new ConcurrentHashMap<>();
     private final Deque<String> recent = new ArrayDeque<>();
+    private final PartyMegaphones megaphones;
 
     CitizenPartyQuests(Population population) {
         this(population, shippedDoors(population.config()), new Random(population.config().SEED ^ 0x9a27e5L));
@@ -189,6 +212,7 @@ public final class CitizenPartyQuests {
         this.population = population;
         this.doors = doors;
         this.random = random;
+        this.megaphones = new PartyMegaphones(population);
     }
 
     /** The quests {@code PQ_RUN_QUESTS} lets citizen parties go into, lower case; none while the switch is off. */
@@ -382,9 +406,10 @@ public final class CitizenPartyQuests {
         }
         List<AgentPartyMemberSnapshot> members = members(leaderChr);
         size = members.size();
+        tellWhisperedWhere(party, leader, members, map);
         if (size < door.minSeats()) {
             party.minReachedAtMs = -1L;
-            if (nowMs - party.formedAtMs >= population.config().PQ_FORM_PATIENCE_MS) {
+            if (outOfPatience(party, members, nowMs)) {
                 giveUp(party, here, members, "nobody came", nowMs);
                 return;
             }
@@ -412,12 +437,122 @@ public final class CitizenPartyQuests {
         String blocked = blocker(party, door, lobby, leader, members, here, map);
         if (!blocked.isEmpty()) {
             log.debug("citizen {} party at {} waits: {}", leader.name(), lobby.name(), blocked);
-            if (nowMs - party.formedAtMs >= population.config().PQ_FORM_PATIENCE_MS) {
+            if (outOfPatience(party, members, nowMs)) {
                 giveUp(party, here, members, blocked, nowMs);
             }
             return;
         }
         goIn(key, party, door, lobby, leader, members, here, nowMs);
+    }
+
+    /**
+     * The party waited {@code PQ_FORM_PATIENCE_MS}, and no player who whispered for a seat and took the invite is still
+     * on the way (WHISPER_JOIN_COMING_MS from the invite): someone walking over from Henesys is worth the wait.
+     */
+    private boolean outOfPatience(Forming party, List<AgentPartyMemberSnapshot> members, long nowMs) {
+        if (nowMs - party.formedAtMs < population.config().PQ_FORM_PATIENCE_MS) {
+            return false;
+        }
+        for (AgentPartyMemberSnapshot member : members) {
+            Long invitedAt = party.whisperedIn.get(member.id());
+            if (invitedAt != null && nowMs - invitedAt < population.config().WHISPER_JOIN_COMING_MS) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** A player who whispered in and joined but is not on the lobby yet hears in party chat where to come, once. */
+    private void tellWhisperedWhere(Forming party, CitizenSession leader, List<AgentPartyMemberSnapshot> members,
+                                    MapleMap map) {
+        for (AgentPartyMemberSnapshot member : members) {
+            if (!party.whisperedIn.containsKey(member.id()) || memberCharacter(member.id(), map) != null
+                    || !party.toldProblem.add(Integer.MIN_VALUE + member.id())) {
+                continue;
+            }
+            Character human = memberCharacter(member.id(), null);
+            population.chatter().event(ChatterEngine.Event.of("pq.where", leader.mapId, leader.channel).self(leader)
+                    .subject(human).slot("ch", String.valueOf(leader.channel)));
+        }
+    }
+
+    /**
+     * A player whispered {@code leader} for a seat (CitizenWhispers, F5c). A citizen leading a party forming here
+     * invites them by the lobby invite's rules: they have no party and are in the quest's band, a seat is free counting
+     * one already held, one invite is out at a time, and the party never goes in while it is out. They asked, so the
+     * per-player invite gap does not apply, and they may be anywhere: the party waits WHISPER_JOIN_COMING_MS past its
+     * patience while they walk over.
+     */
+    synchronized JoinAnswer whisperJoin(Character human, CitizenSession leader, long nowMs) {
+        Forming party = null;
+        for (Forming forming : this.forming.values()) {
+            if (forming.leaderId == leader.characterId) {
+                party = forming;
+            }
+        }
+        Character leaderChr = leader.agent();
+        if (party == null || leaderChr == null) {
+            boolean waiting = leaderChr != null && leader.activity == Activity.PQ && door(leader.mapId) != null;
+            return waiting && leaderName(leader.characterId) != null ? JoinAnswer.MEMBER : JoinAnswer.NOT_FORMING;
+        }
+        CitizenPqDoor door = doors.get(party.questKey);
+        Lobby lobby = population.fields().lobbyAt(party.mapId);
+        if (door == null || lobby == null) {
+            return JoinAnswer.NOT_FORMING;
+        }
+        if (party(human) != null) {
+            return JoinAnswer.IN_PARTY;
+        }
+        if (!fits(human, lobby)) {
+            return JoinAnswer.LEVEL;
+        }
+        if (human.getEventInstance() != null) {
+            return JoinAnswer.BUSY;
+        }
+        boolean held = holdingSeat(party, nowMs);
+        if (members(leaderChr).size() + (held ? 1 : 0) >= door.preferredSeats()) {
+            return JoinAnswer.FULL;
+        }
+        if (held) {
+            return JoinAnswer.INVITE_OUT;
+        }
+        if (party(leaderChr) == null && !AgentPartyGatewayRuntime.party().createAgentParty(leaderChr)
+                || !AgentPartyGatewayRuntime.party().invitePartyMember(leaderChr, human)) {
+            return JoinAnswer.BUSY;
+        }
+        humanInvitedAt.put(human.getId(), nowMs);
+        party.heldFor = human.getId();
+        party.heldUntilMs = nowMs + population.config().PQ_HUMAN_SEAT_HOLD_MS;
+        party.whisperedIn.put(human.getId(), nowMs);
+        leader.journal.add("social", "invited " + human.getName() + " to " + lobby.name() + " (they whispered)");
+        log.info("citizen {} party at {} invites {} who whispered for a seat", leader.name(), lobby.name(), human.getName());
+        return JoinAnswer.INVITED;
+    }
+
+    /** The name of the citizen leading the party {@code memberId} is in, or null when no citizen leads it. */
+    String leaderName(int memberId) {
+        CitizenSession member = population.presence().session(memberId);
+        AgentPartySnapshot party = member == null ? null : party(member.agent());
+        if (party == null) {
+            return null;
+        }
+        for (AgentPartyMemberSnapshot snapshot : party.members()) {
+            if (snapshot != null && snapshot.leader()) {
+                CitizenSession leader = population.presence().session(snapshot.id());
+                return leader == null || snapshot.id() == memberId ? null : leader.name();
+            }
+        }
+        return null;
+    }
+
+    /** True when a citizen-run lobby of its region fits {@code level} (PartyMegaphones gives such citizens a stock). */
+    boolean runsLobbyFor(Citizen citizen, int level) {
+        for (Lobby lobby : population.fields().lobbiesFor(citizen, level)) {
+            if (door(lobby.mapId()) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** True while {@code leader} stands here and leads a party (or none yet) with no human leading it. */
@@ -719,6 +854,7 @@ public final class CitizenPartyQuests {
         if (nowMs - party.formedAtMs >= CALL_AFTER_MS && population.needs() != null) { // the needs board lists it
             population.needs().partyShort(leader, lobby.name(), lobby.mapId(), need, role(party, leader, here), nowMs);
         }
+        megaphones.shout(party, leader, need, nowMs); // still short a while: one LF megaphone (F5c)
         if (nowMs - party.formedAtMs < CALL_AFTER_MS || nowMs - party.lastCallAtMs < CALL_EVERY_MS
                 || party.calls >= population.config().PQ_CALLS_PER_PARTY || party.coming.size() >= need) {
             return;

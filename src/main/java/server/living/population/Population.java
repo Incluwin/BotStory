@@ -56,6 +56,7 @@ public final class Population {
     private final CitizenMiniGames miniGames;
     private final PersonMemories memories;
     private final NeedLedger needs;
+    private final CitizenWhispers whispers;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -88,6 +89,7 @@ public final class Population {
         this.miniGames = new CitizenMiniGames(this);
         this.memories = new PersonMemories(this);
         this.needs = new NeedLedger(this);
+        this.whispers = new CitizenWhispers(this);
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
     }
@@ -284,6 +286,11 @@ public final class Population {
     /** What citizens ask for on the needs board (docs/BOT_CONCEPT_PLAN.md F1). */
     public NeedLedger needs() {
         return needs;
+    }
+
+    /** Players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). */
+    public CitizenWhispers whispers() {
+        return whispers;
     }
 
     /** What citizens remember of the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md). */

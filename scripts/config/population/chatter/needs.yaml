@@ -4,8 +4,10 @@
 # request of that kind (supply = potions for a boss, scroll = a scroll for a piece it wears, gear = an upgrade it wants).
 # Slots: {item} the item as players type it ("claw att 60%", "white potion"), {what} with its count when more than one
 # ("120 white potion"), {count}, {price} what it pays a unit, {total}, {for} what for ("balrog", "my red katana",
-# "an upgrade"), {map}, {name}. Human whispers to citizens go unanswered (F5c), so no line asks to be whispered: people
-# find the citizen, or a Bulletin Board. Reaction ids are "needs.*" (not "need."): said whatever its requests are now.
+# "an upgrade"), {map}, {name}. A player's whisper reaches a citizen only while CITIZEN_WHISPERS_ENABLED (F5c), so no
+# line here asks to be whispered: people find the citizen, or a Bulletin Board (whose PARTY page names the leader to
+# whisper while it is on). A whisper back to needs.whisper answers it (CitizenWhispers, chatter/whispers.yaml). Reaction
+# ids are "needs.*" (not "need."): said whatever its requests are now.
 intents:
   - id: need.supply.fm
     trigger: dwell

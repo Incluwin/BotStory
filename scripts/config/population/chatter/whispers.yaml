@@ -1,0 +1,206 @@
+# Party megaphones and players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c; PartyMegaphones, CitizenWhispers).
+# pq.smega: a short PQ party's leader on a megaphone (LF_SMEGA_ENABLED, a real Super Megaphone); {need} how many more,
+# {pq} the quest, {levels} its band, {ch} the channel, {me} its name. pq.where: in party chat, to a player who whispered
+# in and joined but is not at the lobby yet. whisper.*: answers to a player's whisper (CITIZEN_WHISPERS_ENABLED), only
+# ever composed for that player: join.* to a seat request, ack.* to a whisper back to the citizen's own whisper,
+# need.yes to a yes about its needs-board request, and hi/busy/training/pq/shop to a whisper out of nowhere. {name} is
+# the player, {leader} the party's citizen leader.
+intents:
+  - id: pq.smega.lf
+    trigger: pq.smega
+    where: any
+    channel: smega
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "LF{need}M {pq} {levels}, ch{ch}, whisper {me}"
+      - "{pq} lf{need}m ({levels}) ch{ch}, whisper {me}"
+      - "need {need} more for {pq} {levels} ch{ch}, whisper me"
+      - "LF{need}M {pq} ch{ch} {levels} w/ {me}"
+    styles:
+      quiet-practical-v1:
+        - "LF{need}M {pq} {levels} ch{ch} w {me}"
+        - "{pq} lf{need}m ch{ch} {levels}"
+      playful-social-v1:
+        - "{pq} party needs {need} more!! ch{ch} {levels}, whisper {me}"
+        - "who wants {pq}? {levels}, ch{ch}, need {need}, whisper me"
+  - id: pq.where.party
+    trigger: pq.where
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "we're at {map} ch{ch}, by the npc"
+      - "{name} come to {map} ch{ch}, we wait by the npc"
+      - "we're in {map} ch{ch}"
+  - id: whisper.join.invited
+    trigger: whisper.join.invited
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "sent inv"
+      - "inv sent"
+      - "sure, invd"
+      - "ya sent u one"
+  - id: whisper.join.where
+    trigger: whisper.join.where
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "sent inv, we're at {map} ch{ch}"
+      - "inv sent! come to {map} ch{ch}, we're by the npc"
+      - "kk invd, {map} ch{ch}"
+  - id: whisper.join.full
+    trigger: whisper.join.full
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "sry we're full now"
+      - "just filled, sorry"
+      - "full atm sry"
+  - id: whisper.join.level
+    trigger: whisper.join.level
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{pq} is {levels} only sry"
+      - "sry u need to be {levels} for {pq}"
+  - id: whisper.join.party
+    trigger: whisper.join.party
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "leave ur party first and ill inv"
+      - "ur in a party, leave it and whisper again"
+  - id: whisper.join.wait
+    trigger: whisper.join.wait
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "sec, waiting on someone"
+      - "1 sec, invited someone already"
+  - id: whisper.join.leader
+    trigger: whisper.join.leader
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ask {leader}, they're leading"
+      - "{leader} is leader, whisper them"
+  - id: whisper.ack
+    trigger: whisper.ack
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "kk"
+      - "ok"
+      - "cool"
+      - ":)"
+  - id: whisper.ack.thanks
+    trigger: whisper.ack.thanks
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "np"
+      - "yw"
+      - "np :)"
+  - id: whisper.ack.no
+    trigger: whisper.ack.no
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "np"
+      - "ok no worries"
+      - "all good"
+  - id: whisper.ack.question
+    trigger: whisper.ack.question
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hm idk"
+      - "not sure tbh"
+      - "idk sry"
+  - id: whisper.need.yes
+    trigger: whisper.need.yes
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nice! im in {map}, double click me when u get here"
+      - "cool, im at {map}. or leave it at a board"
+      - "ty! find me in {map}"
+  - id: whisper.hi
+    trigger: whisper.hi
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey"
+      - "hi"
+      - "yo"
+      - "hii"
+  - id: whisper.busy
+    trigger: whisper.busy
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "busy rn sry"
+      - "cant talk rn"
+      - "sry busy"
+      - "?"
+  - id: whisper.training
+    trigger: whisper.training
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "training atm"
+      - "grinding rn sry"
+      - "busy training"
+  - id: whisper.pq
+    trigger: whisper.pq
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "in pq rn"
+      - "doing pq, after?"
+      - "in a pq sry"
+  - id: whisper.shop
+    trigger: whisper.shop
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "my shop is in {map}"
+      - "check my shop, {map}"
+      - "everything i sell is in the shop"

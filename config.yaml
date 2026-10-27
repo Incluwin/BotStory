@@ -1294,6 +1294,26 @@ population:
     CHATTER_CITIZEN_COOLDOWN_MS: 45000
     CHATTER_SMEGA_PER_HOUR: 4
     CHATTER_RECENT_MEMORY: 12
+    # Party megaphones and players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). LF_SMEGA: a citizen PQ party
+    # still short LF_SMEGA_AFTER_MS after it formed has its leader send LF_SMEGA_PER_PARTY megaphones ("LF1M KPQ 21-30
+    # ch2, whisper Ann"); each uses up a real Super Megaphone and one slot of CHATTER_SMEGA_PER_HOUR. Citizens a citizen-run
+    # lobby fits buy LF_SMEGA_STOCK (at most 2) at a load with chance LF_SMEGA_RESTOCK_CHANCE when they carry none. The
+    # line says "whisper me", so it goes out only with CITIZEN_WHISPERS_ENABLED too. CITIZEN_WHISPERS: a player's whisper
+    # to a loaded citizen is answered: "me"/"inv"/"can i join" to a short party's leader gets its invite (the lobby
+    # invite's rules; the party waits WHISPER_JOIN_COMING_MS past its patience while they walk over), a whisper back
+    # within WHISPER_THREAD_MS of the citizen's own whisper answers that, anything else a short templated reply at most
+    # once per WHISPER_REPLY_GAP_MS a player (nothing while it is AFK). false = the kill switches: whispers ignored, no
+    # megaphone.
+    # Technical: PartyMegaphones rides CitizenPartyQuests.callOver on its 10 s tick and calls ChatterEngine.megaphone (shared hour counter and 10-min gap); CitizenWhispers is reached from LivingWorldHooks.whisper after ResidentDialogue declines, lines in chatter/whispers.yaml.
+    LF_SMEGA_ENABLED: false
+    LF_SMEGA_AFTER_MS: 240000
+    LF_SMEGA_PER_PARTY: 1
+    LF_SMEGA_STOCK: 2
+    LF_SMEGA_RESTOCK_CHANCE: 0.3
+    CITIZEN_WHISPERS_ENABLED: false
+    WHISPER_REPLY_GAP_MS: 120000
+    WHISPER_THREAD_MS: 900000
+    WHISPER_JOIN_COMING_MS: 300000
     CONVERSATION_ENABLED: true
     CONVERSATION_PER_PLAYER_PER_DAY: 40
     CONVERSATION_CITIZEN_COOLDOWN_MS: 8000
