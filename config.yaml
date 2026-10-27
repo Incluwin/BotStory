@@ -1221,6 +1221,31 @@ population:
     PQ_HUMAN_SEAT_HOLD_MS: 60000
     PQ_RUN_COOLDOWN_MS: 1800000
     PQ_CALLS_PER_PARTY: 4
+    # Citizens play omok and match cards in towns (2026-10-26, docs/BOT_CONCEPT_PLAN.md F5a): a citizen on a PLAY session
+    # walks to a bench of a town that allows minigames, sits down in an open room near it (a player's first) or says it
+    # wants a game and opens its own with the set it carries, plays a few matches and goes on with its day. A player can
+    # sit down in a citizen's room or open one near PLAY citizens; one comes over. Records are the stock columns.
+    # false = the kill switch: no PLAY plan (cohorts.yaml PLAY weights count for nothing), nobody opens or joins a room.
+    # Technical: CitizenMiniGames rides the 20 s chatter tick; MiniGameTable plays each room through MiniGameRules and the MiniGame observer, one timer step per move.
+    MINIGAMES_ENABLED: false
+    # Technical: comma list of town map ids; CitizenMiniGames skips one outside the citizen's region or whose fieldLimit has CANNOTMINIGAME (0x80, the Free Market).
+    MINIGAME_TOWNS: "100000000,101000000,102000000,103000000,220000000"
+    # Technical: MiniGameTable think time per move, drawn as min + (max - min) * u^2 so most moves are quick; the first omok stones use at most three times the minimum.
+    MINIGAME_THINK_MIN_MS: 1000
+    # Technical: upper end of that draw, 1000-8000 ms recommended; a card's second pick and the ready/start answers use their own short ranges in MiniGameTable.
+    MINIGAME_THINK_MAX_MS: 8000
+    # Technical: matches per PLAY session, drawn uniformly in MIN..MAX when it arrives; a forfeit or a tie counts as a match, and the seat leaves at zero.
+    MINIGAME_GAMES_MIN: 2
+    # Technical: upper end of the matches drawn per PLAY session (>= MINIGAME_GAMES_MIN); the session also ends when its second room closes with nobody in it.
+    MINIGAME_GAMES_MAX: 5
+    # Technical: an owner citizen's room with no visitor and no event this long closes (>= 10000 ms); two such rooms end the PLAY session and plan its next activity.
+    MINIGAME_ROOM_WAIT_MS: 180000
+    # Technical: a room with a visitor where no ready, move or card happened this long (>= 10000 ms): the citizen gets up, a visitor forfeiting a match on.
+    MINIGAME_IDLE_MS: 150000
+    # Technical: percent of citizens whose innate strength is 0.8-1.0 (seeded by character id); the rest draw 0.1-0.65 skewed low, plus up to 0.15 from their stock record.
+    MINIGAME_STRONG_PERCENT: 5
+    # Technical: after a PLAY session ends, CitizenMiniGames.plays is false for this long (ms), so a re-plan right after it never rolls PLAY again.
+    MINIGAME_COOLDOWN_MS: 1800000
     # Citizens remember the people they meet (2026-10-25, docs/CITIZEN_PERSON_MEMORY_PLAN.md): what happened between a
     # citizen and a player (talked, answered a question, partied, ran a party quest, traded at a shop, famed), when and
     # where, and how it feels about them, in the pair's living_acquaintance row. Met again after RETURN_AFTER_MINUTES it

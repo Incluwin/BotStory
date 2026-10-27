@@ -722,6 +722,9 @@ public final class PresenceScheduler {
             if (activity == Activity.AFK && citizen.has(Citizen.FLAG_AFK_TOWNIE)) {
                 weight *= 3;
             }
+            if (activity == Activity.PLAY && (miniGames() == null || !miniGames().plays(citizen, now))) {
+                weight = 0;
+            }
             if (weight > 0) {
                 options.add(activity);
                 option.add(weight);
@@ -762,6 +765,10 @@ public final class PresenceScheduler {
                 int instructorMap = jobs.mapFor(session);
                 return instructorMap > 0 ? instructorMap : population.fields().homeTown(citizen, random);
             }
+            case PLAY -> {
+                int town = miniGames() == null ? 0 : miniGames().townFor(citizen);
+                return town > 0 ? town : population.fields().homeTown(citizen, random);
+            }
             default -> {
                 return population.fields().homeTown(citizen, random);
             }
@@ -778,6 +785,12 @@ public final class PresenceScheduler {
             case TRAIN -> AgentMovementCommandRuntime.grind(entry);
             case MARKET -> population.market().onArrive(session);
             case PQ -> waitAtLobby(session, map, now);
+            case PLAY -> {
+                if (miniGames() == null || !miniGames().arrive(session, map, now)) { // no minigames here: a town visit
+                    session.activity = Activity.TOWN;
+                    stroll(session, map, now);
+                }
+            }
             case JOB -> {
                 if (!jobs.begin(session, map)) { // nothing to go for here after all: an ordinary visit, re-planned soon
                     session.errandJob = null;
@@ -827,6 +840,11 @@ public final class PresenceScheduler {
     /** The population's party quests; null before they exist (and in tests that leave them out). */
     private CitizenPartyQuests partyQuests() {
         return population.partyQuests();
+    }
+
+    /** The population's minigames; null in tests that leave them out. */
+    private CitizenMiniGames miniGames() {
+        return population.miniGames();
     }
 
     /** True while the citizen is in a party quest of its party, or on its way back from one. */
@@ -884,6 +902,9 @@ public final class PresenceScheduler {
     private void maybeReplan(CitizenSession session, long now) {
         if (inPartyQuest(session)) {
             return; // its party quest moves it, and sends it back to its day after (CitizenPartyQuests)
+        }
+        if (miniGames() != null && miniGames().holds(session)) {
+            return; // its PLAY session plans its next activity when its games are done (CitizenMiniGames)
         }
         if (onSupplyTrip(session)) {
             // no AFK, stroll or re-plan while its own shop trip runs: a re-plan that is due stays due for the next sweep

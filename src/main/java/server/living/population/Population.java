@@ -52,6 +52,7 @@ public final class Population {
     private final Conversation conversation;
     private final Market market;
     private final CitizenPartyQuests partyQuests;
+    private final CitizenMiniGames miniGames;
     private final PersonMemories memories;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
@@ -82,6 +83,7 @@ public final class Population {
         this.conversation = new Conversation(this);
         this.market = new Market(this);
         this.partyQuests = new CitizenPartyQuests(this);
+        this.miniGames = new CitizenMiniGames(this);
         this.memories = new PersonMemories(this);
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
@@ -142,8 +144,10 @@ public final class Population {
                 config.LEDGER_MS, config.LEDGER_MS));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.churn::tick,
                 90_000L, 3_600_000L));
-        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.chatter::tick,
-                20_000L, 20_000L));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            population.chatter.tick();
+            population.miniGames.tick(); // minigame rooms ride the chatter tick (docs/BOT_CONCEPT_PLAN.md F5a)
+        }, 20_000L, 20_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.social::tick,
                 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
@@ -262,6 +266,11 @@ public final class Population {
     /** Party quests citizen parties run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md). */
     public CitizenPartyQuests partyQuests() {
         return partyQuests;
+    }
+
+    /** Omok and match cards citizens play in towns (docs/BOT_CONCEPT_PLAN.md F5a). */
+    public CitizenMiniGames miniGames() {
+        return miniGames;
     }
 
     /** What citizens remember of the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md). */

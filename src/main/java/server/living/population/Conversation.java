@@ -431,9 +431,10 @@ public final class Conversation {
         return kind != null || askedBack != null && (named == null || named == askedBack);
     }
 
-    /** Free to answer: loaded, not AFK, not minding a stall. */
+    /** Free to answer: loaded, not AFK, not minding a stall, not seated in a minigame room. */
     static boolean free(CitizenSession session, long now) {
-        return !session.virtual && session.activity != CitizenSession.Activity.AFK && session.afkUntilMs <= now && !session.stallOpen;
+        return !session.virtual && session.activity != CitizenSession.Activity.AFK && session.afkUntilMs <= now && !session.stallOpen
+                && !CitizenMiniGames.seated(session);
     }
 
     private boolean cooling(CitizenSession session, long now) {
