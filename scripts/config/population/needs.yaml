@@ -13,3 +13,5 @@ boards:
   - { map: 200000000, x: 1090, y: 110 }     # Orbis
   - { map: 211000000, x: -600, y: 60 }      # El Nath
   - { map: 220000000, x: 1580, y: 70 }      # Ludibrium
+  - { map: 240000000, x: 240, y: 230 }      # Leafre, beside the arrival point (the Leafre region, Tera Forest Time Gate too)
+  - { map: 270000000, x: 200, y: 120 }      # Three Doors, the Temple of Time's hub

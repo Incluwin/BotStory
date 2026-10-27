@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The needs board's Bulletin Boards (docs/BOT_CONCEPT_PLAN.md F1, population/needs.yaml): the FM entrance and nine main
+ * The needs board's Bulletin Boards (docs/BOT_CONCEPT_PLAN.md F1, population/needs.yaml): the FM entrance and eleven main
  * towns, one board a map, each over a foothold within reach (it drops onto it, as NeedBoards spawns it), and none on top
  * of a stock NPC standing on the same ground, read from the maps' own WZ data.
  */
@@ -38,7 +38,8 @@ class NeedBoardsPlacementTest {
         }
         assertTrue(maps.contains(910000000), "the FM entrance");
         assertTrue(maps.containsAll(Set.of(100000000, 101000000, 102000000, 103000000, 104000000)), "Victoria's towns");
-        assertEquals(10, boards.size());
+        assertTrue(maps.containsAll(Set.of(240000000, 270000000)), "Leafre and the Temple of Time's Three Doors");
+        assertEquals(12, boards.size());
     }
 
     @Test

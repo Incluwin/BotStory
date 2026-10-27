@@ -241,7 +241,7 @@ SCROLL want goes to the FM three times as often, walks to the room whose player 
 less, and buys it up to its offer (above the 90%-of-index rule, outside the browse budget; single pieces; equips base or
 better: weapon and magic attack at least the base's, weighted stats at least the base's). The request is then met.
 
-Stock Bulletin Boards (NPC 9040011) are spawned server-side at the places `needs.yaml` lists (the FM entrance and nine
+Stock Bulletin Boards (NPC 9040011) are spawned server-side at the places `needs.yaml` lists (the FM entrance and eleven
 towns) on every population channel and re-checked every minute; the Guild PQ maps' own 9040011 keeps its stock script
 (only the spawned objects open the needs board). A board's menu lists the requests sorted by distance from the board,
 then by how well the citizen knows you, with each one's details (who, what, how many, price, where they are, deadline),
