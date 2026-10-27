@@ -1,0 +1,161 @@
+# Happyville cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 3 Residents, none
+# recruitable, no arc, no rumor. Happyville (209000000) is the snow town Rooney in every Victoria town sends players to
+# all year: Rudi sells tree ornaments, Cliff, Roodolph, Santa, Mrs. Claus and the snowmen stand about, and the Branch,
+# Metal Bucket and Straw Hat Snowmen take players up the Hill of Christmas (209000001-209000003, a Scarf Snowman by each
+# tree). No monster here drops anything, so the
+# Residents' errands go out to Victoria's fields at L10-30: an ornament-hanger, a sled-maker and a knitter of mufflers.
+- id: noelle
+  name: Noelle
+  look: { gender: female }
+  title: "Hanger of the Ornaments"
+  job: BEGINNER
+  level: { min: 12, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: happyville
+    routine:
+      - { from: 9, to: 14, spot: "venue:beside-rudi", activity: LINGER }
+      - { from: 14, to: 19, spot: "venue:by-branch-snowman", activity: SOCIALIZE }
+      - { from: 19, to: 9, materialize: false }
+  recruitable: false
+  knows: [happyville, red snail, bubbling]
+  questLines: [noelle-shells-for-the-tree, noelle-glass-baubles]
+  relationships:
+    - { persona: kris, kind: HANGS_BELLS_ON_THE_SLEDS_OF }
+    - { persona: ingeborg, kind: WEARS_A_MUFFLER_FROM }
+  giftItemIds: [2020028, 2001001]
+  dialogue:
+    greetFirst: ["hello! welcome to Happyville! it's always Christmas here. always. i've checked.", "oh, a visitor! did Rooney send you? he sends everybody. hello! i'm Noelle."]
+    greet: ["hello! merry everything!", "you came back! the trees missed you. i asked them.", "hi!"]
+    idle: ["(holds a painted shell up against the sky, squints, and moves it two inches to the left)", "(counts ornaments in a basket, loses count at forty, and starts again)"]
+    noWork: ["nothing today. every branch has something on it. i checked twice. Uncle Rudi checked once."]
+    nothingDue: ["nothing owed! merry nothing!"]
+    who: ["Noelle. Uncle Rudi sells the ornaments and i hang them. on the trees up the Hill of Christmas, on the snowmen if they stand still, on Kris's sleds if he isn't looking. Rooney sends people here from every town on Victoria and they all want to see a tree. so i make sure there's a tree."]
+    bye: ["bye! merry everything!"]
+    thanks: ["thank you! thank you!"]
+    smallTalk: ["the best ornaments aren't the ones Uncle Rudi sells. they're snail shells, painted. the red ones go red-gold. don't tell him.", "the snowmen here never melt. i asked Cliff why. he said 'it's Happyville'. that's not an answer. it's the only one anybody has."]
+    speakPlainly: ["plainly: ornaments, and somewhere to hang them."]
+    questOffer.noelle-shells-for-the-tree: ["i want painted shells for the trees on the Hill of Christmas. red snail shells go red-gold when you paint them. the red snails are all over Victoria: round Lith Harbor, the hill east of Henesys, the fields north of Ellinia. twenty shells. then ask one of the snowmen here, the branch one, the bucket one or the straw hat, to take you up the Hill of Christmas, and look at the tree so you know where they'll hang."]
+    questAccept.noelle-shells-for-the-tree: ["anywhere with red snails. they're slow. you'll catch one. then a snowman in the square takes you up the Hill of Christmas. the tree's bare on the left side."]
+    questWaiting.noelle-shells-for-the-tree: ["twenty shells! and have you seen the bare bit up the Hill?"]
+    questComplete.noelle-shells-for-the-tree: ["twenty! they'll go red-gold, every one! the bare bit's going to be the best bit. here! for your trouble! merry everything!"]
+    questOffer.noelle-glass-baubles: ["glass baubles! the bubblings carry great big bubbles that don't pop if you're gentle. the bubblings in the Southern Forest dungeon below Ellinia, the fourth floor, and at Caution Falling Down past Kerning City's construction site. twenty bubblings, twelve bubbles. then have a snowman take you up the Hill of Christmas and pick a branch for them."]
+    questAccept.noelle-glass-baubles: ["the Southern Forest dungeon, all the way down to the fourth, or Caution Falling Down by Kerning City. be gentle! then ask a snowman in the square for the Hill of Christmas."]
+    questWaiting.noelle-glass-baubles: ["twelve bubbles! gently!"]
+    questComplete.noelle-glass-baubles: ["twelve, and not one popped! they'll catch the snow-light on the Hill. here! thank you!"]
+    about.kris: ["Kris builds sleds. i hang bells on them when he's not looking. he says they're too loud. then he rings them. i've seen him."]
+    about.ingeborg: ["Ingeborg knitted me a muffler with a reindeer on it. it looks like a dog. i love it. i wear it every day. it's always Christmas."]
+    aboutUnknown: ["are they coming to Happyville? Rooney can bring them!"]
+    friend.close: ["i've hung an ornament for you up the Hill. a shell, painted gold. you have to find it."]
+    friend.best: ["you're on my list. not the naughty one. the other one. the real one."]
+    famed: ["everyone in Happyville is saying your name! even the snowmen! well. they would if they could."]
+    defamed: ["somebody said something mean about you? that's not very Christmas of them."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh! that's a proper Christmas treat! thank you!"]
+    gift.again: ["one a day! Uncle Rudi says so. he's very strict about treats."]
+
+- id: kris
+  name: Kris
+  look: { gender: male }
+  title: "Sled-Maker of Happyville"
+  job: BEGINNER
+  level: { min: 28, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: happyville
+    routine:
+      - { from: 8, to: 13, spot: "venue:by-roodolph", activity: LINGER }
+      - { from: 13, to: 18, spot: "venue:by-straw-hat-snowman", activity: LINGER }
+      - { from: 18, to: 8, materialize: false }
+  recruitable: false
+  knows: [axe stump, firewood, wooden board]
+  questLines: [kris-firewood-slats, kris-old-wood-runners]
+  relationships:
+    - { persona: noelle, kind: PUTS_UP_WITH_THE_BELLS_OF }
+    - { persona: ingeborg, kind: KEPT_A_SLING_FROM }
+  giftItemIds: [2020013, 2020004]
+  dialogue:
+    greetFirst: ["mind the runners. that's a sled you're standing on. it isn't finished. hello.", "a visitor. you look like you'd fit a two-seater. i'm Kris. i make sleds."]
+    greet: ["hey.", "back. want to see a sled?", "hello. she's nearly done."]
+    idle: ["(runs a palm down a sled runner, frowns, and sands one spot very lightly)", "(sits on a half-built sled, bounces once, listens, and nods)"]
+    noWork: ["nothing today. the sleds are built and the hill's packed. i'm admiring them. that's work too."]
+    nothingDue: ["we're square."]
+    who: ["Kris. i make sleds. Happyville's all hill and snow and the snow never stops, so somebody had to. i test every one down the Hill of Christmas myself. i've only broken my arm the once."]
+    bye: ["keep your feet in."]
+    thanks: ["thanks."]
+    smallTalk: ["firewood makes the best slats. dry, and it doesn't split. the axe stumps on the rocky mountains round Perion are made of it. walking firewood.", "Roodolph pulls Santa's sleigh, not mine. i've asked. i built him one with red runners anyway. he looked at it for a long time."]
+    speakPlainly: ["plainly: wood, wax, and a long way down."]
+    questOffer.kris-firewood-slats: ["i'm short of slats. firewood makes the best ones. the axe stumps on West Rocky Mountain II and III, west of Perion, are made of it. twenty stumps, fifteen pieces of firewood."]
+    questAccept.kris-firewood-slats: ["Perion, then out to West Rocky Mountain, the second and the third. they carry axes. they're stumps. it's odd. don't stand under them."]
+    questWaiting.kris-firewood-slats: ["fifteen pieces. i've got runners and nothing to sit on."]
+    questComplete.kris-firewood-slats: ["fifteen. dry as anything. listen to that. that's a slat that'll last. here, have these. reindeer milk. it's good. don't ask Roodolph how."]
+    questOffer.kris-old-wood-runners: ["i want to build the fastest sled on the hill, and old wood makes the fastest runners. the wooden masks in the excavation sites east of Perion carry boards older than Perion. twenty masks, ten boards. then have a snowman in the square take you up the Hill of Christmas, bring her down it, and tell me how she runs."]
+    questAccept.kris-old-wood-runners: ["east of Perion, the excavation sites, all three. the wooden masks. they knock when you hit them. bring the boards here first."]
+    questWaiting.kris-old-wood-runners: ["ten boards. or have you taken her down the Hill yet?"]
+    questComplete.kris-old-wood-runners: ["she ran? how fast? ...faster than that? ha. old wood. i knew it. here. you rode her first. that's the rule. the builder always goes second."]
+    about.noelle: ["Noelle hangs bells on my sleds. i take them off. she puts them back. i've stopped taking them off. don't tell her."]
+    about.ingeborg: ["Ingeborg knits mufflers for everyone who rides my sleds. she says it's so they don't catch cold. she says it looking at my arm."]
+    aboutUnknown: ["never ridden one of mine."]
+    friend.close: ["take any sled out, any time. i'll wax it first."]
+    friend.best: ["i built you a sled. your name's burnt into the seat. it's the fastest one i've made. i'll deny it."]
+    famed: ["everyone's talking about you. on the hill. at speed. it's how we talk here."]
+    defamed: ["people say all sorts on the way down a hill. it's the wind."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["now that's a proper lunch for the top of a hill. thanks."]
+    gift.again: ["one a day. i've got to fit on a sled."]
+
+- id: ingeborg
+  name: Ingeborg
+  look: { gender: female }
+  title: "Knitter of Mufflers for Travellers"
+  job: BEGINNER
+  level: { min: 36, max: 38 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: happyville
+    routine:
+      - { from: 10, to: 16, spot: "venue:by-rupi", activity: LINGER }
+      - { from: 16, to: 21, spot: "venue:by-simon", activity: REST }
+      - { from: 21, to: 10, materialize: false }
+  recruitable: false
+  knows: [ribbon pig, wild boar, stiff feather]
+  questLines: [ingeborg-ribbon-trim, ingeborg-down-for-the-lining]
+  relationships:
+    - { persona: noelle, kind: KNITS_FOR }
+    - { persona: kris, kind: KNITTED_A_SLING_FOR }
+  giftItemIds: [2020013, 2020016]
+  dialogue:
+    greetFirst: ["come here, let me look at your neck. ...cold. i knew it. sit down. i'm Ingeborg. i'll have something round it in an hour.", "a traveller! Rooney sent you, i expect. you've come to the snow in that? sit down, dear."]
+    greet: ["hello, dear. warm enough?", "you again. let me see your neck. good.", "hello. sit. i'm nearly done this row."]
+    idle: ["(knits without looking, counting stitches under her breath, and holds the muffler up to the light)", "(measures the air at the height of someone's neck with two fingers, and nods)"]
+    noWork: ["nothing today. everyone's warm. i'm knitting ahead, for whoever comes next."]
+    nothingDue: ["nothing owed, dear. keep warm."]
+    who: ["Ingeborg. i knit mufflers for travellers. Rooney sends people here from every town on Victoria in their summer things, and they stand in the snow going blue. so i sit where they come in and knit. i've made four thousand. i've stopped counting. that's a lie. four thousand and twelve."]
+    bye: ["keep it wrapped round twice."]
+    thanks: ["thank you, dear."]
+    smallTalk: ["pig's ribbons make the best trim. pink, and soft, and the ribbon pigs round Henesys have plenty. they don't miss them. i've asked.", "the scarf snowman up the Hill of Christmas wears one of mine. i made it forty winters ago. it's always winter here. it's held up well."]
+    speakPlainly: ["plainly: wool, needles, and nobody cold."]
+    questOffer.ingeborg-ribbon-trim: ["i've run out of trim. pig's ribbons are best. the ribbon pigs on Henesys Hunting Ground II and III wear them. twenty pigs, fifteen ribbons. and come back after. i'll have something for your neck."]
+    questAccept.ingeborg-ribbon-trim: ["Henesys, the hunting grounds, the second and third. the pigs with bows on. they're vain. they'll fight for those."]
+    questWaiting.ingeborg-ribbon-trim: ["fifteen ribbons, dear. your neck's still bare."]
+    questComplete.ingeborg-ribbon-trim: ["fifteen. lovely. pink as anything. now hold still. ...there. a warm muffler, twice round. it's yours. don't let me catch you without it."]
+    questOffer.ingeborg-down-for-the-lining: ["a lined muffler for the far road. the wild boars carry stiff feathers in their bristles. don't ask me why. the boars in the Land of Wild Boar past Perion, and the second one beside it. twenty-five boars, fifteen feathers. and when you've brought them, ask one of the snowmen here to take you up the Hill of Christmas and look at the scarf snowman by the tree. tell me if mine's still holding."]
+    questAccept.ingeborg-down-for-the-lining: ["Perion, then the Land of Wild Boar and the second one beside it. they charge. step aside, they can't turn. bring the feathers here first."]
+    questWaiting.ingeborg-down-for-the-lining: ["fifteen feathers, dear. and the snowman? is mine holding?"]
+    questComplete.ingeborg-down-for-the-lining: ["still holding? forty winters. good wool. and the feathers make a lovely lining. here, for the far road. you've earned it twice round."]
+    about.noelle: ["Noelle wears the reindeer muffler i made her every day. she says it looks like a dog. it's a reindeer. she loves it anyway."]
+    about.kris: ["Kris broke his arm on the hill once. i knitted him a sling. he still has it. he says it's a muffler now. it isn't."]
+    aboutUnknown: ["never knitted for them. tell them to come. i'll measure."]
+    friend.close: ["i've your measurements in my book now. you'll never be cold here again. not while i'm knitting."]
+    friend.best: ["i've started a muffler just for you. it's very long. it's going to be very long. i'm not stopping."]
+    famed: ["everyone's saying your name, dear. warmly. as they should."]
+    defamed: ["a cold word about you? wrap it in wool and it goes soft."]
+    gift: ["oh, thank you, dear."]
+    gift.favorite: ["oh, that's a treat for the knitting. that'll see me through a row or two."]
+    gift.again: ["one a day, dear. i've my needles to think of."]

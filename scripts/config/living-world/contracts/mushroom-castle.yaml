@@ -1,0 +1,32 @@
+# Mushroom Castle contracts (wave 4): a knight's day rate once the player has walked his forest patrol, and a healer's
+# item price in poison mushroom caps after her first lesson.
+- id: percival-the-knights-wage
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [percival.intro.done]
+  price:
+    meso: 25000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 10000 }
+
+- id: fern-the-healers-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [fern.intro.done]
+  price:
+    meso: 10000
+    items: [{ itemId: 4000500, count: 30 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 5000 }

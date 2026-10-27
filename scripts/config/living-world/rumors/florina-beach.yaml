@@ -1,0 +1,30 @@
+# Florina Beach rumors (wave 4). Each pair is awake together at its spot in those hours (personas/florina-beach.yaml).
+- id: florina-the-tide-line
+  participants: [marisol, abel]
+  where: { town: florina-beach, spot: "venue:lower-east-street-2" }
+  when:
+    serverHours: [17, 18]
+    everyDays: 1
+    requiresArc: { arc: marisol-the-sealed-bottle, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: abel, text: "that bottle of yours. the silver gull in the wax." }
+    - { by: marisol, text: "you went quiet when you saw it." }
+    - { by: abel, text: "the Silver Gull went down off the point forty springs back. a spring storm. i was mending nets in this shed the night she went." }
+    - { by: marisol, text: "you never told me." }
+    - { by: abel, text: "you never brought me a bottle before. we found spars for a month after. nothing else. the sea keeps what it likes and gives back what it likes." }
+    - { by: marisol, text: "it gave that one back to me." }
+    - { by: abel, text: "then it meant to." }
+
+- id: florina-the-hot-sand
+  participants: [nerys, ronan]
+  where: { town: florina-beach, spot: "venue:upper-east-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 2
+  lines:
+    - { by: ronan, text: "sand in your boots again, Nerys." }
+    - { by: nerys, text: "the clangs dug up the Hot Sand overnight. i put it back." }
+    - { by: ronan, text: "with your boots?" }
+    - { by: nerys, text: "with my boots. you scrubbed the ferry deck with yours." }
+    - { by: ronan, text: "and you could see your face in it. Pison still says so." }
+    - { by: nerys, text: "Pison says that about everything that isn't his little boat." }

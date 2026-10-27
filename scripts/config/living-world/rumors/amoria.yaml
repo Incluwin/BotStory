@@ -1,0 +1,31 @@
+# Amoria rumors (wave 4). Each pair is awake together at its spot in those hours (personas/amoria.yaml).
+- id: amoria-the-chapel-steps
+  participants: [pernille, clotilde]
+  where: { town: amoria, spot: "venue:by-assistant-bonnie" }
+  when:
+    serverHours: [18, 19]
+    everyDays: 1
+    requiresArc: { arc: pernille-forty-springs, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: amoria.heard-steps
+  lines:
+    - { by: clotilde, text: "forty springs, Pernille, and a flower on these steps every first morning. i never once asked you who it was for." }
+    - { by: pernille, text: "a bosun off the Silver Gull. Aurelio. he said he'd write." }
+    - { by: clotilde, text: "and he wrote." }
+    - { by: pernille, text: "he wrote. he asked me to lay a flower on the chapel steps if it was yes. i'd been laying one every spring. i didn't know there was a question." }
+    - { by: clotilde, text: "forty years of yes. and i baked a little cake every one of those springs, in case he came up the hill." }
+    - { by: pernille, text: "the sea hears things, Clotilde. somebody only has to carry them down to it." }
+
+- id: amoria-the-newlyweds
+  participants: [rafael, liesel]
+  where: { town: amoria, spot: "venue:by-moony" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: amoria.heard-liesel
+  lines:
+    - { by: liesel, text: "you're telling the story again, Rafael. i can see it on your face." }
+    - { by: rafael, text: "the Challenge's second room. i was on the wrong rope." }
+    - { by: liesel, text: "you were on every wrong rope." }
+    - { by: rafael, text: "and i fell, and a stranger caught me with a heal from across the room. i looked up, and it was you." }
+    - { by: liesel, text: "you looked up because you were on the floor." }
+    - { by: rafael, text: "anyone who goes out with Liesel behind them comes home whole. i'd tell them so myself. i'm telling them now." }

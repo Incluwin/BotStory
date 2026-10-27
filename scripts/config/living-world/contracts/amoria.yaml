@@ -1,0 +1,32 @@
+# Amoria contracts (wave 4): a newlywed fighter's item price once the player has run the forest with him, and his wife,
+# who asks only that the player has heard the two of them at Moony's.
+- id: rafael-the-tail-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [rafael.intro.done]
+  price:
+    meso: 15000
+    items: [{ itemId: 4000070, count: 20 }]
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 8000 }
+
+- id: liesel-the-veil-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [amoria.heard-liesel]
+  price:
+    meso: 30000
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 10000 }

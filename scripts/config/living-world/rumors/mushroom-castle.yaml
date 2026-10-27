@@ -1,0 +1,18 @@
+# Mushroom Castle rumors (wave 4). The pair is awake together at its spot in those hours (personas/mushroom-castle.yaml).
+- id: mc-the-kitchen
+  participants: [wilmot, primrose]
+  where: { town: mushroom-castle, spot: "venue:by-secretary-of-domestic-affairs" }
+  when:
+    serverHours: [17, 18, 19]
+    everyDays: 1
+    requiresArc: { arc: wilmot-the-kingdoms-cake, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: mc.heard-kitchen
+  lines:
+    - { by: primrose, text: "is that batter, Wilmot? i shan't have any." }
+    - { by: wilmot, text: "it's a spoon. you're holding it." }
+    - { by: primrose, text: "i'm holding it for you. ...it's very good batter." }
+    - { by: wilmot, text: "my mother made it this way, in Henesys. she said a cake's for everybody, or it isn't a cake." }
+    - { by: primrose, text: "and who's everybody, at this court?" }
+    - { by: wilmot, text: "the guards on the castle wall. they eat last. they always have." }
+    - { by: primrose, text: "then whoever carries a slice up to that wall, Wilmot, the whole guard will remember their name. i'll see to it." }
+    - { by: wilmot, text: "you'll see to the spoon first." }

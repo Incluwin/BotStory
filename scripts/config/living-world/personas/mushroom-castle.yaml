@@ -1,0 +1,336 @@
+# Mushroom Castle cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 5 Residents, 2
+# recruitable. The Mushroom Kingdom's court keeps to the forest field below the castle; the humans in it came through
+# Henesys's Empty House or wandered in. Its baker was ordered to bake a wedding cake nobody wanted and bakes one for the
+# kingdom instead, with the caps Brisa still sends him from Henesys (arcs/mushroom-castle.yaml). The stock story
+# (Princess Violetta, King Pepe, the Prime Minister's wedding) belongs to the stock quests: every line here holds whether
+# or not a given player has climbed the castle. Two recruits give armour in the castle's band: shoes for the player's
+# class (Percival, the King Pepe boots first) and earrings (Fern). The profile has four venues, so Residents share them.
+- id: wilmot
+  name: Wilmot
+  look: { gender: male }
+  title: "Royal Baker of the Mushroom Kingdom"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mushroom-castle
+    routine:
+      - { from: 4, to: 11, spot: "venue:by-secretary-of-domestic-affairs", activity: LINGER }
+      - { from: 11, to: 15, materialize: false }
+      - { from: 15, to: 21, spot: "venue:by-secretary-of-domestic-affairs", activity: SOCIALIZE }
+      - { from: 21, to: 4, materialize: false }
+  recruitable: false
+  knows: [renegade spores, mutated spore, castle wall edge]
+  questLines: [wilmot-a-cake-for-no-one, wilmot-caps-from-home, wilmot-the-kingdoms-cake]
+  arc: wilmot-the-kingdoms-cake
+  rumors: [mc-the-kitchen]
+  relationships:
+    - { persona: primrose, kind: BAKES_FOR }
+    - { persona: brisa, kind: GETS_CAPS_FROM }
+    - { persona: percival, kind: FEEDS }
+  giftItemIds: [2020002, 2020012]
+  dialogue:
+    greetFirst: ["mind the flour. it gets everywhere. it's in my eyebrows. it's been in my eyebrows thirty years.", "a human! from outside? sit down. i'll get you something warm. we don't get many of us."]
+    greet: ["hello! mind the flour.", "you! there's bread.", "come in, come in. the oven's warm."]
+    idle: ["(kneads a lump of dough, folds it, turns it, and kneads it again, humming)", "(dusts flour off his apron, which only moves it somewhere else)"]
+    noWork: ["nothing today. the bread's proving. you can't hurry bread. i've tried. it sulks."]
+    nothingDue: ["nothing owed. take a roll."]
+    who: ["Wilmot. royal baker to the Mushroom Kingdom. i came through the Empty House in Henesys when i was nine, chasing a cat. i never found the way back. i never looked very hard. there was a kitchen."]
+    bye: ["take a roll for the road."]
+    thanks: ["oh, good. thank you."]
+    smallTalk: ["the order came down from the Prime Minister's desk: a wedding cake, seven tiers, mutated-spore icing. for a wedding nobody in this kingdom wanted. it's pinned over my oven. i haven't touched it.", "the mushrooms here don't eat cake. they eat sunlight and gossip. i bake anyway. somebody has to remember what a cake is."]
+    speakPlainly: ["plainly: bread, and an order i haven't filled."]
+    questOffer.wilmot-a-cake-for-no-one: ["that order wants mutated-spore icing. the renegade spores in the forest carry it. go and clear twenty-five of them out, and bring me ten spores. they're going in the oven, every one. that's my answer to the order."]
+    questAccept.wilmot-a-cake-for-no-one: ["down past the court, the secluded forest and the isolated one past it. they're the spores that wander. they're rude."]
+    questWaiting.wilmot-a-cake-for-no-one: ["ten spores. the oven's hot."]
+    questComplete.wilmot-a-cake-for-no-one: ["ten. into the fire. and the order with them. there. no cake. not that cake. not ever. here, take a roll. i feel lighter than a sponge."]
+    questOffer.wilmot-caps-from-home: ["a girl in Henesys sends me a basket of caps every spring. Brisa. orange ones, from the field behind the Empty House. i'd like to bake with them this year. would you go and fetch the basket? she always has one waiting."]
+    questAccept.wilmot-caps-from-home: ["Henesys. she'll be in the park, or under a mushroom. one or the other."]
+    questWaiting.wilmot-caps-from-home: ["did she have the basket? she always has the basket."]
+    questComplete.wilmot-caps-from-home: ["the basket! smell that. that's the field behind the Empty House. that's being nine. ...thank you. i know what i'm going to bake now."]
+    questOffer.wilmot-the-kingdoms-cake: ["it's done. not a wedding cake. a cake for the kingdom, with Henesys caps in it. the guards on the castle wall eat last. they always have. clear twenty helmet pepes off the first two towers so nobody steals it on the way, carry it up to the wall, and come and tell me their faces."]
+    questAccept.wilmot-the-kingdoms-cake: ["up the hill, past the thorns, the first two towers. then out along the wall. carry it level. it's tall."]
+    questWaiting.wilmot-the-kingdoms-cake: ["did they eat it? what did they say? what did their faces do?"]
+    questComplete.wilmot-the-kingdoms-cake: ["they ate the lot? the whole thing? ...good. good. that's what cake's for. here. and a slice. i saved you a slice. i always save a slice."]
+    about.primrose: ["Primrose comes to the kitchen to taste things she says she won't eat. she eats them. she's waited on the princess since they were both small."]
+    about.brisa: ["Brisa sends me caps from Henesys every spring. we've never met. i think she thinks i'm a mushroom."]
+    about.percival: ["Percival's the only human in the guard. he eats like three mushrooms. i feed him like four."]
+    about.barley: ["Barley's pigs got into my mash years ago. they've never been sober since. he says it's my fault. it's my fault."]
+    about.fern: ["Fern practises her healing on my burns. i get a lot of burns. she's getting very good."]
+    aboutUnknown: ["never baked for them. send them round."]
+    friend.close: ["you can have the end of every loaf. the crusty end. that's the best bit. ask anyone."]
+    friend.best: ["i'm going to name a bread after you. not a cake. a bread. bread's for every day. that's better."]
+    famed: ["the court talks about you. with crumbs on their chins. that's the best way."]
+    defamed: ["hm. whoever said that gets yesterday's bread."]
+    gift: ["oh! for me? thank you."]
+    gift.favorite: ["oh, a treat somebody else made! i never get treats somebody else made. thank you!"]
+    gift.again: ["one a day, thank you. i'll get fat. fatter."]
+
+- id: primrose
+  name: Primrose
+  look: { gender: female }
+  title: "Lady-in-Waiting to Princess Violetta"
+  job: BEGINNER
+  level: { min: 26, max: 28 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: mushroom-castle
+    routine:
+      - { from: 9, to: 16, spot: "venue:by-scarrs", activity: LINGER }
+      - { from: 16, to: 21, spot: "venue:by-secretary-of-domestic-affairs", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [poison mushroom, poison spore, royal guard pepe]
+  questLines: [primrose-spores-for-the-dish, primrose-the-pennants]
+  rumors: [mc-the-kitchen]
+  relationships:
+    - { persona: wilmot, kind: TASTES_FOR }
+    - { persona: fern, kind: CONFIDES_IN }
+    - { persona: percival, kind: CORRECTS_THE_BOW_OF }
+  giftItemIds: [2020013, 2020009]
+  dialogue:
+    greetFirst: ["oh! a visitor. curtsey. no, you don't have to. i have to. it's my whole job.", "welcome to the court. it's mostly a field. we're very proud of the field."]
+    greet: ["good day.", "oh, you. good. i need someone to tell things to.", "hello again. curtsey."]
+    idle: ["(folds a lace handkerchief into a perfect square, unfolds it, and folds it again)", "(practises a curtsey, wobbles, and looks round to see if anyone saw)"]
+    noWork: ["nothing today. the rooms are aired, the linen's folded, the gossip's sorted."]
+    nothingDue: ["nothing outstanding. very proper."]
+    who: ["Primrose. lady-in-waiting to Princess Violetta, since we were both small enough to hide under the throne. i keep her rooms ready, every morning, whatever's happening up the hill. a princess should always have somewhere to come back to."]
+    bye: ["curtsey. off you go."]
+    thanks: ["oh, how kind. thank you."]
+    smallTalk: ["the vines at the end of the deep forest close up over the road. they open for a poison spore. they eat it, the greedy things. i keep a dish of spores by the door for the messengers.", "the royal guard pepes in the towers fly the castle's gold thread on their pennants. it's our gold. i've embroidered with that thread since i was six. i'd know it anywhere."]
+    speakPlainly: ["plainly: the princess's rooms, and everything that goes in them."]
+    questOffer.primrose-spores-for-the-dish: ["the spore dish by the door is empty, and a messenger can't get through the vines without one. the poison mushrooms in the forest drop them, one in ten if they're feeling generous. twenty of them, and three spores, please."]
+    questAccept.primrose-spores-for-the-dish: ["the forest, down past the court. the purple ones. hold your breath."]
+    questWaiting.primrose-spores-for-the-dish: ["three spores. the messengers are waiting. they're very patient. they're mushrooms."]
+    questComplete.primrose-spores-for-the-dish: ["three! the dish is full. well, three. three's full, for a dish. thank you. very proper."]
+    questOffer.primrose-the-pennants: ["the royal guard pepes in the high towers fly pennants on their spears, in our gold thread. twenty of them, and ten broken spears, and i'll unpick the thread for the princess's sleeves. waste not."]
+    questAccept.primrose-the-pennants: ["the castle's fourth, fifth and sixth towers. they stand very straight. they're very rude."]
+    questWaiting.primrose-the-pennants: ["ten spears. the needle's threaded."]
+    questComplete.primrose-the-pennants: ["ten! look at that thread. still bright. the princess will have gold sleeves by spring. here, for you. curtsey."]
+    about.wilmot: ["Wilmot bakes for the whole court. he came through a house in Henesys when he was nine and never went home. i taste everything he makes. i say i won't. then i do."]
+    about.fern: ["Fern's the Secretary of Magic's pupil. i tell her everything. she writes some of it down. i don't ask which bits."]
+    about.percival: ["Sir Percival is the only human knight in the guard. he bows to me every morning. too low. i've told him. he bows lower."]
+    about.barley: ["Barley keeps pigs. drunk pigs. i don't discuss the pigs."]
+    aboutUnknown: ["they're not at court. i'd know."]
+    friend.close: ["you may come to court whenever you like. i've told the guard. they bow now. well. they try."]
+    friend.best: ["i've embroidered your name on a handkerchief, in the gold thread. it's for the princess's own drawer. there's no higher honour. i checked."]
+    famed: ["the whole court says your name. i make sure they say it properly."]
+    defamed: ["gossip. i'd know. i run it."]
+    gift: ["oh! how kind."]
+    gift.favorite: ["oh, now that's a proper treat. i shan't share it. not even with the princess. well. a little."]
+    gift.again: ["one a day is quite enough. a lady has limits."]
+
+- id: percival
+  name: Percival
+  look: { gender: male }
+  title: "The Human Knight of the Mushroom Guard"
+  job: PAGE
+  level: { min: 34, max: 36 }
+  strength: SEASONED
+  loadout: perion-warrior-l30
+  personality: efficient-v1
+  home:
+    town: mushroom-castle
+    routine:
+      - { from: 6, to: 13, spot: "venue:by-head-security-officer", activity: LINGER }
+      - { from: 13, to: 17, materialize: false }
+      - { from: 17, to: 23, spot: "venue:by-head-security-officer", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [helmet pepe, royal guard pepe, destroyed helmet]
+  contract: percival-the-knights-wage
+  questLines: [percival-the-forest-patrol, percival-king-pepe-shoes, percival-the-tower-boots, percival-the-long-watch, percival-helmets-for-the-forge]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: primrose, kind: BOWS_TO }
+    - { persona: barley, kind: WAS_CHARGED_BY_THE_PIGS_OF }
+    - { persona: fern, kind: IS_PATCHED_UP_BY }
+  giftItemIds: [2020006, 2020004]
+  dialogue:
+    greetFirst: ["halt! who goes there? ...a human. forgive me. i'm not used to looking anyone in the eye. Sir Percival, at your service.", "well met, traveller. you'll forgive the salute. the mushrooms don't salute. i do it for all of us."]
+    greet: ["well met.", "ah, you. good day.", "at your service."]
+    idle: ["(polishes a sword that is already shining, holds it up to check his reflection, and straightens his collar)", "(stands guard very straight beside a mushroom half his height, and nods to it)"]
+    noWork: ["nothing today. the forest is patrolled. the towers are watched. i shall polish something."]
+    nothingDue: ["we're square, on my honour."]
+    who: ["Sir Percival. the only human knight the mushroom guard has ever had. i came looking for a dragon to fight when i was twelve. i found a kingdom that needed a door held. i've held it since."]
+    bye: ["fare you well."]
+    thanks: ["my thanks."]
+    smallTalk: ["the helmet pepes in the towers wear helmets too big for them. the dents are from the mushroom guard's old armoury. i'd know. i put some of them there.", "King Pepe's own tailors made boots for his officers once. good boots. i've the pattern and i've the leather. all i need is the helmets off the pepes for the toe-caps."]
+    speakPlainly: ["plainly: a sword, a door, and an oath."]
+    offer: ["twenty-five thousand a day. a knight's wage, the Head Security Officer says. i'd do it for less. don't tell him. i'll ride with you wherever the road goes."]
+    join: ["on my honour, then. lead on."]
+    bench: ["three days. then the guard needs me back."]
+    leave: ["back to my post. fare you well."]
+    refuse.bond: ["i don't swear my sword to a stranger. forgive me. it's the oath."]
+    refuse.flags: ["walk the forest patrol with me first. thirty renegade spores. then ask."]
+    refuseOwnErrand: ["the patrol first. walk it with me."]
+    questOffer.percival-the-forest-patrol: ["walk the forest patrol with me. the renegade spores in the secluded and isolated forests, and the deep forest past them. thirty of them. they go where they please. they shouldn't."]
+    questAccept.percival-the-forest-patrol: ["down past the court, into the trees. they wander. you'll find them."]
+    questWaiting.percival-the-forest-patrol: ["thirty. keep to the path."]
+    questComplete.percival-the-forest-patrol: ["thirty. a clean patrol. you'd make a fine knight. you'd have to be knighted first. i could ask."]
+    questOffer.percival-king-pepe-shoes: ["boots for you, from the King Pepe pattern, cut for your trade. i need the toe-caps: thirty helmet pepes in the towers, and ten of the helmets they drop."]
+    questAccept.percival-king-pepe-shoes: ["the castle towers, the first ones up the hill, and the security room if you're let in. they wear their helmets low. aim for the dents."]
+    questWaiting.percival-king-pepe-shoes: ["ten helmets. the leather's waiting."]
+    questComplete.percival-king-pepe-shoes: ["ten. the King Pepe boots, cut for you. safe scrolls in every slot, every one took. a king's tailors made the pattern. a knight cut the leather. you'll walk well."]
+    questOffer.percival-the-tower-boots: ["better boots, for the tower stairs, cut for your trade. the royal guard pepes in the high towers shoe their spear-butts with good iron. forty of them, and fifteen broken spears."]
+    questAccept.percival-the-tower-boots: ["the high towers, the fourth, fifth and sixth. they guard well. we'll guard better."]
+    questWaiting.percival-the-tower-boots: ["fifteen spears. the hobnails are waiting."]
+    questComplete.percival-the-tower-boots: ["fifteen. tower boots. sixties in every slot, every one took. you'll never slip on a stair again. i never have. well. once."]
+    questOffer.percival-the-long-watch: ["the long watch. a knight's boots, the best i can make, cut for your trade. stand the whole watch with me: sixty royal guard pepes and sixty helmet pepes, every tower and the security rooms. then come back and tell me the towers are quiet."]
+    questAccept.percival-the-long-watch: ["all the towers. all of them. it's a long watch. that's why it's called that."]
+    questWaiting.percival-the-long-watch: ["sixty and sixty. stand your watch."]
+    questComplete.percival-the-long-watch: ["sixty and sixty. a knight's boots, then. two tens and the rest sixties, every one took. walk tall in them. i'll know it's you by the sound."]
+    questOffer.percival-helmets-for-the-forge: ["ten destroyed helmets? the forge is cold."]
+    questAccept.percival-helmets-for-the-forge: ["the towers."]
+    questWaiting.percival-helmets-for-the-forge: ["ten."]
+    questComplete.percival-helmets-for-the-forge: ["ten. the forge thanks you. so do i."]
+    about.primrose: ["Lady Primrose corrects my bow every morning. too low, she says. so i bow lower. it's the only argument i've ever won."]
+    about.barley: ["Barley's pigs charged me once. all of them. i stood my ground. they ran into a tree. i've never told anyone it wasn't me."]
+    about.fern: ["Fern patches me up after the towers. she says i'm her best practice. i'm not sure that's a compliment."]
+    about.wilmot: ["Wilmot feeds me like four mushrooms. i eat like three. the fourth one's for the road."]
+    aboutUnknown: ["never crossed swords with them. or shaken hands."]
+    friend.close: ["you have my sword. not literally. well. if you need it, literally."]
+    friend.best: ["i've had your name put on the guard's roll of honour. it's a short roll. it was just me. now it's us."]
+    famed: ["your name is spoken at court with honour. i've made sure of it."]
+    defamed: ["name the one who said it. i'll challenge them. politely."]
+    gift: ["you honour me."]
+    gift.favorite: ["now that's a knight's supper. you've a good eye for what a long watch needs."]
+    gift.again: ["one a day, friend. a knight keeps his belt where it is."]
+
+- id: fern
+  name: Fern
+  look: { gender: female }
+  title: "Pupil of the Secretary of Magic"
+  job: CLERIC
+  level: { min: 33, max: 35 }
+  strength: SEASONED
+  loadout: cleric-l32
+  personality: relaxed-v1
+  home:
+    town: mushroom-castle
+    routine:
+      - { from: 8, to: 14, spot: "venue:by-secretary-of-domestic-affairs", activity: LINGER }
+      - { from: 14, to: 19, spot: "venue:by-scarrs", activity: LINGER }
+      - { from: 19, to: 8, materialize: false }
+  recruitable: true
+  knows: [poison mushroom, poison mushroom cap, intoxicated pig]
+  contract: fern-the-healers-share
+  questLines: [fern-the-first-lesson, fern-red-cross-earrings, fern-emerald-earrings, fern-cats-eye, fern-poison-caps]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: percival, kind: PATCHES_UP }
+    - { persona: primrose, kind: LISTENS_TO }
+    - { persona: wilmot, kind: TREATS_THE_BURNS_OF }
+  giftItemIds: [2000006, 2000003]
+  dialogue:
+    greetFirst: ["oh! hold still. you've got a scratch. there. gone. sorry. i do that. i'm practising.", "hello! are you hurt? you look hurt. everyone looks a little hurt to me. that's the training."]
+    greet: ["hello! hurt anywhere?", "oh, you. hold still. no, you're fine.", "hi. i'm reading. i'm always reading."]
+    idle: ["(reads a spell book with her finger under every word, mouthing them)", "(heals a wilting flower, watches it stand up, and writes something down quickly)"]
+    noWork: ["nothing today. the Secretary's lesson is about patience. i'm being patient. i'm being so patient."]
+    nothingDue: ["nothing owed. you're healed up, too. i checked."]
+    who: ["Fern. pupil of the Secretary of Magic. i came from Ellinia to study under a mushroom. everyone laughed. the Secretary knows more about healing than all of Ellinia. i'm not laughing. i'm taking notes."]
+    bye: ["don't get hurt. if you do, come back."]
+    thanks: ["oh! thank you."]
+    smallTalk: ["the poison mushrooms in the forest carry their own antidote in their caps. the Secretary showed me. you'd never think a poison would carry its own cure. that was the first lesson.", "the Secretary says a healer has to know what the wound feels like. i've been poisoned eleven times this month. i'm learning a lot."]
+    speakPlainly: ["plainly: healing, and a lot of reading."]
+    offer: ["thirty poison mushroom caps for the Secretary's shelves, and ten thousand for my books. then i'll come along and heal you wherever you go."]
+    join: ["let's go! i've packed bandages. and a book."]
+    bench: ["three days. then i've a lesson."]
+    leave: ["back to my books. don't get hurt."]
+    refuse.bond: ["i'd love to. but the Secretary says a healer should know who she's healing first."]
+    refuse.flags: ["help me with my first lesson first. the poison mushrooms in the forest, and ten of their caps. then ask."]
+    refuseOwnErrand: ["my lesson first. come and help."]
+    questOffer.fern-the-first-lesson: ["my first lesson. the antidote's in the poison mushroom's own cap. twenty-five of them in the forest, and ten caps, and i'll brew it for the Secretary."]
+    questAccept.fern-the-first-lesson: ["the forest past the court. the purple ones. if you get poisoned, come back. i'll practise."]
+    questWaiting.fern-the-first-lesson: ["ten caps. the pot's on."]
+    questComplete.fern-the-first-lesson: ["ten. it worked! the Secretary nodded. the Secretary never nods. here, for you. and i'll heal you for free. always."]
+    questOffer.fern-red-cross-earrings: ["earrings, for you. red cross ones, a healer's. i've blessed them. the setting wants mutated spore: twenty renegade spores in the forest, and ten spores."]
+    questAccept.fern-red-cross-earrings: ["the forest past the court. the ones that wander. they glow a bit."]
+    questWaiting.fern-red-cross-earrings: ["ten spores. the setting's ready."]
+    questComplete.fern-red-cross-earrings: ["ten. red cross earrings. safe scrolls in every slot, every one took. a healer's earrings. you're a little bit a healer now. that's how it works. i've decided."]
+    questOffer.fern-emerald-earrings: ["emerald earrings. better ones. the Secretary's sobering draught wants the intoxicated pigs' tails. don't ask. it works. twenty-five pigs on the steep downhill, and ten tails."]
+    questAccept.fern-emerald-earrings: ["past the deep forest, through the vines. they open for a poison spore. then down the steep hill. the pigs are very loud."]
+    questWaiting.fern-emerald-earrings: ["ten tails. it works. i promise."]
+    questComplete.fern-emerald-earrings: ["ten. the draught's bubbling. emerald earrings for you. sixties in every slot, every one took. green for healing. green for Ellinia. both."]
+    questOffer.fern-cats-eye: ["the cat's eye. the best stone i have. the Secretary says the castle's old magic only settles in a stone when the towers are quiet. quiet them for me: thirty helmet pepes and thirty royal guard pepes."]
+    questAccept.fern-cats-eye: ["the castle towers, all the way up, and the security room if they let you in. they hit hard. come back. i'll be here."]
+    questWaiting.fern-cats-eye: ["thirty and thirty. i can feel the stone warming. nearly."]
+    questComplete.fern-cats-eye: ["thirty and thirty. the cat's eye. two tens and the rest sixties, every one took. look into it. that's the castle's old magic. it likes you."]
+    questOffer.fern-poison-caps: ["ten poison mushroom caps? the antidote shelf's empty."]
+    questAccept.fern-poison-caps: ["the forest."]
+    questWaiting.fern-poison-caps: ["ten."]
+    questComplete.fern-poison-caps: ["ten. the shelf's full. the Secretary nodded again. twice in a month."]
+    about.percival: ["Sir Percival comes back from the towers with a new bruise every day. he's my best practice. i told him that. he looked hurt. then i healed it."]
+    about.primrose: ["Primrose tells me everything that happens at court. i write down the useful bits. there aren't many. i write the others down too."]
+    about.wilmot: ["Wilmot burns himself on the oven three times a day. i've got very good at burns. i think he does it to help me study. i think he's just clumsy."]
+    about.barley: ["Barley's pigs are a medical marvel. they've been drunk for years and never once been ill. the Secretary wants to study them. the pigs don't."]
+    aboutUnknown: ["never healed them."]
+    friend.close: ["i'll heal you first. before anyone. even Sir Percival. don't tell him."]
+    friend.best: ["i've written a healing spell just for you. it's not very good yet. it's yours. i'll keep working on it."]
+    famed: ["people at court say your name like a good remedy. that's a compliment, from a healer."]
+    defamed: ["that's poison talk. i've an antidote for it. it's not listening."]
+    gift: ["oh! thank you!"]
+    gift.favorite: ["oh, that's perfect. that's a whole afternoon of practice in a bottle. thank you!"]
+    gift.again: ["one a day. i've a lot of bottles already."]
+
+- id: barley
+  name: Barley
+  look: { gender: male }
+  title: "Swineherd of the Steep Downhill"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mushroom-castle
+    routine:
+      - { from: 5, to: 12, spot: "venue:beside-thorr", activity: LINGER }
+      - { from: 12, to: 18, spot: "venue:by-head-security-officer", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:by-secretary-of-domestic-affairs", activity: REST }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [intoxicated pig, intoxicated pig tail, poison mushroom]
+  questLines: [barley-sobering-up, barley-the-trough]
+  relationships:
+    - { persona: wilmot, kind: BLAMES_FOR_THE_PIGS }
+    - { persona: percival, kind: KEEPS_THE_SECRET_OF }
+    - { persona: fern, kind: IS_STUDIED_BY }
+  giftItemIds: [2020000, 2001000]
+  dialogue:
+    greetFirst: ["afternoon. you've not seen a pig, have you? a dozen pigs? walking funny? never mind. i know where they are.", "hullo. mind your boots. i've been with the pigs."]
+    greet: ["afternoon.", "oh, it's you. the pigs are fine. the pigs are never fine.", "hullo."]
+    idle: ["(leans on a long stick and looks down the hill, counting under his breath)", "(scratches a note in the dirt with the end of his stick, frowns at it, and rubs it out with his boot)"]
+    noWork: ["nothing today. the pigs are asleep. somewhere. it's very peaceful when they're asleep."]
+    nothingDue: ["nothing owed. you've done right by the pigs."]
+    who: ["Barley. i keep the pigs on the steep downhill, past the deep forest. they got into the baker's mash years back and never came out of it. they're not wicked pigs. they're just never sober."]
+    bye: ["mind the hill."]
+    thanks: ["right kind of you."]
+    smallTalk: ["the vines at the end of the deep forest let you by if you've a poison spore in your pocket. they eat it. i carry a few. so would you, with pigs on the other side.", "the poison mushrooms drop their caps in the trough by the split road. the pigs eat them. then they fight the mushrooms. then they sleep. it's a cycle."]
+    speakPlainly: ["plainly: pigs. that's it. pigs."]
+    questOffer.barley-sobering-up: ["the pigs on the steep downhill are fighting again. knock twenty-five of them down for me and they'll sleep it off. they wake up kinder. a bit."]
+    questAccept.barley-sobering-up: ["past the deep forest and through the vines. they want a poison spore. then down the steep hill. the pigs'll find you."]
+    questWaiting.barley-sobering-up: ["twenty-five. they'll sleep it off."]
+    questComplete.barley-sobering-up: ["twenty-five. listen to that. snoring. finest sound there is. here, you've earned it."]
+    questOffer.barley-the-trough: ["the poison mushrooms at the split road and the top of the hill drop caps in the pigs' trough. twenty-five of them gone and the trough stays clean a week. that's a week of pigs that only fight each other."]
+    questAccept.barley-the-trough: ["the split road, past the vines, and the top of the steep hill. purple ones. they're cheeky."]
+    questWaiting.barley-the-trough: ["twenty-five. the trough's filling."]
+    questComplete.barley-the-trough: ["twenty-five. a clean trough. the pigs looked at it like they didn't know what it was. here. take this. you've done right."]
+    about.wilmot: ["Wilmot's mash got the pigs drunk. he says sorry every time he sees me. years, now. he's very sorry. the pigs aren't."]
+    about.percival: ["Sir Percival got charged by the pigs once. they ran into a tree. he lets folk think it was his doing. i let him. kind of a pig thing to do, letting him."]
+    about.fern: ["the little healer wants to study my pigs. i said they're not sick, they're just happy. she wrote that down."]
+    about.primrose: ["the lady-in-waiting doesn't discuss the pigs. she asks after them every week, mind. very quietly."]
+    aboutUnknown: ["never met them. the pigs might have."]
+    friend.close: ["you can come down the hill any time. the pigs know you now. they'll only fight you a little."]
+    friend.best: ["i've named a pig after you. the best one. she's never once been sober. she's lovely."]
+    famed: ["folk at court say your name. even the pigs perk up."]
+    defamed: ["i've heard worse said about pigs. the pigs didn't deserve it either."]
+    gift: ["oh, ta."]
+    gift.favorite: ["oh, that's a proper lunch. none of it for the pigs. well. maybe a bite."]
+    gift.again: ["one a day, ta. the pigs'd get jealous."]

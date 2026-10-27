@@ -1,0 +1,287 @@
+# Florina Beach quests (wave 4). Fields: the look-out shed 110010000 and Lorang Lorang 110020000 (lupin 3210800 lupin
+# doll 4000026 / lupin's banana 4000029, lorang 3230102 lorang claw 4000043); the lorangs' cove 110020001 (lorang);
+# Lorang and Clang 110030000 (lorang, clang 4230104 clang claw 4000044); Clang and Lorang 110030001 (lorang, clang,
+# tortie 4130101 tortie shell 4000045); the Hot Sand 110040000 (tortie, clang). The thread's first beat is Marisol's
+# bottle (open to every player); its Amoria beats are in quests/amoria.yaml. The recruits give earrings and capes in
+# the beach's band (37-48).
+
+# ---- Marisol: the sealed bottle (arcs/florina-beach.yaml, with arcs/amoria.yaml) ----
+- id: marisol-the-sealed-bottle
+  persona: marisol
+  title: "The Sealed Bottle"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 30, mapIds: [110020000, 110020001] }
+    - { id: wade, type: DELIVER, to: marisol }
+  rewards: { meso: 8000, exp: 8000, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }], worldFlags: [florina.bottle.found] }
+
+- id: marisol-to-the-chapel-steps
+  persona: marisol
+  title: "To the Chapel Steps"
+  length: MEDIUM
+  requires: { level: { min: 35 }, questsCompleted: [marisol-the-sealed-bottle] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pernille, type: TALK_TO, persona: pernille, say: ["read it to me, would you, dear? my eyes aren't what they were. ...'Pernille. the storm's on us and i'm late. i meant to ask you on the chapel steps this spring. i'm asking now. lay a flower there if it's yes. Aurelio.' ...he wrote. forty springs, and he wrote. tell the girl on the beach thank you."] }
+    - { id: back, type: DELIVER, to: marisol }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 40, items: [{ itemId: 2000002, count: 20 }], worldFlags: [amoria.letter.read] }
+
+- id: marisol-what-the-clangs-dig-up
+  persona: marisol
+  title: "What the Clangs Dig Up"
+  length: SHORT
+  requires: { level: { min: 44 }, questsCompleted: [marisol-the-sealed-bottle] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 30, mapIds: [110040000] }
+    - { id: bucket, type: DELIVER, to: marisol }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 35, items: [{ itemId: 2000004, count: 5 }] }
+
+# ---- Teodor ----
+- id: teodor-the-banana-throwers
+  persona: teodor
+  title: "The Banana Throwers"
+  length: SHORT
+  requires: { level: { min: 36 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 30, mapIds: [110010000, 110020000] }
+    - { id: safe, type: DELIVER, to: teodor }
+  rewards: { meso: 7000, exp: 7500, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: teodor-pinched-toes
+  persona: teodor
+  title: "Pinched Toes"
+  length: SHORT
+  requires: { level: { min: 38 }, questsCompleted: [teodor-the-banana-throwers] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 30, mapIds: [110030000, 110030001] }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000043, count: 12 }
+    - { id: post, type: DELIVER, to: teodor, take: { itemId: 4000043, count: 12 } }
+  rewards: { meso: 9000, exp: 9500, bondPoints: 35, items: [{ itemId: 2000002, count: 20 }] }
+
+# ---- Nerys (recruit; earrings in the beach's band) ----
+- id: nerys-the-hot-sand
+  persona: nerys
+  title: "The Hot Sand"
+  length: SHORT
+  requires: { level: { min: 42 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 40, mapIds: [110040000] }
+    - { id: done, type: DELIVER, to: nerys }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 30, flags: [nerys.intro.done] }
+
+- id: nerys-blue-moon
+  persona: nerys
+  title: "Blue Moon"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 5, questsCompleted: [nerys-the-hot-sand] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 30, mapIds: [110010000, 110020000] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000026, count: 10 }
+    - { id: trade, type: DELIVER, to: nerys, take: { itemId: 4000026, count: 10 } }
+  rewards:
+    meso: 25000
+    exp: 20000
+    bondPoints: 35
+    gear:
+      - { pool: [1032011], scrolls: [{ success: 100 }] }
+
+- id: nerys-pansy-earrings
+  persona: nerys
+  title: "Pansy Earrings"
+  length: MEDIUM
+  requires: { level: { min: 45 }, friendship: 7, questsCompleted: [nerys-blue-moon] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: torties, type: KILL_MOBS, mobIds: [4130101], count: 30, mapIds: [110030001, 110040000] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000045, count: 12 }
+    - { id: setting, type: DELIVER, to: nerys, take: { itemId: 4000045, count: 12 } }
+  rewards:
+    meso: 35000
+    exp: 30000
+    bondPoints: 50
+    gear:
+      - { pool: [1032018], scrolls: [{ success: 60 }] }
+
+- id: nerys-black-emerald
+  persona: nerys
+  title: "Black Emerald"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [nerys-pansy-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 50, mapIds: [110030000, 110030001, 110040000] }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000044, count: 15 }
+    - { id: trade, type: DELIVER, to: nerys, take: { itemId: 4000044, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { pool: [1032027], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: nerys-clang-claws
+  persona: nerys
+  title: "Claws for the Jeweller"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 42 }, questsCompleted: [nerys-the-hot-sand] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000044, count: 10 }
+    - { id: trade, type: DELIVER, to: nerys, take: { itemId: 4000044, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }
+
+# ---- Ronan (recruit; capes in the beach's band) ----
+- id: ronan-the-old-landing
+  persona: ronan
+  title: "The Old Ferry Landing"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 30, mapIds: [110010000, 110020000] }
+    - { id: done, type: DELIVER, to: ronan }
+  rewards: { meso: 8000, exp: 8000, bondPoints: 30, flags: [ronan.intro.done] }
+
+- id: ronan-cape-of-warmness
+  persona: ronan
+  title: "Out of the Mainsail"
+  length: MEDIUM
+  requires: { level: { min: 35 }, friendship: 5, questsCompleted: [ronan-the-old-landing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 30, mapIds: [110010000, 110020000] }
+    - { id: bananas, type: COLLECT_ITEM, itemId: 4000029, count: 12 }
+    - { id: sailmaker, type: DELIVER, to: ronan, take: { itemId: 4000029, count: 12 } }
+  rewards:
+    meso: 20000
+    exp: 15000
+    bondPoints: 35
+    gear:
+      - { pool: [1102109], scrolls: [{ success: 100 }] }
+
+- id: ronan-icarus-cape
+  persona: ronan
+  title: "The Icarus Cape"
+  length: MEDIUM
+  requires: { level: { min: 42 }, friendship: 7, questsCompleted: [ronan-cape-of-warmness] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 40, mapIds: [110030000, 110030001] }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000043, count: 15 }
+    - { id: hem, type: DELIVER, to: ronan, take: { itemId: 4000043, count: 15 } }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 50
+    gear:
+      - { pool: [1102054], scrolls: [{ success: 60 }] }
+
+- id: ronan-blue-napoleon
+  persona: ronan
+  title: "The Last of the Flag"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [ronan-icarus-cape] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: torties, type: KILL_MOBS, mobIds: [4130101], count: 30, mapIds: [110030001, 110040000] }
+    - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 30, mapIds: [110030001, 110040000] }
+    - { id: flag, type: DELIVER, to: ronan }
+  rewards:
+    meso: 45000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1102001], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ronan-lorang-claws
+  persona: ronan
+  title: "Hem Pins"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 35 }, questsCompleted: [ronan-the-old-landing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000043, count: 10 }
+    - { id: pins, type: DELIVER, to: ronan, take: { itemId: 4000043, count: 10 } }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 10 }
+
+# ---- Lulu ----
+- id: lulu-the-banana-stand
+  persona: lulu
+  title: "The Banana Stand"
+  length: SHORT
+  requires: { level: { min: 36 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 20, mapIds: [110010000, 110020000] }
+    - { id: bananas, type: COLLECT_ITEM, itemId: 4000029, count: 15 }
+    - { id: stand, type: DELIVER, to: lulu, take: { itemId: 4000029, count: 15 } }
+  rewards: { meso: 7000, exp: 7500, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: lulu-shells-for-shade
+  persona: lulu
+  title: "Shells for Shade"
+  length: SHORT
+  requires: { level: { min: 45 }, questsCompleted: [lulu-the-banana-stand] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: torties, type: KILL_MOBS, mobIds: [4130101], count: 25, mapIds: [110030001, 110040000] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000045, count: 10 }
+    - { id: front-row, type: DELIVER, to: lulu, take: { itemId: 4000045, count: 10 } }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 35, items: [{ itemId: 2000004, count: 8 }] }
+
+# ---- Abel ----
+- id: abel-the-shed-nets
+  persona: abel
+  title: "The Shed Nets"
+  length: SHORT
+  requires: { level: { min: 36 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 30, mapIds: [110010000] }
+    - { id: mended, type: DELIVER, to: abel }
+  rewards: { meso: 7000, exp: 7500, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: abel-claws-for-hooks
+  persona: abel
+  title: "Claws for Hooks"
+  length: SHORT
+  requires: { level: { min: 46 }, questsCompleted: [abel-the-shed-nets] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 25, mapIds: [110030000, 110030001] }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000044, count: 12 }
+    - { id: hooks, type: DELIVER, to: abel, take: { itemId: 4000044, count: 12 } }
+  rewards: { meso: 13000, exp: 14000, bondPoints: 35, items: [{ itemId: 2000004, count: 8 }] }
+
+# ---- Tansy ----
+- id: tansy-the-moat
+  persona: tansy
+  title: "The Moat"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 25, mapIds: [110020000, 110020001] }
+    - { id: castle, type: DELIVER, to: tansy }
+  rewards: { meso: 6000, exp: 6500, bondPoints: 30, items: [{ itemId: 2000002, count: 10 }] }
+
+- id: tansy-a-king-and-queen
+  persona: tansy
+  title: "A King and a Queen"
+  length: SHORT
+  requires: { level: { min: 37 }, questsCompleted: [tansy-the-moat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 20, mapIds: [110010000, 110020000] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000026, count: 8 }
+    - { id: throne, type: DELIVER, to: tansy, take: { itemId: 4000026, count: 8 } }
+  rewards: { meso: 7000, exp: 7500, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }

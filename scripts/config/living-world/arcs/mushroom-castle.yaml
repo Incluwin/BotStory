@@ -1,0 +1,50 @@
+# Mushroom Castle arc: the royal baker, a Henesys boy who came through the Empty House, is ordered to bake a wedding cake
+# nobody wants and refuses (wilmot-a-cake-for-no-one, open to everyone), bakes one for the kingdom instead with the caps
+# Brisa sends him from Henesys (wilmot-caps-from-home), and serves it to the guards on the castle wall
+# (wilmot-the-kingdoms-cake). The last two beats happen once per server (quests/mushroom-castle.yaml). No line says where
+# the princess is: the stock quests decide that for each player.
+- id: wilmot-the-kingdoms-cake
+  persona: wilmot
+  chapters:
+    - id: chapter-1
+      title: "Ordered"
+    - id: chapter-2
+      title: "Refused"
+      enterWhen: { flags: [mc.cake.refused] }
+      dialogueOverrides:
+        greet: ["the order's ashes. i feel lighter than a sponge. come in.", "hello! mind the flour. i'm baking for nobody today. it's wonderful."]
+        who: ["Wilmot. royal baker to the Mushroom Kingdom. i was ordered to bake a wedding cake for a wedding nobody wanted. i put the order in the oven. now i'm thinking about what a cake should be for."]
+        smallTalk: ["i burnt the order. seven tiers of nobody wanting it. there's an empty shelf where the cake would have gone, and i keep looking at it.", "a cake's for everybody or it isn't a cake. my mother said that, in Henesys. i'd like to bake one like that. i need the right caps."]
+        speakPlainly: ["plainly: bread, and a cake i haven't baked yet."]
+        questOffer.wilmot-a-cake-for-no-one: ["the renegade spores creep back into the forest every week. the order's ashes, but the spores don't know that. twenty-five of them, and ten spores for the oven."]
+        questComplete.wilmot-a-cake-for-no-one: ["ten. into the fire. the forest's tidier. so's my conscience. here, a roll."]
+        chapterEnter: ["(lifts a scorched scrap of paper out of the oven door with tongs, reads it, smiles, and drops it back in the fire)"]
+      unlocks:
+        rumors: [mc-the-kitchen]
+    - id: chapter-3
+      title: "Caps From Home"
+      enterWhen: { flags: [mc.caps.sent] }
+      dialogueOverrides:
+        greet: ["the caps came! from Henesys! smell the kitchen. that's the field behind the Empty House.", "hello! i'm baking. properly. for the first time in years."]
+        who: ["Wilmot. royal baker to the Mushroom Kingdom. Brisa's basket came, orange caps from the field behind the Empty House in Henesys. i'm baking a cake for the kingdom with them. not for a wedding. for everybody."]
+        idle: ["(holds an orange cap up to his nose, closes his eyes, and stands very still)", "(stacks three round sponges on a board, steps back, and adds a fourth)"]
+        smallTalk: ["Brisa put a note in the basket. 'they squeaked the whole way.' they did not. ...they might have.", "the guards on the castle wall eat last. they always have. this cake's going up the hill to them first. i've decided."]
+        speakPlainly: ["plainly: a cake for everybody, with Henesys in it."]
+        about.brisa: ["Brisa in Henesys sent the caps again. orange ones. she put a note in. i've pinned it where the order used to be."]
+        questOffer.wilmot-a-cake-for-no-one: ["the renegade spores creep back into the forest every week. the order's ashes, but the spores don't know that. twenty-five of them, and ten spores for the oven."]
+        questComplete.wilmot-a-cake-for-no-one: ["ten. into the fire. the forest's tidier. so's my conscience. here, a roll."]
+        chapterEnter: ["(unpacks a basket of orange mushroom caps and arranges them on the table in a careful ring)"]
+    - id: chapter-4
+      title: "Served"
+      enterWhen: { flags: [mc.cake.served] }
+      dialogueOverrides:
+        greet: ["they ate the lot! the guards on the wall! sit, there's bread.", "hello! the kingdom's had its cake. now it's back to bread. i don't mind. i love bread."]
+        who: ["Wilmot. royal baker to the Mushroom Kingdom. i baked a cake for the kingdom with caps from Henesys, and it went up to the guards on the castle wall, and they ate every crumb. nobody ordered it. that's the best kind."]
+        idle: ["(cuts a single slice from a small cake and sets it aside on a plate, for whoever comes in next)", "(kneads a lump of dough, folds it, turns it, and kneads it again, humming)"]
+        smallTalk: ["the guards on the wall sent the plate back licked clean, with a note. 'more.' that's all. 'more.' i've framed it.", "i bake one every season now, for the wall. Brisa sends the caps. Primrose takes a slice up for the princess's rooms and eats it on the stairs. that's a kingdom, that is."]
+        speakPlainly: ["plainly: bread, and a cake for the wall every season."]
+        about.brisa: ["Brisa in Henesys sends the caps every season now. she put a note in the first basket. i've pinned it where the order used to be."]
+        friend.best: ["i'm going to name a bread after you. not a cake. a bread. bread's for every day. and you get the first slice of the wall's cake, every season."]
+        questOffer.wilmot-a-cake-for-no-one: ["the renegade spores creep back into the forest every week. the order's ashes, but the spores don't know that. twenty-five of them, and ten spores for the oven."]
+        questComplete.wilmot-a-cake-for-no-one: ["ten. into the fire. the forest's tidier. so's my conscience. here, a roll."]
+        chapterEnter: ["(hangs a small framed note on the kitchen wall that says only 'more.')"]

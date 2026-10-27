@@ -1,0 +1,51 @@
+# Kerning Square arc: the night market under the mall. Its sign was walled into the eighth floor (bao-the-old-sign, open
+# to everyone), its bell went into the site hut of Sadie, the Kerning City foreman who poured the lobby floor
+# (bao-the-poured-floor), and one night a week the lobby corner by the cart is a market again (bao-the-lobby-corner).
+# The last two beats happen once per server (quests/kerning-square.yaml).
+- id: bao-the-night-market
+  persona: bao
+  chapters:
+    - id: chapter-1
+      title: "The Cart"
+    - id: chapter-2
+      title: "The Sign"
+      enterWhen: { flags: [ksq.sign.found] }
+      dialogueOverrides:
+        greet: ["somebody saw the sign. red letters, still. sit down. eat. i feed people when i'm happy.", "you heard? the sign's still up there behind the wall. eat first."]
+        who: ["Bao. i've kept this cart forty years, on a street that's a lobby now. the market's sign is still up on the eighth floor, behind a wall, as red as the day they bricked it in. somebody looked. i've been crying into the broth. it needed salt."]
+        smallTalk: ["the sign's still there. red letters. 'the night market'. all it wants now is the bell, and people out late with a bowl.", "the bell went the same week as the sign. Sadie poured this floor. if anybody knows where a bell went, it's the one who poured the floor over it."]
+        speakPlainly: ["plainly: noodles, a sign that's still there, and a bell that isn't."]
+        questOffer.bao-the-old-sign: ["the sign's up there behind the record racks on the eighth floor. somebody's seen it. i want everybody who eats at my cart to have seen it. go up, clear the racks, and look through the crack."]
+        questComplete.bao-the-old-sign: ["you saw it too? red letters. good. now you know what this lobby is. sit. this bowl's on me."]
+        chapterEnter: ["(wipes a small wooden board with 'night market' painted on it in faded red, and props it up against the pot)"]
+      unlocks:
+        rumors: [ksq-the-cart]
+    - id: chapter-3
+      title: "The Bell"
+      enterWhen: { flags: [ksq.bell.found] }
+      dialogueOverrides:
+        greet: ["the bell's here. under the cart. i keep touching it. it's cold. it's ours.", "you heard? Sadie kept the bell. nineteen years. eat first. then i'll show you."]
+        who: ["Bao. i've kept this cart forty years. the market's sign is up on the eighth floor, and its bell is under my cart, home from nineteen years in Sadie's site hut. a sign and a bell. all a market needs now is a night."]
+        idle: ["(lifts a cloth off a small brass bell under the cart, looks at it, and covers it again)", "(wipes the same corner of the cart three times, then pats it like a dog)"]
+        smallTalk: ["Sadie kept the bell in her site hut nineteen years, wrapped in a tarp, and never told a soul. i shouted at her for a week, once. i owe her a bowl every night for the rest of my life.", "one night a week. that's all. this corner, a lantern, a bell at dusk. Kiko's already told half the lobby. he's telling the other half tonight."]
+        speakPlainly: ["plainly: noodles, a sign, a bell, and one night a week."]
+        about.sadie: ["Sadie kept the market's bell nineteen years and never said. i shouted at her crew for a week, back then. i send her a bowl every night now. she sends the bowl back clean. that's a conversation, for us."]
+        questOffer.bao-the-old-sign: ["the sign's up there behind the record racks on the eighth floor. somebody's seen it. i want everybody who eats at my cart to have seen it. go up, clear the racks, and look through the crack."]
+        questComplete.bao-the-old-sign: ["you saw it too? red letters. good. now you know what this lobby is. sit. this bowl's on me."]
+        chapterEnter: ["(sets a small brass bell on the cart, very gently, and doesn't ring it)"]
+    - id: chapter-4
+      title: "Market Night"
+      enterWhen: { flags: [ksq.market.back] }
+      dialogueOverrides:
+        greet: ["market night's coming. or it's just been. either way, eat first.", "you! sit. your stool's free. the bell's polished."]
+        who: ["Bao. i've kept this cart forty years. one night a week this corner's the night market again: the bell at dusk, Thompson's table, Lala's lanterns, and Kiko ringing it like he invented bells. the rest of the week i'm a noodle cart. that's fine too."]
+        idle: ["(polishes a small brass bell with the corner of her apron, and hangs it back on the cart's hook)", "(sets out four stools in a row, looks at them, and sets out a fifth)"]
+        noWork: ["nothing today. the broth's made. the bell's polished. market night's on its way."]
+        smallTalk: ["the first market night, Sadie came. stood at the back with her hard hat under her arm. ate two bowls. didn't say a word. best review i've ever had.", "Felix brings his machine down on market night and plays the old songs. i still pretend i don't know the words. everybody knows i know the words."]
+        speakPlainly: ["plainly: noodles. and one night a week, a market."]
+        about.sadie: ["Sadie comes to market night. stands at the back with her hard hat under her arm and eats two bowls. she poured this floor. she kept the bell. she's family now. i told her. she said 'right'."]
+        about.kiko: ["Kiko rings the bell on market night. he practises all week on a spoon. he says when he's big he's having a stall. he'll have the next corner. i've already saved it."]
+        friend.best: ["i'm going to teach you the broth. nobody knows it but me. Kiko's next. you're before Kiko. and come on market night. your stool's always free."]
+        questOffer.bao-the-old-sign: ["the sign's up there behind the record racks on the eighth floor. i want everybody who comes to market night to have seen it. go up, clear the racks, and look through the crack."]
+        questComplete.bao-the-old-sign: ["you saw it too? red letters. good. now you know what this lobby is on market night. sit. this bowl's on me."]
+        chapterEnter: ["(rings a small brass bell once, at dusk, and the whole lobby turns to look)"]

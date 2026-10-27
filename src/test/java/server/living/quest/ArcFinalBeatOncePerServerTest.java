@@ -27,10 +27,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * The last beat of each wave-2 and wave-3 regional arc (docs/REGIONAL_RESIDENTS_PLAN.md sections 5 and 9), and the
- * wave-3 middle beats whose lines read wrong on a second run, set a world flag that turns the arc for everyone, so
- * each happens once per server: its {@code requires.notFlags} names that flag, and the ledger stops offering it the
- * moment anyone has done it.
+ * The last beat of each wave-2, wave-3 and wave-4 regional arc (docs/REGIONAL_RESIDENTS_PLAN.md sections 5, 9 and
+ * 10), and the wave-3 and wave-4 middle beats whose lines read wrong on a second run, set a world flag that turns the
+ * arc for everyone, so each happens once per server: its {@code requires.notFlags} names that flag, and the ledger
+ * stops offering it the moment anyone has done it.
  */
 class ArcFinalBeatOncePerServerTest {
     private static final List<String> FINAL_BEATS = List.of("hessa-carry-it-home", "oksun-dig-the-root",
@@ -39,7 +39,10 @@ class ArcFinalBeatOncePerServerTest {
             "bertil-the-sixth-name", "cornelius-a-party-at-last", "agatha-the-enigma-chamber",
             // wave 3 (docs/REGIONAL_RESIDENTS_PLAN.md)
             "monty-cup-night", "lyra-the-trace", "bomi-the-first-answer", "delmar-the-wreck-lantern",
-            "rosnah-the-lantern-home", "chiyo-the-silent-bell", "daichi-the-hideout", "chiyo-the-bell-rings");
+            "rosnah-the-lantern-home", "chiyo-the-silent-bell", "daichi-the-hideout", "chiyo-the-bell-rings",
+            // wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10)
+            "pernille-what-the-sea-said", "pernille-forty-years-late", "bao-the-poured-floor", "bao-the-lobby-corner",
+            "wilmot-caps-from-home", "wilmot-the-kingdoms-cake", "edmund-ossas-stone", "edmund-the-name-said-aloud");
 
     @Test
     void eachFinalBeatIsBarredByTheWorldFlagItSets() {
