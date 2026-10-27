@@ -1,0 +1,16 @@
+# Tent of the Entertainers contracts (wave 4): a fire-eater paid in black sand for his torches, and a fee.
+- id: rafi-black-sand-fee
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [rafi.intro.done]
+  price:
+    meso: 12000
+    items: [{ itemId: 4000352, count: 20 }]
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 6000 }

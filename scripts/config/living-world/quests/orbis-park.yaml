@@ -1,0 +1,116 @@
+# Orbis Park quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Orbis's fields, preferring what wave 1
+# left alone: the cloud parks' fairy 3000001 / 3000002 (the fierries; fierry's tentacle 4000068; cloud park II-VI
+# 200020000/200040000/200050000/200070000/200080000, strolling path 200030000), Orbis Tower sentinel 3000000 (sentinel
+# shellpiece 4000063; 14th-17th floors 200080500-200080800) and jr. pepe 5400000 (jr. pepe's fish 4000088; 1st/2nd floors
+# 200082100/200082000). Saffi hunts the lunar pixie 4230106 (moonpiece 4000060; the cloud parks and strolling paths), as
+# Vesna does: a pixie hunter has no other quarry. Errands to Orbis's wave-1 cast (Ottilie, Corliss, Vesna;
+# personas/orbis.yaml) and to Ludibrium Village (Winifred; personas/ludibrium-village.yaml).
+
+# ---- Odalys, keeper of the park --------------------------------------------------------------------------------------
+
+- id: odalys-the-fierries
+  persona: odalys
+  title: "Vines for the Railings"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fierries, type: KILL_MOBS, mobIds: [3000001, 3000002], count: 25, mapIds: [200020000, 200030000, 200040000, 200050000, 200070000, 200080000] }
+    - { id: tentacles, type: COLLECT_ITEM, itemId: 4000068, count: 12 }
+    - { id: railings, type: DELIVER, to: odalys, take: { itemId: 4000068, count: 12 } }
+  rewards: { meso: 8000, exp: 6000, bondPoints: 35 }
+
+- id: odalys-shell-edging
+  persona: odalys
+  title: "Where the Tulips Stop"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sentinels, type: KILL_MOBS, mobIds: [3000000], count: 25, mapIds: [200080500, 200080600, 200080700, 200080800] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000063, count: 12 }
+    - { id: edging, type: DELIVER, to: odalys, take: { itemId: 4000063, count: 12 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
+
+- id: odalys-cuttings-from-the-steps
+  persona: odalys
+  title: "The Blue Ones from the Third Step"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ottilie, type: TALK_TO, persona: ottilie, say: ["cuttings? for Odalys? oh, take the blue ones from the third step. they've come up every spring since i planted them. tell her to water them at dusk, when the ship comes in. that's when they like it best."] }
+    - { id: report, type: DELIVER, to: odalys }
+  rewards: { meso: 6000, exp: 4000, bondPoints: 35 }
+
+# ---- Tibalt, retired sailor of the sky ships -------------------------------------------------------------------------
+
+- id: tibalt-a-taste-of-the-sea
+  persona: tibalt
+  title: "What the Sea Smells Like"
+  length: SHORT
+  requires: { level: { min: 33 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepes, type: KILL_MOBS, mobIds: [5400000], count: 25, mapIds: [200082000, 200082100] }
+    - { id: fish, type: COLLECT_ITEM, itemId: 4000088, count: 12 }
+    - { id: bench, type: DELIVER, to: tibalt, take: { itemId: 4000088, count: 12 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 35 }
+
+- id: tibalt-the-crew-page
+  persona: tibalt
+  title: "Forty Years of Crew Pages"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: corliss, type: TALK_TO, persona: corliss, say: ["Tibalt? forty years of crew pages, and his hand on every one, never a blot. tell him the book remembers him. tell him it remembers him better than it remembers me."] }
+    - { id: report, type: DELIVER, to: tibalt }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 35 }
+
+- id: tibalt-a-story-for-the-school
+  persona: tibalt
+  title: "Nine Sails and a Cat"
+  length: MEDIUM
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: winifred, type: TALK_TO, persona: winifred, say: ["another story from Tibalt, in his own hand? the children will be impossible for a week. tell him thank you. tell him they've drawn his ship again. nine sails now, and a cat."] }
+    - { id: report, type: DELIVER, to: tibalt }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
+
+# ---- Saffi, pixie hunter (recruitable) -------------------------------------------------------------------------------
+
+- id: saffi-the-lunar-pixies
+  persona: saffi
+  title: "They Giggle Before They Shove"
+  length: SHORT
+  requires: { level: { min: 42 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pixies, type: KILL_MOBS, mobIds: [4230106], count: 30, mapIds: [200020000, 200030000, 200040000, 200050000, 200060000, 200070000, 200080000] }
+    - { id: report, type: DELIVER, to: saffi }
+  rewards: { meso: 13000, exp: 14000, bondPoints: 30, flags: [saffi.intro.done] }
+
+- id: saffi-a-word-with-vesna
+  persona: saffi
+  title: "A Word with the Warden"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vesna, type: TALK_TO, persona: vesna, say: ["Saffi sent you? ...tell her the lunar pixies have moved up past the fourth park. tell her to mind the luster ones, they don't giggle first. and tell her thank you. once. she'll know what for."] }
+    - { id: report, type: DELIVER, to: saffi }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 35 }
+
+- id: saffi-moonpieces
+  persona: saffi
+  title: "Salve for a Month"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 42 }, questsCompleted: [saffi-the-lunar-pixies] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: moonpieces, type: COLLECT_ITEM, itemId: 4000060, count: 15 }
+    - { id: salve, type: DELIVER, to: saffi, take: { itemId: 4000060, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 10 }

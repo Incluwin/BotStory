@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "profileId": "ariant-castle",
+  "mapId": 260000300,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -165,
+    "middleMaxY": 256,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -540, "y": 275, "seatId": -1 },
+    { "x": -235, "y": -161, "seatId": -1 },
+    { "x": 55, "y": 237, "seatId": -1 },
+    { "x": 480, "y": 275, "seatId": -1 },
+    { "x": 920, "y": 275, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -895, "y": 270 },
+    { "x": -370, "y": 232 },
+    { "x": -285, "y": 232 },
+    { "x": -200, "y": 232 },
+    { "x": 135, "y": -156 },
+    { "x": 225, "y": 232 },
+    { "x": 665, "y": 248 }
+  ],
+  "npcSpots": [
+    { "npcId": 2101004, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-l001", "type": "PORTAL", "minX": -848, "minY": 8, "maxX": -778, "maxY": 108, "excludesOccupancy": true },
+    { "id": "portal-l002", "type": "PORTAL", "minX": -420, "minY": -204, "maxX": -350, "maxY": -104, "excludesOccupancy": true },
+    { "id": "portal-r001", "type": "PORTAL", "minX": 689, "minY": 9, "maxX": 759, "maxY": 109, "excludesOccupancy": true },
+    { "id": "portal-r002", "type": "PORTAL", "minX": 178, "minY": -206, "maxX": 248, "maxY": -106, "excludesOccupancy": true },
+    { "id": "portal-out00", "type": "PORTAL", "minX": 977, "minY": 203, "maxX": 1117, "maxY": 328, "excludesOccupancy": true },
+    { "id": "portal-in00", "type": "PORTAL", "minX": -169, "minY": -253, "maxX": -59, "maxY": -143, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -867, "minY": 13, "maxX": -777, "maxY": 268, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": 695, "minY": 13, "maxX": 785, "maxY": 268, "excludesOccupancy": true },
+    { "id": "npc-2101004", "type": "NPC_LANE", "minX": -68, "minY": -256, "maxX": 62, "maxY": -126, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -710, "y": 274, "seatId": -1 }, { "x": -625, "y": 275, "seatId": -1 }, { "x": -540, "y": 275, "seatId": -1 }, { "x": -455, "y": 248, "seatId": -1 }] },
+    { "id": "by-tigun", "label": "By Tigun", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -320, "y": -153, "seatId": -1 }, { "x": -235, "y": -161, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -115, "y": 230, "seatId": -1 }, { "x": -30, "y": 237, "seatId": -1 }, { "x": 55, "y": 237, "seatId": -1 }, { "x": 140, "y": 232, "seatId": -1 }] },
+    { "id": "upper-central-street", "label": "Upper central street", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 18, "y": -275, "seatId": -1 }, { "x": 103, "y": -252, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 310, "y": 242, "seatId": -1 }, { "x": 395, "y": 275, "seatId": -1 }, { "x": 480, "y": 275, "seatId": -1 }, { "x": 565, "y": 275, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 835, "y": 275, "seatId": -1 }, { "x": 920, "y": 275, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "lower-west-street-crowd", "venueId": "lower-west-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-central-street-crowd", "venueId": "lower-central-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

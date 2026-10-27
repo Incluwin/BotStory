@@ -1,0 +1,337 @@
+# Kerning Square cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 11): 5 Residents, 2 recruitable.
+# The shopping mall the KerningTrain runs to was poured over Kerning's old night market. One noodle cart never left the
+# lobby; its keeper wants the market's walled-in sign seen and its lost bell found (arcs/kerning-square.yaml), and the
+# bell is with Sadie, Kerning City's foreman. Two recruits give armour made for the player's class in the mall's band:
+# tops (Zara, mall security) and bottoms (Felix, the record-shop clerk).
+- id: bao
+  name: Bao
+  look: { gender: female }
+  title: "Noodle Cart of the Old Night Market"
+  job: BEGINNER
+  level: { min: 40, max: 42 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-square
+    routine:
+      - { from: 10, to: 17, spot: "venue:beside-robby-fray", activity: LINGER }
+      - { from: 17, to: 22, spot: "venue:by-robby-fray", activity: SOCIALIZE }
+      - { from: 22, to: 10, materialize: false }
+  recruitable: false
+  knows: [mango bubble tea, spirit of rock, kerning square lobby]
+  questLines: [bao-the-noodle-cart, bao-the-old-sign, bao-the-poured-floor, bao-the-lobby-corner]
+  arc: bao-the-night-market
+  rumors: [ksq-the-cart]
+  relationships:
+    - { persona: kiko, kind: GRANDMOTHER_OF }
+    - { persona: juno, kind: LEAVES_A_BOWL_FOR }
+    - { persona: sadie, kind: SHOUTED_AT }
+  giftItemIds: [2020011, 2020008]
+  dialogue:
+    greetFirst: ["sit. eat first. then tell me who you are.", "a new face in my lobby. you look thin. everybody looks thin to me."]
+    greet: ["eat first.", "you again. good. sit.", "the broth's hot. it's always hot."]
+    idle: ["(lifts the lid off a big pot, breathes in the steam, and puts the lid back without stirring)", "(wipes the same corner of the cart three times, then pats it like a dog)"]
+    noWork: ["nothing today. the broth's made. the broth makes itself, if you stand next to it long enough."]
+    nothingDue: ["you owe me nothing. eat something anyway."]
+    who: ["Bao. i've kept this cart forty years. it stood on a street, in a night market, every night, before anybody poured a mall on top of us. they moved the stalls out. i didn't move."]
+    bye: ["take a bowl for the road. the bowl comes back."]
+    thanks: ["mm. eat."]
+    smallTalk: ["when they built the mall they walled the market's sign into the eighth floor. i heard the hammers from down here. red letters. you could read them from the subway steps.", "the market rang a bell at dusk. it went missing the same week as the sign. nobody's rung anything in this lobby since but Thompson's till."]
+    speakPlainly: ["plainly: noodles, and a market that used to be here."]
+    questOffer.bao-the-noodle-cart: ["the mango teas upstairs drip sweet. boil it down and it makes a sauce you'd sell your shoes for. old market trick. twenty-five of the mango ones on the first and second floors, and ten mango bubbles."]
+    questAccept.bao-the-noodle-cart: ["up the escalator, first and second floors, areas B, C and D. they're tea. they bite. don't drink them."]
+    questWaiting.bao-the-noodle-cart: ["ten bubbles. the sauce is waiting."]
+    questComplete.bao-the-noodle-cart: ["ten. smell that. that's the night market, that is. sit. this bowl's yours."]
+    questOffer.bao-the-old-sign: ["the market's sign. they walled it in on the eighth floor, behind the record racks in the first hall. go up. thirty of those singing records off the wall and you can see the crack. look through it. tell me if it's still there."]
+    questAccept.bao-the-old-sign: ["up past the mannequins, then the stairs to the seventh and eighth floors. the first hall. the records sing. loudly. the crack's low on the back wall."]
+    questWaiting.bao-the-old-sign: ["did you see it? red letters. it's there. tell me it's there."]
+    questComplete.bao-the-old-sign: ["still there. red letters, through the crack. 'the night market'. the paint's still red? ...sit down. no, sit. this bowl's on me. all of them are, today."]
+    questOffer.bao-the-poured-floor: ["the bell went the same week as the sign. the foreman who poured this floor might know where. Sadie, in Kerning. i shouted at Sadie for a week, back then. go and ask nicely. nicer than i did."]
+    questAccept.bao-the-poured-floor: ["Kerning City, back down the subway. Sadie's wherever something's being built. or knocked down."]
+    questWaiting.bao-the-poured-floor: ["did Sadie know? the bell?"]
+    questComplete.bao-the-poured-floor: ["Sadie kept it? kept it. nineteen years in a site hut. ...and i shouted for a week. i'm going to send a bowl over. every night. Sadie'll hate it. here. thank you, child."]
+    questOffer.bao-the-lobby-corner: ["the sign's up there. the bell's here. Kiko's been telling everyone about the cart. so. one night a week, this corner's a market again. i need twenty of the cherry teas upstairs knocked over, ten cherry bubbles for the ice, and somebody to give Kiko the bell. he's waited his whole life to ring it."]
+    questAccept.bao-the-lobby-corner: ["the cherry teas, first and second floors. then the bell to Kiko. then back to me."]
+    questWaiting.bao-the-lobby-corner: ["ten cherries for the ice. and the bell to Kiko."]
+    questComplete.bao-the-lobby-corner: ["listen. there it goes. dusk, and Kiko's ringing it, and Thompson's come out with a table, and Lala's brought lanterns. it's a market. it's a market again. sit. eat first. then cry, if you want. i am."]
+    about.kiko: ["Kiko's my grandson. he sells tea up and down the lobby and tells every customer i'm the best cook in Victoria. he's right. he's still a show-off."]
+    about.juno: ["Juno mops the lobby all night. i leave a bowl under the cart for her, and it's on the cart in the morning, clean. eleven years. we nod. that's plenty."]
+    about.sadie: ["Sadie poured this floor. i stood in the wet concrete and shouted at the crew. Sadie waited till i'd finished, and then poured it round me. we don't talk."]
+    about.zara: ["Zara walks the mall all night with her hand on her belt. she eats standing up. i've told her. she eats standing up."]
+    about.felix: ["Felix sells records on the seventh floor. he plays me the old market songs on his machine. i pretend i don't know the words."]
+    aboutUnknown: ["never had a bowl at my cart. send them round."]
+    friend.close: ["you've got a stool at my cart. nobody sits on it but you. i'll shout at them."]
+    friend.best: ["i'm going to teach you the broth. nobody knows it but me. Kiko's next. you're before Kiko. don't tell him."]
+    famed: ["they say your name at the cart. with their mouths full. that's the best way."]
+    defamed: ["somebody said that at my cart? they'll get the bottom of the pot."]
+    gift: ["for me? mm. thank you."]
+    gift.favorite: ["oh, that's a proper late-night meal. somebody's fed you right."]
+    gift.again: ["one a day. i'm the one who feeds people."]
+
+- id: juno
+  name: Juno
+  look: { gender: female }
+  title: "Night Janitor of Kerning Square"
+  job: BEGINNER
+  level: { min: 36, max: 38 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-square
+    routine:
+      - { from: 0, to: 5, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 5, to: 19, materialize: false }
+      - { from: 19, to: 24, spot: "venue:upper-central-street", activity: LINGER }
+  recruitable: false
+  knows: [blue perfume, kid mannequin, kid mannequin's bunny suit]
+  questLines: [juno-the-perfume-spills, juno-the-lost-and-found]
+  rumors: [ksq-the-night-shift]
+  relationships:
+    - { persona: zara, kind: WORKS_NIGHTS_WITH }
+    - { persona: bao, kind: WASHES_THE_BOWL_OF }
+    - { persona: kiko, kind: FINDS_THE_COIN_OF }
+  giftItemIds: [2020001, 2020005]
+  dialogue:
+    greetFirst: ["mind the wet floor. it's always wet. i'm always here.", "evening. or morning. at my hours it's the same thing with the lights off."]
+    greet: ["evening.", "you. mind the floor.", "hm. still up?"]
+    idle: ["(mops a slow figure-eight around a single spot, then stands back to look at it)", "(holds something small up to the light, pockets it, and writes on a tag)"]
+    noWork: ["nothing tonight. the floor's clean. it won't last. nothing lasts but floors."]
+    nothingDue: ["nothing owed. you left no mess."]
+    who: ["Juno. i clean Kerning Square at night. eight floors and a lobby, one mop, and everything people drop. i keep it all. somebody always comes back for it. sometimes it takes years."]
+    bye: ["go round the wet bit."]
+    thanks: ["mm. thanks."]
+    smallTalk: ["the perfume bottles on the third and fourth floors walk about after closing. they spill as they go. the whole floor smells like a wedding. i'm not invited.", "the mannequins on the fifth floor wear whatever gets left behind. i saw a kid mannequin in a bunny suit i was holding for a little girl. she came back for it. i had words with the mannequin."]
+    speakPlainly: ["plainly: a mop, and a lost-and-found."]
+    questOffer.juno-the-perfume-spills: ["the perfume bottles on the third and fourth floors spill every time they move. break thirty of them and i can mop the lot before morning. there's nothing in them worth keeping. believe me. i've checked."]
+    questAccept.juno-the-perfume-spills: ["third and fourth floors. blue, yellow, pink. they don't fight back. they just smell."]
+    questWaiting.juno-the-perfume-spills: ["thirty. the floor's still sticky."]
+    questComplete.juno-the-perfume-spills: ["thirty. there. a floor you could eat off. don't. here, for your trouble. and for your nose."]
+    questOffer.juno-the-lost-and-found: ["the kid mannequins on the fifth and sixth floors wear the bunny suits children leave behind. i've a tag for every one. twenty-five mannequins, ten suits back, and i can hand them over when the children come."]
+    questAccept.juno-the-lost-and-found: ["fifth and sixth floors, areas A, B and D. small ones. they skip."]
+    questWaiting.juno-the-lost-and-found: ["ten suits. the tags are waiting."]
+    questComplete.juno-the-lost-and-found: ["ten. tagged. one of these has been waiting six years. somebody'll come. they always do. here."]
+    about.zara: ["Zara walks the mall at night same as me. she checks every door twice. i mop every floor once. between us it's done right."]
+    about.bao: ["Bao leaves a bowl under her cart for me every night. i leave it clean on the cart every morning. eleven years of that, and neither of us has ever mentioned it. that's how you know it's good."]
+    about.kiko: ["Kiko drops a coin under the escalator about once a week. same coin. i give it back. i think he drops it so i'll give it back."]
+    about.felix: ["Felix leaves the record shop playing when he goes home. for me, he says. always the same three songs. i've started to like them. don't tell him."]
+    aboutUnknown: ["never found anything of theirs."]
+    friend.close: ["anything you lose in this mall, i'll find it. i'll keep it on the top shelf."]
+    friend.best: ["i've a tag with your name on it, on the top shelf. nothing on it yet. if you ever leave something behind, i'd want to be the one keeping it."]
+    famed: ["people drop your name about the mall. i pick it up. it's in good shape."]
+    defamed: ["i've swept worse things than that off the floor."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["that's the three-in-the-morning kind of food. the best kind. thank you."]
+    gift.again: ["one a night. i've got floors to do."]
+
+- id: zara
+  name: Zara
+  look: { gender: female }
+  title: "Night Security of Kerning Square"
+  job: BANDIT
+  level: { min: 46, max: 48 }
+  strength: SEASONED
+  loadout: kerning-bandit-l30
+  personality: efficient-v1
+  home:
+    town: kerning-square
+    routine:
+      - { from: 0, to: 12, materialize: false }
+      - { from: 12, to: 18, spot: "venue:by-thompson", activity: LINGER }
+      - { from: 18, to: 24, spot: "venue:upper-central-street", activity: LINGER }
+  recruitable: true
+  knows: [yeti doll claw game, female mannequin, female mannequin's wig]
+  contract: zara-the-night-watch
+  questLines: [zara-the-claw-round, zara-the-uniform-top, zara-the-night-coat, zara-head-of-security, zara-the-wigs]
+  rumors: [ksq-the-night-shift]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: juno, kind: KEEPS_AN_EYE_ON }
+    - { persona: felix, kind: WRITES_UP }
+    - { persona: kiko, kind: CHASES_OUT_AT_CLOSING }
+  giftItemIds: [2020004, 2020006]
+  dialogue:
+    greetFirst: ["bag check. kidding. you look honest. that's what the dishonest ones look like. kidding.", "hello. you're in a shopping centre where the stock walks about. i'm going to assume you got lost."]
+    greet: ["hey.", "you. all quiet?", "hm. hello."]
+    idle: ["(tries a door handle, lets go, and tries it again)", "(stands at the top of the escalator with her hands behind her back, watching it go down)"]
+    noWork: ["nothing right now. the floors are quiet. mostly."]
+    nothingDue: ["we're square. no incidents."]
+    who: ["Zara. night security, Kerning Square. eight floors and a lobby, and on every one of them something that came alive after hours. i don't wake it. i put it back to sleep."]
+    bye: ["exit's that way. it's always that way."]
+    thanks: ["noted. thanks."]
+    smallTalk: ["the claw machines on the third floor got up and started walking last spring. the yeti ones grab. the transformed ones just wander. i write them all up. nobody reads it.", "the mannequins upstairs wear Tina's wigs. she wants them back. she's asked me. i've asked the mannequins. they're not listening."]
+    speakPlainly: ["plainly: a dagger, a torch, and a round to walk."]
+    offer: ["twenty wigs off the female mannequins upstairs, and twenty thousand. the wigs go back to Tina, the money goes on batteries for the torch. then i'll walk your round."]
+    join: ["let's go. i'll take the doors. you take the rest."]
+    bench: ["three days. then i'm back on my round."]
+    leave: ["back to the mall. quiet round, i hope."]
+    refuse.bond: ["i don't walk a round with people i haven't seen walk one."]
+    refuse.flags: ["walk my claw-game round on the third floor with me first. and come up to the upper central street late, nine till midnight, while Juno's mopping, and hear what she says about me. then ask."]
+    refuseOwnErrand: ["my round first. you haven't walked it yet."]
+    questOffer.zara-the-claw-round: ["walk my round with me. the yeti claw machines on the third and fourth floors, area A. thirty of them. they grab. grab back."]
+    questAccept.zara-the-claw-round: ["third and fourth floors, area A. up the escalator, left at the shoe shop with the shutters down."]
+    questWaiting.zara-the-claw-round: ["thirty. keep your bag closed. they go for bags."]
+    questComplete.zara-the-claw-round: ["thirty. no incidents. good round. you can walk with me any night."]
+    questOffer.zara-the-uniform-top: ["a top for you, cut for your trade. Tina knows a tailor. the tailor wants the transformed claw machines on the third and fourth floors cleared first, areas C and D. they walk through her window. thirty of them."]
+    questAccept.zara-the-uniform-top: ["third and fourth floors, areas C and D. the transformed ones. they're mostly air. hit them anyway."]
+    questWaiting.zara-the-uniform-top: ["thirty. the tailor's measuring."]
+    questComplete.zara-the-uniform-top: ["thirty. here, from the tailor. safe scrolls in every slot, every one took. it's a uniform now. you're on my round."]
+    questOffer.zara-the-night-coat: ["something warmer for the night round, cut for your trade. the female mannequins on the fifth and sixth floors stand in the tailor's light. thirty of them, areas B and C."]
+    questAccept.zara-the-night-coat: ["fifth and sixth floors, areas B and C. they pose. they pose with their fists."]
+    questWaiting.zara-the-night-coat: ["thirty. the coat's cut."]
+    questComplete.zara-the-night-coat: ["thirty. the night coat, cut for you. sixties in every slot, every one took. warm, and it doesn't rustle. a good coat for a round."]
+    questOffer.zara-head-of-security: ["head of security wears the best coat in the building. that's me. i've had one made for you as well, for your trade. the male mannequins on the fifth and sixth floors, areas C and D. forty of them, and fifteen fedoras. the tailor wants the felt."]
+    questAccept.zara-head-of-security: ["fifth and sixth floors, areas C and D. the big ones in hats. they tip the hat before they hit you."]
+    questWaiting.zara-head-of-security: ["fifteen fedoras. the tailor's waiting on the felt."]
+    questComplete.zara-head-of-security: ["fifteen. here. two tens and the rest sixties, every one took. that's the best coat in the building now. i'll get over it."]
+    questOffer.zara-the-wigs: ["ten wigs off the female mannequins? Tina's asking again."]
+    questAccept.zara-the-wigs: ["fifth and sixth floors."]
+    questWaiting.zara-the-wigs: ["ten."]
+    questComplete.zara-the-wigs: ["ten. Tina says thank you. she says it like it's my fault."]
+    about.juno: ["Juno cleans the mall at night. she sees everything i see, an hour later, on her knees. if anything's wrong in this building, she finds the stain."]
+    about.felix: ["Felix leaves his music on in the empty shop. i've written him up nine times. i've never once turned it off."]
+    about.kiko: ["Kiko hides in the lobby at closing. every night. i find him every night. i let him finish his tea first. that's not in the rules."]
+    about.bao: ["Bao was here before the building. i walk past her cart and she hands me a bowl without looking up. i eat it standing. she hates that."]
+    aboutUnknown: ["never written them up."]
+    friend.close: ["you're on my round. permanent. nobody else is on my round."]
+    friend.best: ["i've given you a key. it opens nothing. it's the principle. it's yours."]
+    famed: ["your name comes up on my round. no incidents. good ones."]
+    defamed: ["i've heard. i don't write up rumours."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["now that's a meal for a long night. i'll eat it sitting down. for once."]
+    gift.again: ["one a day. i'm on duty."]
+
+- id: felix
+  name: Felix
+  look: { gender: male }
+  title: "Record-Shop Clerk of the Seventh Floor"
+  job: HUNTER
+  level: { min: 46, max: 48 }
+  strength: SEASONED
+  loadout: hunter-bowman-l35
+  personality: relaxed-v1
+  home:
+    town: kerning-square
+    routine:
+      - { from: 11, to: 17, spot: "venue:by-lana", activity: LINGER }
+      - { from: 17, to: 23, spot: "venue:by-maestro-rho", activity: SOCIALIZE }
+      - { from: 23, to: 11, materialize: false }
+  recruitable: true
+  knows: [latest hits compilation, greatest oldies, spirit of rock]
+  contract: felix-the-encore
+  questLines: [felix-the-record-floor, felix-the-first-pressing, felix-the-b-side, felix-the-master-tape, felix-restock]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: kiko, kind: LENDS_RECORDS_TO }
+    - { persona: zara, kind: IS_WRITTEN_UP_BY }
+    - { persona: bao, kind: PLAYS_OLD_SONGS_FOR }
+  giftItemIds: [2020010, 2001001]
+  dialogue:
+    greetFirst: ["hey. you look like somebody who's never heard a real record. that's fine. nobody has. pull up a crate.", "welcome to Kerning Square. the music's not mine. the music's everybody's. the records are mine."]
+    greet: ["hey.", "oh, hey. listen to this bit.", "you're back. good taste."]
+    idle: ["(flips through a crate of records, pulls one halfway out, and slides it back with a nod)", "(taps a beat on his knee with two arrows, then puts them back in the quiver very carefully)"]
+    noWork: ["nothing today. the shop's alphabetised. it's never alphabetised. i don't know what to do with myself."]
+    nothingDue: ["we're good. square, like a record sleeve."]
+    who: ["Felix. i run the record shop on the seventh floor, under Big Hit. the stock got up off the shelves one night and started walking. i've been buying it back with arrows ever since. i sell what's left from down here, by Lana."]
+    bye: ["keep it spinning."]
+    thanks: ["oh, nice. thanks."]
+    smallTalk: ["the spirit of rock plays in the last room on the eighth floor. three chords. the same three chords, all night. i've heard better. i've heard worse. it's very committed.", "Maestro Rho writes a song a day. Lana at Big Hit buys one a year. i've got the other three hundred and sixty-four in the back. they're good. nobody believes me."]
+    speakPlainly: ["plainly: records, and a bow for getting them back."]
+    offer: ["fifty records off the seventh floor, counted from today. latest hits or greatest oldies, either kind. and twenty thousand for the shop. then i'll come out on tour with you."]
+    join: ["let's go. i'll bring a record for the road."]
+    bench: ["four days. then the shop wants opening."]
+    leave: ["back to the shop. keep it spinning."]
+    refuse.bond: ["i don't go on tour with people i haven't heard play."]
+    refuse.flags: ["come and clear the record floor with me first. the seventh floor, past June. then ask."]
+    refuseOwnErrand: ["the record floor first. come and clear it with me."]
+    questOffer.felix-the-record-floor: ["the stock walked off. it's up on the seventh floor, by June, being loud. the latest hits and the greatest oldies. thirty of them. bring them down a notch."]
+    questAccept.felix-the-record-floor: ["seventh floor, up past the mannequins. June's at the door. the records are all round her, spinning."]
+    questWaiting.felix-the-record-floor: ["thirty. they skip when you hit them. that's normal."]
+    questComplete.felix-the-record-floor: ["thirty. quiet up there now. well, quieter. you've got good timing. you'd have made a good drummer."]
+    questOffer.felix-the-first-pressing: ["trousers for you, made for your trade. a friend at Big Hit sews the stage clothes. she wants the cherry teas on the first and second floors shut up first. they play a jingle all day. thirty of them."]
+    questAccept.felix-the-first-pressing: ["first and second floors, areas A, B and D. the red ones. hum something else while you do it."]
+    questWaiting.felix-the-first-pressing: ["thirty. the jingle's still going."]
+    questComplete.felix-the-first-pressing: ["thirty. silence. beautiful. here, from the stage seamstress. safe scrolls in every slot, every one took. first pressing. those are the good ones."]
+    questOffer.felix-the-b-side: ["the b-side. better than the hit, always. another pair, made for your trade. the seamstress wants the kid mannequins on the fifth and sixth floors off her mood board. thirty of them."]
+    questAccept.felix-the-b-side: ["fifth and sixth floors, areas A, B and D. little ones. they dance badly."]
+    questWaiting.felix-the-b-side: ["thirty. flip it over."]
+    questComplete.felix-the-b-side: ["thirty. the b-side. sixties in every slot, every one took. nobody knows about these. now you do."]
+    questOffer.felix-the-master-tape: ["the master tape. the best pair i can get you, made for your trade. the greatest oldies on the seventh floor, forty of them, and fifteen of the records they drop. i'm pressing something special."]
+    questAccept.felix-the-master-tape: ["seventh floor, by June, and the rooms past her if she lets you through. the oldies. they know all the words."]
+    questWaiting.felix-the-master-tape: ["fifteen oldies. the press is warm."]
+    questComplete.felix-the-master-tape: ["fifteen. the master. two tens and the rest sixties, every one took. that's one of one. like you. sorry. that was a lyric. it's still true."]
+    questOffer.felix-restock: ["ten latest hits compilations? the shelf's empty again."]
+    questAccept.felix-restock: ["seventh floor, by June."]
+    questWaiting.felix-restock: ["ten."]
+    questComplete.felix-restock: ["ten. restocked. they'll be gone by friday. they always are."]
+    about.kiko: ["Kiko brings me tea and i let him sit in the back with the headphones. he likes the old stuff. kid's got ears."]
+    about.zara: ["Zara's written me up nine times for leaving the music on after closing. i've seen her nod along on her round. it's in her report. in pencil."]
+    about.bao: ["Bao's cart was here before the mall. i play her the night market songs. she says she doesn't know them. she mouths every word."]
+    about.juno: ["Juno cleans the seventh floor at three in the morning. i leave three songs on for her. she's never said. the floor's always very clean round the speakers."]
+    aboutUnknown: ["never sold them a record."]
+    friend.close: ["you can have anything in the back. the good stuff. just ask."]
+    friend.best: ["i've made you a mix. twelve songs. every one of them reminds me of something we did. it's very embarrassing. it's yours."]
+    famed: ["people say your name like a song they can't get out of their heads. that's good. mostly."]
+    defamed: ["bad reviews. i've had worse. so have the greats."]
+    gift: ["oh, nice. thanks."]
+    gift.favorite: ["oh, that's a treat. i'll have it with the next record. slowly. with the volume up."]
+    gift.again: ["one a day. i've got a shop to run."]
+
+- id: kiko
+  name: Kiko
+  look: { gender: male }
+  title: "Bubble-Tea Boy of the Lobby"
+  job: BEGINNER
+  level: { min: 14, max: 16 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-square
+    routine:
+      - { from: 9, to: 17, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 17, to: 21, spot: "venue:by-robby-fray", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [melon bubble tea, jr. pepe doll claw game]
+  questLines: [kiko-the-melon-pearls, kiko-the-claw-machine]
+  rumors: [ksq-the-cart]
+  relationships:
+    - { persona: bao, kind: GRANDSON_OF }
+    - { persona: felix, kind: BORROWS_RECORDS_FROM }
+    - { persona: zara, kind: HIDES_FROM_AT_CLOSING }
+  giftItemIds: [2001001, 2001002]
+  dialogue:
+    greetFirst: ["tea? tea! cherry, mango, melon. not from upstairs. upstairs it walks around. mine stays in the cup.", "hi! you're new! i know everybody in the lobby. now i know you."]
+    greet: ["tea?", "hi! grandma's got the broth on.", "you came back! people come back for grandma. you came back for me. i think."]
+    idle: ["(shakes a cup of tea over his head like a maraca, then checks the lid)", "(counts coins into three piles, and then into two)"]
+    noWork: ["nothing today! i sold every cup. i'm going to sell the cups next."]
+    nothingDue: ["we're even! want tea? free. no, two mesos."]
+    who: ["Kiko! i sell tea up and down the lobby. my grandma's Bao, she's got the noodle cart by Robby Fray. she was here before the mall. before the floor, even. she says the floor came later and stood on her."]
+    bye: ["come back thirsty!"]
+    thanks: ["thanks! grandma says say it twice. thanks!"]
+    smallTalk: ["the bubble teas on the first floor are teas that got up and left. i'm not making that up. i'd just turned my back.", "grandma tells me about the night market every night. lanterns, and a bell at dusk, and the whole street out with a bowl. i've heard it four hundred times. i want to hear it again."]
+    speakPlainly: ["plainly: tea, and my grandma."]
+    questOffer.kiko-the-melon-pearls: ["my melon tea needs real melon bubbles. the melon teas on the first and second floors, area C. twenty-five of them, and ten bubbles. the ones off the wild teas are chewier. it's a secret. now it's ours."]
+    questAccept.kiko-the-melon-pearls: ["up the escalator! area C! they're green! they're rude!"]
+    questWaiting.kiko-the-melon-pearls: ["ten melon bubbles! they only drop one in five. i know. i counted."]
+    questComplete.kiko-the-melon-pearls: ["ten! chewy! here, the first cup's yours. and potions. grandma says give people potions. people get hurt upstairs."]
+    questOffer.kiko-the-claw-machine: ["the claw machines on the third and fourth floors walk around now. the jr. pepe ones grabbed my hat. twenty-five of them, area B. i don't need the hat back. i want them to know."]
+    questAccept.kiko-the-claw-machine: ["third floor, fourth floor, area B. they've got pepe dolls inside. the dolls look sorry about it."]
+    questWaiting.kiko-the-claw-machine: ["twenty-five! for the hat!"]
+    questComplete.kiko-the-claw-machine: ["twenty-five! they'll think twice. they can't think. they'll grab twice. here, for you. for the hat."]
+    about.bao: ["grandma kept her cart here when everyone else left. she says a market isn't a street, it's people who stay out late together. she stays out latest."]
+    about.felix: ["Felix lets me listen to records in the back of his shop if i bring him tea. he's teaching me which ones are good. it's all the old ones."]
+    about.zara: ["Zara chases me out of the mall at closing. she always lets me finish the cup first. she's nice. don't tell her i said."]
+    about.juno: ["Juno mops at night. she finds my lucky coin under the escalator every week. she gives it back and says 'lucky for who?'"]
+    aboutUnknown: ["never sold them a tea. i will!"]
+    friend.close: ["your tea's free now. forever. grandma said so. i'd have said so anyway."]
+    friend.best: ["when i'm big i'm having a stall. a real one. you're getting the first cup. i've already decided."]
+    famed: ["everybody in the lobby says your name! i say it too. louder."]
+    defamed: ["that's not true. grandma says people who say things like that need feeding."]
+    gift: ["for me? thank you thank you!"]
+    gift.favorite: ["wow. that's sweeter than my tea. don't tell my tea."]
+    gift.again: ["one a day! grandma's rule. she's got lots of rules."]

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "profileId": "tera-forest-time-gate",
+  "mapId": 240070000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 17,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 81,
+    "middleMaxY": 141,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -435, "y": 152, "seatId": -1 },
+    { "x": 275, "y": 152, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -237, "y": 114 },
+    { "x": -235, "y": 152 },
+    { "x": -150, "y": 152 },
+    { "x": -65, "y": 152 },
+    { "x": 20, "y": 152 }
+  ],
+  "npcSpots": [
+    { "npcId": 2082004, "offsetX": 85 },
+    { "npcId": 2083006, "offsetX": -85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -669, "minY": 75, "maxX": -529, "maxY": 200, "excludesOccupancy": true },
+    { "id": "npc-2082004", "type": "NPC_LANE", "minX": -433, "minY": 62, "maxX": -303, "maxY": 192, "excludesOccupancy": true },
+    { "id": "npc-2083006", "type": "NPC_LANE", "minX": 430, "minY": 62, "maxX": 560, "maxY": 192, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-andy", "label": "By Andy", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -520, "y": 152, "seatId": -1 }, { "x": -435, "y": 152, "seatId": -1 }] },
+    { "id": "upper-central-street", "label": "Upper central street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -152, "y": 59, "seatId": -1 }, { "x": -67, "y": 33, "seatId": -1 }, { "x": 18, "y": 13, "seatId": -1 }, { "x": 103, "y": 52, "seatId": -1 }] },
+    { "id": "by-time-gate", "label": "By Time Gate", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 105, "y": 152, "seatId": -1 }, { "x": 190, "y": 152, "seatId": -1 }, { "x": 275, "y": 152, "seatId": -1 }, { "x": 360, "y": 152, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "by-time-gate-crowd", "venueId": "by-time-gate", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

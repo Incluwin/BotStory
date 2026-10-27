@@ -1,0 +1,47 @@
+# Mu Lung Dojo arc (wave 4): fifty years ago Guo was the first to answer Mu Gong's notice. He lost at the top and walked
+# out without bowing, and has sat in the entrance hall every day since. His mended gi (his first quest), the note Shen
+# sends up the floors with Lianhua (world flag mu-lung-dojo.belt.kept: the master kept his belt), and the morning he goes
+# back through the door to bow (world flag mu-lung-dojo.guo.bowed). Its last beat happens once per server
+# (quests/mu-lung-dojo.yaml).
+- id: guo-the-unbowed
+  persona: guo
+  chapters:
+    - id: chapter-1
+      title: "Fifty Years on the Bench"
+    - id: chapter-2
+      title: "The Old Gi"
+      dialogueOverrides:
+        greet: ["sit. mind the gi; it's mended.", "back again. i've been sitting up straighter. the gi does that to a man."]
+        who: ["Guo. fifty years ago i was the first hand on the master's notice. i climbed to the top, i lost, and i walked out without bowing. i've mended the gi i lost in. i haven't decided what it's for."]
+        idle: ["(smooths the folded gi on his knee, finds a stitch he doesn't like, and unpicks it)", "(watches the floor door open and close, his hands folded on his knee)"]
+        smallTalk: ["Shen says the master asks after me every year, on the day of the notice. fifty years. i didn't know he knew my name.", "a mended gi wants wearing. i'm too old to wear it. i'm thinking about it anyway."]
+        questOffer.guo-the-old-gi: ["the collar seam won't sit. i sewed it fifty years out of practice and it shows. thirty porkies in the sky forest and eight of their spines, and i'll do it again properly."]
+        questComplete.guo-the-old-gi: ["eight. (threads a spine and sews, slowly) ...i kept it because i didn't bow. when you lose at the top, you bow to the one who beat you. i didn't. i walked down thirty-eight floors in this and out that door, and every morning since i've come back to sit where i can see it. fifty years is a long time to owe a man a bow. ...there. it sits properly now."]
+        chapterEnter: ["(unfolds an old gi across his knees, looks at it a long time, and folds it again more carefully)"]
+      unlocks:
+        rumors: [mu-lung-dojo-the-unbowed]
+    - id: chapter-3
+      title: "The Belt on the Wall"
+      enterWhen: { flags: [mu-lung-dojo.belt.kept] }
+      dialogueOverrides:
+        greet: ["sit. i'm thinking.", "back again. i'm still thinking. it's a long think."]
+        who: ["Guo. fifty years ago i lost at the top of the Dojo and walked out without bowing. the master kept my belt on his wall the whole time. a man doesn't keep a belt for someone he's forgotten."]
+        idle: ["(sits with his gi folded on his knee and looks at the floor door the way a man looks at weather)", "(rises half off the bench, sits down again, and laughs at himself quietly)"]
+        smallTalk: ["fifty years i thought he'd forgotten me. fifty years he kept my belt on his wall. one of us was a fool. i've decided it was me. it's easier.", "i could go up. i could bow. i'm old, and the stairs are many. the stairs were always many."]
+        questOffer.guo-the-old-gi: ["the collar seam won't sit, and if this gi is going anywhere it had better sit. thirty porkies in the sky forest, and eight of their spines?"]
+        questComplete.guo-the-old-gi: ["eight. (threads a spine and sews the collar, slowly) ...there. a man going up thirty-eight floors should have a collar that sits. i didn't say i was going. i said should."]
+        chapterEnter: ["(sits very still on the bench for a long time, and then, for the first time anyone can remember, takes off his shoes)"]
+    - id: chapter-4
+      title: "The Bow"
+      enterWhen: { flags: [mu-lung-dojo.guo.bowed] }
+      dialogueOverrides:
+        greet: ["sit. the bench is very comfortable these days.", "back again. good. i've nothing to think about. it's wonderful."]
+        who: ["Guo. fifty years ago i lost at the top of the Dojo and walked out without bowing. then i walked back up and bowed, and he bowed back, and we had tea. i sit on this bench now because i like the bench. it's true at last."]
+        idle: ["(sits on the bench in his shoes, quite content, watching the floor door open and close)", "(moves his wrist through a slow form, smiling, not caring who sees)"]
+        smallTalk: ["the master and i drank tea on the top floor and said nothing for an hour. old men can do that. young men talk.", "Lianhua asked me what it's like at the top. i told her: it's a room. the climb's the thing. she didn't believe me. good."]
+        speakPlainly: ["plainly: an old man, a bench, and a bow that got there in the end."]
+        about.shen: ["Shen opened the door for me the morning i went up, and bowed lower than i've ever seen him bow. twelve years of opening it. he'd earned that bow back. i gave it him."]
+        about.meiwen: ["Meiwen stood by the temple board the morning i went up, with half the street behind her. fifty years she never mentioned my face that day. that morning she didn't have to."]
+        questOffer.guo-the-old-gi: ["the gi i bowed in. the seams went again on the stairs; thirty-eight floors is a lot of stairs. porcupine spines make the only needles that go through cloth that heavy. thirty porkies in the sky forest, and eight of their spines?"]
+        questComplete.guo-the-old-gi: ["eight. (threads a spine and sews, slowly) ...i kept this gi fifty years because i lost in it and didn't bow. now i've bowed in it. it can keep another fifty for a better reason."]
+        chapterEnter: ["(comes back down through the floor door very slowly, his gi folded over one arm, and sits on the bench as if he had never left it)"]

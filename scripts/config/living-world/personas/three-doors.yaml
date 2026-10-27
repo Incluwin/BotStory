@@ -1,0 +1,356 @@
+# Temple of Time cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 5 Residents, 2 recruitable,
+# on Three Doors, the hub before the roads of Memory, Regrets and Oblivion. A pilgrim of the Road of Regrets finds her own
+# lullaby in an Eye of Time's hourglass, sung by somebody old beside a sea (arcs/three-doors.yaml); the girl it belongs to
+# is at the Tera Forest Time Gate (arcs/tera-forest-time-gate.yaml). The two recruits continue Della's coats and Perrin's
+# earrings past level 100.
+- id: solveig
+  name: Solveig
+  look: { gender: female }
+  title: "Pilgrim of the Road of Regrets"
+  job: BEGINNER
+  level: { min: 68, max: 70 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: three-doors
+    routine:
+      - { from: 6, to: 10, spot: "venue:temple-of-time-entrance", activity: LINGER }
+      - { from: 10, to: 14, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 14, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [Eye of Time, Qualm Monk, Cracked Hourglass]
+  questLines: [solveig-the-pilgrims-cairn, solveig-the-song-in-the-glass, solveig-the-girl-at-the-gate]
+  arc: solveig-the-road-of-regrets
+  relationships:
+    - { persona: ilsabet, kind: SITS_EVENINGS_WITH }
+    - { persona: osmund, kind: ASKS_FOR_A_LINE_FROM }
+    - { persona: augustin, kind: READ_ONE_LINE_OF }
+    - { persona: calla, kind: HUMS_THE_SAME_SONG_AS }
+  giftItemIds: [2022000, 2020014]
+  dialogue:
+    greetFirst: ["you've come in on Corba's flight. everybody does. sit a moment. the roads aren't going anywhere.", "a new face at Three Doors. which road are you for? don't tell me. you'll find out at the door."]
+    greet: ["hello, traveller.", "you again. good. sit.", "(nods) the doors are still here. so am i."]
+    idle: ["(laces a worn pair of walking boots, slowly, double-knotting each)", "(hums three notes of something under her breath, stops, and looks down the street toward the door to the roads)"]
+    noWork: ["nothing today. sit, if you like. the road will want me later."]
+    nothingDue: ["nothing owed. not between us."]
+    who: ["Solveig. i walk the Road of Regrets. there's a cairn in the Past of the Verdure, where the roads begin, and every pilgrim leaves a stone. i've left a great many. it's always the same regret."]
+    bye: ["mind the road."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the Eyes of Time carry hourglasses with moments in them. lost ones. people's. hold a glass to your ear and you can hear them. i've heard a wedding. a dog barking. a door shutting.", "i had a daughter. Liv. she went through the gate in Tera Forest at seventeen to see the years to come, and never came back. i never said goodbye. i was cross with her that morning. that's the regret."]
+    speakPlainly: ["plainly: an old woman with one regret and a long road."]
+    questOffer.solveig-the-pilgrims-cairn: ["the Eyes of Time crowd the first stretch of Memory Lane, where every road begins. my knees won't take the crowd. clear twenty-five of them, and on your way back lay a stone on the cairn in the Past of the Verdure for me. any stone."]
+    questAccept.solveig-the-pilgrims-cairn: ["through the door to the Past of the Verdure, and on to Memory Lane's first stretch. the cairn's in the Past of the Verdure. you'll see the stones."]
+    questWaiting.solveig-the-pilgrims-cairn: ["twenty-five, and a stone. the cairn won't mind waiting. i do."]
+    questComplete.solveig-the-pilgrims-cairn: ["you laid it? thank you. that's one more. it's lighter, a little, every time. it never stays lighter."]
+    questOffer.solveig-the-song-in-the-glass: ["i listen to the Eyes' hourglasses. somebody should. the Eyes on Memory Lane's first stretch carry them. thirty Eyes, twelve glasses. i'll sit with them tonight."]
+    questAccept.solveig-the-song-in-the-glass: ["through the door to the Past of the Verdure, then the first stretch of Memory Lane. the Eyes don't care who you are."]
+    questWaiting.solveig-the-song-in-the-glass: ["twelve glasses. i've cleared the table for them."]
+    questComplete.solveig-the-song-in-the-glass: ["twelve. ...this one. listen. a harbor at night, and a lamp, and an old woman singing. that's my song. i made it up for Liv when she wouldn't sleep. nobody else knows it. but that's not my voice, and i never once sang it by a sea."]
+    questOffer.solveig-the-girl-at-the-gate: ["Augustin keeps the logbook of the Time Gate down in Tera Forest. ask him if the gate ever opens on a harbor, and who came out of it. and if somebody did... hum them my song. you've heard it. see if they know the next line."]
+    questAccept.solveig-the-girl-at-the-gate: ["Corba's flight back down to Leafre Station, then out through Minar Forest to the Time Gate. Augustin will be by the gate with his book. he always is."]
+    questWaiting.solveig-the-girl-at-the-gate: ["did he know of a harbor? did anybody know the song?"]
+    questComplete.solveig-the-girl-at-the-gate: ["a girl. from a harbor, a hundred years on. and she knew the next line, and she says it was her gran's. ...her gran's. i won't hope. i've walked that road too many times. not yet. thank you."]
+    about.osmund: ["Osmund writes for the Record Keeper. i've asked him for one line from the records, every week, for years. he won't read it out. he's right not to. i keep asking."]
+    about.ilsabet: ["Ilsabet slept thirty years on a ship and woke on our step with her hat still on. we sit of an evening. she makes me laugh. nobody else on this road has, in a long while."]
+    about.caedmon: ["Caedmon guards the three doors. he sees me onto the road every day and says 'mind your step, mother.' i'm not his mother. i let him say it."]
+    about.liesl: ["Liesl hunts the far road. she walks the way my Liv did at that age, too fast, as if the road owed her money."]
+    about.augustin: ["Augustin keeps the gate's book. years ago i asked to read one line in it. he let me. i didn't like the line. i've never asked him for another."]
+    about.calla: ["a girl at the Tera Forest gate? i don't go down there. not anymore."]
+    about.corliss: ["Corliss at Orbis station keeps the old ledgers in a back room. there's a line in one, forty years old: Liv, to Leafre. he found it for me without my asking twice."]
+    aboutUnknown: ["i don't know them. i've been on the road a long while."]
+    friend.close: ["sit with me on the road some evening. you don't have to say anything. that's the best part."]
+    friend.best: ["if i ever finish this road, i'll tell you first. you've walked enough of it with me."]
+    famed: ["they speak well of you at Leafre Station. i'm glad. the station's hard to please."]
+    defamed: ["i've heard things. i've said worse things myself, to people i loved, on a cross morning. i don't believe them."]
+    gift: ["oh. thank you, dear."]
+    gift.favorite: ["oh, that's a pilgrim's treat. that'll last me the whole road."]
+    gift.again: ["one's plenty, dear. i've a long way to carry it."]
+
+- id: osmund
+  name: Osmund
+  look: { gender: male }
+  title: "Scribe to the Record Keeper"
+  job: BEGINNER
+  level: { min: 50, max: 52 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: three-doors
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-temple-keeper", activity: LINGER }
+      - { from: 12, to: 13, spot: "venue:lower-west-street-2", activity: REST }
+      - { from: 13, to: 18, spot: "venue:by-temple-keeper", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [Qualm Monk Trainee, Chief Qualm Guardian, Oblivion Monk]
+  questLines: [osmund-blotting-felt, osmund-blue-ink, osmund-a-hat-for-the-ages]
+  rumors: [temple-thirty-years]
+  relationships:
+    - { persona: solveig, kind: REFUSES_ONE_LINE_TO }
+    - { persona: liesl, kind: WRITES_NAMES_FOR }
+    - { persona: augustin, kind: WRITES_ABOUT_INK_TO }
+  giftItemIds: [2020007, 2022001]
+  dialogue:
+    greetFirst: ["a visitor. please don't touch the pages. not that one either.", "you'll want the Record Keeper. he's at the far end of the Road to Oblivion. i'm the near end. how can i help?"]
+    greet: ["good day.", "you again. wipe your hands, please.", "ah. hello. mind the ink."]
+    idle: ["(blots a page with great care, lifts the blotter, and frowns at a smudge only he can see)", "(counts quills in a case under his breath, and comes out one short every time)"]
+    noWork: ["nothing today. the ink's mixed and the pages are ruled. a scribe's best day is a dull one."]
+    nothingDue: ["the account is balanced. i've written it down."]
+    who: ["Osmund. i copy for the Record Keeper. everything that happens in time has a line somewhere in his records. somebody has to keep the ink from running. that's me."]
+    bye: ["mind the ink on your way."]
+    thanks: ["most kind. noted."]
+    smallTalk: ["the Record Keeper writes the lines. i bind them. he never asks for cloth. he asks for 'a cover worthy of the year'. it's always cloth.", "people ask me to read them their own line. i don't. a line read out too early becomes a line you live up to. or down to."]
+    speakPlainly: ["plainly: ink, pages, and keeping my mouth shut."]
+    questOffer.osmund-blotting-felt: ["my blotter's worn through. the trainees on the second stretch of the Road of Regrets wear cone hats of the best felt i've ever pressed. twenty-five of them, twelve hats. i'll cut a year's blotters from them."]
+    questAccept.osmund-blotting-felt: ["the Road of Regrets, the second stretch. they carry their regrets on their heads. take the hats. leave the regrets."]
+    questWaiting.osmund-blotting-felt: ["twelve hats. the page is waiting to be blotted."]
+    questComplete.osmund-blotting-felt: ["twelve. lovely felt. look, it takes a drop without a ripple. thank you. i'll note it."]
+    questOffer.osmund-blue-ink: ["the records of the Road of Regrets want a blue that won't fade. the chief guardians on the fourth stretch carry blue hearts. ground fine, they make the only ink that holds on a page of regret. twenty-five chiefs, twelve hearts."]
+    questAccept.osmund-blue-ink: ["the fourth stretch of the Road of Regrets. the chiefs are slow to anger. they're slow to stop, too."]
+    questWaiting.osmund-blue-ink: ["twelve hearts. i've the mortar out."]
+    questComplete.osmund-blue-ink: ["twelve. the blue's beautiful. it'll outlast the regrets. most ink does. thank you."]
+    questOffer.osmund-a-hat-for-the-ages: ["the Record Keeper wants the year's volume bound. red cloth, from the oblivion monks on the first stretch of the Road to Oblivion. twenty-five monks, twelve lengths. and there's a hat in the cupboard nobody has worn in a long while. it might fit you."]
+    questAccept.osmund-a-hat-for-the-ages: ["the Road to Oblivion, past the end of the Road of Regrets and the Burning Past. the monks there forget you as soon as you've passed. try to be forgettable."]
+    questWaiting.osmund-a-hat-for-the-ages: ["twelve lengths of red. the year won't bind itself."]
+    questComplete.osmund-a-hat-for-the-ages: ["twelve. a cover worthy of the year. and the hat. it's yours. it was made to outlast whoever wore it. most of the good things here were."]
+    about.solveig: ["Solveig has asked me for lines from the records more often than anyone. i've refused her more often than anyone. she has never once been rude about it."]
+    about.ilsabet: ["Ilsabet wants me to read her the thirty years she slept through. i told her she'd have to sit very still for thirty years. she said she's had practice."]
+    about.caedmon: ["Caedmon writes his name on the visitors' page in letters an inch high. i've asked him not to. he says the doors should know who's minding them."]
+    about.liesl: ["Liesl brings me the names of things she meets on the Road to Oblivion, so they're written somewhere. it isn't my work. i do it anyway."]
+    about.calla: ["Calla. the girl at the Tera Forest gate. there's a line for her in the records, as there is for everyone. i read lines out only when somebody needs one read."]
+    about.augustin: ["Augustin keeps the gate's logbook in Tera Forest. we write to each other about ink. his is beetle horn. i don't approve. it holds."]
+    aboutUnknown: ["i'd have to look them up. i won't."]
+    friend.close: ["i've written your name on the visitors' page in my best hand. i don't do that for everyone. i do it for nobody, as a rule."]
+    friend.best: ["if you ever need a line found, i'll find it. read it out, even. for you. don't tell Solveig."]
+    famed: ["your name's come up in the records. i didn't read it. i noticed it was long."]
+    defamed: ["people say things. the records don't. i trust the records."]
+    gift: ["how kind. thank you."]
+    gift.favorite: ["oh, that's just the thing for a long night at the pages. thank you."]
+    gift.again: ["one's sufficient. i'll note the rest as owed."]
+
+- id: ilsabet
+  name: Ilsabet
+  look: { gender: female }
+  title: "Passenger of the Night Ship"
+  job: BEGINNER
+  level: { min: 40, max: 42 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: three-doors
+    routine:
+      - { from: 7, to: 12, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-central-street-2", activity: REST }
+      - { from: 14, to: 19, spot: "venue:lower-east-street-2", activity: STROLL }
+      - { from: 19, to: 23, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  knows: [Memory Monk Trainee, Orbis, Leafre]
+  questLines: [ilsabet-the-unruled-line, ilsabet-thirty-years-behind]
+  rumors: [temple-thirty-years]
+  relationships:
+    - { persona: solveig, kind: SITS_EVENINGS_WITH }
+    - { persona: caedmon, kind: TAKES_THE_ARM_OF }
+    - { persona: corliss, kind: IS_IN_THE_LEDGER_OF }
+  giftItemIds: [2020017, 2020009]
+  dialogue:
+    greetFirst: ["hello! you're new. or i'm old. it's hard to tell, lately.", "oh, a traveller! a word of advice: never fall asleep on a ship. take it from me."]
+    greet: ["hello, you!", "there you are! what year is it? i'm joking. mostly.", "hello again. still thirty years behind. catching up."]
+    idle: ["(adjusts a hat thirty years out of fashion, and then, defiantly, adjusts it again)", "(counts on her fingers, loses track somewhere past twenty, and starts over)"]
+    noWork: ["nothing today. i'm catching up on thirty years. it's slow. there's a lot of it."]
+    nothingDue: ["we're square! i think. my sums are a bit old."]
+    who: ["Ilsabet. i took the night ship from Orbis to Leafre, sat down in the hold, and shut my eyes. i woke on the step of the temple door. thirty years later. i'd still got my hat on."]
+    bye: ["mind you don't nod off!"]
+    thanks: ["oh, you're a love."]
+    smallTalk: ["a loaf cost two mesos when i fell asleep. i asked for one in Leafre and the baker laughed for a full minute. i timed it. i've time to spare.", "the Temple Keeper says time sometimes puts down what it's carrying. i was what it was carrying. i'd like to know where it meant to take me."]
+    speakPlainly: ["plainly: thirty years late, and a terrible hat."]
+    questOffer.ilsabet-the-unruled-line: ["i'd like to know if anybody missed me. the stationmaster at Orbis keeps the ship ledgers, and the porter at Leafre's station remembers everything ever carried. ask them about the night ship, thirty years back. a lady in a green hat."]
+    questAccept.ilsabet-the-unruled-line: ["Corba flies you down to Leafre Station. Elsk first, he carries there, then the ship across to Orbis for Corliss. they write to each other. they'll have opinions."]
+    questWaiting.ilsabet-the-unruled-line: ["did anybody remember me? it's all right if not. it's been thirty years."]
+    questComplete.ilsabet-the-unruled-line: ["he ruled me off! 'disembarked: the Temple of Time.' and the porters tell a story about me. a lady nobody could wake. i'm a story! thank you. i've never been a story before."]
+    questOffer.ilsabet-thirty-years-behind: ["my hat's thirty years out of fashion. Mirelle in Leafre makes hats, and she'll want felt. the monk trainees on Memory Lane's second stretch wear green cone hats of good felt. twenty-five trainees, ten hats. i'd like to be only twenty years behind. it's a start."]
+    questAccept.ilsabet-thirty-years-behind: ["Memory Lane, the second stretch. then Leafre, to Mirelle by the department store. tell her it's urgent. it's been urgent for thirty years."]
+    questWaiting.ilsabet-thirty-years-behind: ["ten hats. the felt, not the trainees."]
+    questComplete.ilsabet-thirty-years-behind: ["a pattern, from Mirelle herself! and the felt. i'll sew it tonight. i haven't sewn in thirty years. i expect it'll come back to me. everything else has, eventually."]
+    about.solveig: ["Solveig lost a daughter to the gate down in Tera Forest. i lost thirty years to a nap. we sit together of an evening. she says hers is worse. i say mine's sillier. we're both right."]
+    about.osmund: ["Osmund won't read me my thirty years. he says i'd have to sit very still. i've sat very still! for thirty years! nobody's better qualified."]
+    about.caedmon: ["Caedmon calls me 'madam' and offers me his arm on the steps. nobody's done that since before i fell asleep. i'm keeping him."]
+    about.liesl: ["Liesl goes down the far road and comes back quieter. i talk enough for both of us. she seems to like that."]
+    about.calla: ["the girl at the gate? she came from a hundred years on. i came from thirty back. if we met in the middle we'd be about the same age."]
+    about.corliss: ["Corliss at Orbis station keeps a ledger of every passenger. i'm in it. for thirty years i was just 'boarded'. imagine being 'boarded' for thirty years."]
+    about.elsk: ["Elsk carries for the Leafre ship. he says he's carried everything. never a sleeping lady, though. i'd have remembered. well. i wouldn't."]
+    about.mirelle: ["Mirelle makes hats in Leafre. she looked at mine and said 'oh, those are coming back.' i've decided to believe her."]
+    aboutUnknown: ["never heard of them. but i've missed a great deal."]
+    friend.close: ["you're the first friend i've made this century. i've decided to count you twice."]
+    friend.best: ["if i ever fall asleep for thirty years again, i want you on the step when i wake. nearby. you know what i mean."]
+    famed: ["everybody's talking about you! half the words are new, but it sounds good."]
+    defamed: ["people say the oddest things now. i don't understand half of it. i've decided not to understand that half either."]
+    gift: ["oh! for me? thank you!"]
+    gift.favorite: ["oh, i remember these! they're the same! some things stayed the same!"]
+    gift.again: ["one a day, love. i've a figure to think of. a thirty-year-old figure."]
+
+- id: caedmon
+  name: Caedmon
+  look: { gender: male }
+  title: "Guardian-Knight of the Three Doors"
+  job: HERO
+  level: { min: 120, max: 122 }
+  strength: ELITE
+  loadout: temple-2h-sword-l120
+  personality: efficient-v1
+  home:
+    town: three-doors
+    routine:
+      - { from: 5, to: 12, spot: "venue:lower-east-street-3", activity: LINGER }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 23, to: 5, materialize: false }
+  recruitable: true
+  knows: [Memory Guardian, Qualm Guardian, Dodo]
+  contract: caedmon-the-doors-watch
+  questLines: [caedmon-the-third-door, caedmon-green-steel, caedmon-the-blue-watch, caedmon-timeless, caedmon-the-helmet-wall]
+  rumors: [temple-the-far-door]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: liesl, kind: VOUCHES_FOR }
+    - { persona: ilsabet, kind: OFFERS_HIS_ARM_TO }
+    - { persona: bastian, kind: SQUIRED_WITH }
+  giftItemIds: [2000005, 2020008]
+  dialogue:
+    greetFirst: ["halt. ...forgive me. habit. welcome to the three doors. name your road and i'll see you onto it.", "a new face. one door, every road: Memory Lane first, the Road of Regrets past the Frozen Past, the Road to Oblivion past the Burning Past. i'll see you onto whichever you've earned."]
+    greet: ["well met.", "you again. good. the doors are quieter with you about.", "hail, friend."]
+    idle: ["(stands with both hands on the pommel of a great sword, utterly still, watching the door to the roads)", "(writes his name very large on a visitors' page, considers it, and underlines it)"]
+    noWork: ["nothing today. the doors are held. that's the whole of the work, most days."]
+    nothingDue: ["we stand square, friend."]
+    who: ["Caedmon. i keep the three doors: the Past of the Verdure before Memory Lane, the Frozen Past before the Road of Regrets, the Burning Past before the Road to Oblivion. one way in, every road in its order. the guardians on Memory Lane were knights like me, once. they've forgotten why they stand there. i haven't. i train against them so i won't."]
+    bye: ["go well, and come back."]
+    thanks: ["my thanks."]
+    smallTalk: ["the memory guardians on the third stretch still salute, sometimes, before they swing. i salute back. it seems only fair.", "Liesl says i guard doors nobody's trying to get through. she's wrong. things try every night. from the other side.", "the Temple Keeper lets nobody down a stretch till they've proved themselves on the one before. he's right to. i'd do the same."]
+    speakPlainly: ["plainly: three doors, one sword."]
+    offer: ["sixty memory guardians laid down, counted, and sixty thousand. they're the knights i'd become if i stopped paying attention. then i'll hold your back as i hold the doors."]
+    join: ["lead on. i'll stand where you can't see."]
+    bench: ["i'll wait, friend. two days. then the doors will want me."]
+    leave: ["back to the doors."]
+    refuse.bond: ["i don't swing beside strangers. it's no slight. it's how one stays a knight."]
+    refuse.flags: ["face the memory guardians with me first, on Memory Lane's third stretch. then ask."]
+    refuseOwnErrand: ["the guardians first. come and stand with me."]
+    questOffer.caedmon-the-third-door: ["the memory guardians on Memory Lane's third stretch were knights once. they guard nothing now. help me lay thirty of them down, and bring me ten of their green helmets. i hang them on the wall by the door. it's the only honour i can do them."]
+    questAccept.caedmon-the-third-door: ["through the door to the Past of the Verdure and down Memory Lane to the third stretch. they'll salute. salute back."]
+    questWaiting.caedmon-the-third-door: ["ten helmets. there's room on the wall."]
+    questComplete.caedmon-the-third-door: ["ten. i'll hang them tonight. you fought like somebody who remembers why. i'd stand beside you."]
+    questOffer.caedmon-green-steel: ["the chief guardians on Memory Lane's fourth stretch carry green hearts. Della in Ludibrium taught me a coat can be armour if it's made meaning it. thirty chiefs, fifteen hearts, and i'll have one made for you."]
+    questAccept.caedmon-green-steel: ["Memory Lane, the fourth stretch. the chiefs hit hard and forget harder."]
+    questWaiting.caedmon-green-steel: ["fifteen hearts. green, like the lane."]
+    questComplete.caedmon-green-steel: ["fifteen. here. every safe scroll it would take, and every one took. wear it as if you'd sworn something. you have."]
+    questOffer.caedmon-the-blue-watch: ["the qualm guardians on the Road of Regrets' third stretch wear blue helmets. there's armour to be made from them, the dragon kind, if the helmets are won fairly. thirty guardians, fifteen helmets."]
+    questAccept.caedmon-the-blue-watch: ["down the whole of Memory Lane and past the Frozen Past, then along the Road of Regrets to its third stretch. the guardians there regret everything. don't join them."]
+    questWaiting.caedmon-the-blue-watch: ["fifteen helmets. blue, like the road."]
+    questComplete.caedmon-the-blue-watch: ["fifteen. here. scrolled at sixty, every one took. it's armour a knight earns once. you've earned it."]
+    questOffer.caedmon-timeless: ["one last walk. Dodo keeps the end of Memory Lane: three of him, and three of his whale helmets. then thirty oblivion monk trainees on the second stretch of the Road to Oblivion. the timeless suit is for someone who's walked behind every door."]
+    questAccept.caedmon-timeless: ["Memory Lane's fifth stretch for Dodo. then on past the Frozen Past and the whole Road of Regrets, past the Burning Past, to the Road to Oblivion's second stretch. every door. you'll have seen them all."]
+    questWaiting.caedmon-timeless: ["three helmets, thirty trainees. every door."]
+    questComplete.caedmon-timeless: ["three, and thirty. the timeless suit. two tens and the rest at sixty, every one took. you've walked every road behind these doors, friend. most never walk one."]
+    questOffer.caedmon-the-helmet-wall: ["ten more green helmets? the wall by the door's got a gap."]
+    questAccept.caedmon-the-helmet-wall: ["Memory Lane, the third stretch."]
+    questWaiting.caedmon-the-helmet-wall: ["ten."]
+    questComplete.caedmon-the-helmet-wall: ["ten. the wall's whole again. thank you."]
+    about.liesl: ["Liesl hunts the far end of the roads. she's the best shot i've ever stood beside. if anyone wants a crossbow at their back, i'll tell them she never misses what matters."]
+    about.solveig: ["Solveig has walked the Road of Regrets more often than i've guarded it. i've never asked what she leaves at the cairn. you don't ask a pilgrim that."]
+    about.osmund: ["Osmund asked me to write my name smaller on the visitors' page. i told him the doors should know who's minding them. he's never forgiven me. he's never stopped asking."]
+    about.ilsabet: ["Ilsabet. i give her my arm on the steps. she was a lady thirty years before i was a knight. one keeps up the forms."]
+    about.bastian: ["Bastian keeps Leafre's west border. we squired together, a long time ago. he still says thank you too often. i still say it too seldom."]
+    aboutUnknown: ["never stood a door with them."]
+    friend.close: ["you may pass the doors without a word from me. i'll still say one. habit."]
+    friend.best: ["if you ever stand at a door you can't hold, send for me. i'll hold it. any door, anywhere."]
+    famed: ["they speak your name with honour at Leafre Station. as they should."]
+    defamed: ["i heard what was said. i've told the doors not to believe it."]
+    gift: ["you honour me. thank you."]
+    gift.favorite: ["now that's a knight's ration. i'm in your debt."]
+    gift.again: ["one's enough, friend. a knight keeps his belt where it is."]
+
+- id: liesl
+  name: Liesl
+  look: { gender: female }
+  title: "Hunter of the Road to Oblivion"
+  job: SNIPER
+  level: { min: 110, max: 112 }
+  strength: VETERAN
+  loadout: temple-crossbow-l110
+  personality: efficient-v1
+  home:
+    town: three-doors
+    routine:
+      - { from: 7, to: 11, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 11, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: true
+  knows: [Memory Monk, Oblivion Monk, Oblivion Guardian]
+  contract: liesl-the-far-road-share
+  questLines: [liesl-the-first-road, liesl-rose-earrings, liesl-sword-earrings, liesl-one-line, liesl-the-grip]
+  rumors: [temple-the-far-door]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: caedmon, kind: STANDS_BESIDE }
+    - { persona: osmund, kind: BRINGS_NAMES_TO }
+    - { persona: runa, kind: SHARED_A_FIRE_WITH }
+  giftItemIds: [2000004, 2020015]
+  dialogue:
+    greetFirst: ["you're in my line of sight. that's fine. stay there.", "new. hm. most people forget this place. i don't."]
+    greet: ["you.", "back. still remembered.", "hm. hello."]
+    idle: ["(runs a thumb along a name scratched into the stock of her crossbow, and doesn't look at it)", "(sights down the street toward the door to the roads, holds, breathes out, lowers the bow)"]
+    noWork: ["nothing today. the road's quiet. it's never quiet."]
+    nothingDue: ["even."]
+    who: ["Liesl. i hunt the far roads, past the Burning Past, a little farther every year. the Road to Oblivion takes things. people. names. it's not taking any more while i'm watching."]
+    bye: ["remember yourself."]
+    thanks: ["hm. thanks."]
+    smallTalk: ["the memory monks on Memory Lane's first stretch wear green cloth. i wind it round the stock. it keeps my grip if my hands shake. they don't shake.", "i had a brother. Anselm. he walked the Road to Oblivion. everybody in our village had forgotten him by spring. his name's on my crossbow so i can't."]
+    speakPlainly: ["plainly: one crossbow, one name."]
+    offer: ["fifty thousand, and twenty-five lengths of green cloth off the memory monks. i go through it. then i'll cover you as far as you like."]
+    join: ["go. i'll be behind you. you won't see me. good."]
+    bench: ["three days. then the road."]
+    leave: ["back to the road."]
+    refuse.bond: ["no. i don't know you yet. i keep the people i know. i'm careful who that is."]
+    refuse.flags: ["walk Memory Lane's first stretch with me once. and some evening on the lower west street, hear what Caedmon says about me. then ask."]
+    refuseOwnErrand: ["my road first. walk it with me."]
+    questOffer.liesl-the-first-road: ["start where everyone starts. Memory Lane, the first stretch. thirty memory monks, twelve lengths of their green cloth for my grip. i'll see how you walk."]
+    questAccept.liesl-the-first-road: ["through the door to the Past of the Verdure. the monks are slow. you shouldn't be."]
+    questWaiting.liesl-the-first-road: ["twelve lengths. keep walking."]
+    questComplete.liesl-the-first-road: ["twelve. you walk well. you'd last on the far road. hm. good."]
+    questOffer.liesl-rose-earrings: ["thirty monk trainees on Memory Lane's second stretch. then go back to the resting spot before it and sit a minute. hear nothing. it's the quietest place in time. then come back. i've a pair of rose earrings that want wearing."]
+    questAccept.liesl-rose-earrings: ["Memory Lane, the second stretch, then the resting spot just before it. sit. listen. you'll see."]
+    questWaiting.liesl-rose-earrings: ["thirty, and the resting spot. don't skip the sitting."]
+    questComplete.liesl-rose-earrings: ["you sat. good. the rose earrings. every safe scroll they'd take, every one took. Anselm bought them for a girl. she forgot him by spring and gave them back without knowing why she had them. they should be worn by somebody."]
+    questOffer.liesl-sword-earrings: ["the qualm monks on the Road of Regrets' first stretch. thirty, and fifteen lengths of blue cloth. i'm making a sling for the long shots. there's a pair of sword earrings in it for you."]
+    questAccept.liesl-sword-earrings: ["down the whole of Memory Lane and past the Frozen Past, to the Road of Regrets. the monks there carry what they're sorry for. it slows them. don't let it slow you."]
+    questWaiting.liesl-sword-earrings: ["fifteen. blue."]
+    questComplete.liesl-sword-earrings: ["fifteen. the sword earrings. scrolled at sixty, every one took. sharp. like you."]
+    questOffer.liesl-one-line: ["walk the Road to Oblivion. thirty monks on the first stretch, twenty guardians on the third. then ask Osmund one thing for me: is there a line in the records for Anselm. i've never asked. i can't. you can."]
+    questAccept.liesl-one-line: ["past the end of the Road of Regrets and the Burning Past. the road will try to make you forget why you came. you came for Anselm. hold on to that."]
+    questWaiting.liesl-one-line: ["did you ask him? don't tell me yet. finish the road first."]
+    questComplete.liesl-one-line: ["'walked to the end of the road. remembered by one.' ...by one. that's me. that's enough to keep a line. the timeless earrings. two tens and the rest at sixty, every one took. wear them. remember him a little too. that makes two."]
+    questOffer.liesl-the-grip: ["ten lengths of green cloth? the grip's worn."]
+    questAccept.liesl-the-grip: ["Memory Lane, the first stretch."]
+    questWaiting.liesl-the-grip: ["ten."]
+    questComplete.liesl-the-grip: ["ten. good grip. thanks."]
+    about.caedmon: ["Caedmon guards doors. he stands so still the Eyes of Time forget he's there. i asked him how. he said 'practice'. he doesn't know either."]
+    about.solveig: ["Solveig has walked the Road of Regrets more than anyone. once she asked me what's at the end of mine. i said nobody knows. she said that's the trouble with roads."]
+    about.osmund: ["Osmund writes down the names i bring him from the far road, so they're somewhere. he says it isn't his work. he does it every time."]
+    about.ilsabet: ["Ilsabet talks. a lot. i don't mind. somebody should fill the quiet up here, and it's never going to be me."]
+    about.runa: ["Runa keeps the canyon road in Leafre. we've shared a fire twice. nine words between us. it was a good evening."]
+    aboutUnknown: ["never heard the name. i'll remember it, though."]
+    friend.close: ["you're on my crossbow. not carved. i'm saying i'd cover you. that's what i mean."]
+    friend.best: ["if the far road ever takes you, i'll remember you. i'll make everybody else remember too. i'm good at it."]
+    famed: ["people say your name up here. good. say it louder. names last when they're said."]
+    defamed: ["people say things. i stopped listening to people. i listen to the road."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["that's a good one. i'll keep it for the far road."]
+    gift.again: ["one. i travel light."]

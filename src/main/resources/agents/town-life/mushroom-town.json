@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "profileId": "mushroom-town",
+  "mapId": 10000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 365,
+    "middleMaxY": 474,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 55, "y": 485, "seatId": -1 },
+    { "x": 480, "y": 605, "seatId": -1 },
+    { "x": 926, "y": 485, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -115, "y": 605 },
+    { "x": -30, "y": 605 },
+    { "x": 55, "y": 605 },
+    { "x": 140, "y": 605 },
+    { "x": 225, "y": 485 },
+    { "x": 225, "y": 605 },
+    { "x": 310, "y": 485 }
+  ],
+  "npcSpots": [
+    { "npcId": 2100, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-out00", "type": "PORTAL", "minX": 1007, "minY": 410, "maxX": 1147, "maxY": 535, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 930, "minY": 67, "maxX": 1020, "maxY": 375, "excludesOccupancy": true },
+    { "id": "npc-2100", "type": "NPC_LANE", "minX": 768, "minY": 35, "maxX": 898, "maxY": 165, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -115, "y": 485, "seatId": -1 }, { "x": -30, "y": 485, "seatId": -1 }, { "x": 55, "y": 485, "seatId": -1 }, { "x": 140, "y": 485, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 310, "y": 605, "seatId": -1 }, { "x": 395, "y": 605, "seatId": -1 }, { "x": 480, "y": 605, "seatId": -1 }, { "x": 565, "y": 605, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 756, "y": 485, "seatId": -1 }, { "x": 841, "y": 485, "seatId": -1 }, { "x": 926, "y": 485, "seatId": -1 }, { "x": 996, "y": 485, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "lower-west-street-crowd", "venueId": "lower-west-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

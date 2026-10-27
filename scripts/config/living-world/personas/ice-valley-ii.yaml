@@ -1,0 +1,134 @@
+# Ice Valley II cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 2 Residents, 1 recruitable.
+# The top of the valley, where Jeff keeps the gate into the El Nath dungeon and Glibber sells potions. Yetis hold the
+# four lower layers, so both keep to the upper ledges. Torsten stands Jeff's gate at night and shares the road with
+# Hrafn at the Door to Zakum (arcs/door-to-zakum.yaml); Agnetha carries Glibber's potions up from El Nath.
+- id: torsten
+  name: Torsten
+  look: { gender: male }
+  title: "Relief Guard at Jeff's Gate"
+  job: CRUSADER
+  level: { min: 70, max: 72 }
+  strength: VETERAN
+  loadout: ice-valley-axe-l60
+  personality: efficient-v1
+  home:
+    town: ice-valley-ii
+    routine:
+      - { from: 18, to: 7, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 7, to: 16, materialize: false }
+      - { from: 16, to: 18, spot: "venue:by-glibber", activity: SOCIALIZE }
+  recruitable: true
+  knows: [sharp cliff, dark pepe, dark yeti]
+  contract: torsten-the-gate-proof
+  questLines: [torsten-past-the-gate, torsten-gordons-magic-iron, torsten-whistles]
+  rumors: [ice-valley-ii-the-runner]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: hrafn, kind: SHARES_A_ROAD_WITH }
+    - { persona: agnetha, kind: WATCHES_THE_LEDGES_FOR }
+    - { persona: oskar, kind: WEARS_BOOTS_BY }
+  giftItemIds: [4000057, 2000004]
+  dialogue:
+    greetFirst: ["evening. you're going in? Jeff's asleep. i'm the one who says be careful at this hour. be careful.", "stop a moment. let me see your face. i like to know the faces that go past the gate. it helps, after."]
+    greet: ["gate's quiet.", "you came back up. good. i keep count."]
+    idle: ["(stands at the top of the valley with one hand on the rail, listening down the slope)", "(turns a hollow dark beak over in his fingers and blows one soft note on it)"]
+    noWork: ["nothing tonight. the gate's quiet. i like it quiet."]
+    nothingDue: ["you owe the gate nothing. come back up. that's all it asks."]
+    who: ["Torsten. i stand Jeff's gate at night, so he can sleep. he tells everyone a few brave men went in once and never came back. i've heard it a thousand times. i stand here so it stays a few."]
+    bye: ["come back up the way you went."]
+    thanks: ["good."]
+    smallTalk: ["past the gate it's the sharp cliffs, then the wolves, then the dead trees, then the mine, then the cave, then the door. one road. i keep the top of it. Hrafn keeps the bottom.", "i listen down the valley at dusk. it's the best hour for it. sound comes up a valley better than it goes down. i've had six years to learn that."]
+    speakPlainly: ["plainly: a gate, a road, and the ones who come back up it."]
+    offer: ["sixty dark pepes off the second sharp cliff, counted, and twenty thousand for the nights Jeff stands alone. then i'll walk beside you as far as you like."]
+    join: ["right. you lead. i'll watch behind. on a road, that's where the trouble comes from."]
+    bench: ["two days. then the gate wants me. Jeff snores at his post. someone has to listen."]
+    leave: ["that's my time. the gate's waiting. come back up the way you went."]
+    refuse.bond: ["i don't leave the gate with a face i don't know."]
+    refuse.flags: ["go past the gate once. clear the dark pepes off the second sharp cliff for me. then ask."]
+    refuseOwnErrand: ["the gate's mine. you can stand it with me."]
+    questOffer.torsten-past-the-gate: ["the first thing past the gate is the sharp cliffs, and the first thing on the second cliff is the dark pepes. they knock climbers off the ledges. thirty of them. then come back and tell me what you saw."]
+    questAccept.torsten-past-the-gate: ["Jeff will send you through. Sharp Cliff I, then up to II. they're the dark birds with the bad tempers."]
+    questWaiting.torsten-past-the-gate: ["thirty. the cliffs are still loud."]
+    questComplete.torsten-past-the-gate: ["thirty, and you came back up. good. that's the whole job, really. coming back up."]
+    questOffer.torsten-gordons-magic-iron: ["this iron round my neck. Gordon forged it for the first guard on this gate, and it's gone from guard to guard since. the bale's worn through. twelve dark yeti horns, and ask Oskar how Gordon bound it. he was Gordon's apprentice. he'll know, and he'll say he does it better."]
+    questAccept.torsten-gordons-magic-iron: ["the dark yetis on the sharp cliffs and the dangerous cliff. twelve horns. Oskar's at the market door in El Nath in the afternoons. he'll talk about your boots. let him."]
+    questWaiting.torsten-gordons-magic-iron: ["twelve horns, and how Oskar binds them. the iron's cold without its bale."]
+    questComplete.torsten-gordons-magic-iron: ["two turns, not three. ...there. Gordon's iron, Oskar's way. it's yours. it's gone guard to guard since there was a gate, and you've stood this gate with me. that's enough."]
+    questOffer.torsten-whistles: ["everyone who goes past the gate gets a whistle from me. a dark pepe beak, hollowed out. lost on the cliffs, you whistle, and sometimes someone hears. i'm short. fifteen beaks?"]
+    questAccept.torsten-whistles: ["the second sharp cliff. the dark pepes."]
+    questWaiting.torsten-whistles: ["fifteen beaks. somebody went through tonight without one."]
+    questComplete.torsten-whistles: ["fifteen. that's fifteen climbers with a whistle. thank you."]
+    about.agnetha: ["Agnetha runs Glibber's potions up from El Nath. forty bottles on her back and she still beats the yetis. i watch the ledges for her. she'd say she doesn't need it. she doesn't. i watch anyway."]
+    about.hrafn: ["Hrafn keeps the door at the bottom of my road. i've never met him. six years we've passed the same climbers between us. he sends word up with the ones who come back. i send word down with the ones who go."]
+    about.oskar: ["Oskar makes my boots. he says a gate guard's boots should be warmer than anyone's, because he stands still. he's right. i've never told him."]
+    about.sigrun: ["Sigrun decides who goes all the way down. i only decide who goes past the gate tonight. hers is the harder job. mine's the colder."]
+    aboutUnknown: ["never come past the gate. not at night, anyway."]
+    friend.close: ["i know your face in the dark now. that's the best i can say of anyone."]
+    friend.best: ["if you're ever lost past the gate, whistle. i'll hear it. i'll come down."]
+    famed: ["they talk about you up and down the road. good things. i listened."]
+    defamed: ["they talk about you on the road. not kindly. i listen to everyone. i decide for myself."]
+    gift: ["thank you. that's kind."]
+    gift.favorite: ["now that's useful at a gate. thank you. truly."]
+    gift.again: ["one's plenty. keep the rest for the climb."]
+
+- id: agnetha
+  name: Agnetha
+  look: { gender: female }
+  title: "Potion Runner of Ice Valley"
+  job: BEGINNER
+  level: { min: 35, max: 35 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ice-valley-ii
+    routine:
+      - { from: 7, to: 11, spot: "venue:beside-glibber", activity: BROWSE }
+      - { from: 11, to: 14, materialize: false }
+      - { from: 14, to: 19, spot: "venue:by-glibber", activity: SOCIALIZE }
+      - { from: 19, to: 7, materialize: false }
+  recruitable: false
+  knows: [ice valley, yeti, pepe]
+  questLines: [agnetha-the-lower-layers, agnetha-the-crown-flyer, agnetha-new-soles]
+  rumors: [ice-valley-ii-the-runner]
+  relationships:
+    - { persona: torsten, kind: WATCHED_UP_THE_LEDGES_BY }
+    - { persona: oskar, kind: RESOLED_BY }
+    - { persona: fitch, kind: RACES }
+  giftItemIds: [4000048, 2000002]
+  dialogue:
+    greetFirst: ["hi! hold this. no, the other one. thanks. forty bottles, one runner, and the yetis in the way. hello!", "oh, a climber! Glibber's open. i just filled him up. you've picked a good hour."]
+    greet: ["hi! still breathing hard. it's the valley.", "you again! the bottles all made it up. every one."]
+    idle: ["(counts a crate of potions under her breath, frowns, and counts it again)", "(shakes the snow off one boot, then the other, then the first one again)"]
+    noWork: ["nothing today. Glibber's full. i'm empty. it's a good arrangement."]
+    nothingDue: ["you don't owe me a thing. buy something from Glibber. that's how i'm paid."]
+    who: ["Agnetha! i run Glibber's potions up from El Nath. down the icy road, across the cold field, up both valleys, and onto the top ledge. twice a day. Glibber sells them. i carry them. it's a very good arrangement for Glibber."]
+    bye: ["mind the lower layers!"]
+    thanks: ["oh, thank you!"]
+    smallTalk: ["the yetis on the lower layers don't mean anything by it. they just like knocking things over. crates, mostly. me, sometimes.", "there's a hidden street off the second cold field, full of pepes. they chase runners. i take the long way. the long way's longer."]
+    speakPlainly: ["plainly: bottles up the hill, empty crate down."]
+    questOffer.agnetha-the-lower-layers: ["the yetis on the lower layers knocked a whole crate off my back yesterday. it rolled to the bottom. some of it bounced. twenty-five yetis and i'll go up the middle for once."]
+    questAccept.agnetha-the-lower-layers: ["Ice Valley II, the bottom four layers. right below us. the big white ones. they're not quick. i'm usually quicker."]
+    questWaiting.agnetha-the-lower-layers: ["twenty-five. i'm still going round the long way."]
+    questComplete.agnetha-the-lower-layers: ["twenty-five! i came straight up the middle this morning! forty bottles, nothing broken. here. from the bottom of the crate."]
+    questOffer.agnetha-the-crown-flyer: ["the pepes in the Crown-Flyer chase me every morning. it's a hidden street off the second cold field. they waddle. they waddle fast. twenty-five of them, please."]
+    questAccept.agnetha-the-crown-flyer: ["Cold Field II, the hidden way in. the little blue birds in hats. they're braver than they look."]
+    questWaiting.agnetha-the-crown-flyer: ["twenty-five. they chased me again this morning. i'm faster downhill."]
+    questComplete.agnetha-the-crown-flyer: ["twenty-five! nobody chased me today! i didn't know what to do with my legs. here. thank you."]
+    questOffer.agnetha-new-soles: ["my soles are through again. Oskar in El Nath resoles them. he says jr. yeti skin's the only thing that holds on ice. twelve skins, and ask him when he can do them? i'll carry them down myself."]
+    questAccept.agnetha-new-soles: ["the jr. yetis are in Ice Valley I and on the first sharp cliff. Oskar's by the market door in the afternoons. he'll look at your feet. everyone gets looked at."]
+    questWaiting.agnetha-new-soles: ["twelve skins, and Oskar. i'm running on my toes."]
+    questComplete.agnetha-new-soles: ["wait while he does it? Oskar never lets anyone wait. he must like me. twelve skins, down on the morning run. thank you. one more day on my heels."]
+    about.torsten: ["Torsten stands the gate at night. he says he watches the ledges for me. i say i don't need watching. he watches anyway. i like that he does."]
+    about.oskar: ["Oskar resoles my boots every month. he says i run through soles like a wolf through a henhouse. he doesn't charge me. he says it's for the walk."]
+    about.fitch: ["Fitch runs letters from Orbis. i run potions from El Nath. when we're both in town at the same hour we race from the market to the chief's door. he cheats. he's very quick about it."]
+    about.edric: ["Edric stands where he can see the road out of El Nath. every morning i run past him. i wave. he waves. i've never once seen him not there."]
+    aboutUnknown: ["never passed them on the road."]
+    friend.close: ["i'd carry your bottles up. any day. i'd only break one."]
+    friend.best: ["you're the first face i look for at the top of the valley. after Glibber's. Glibber pays."]
+    famed: ["everyone on the road knows you! good things! i heard them on the way up."]
+    defamed: ["they say things about you on the road. i run past it. i run past most things."]
+    gift: ["oh! thank you!"]
+    gift.favorite: ["oh, that's useful on the climb! that's going in the crate. the safe corner."]
+    gift.again: ["one's lovely. two's a crate. i can't carry any more."]

@@ -1,0 +1,32 @@
+# Excavation Site contracts (wave 4): the tomb-road guard's kill proof on her intro quest's mummydogs, and the night
+# watchman's lamp oil once the player has heard Nell on him at the cookfire.
+- id: halla-the-tomb-road-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [halla.intro.done]
+  price:
+    meso: 25000
+    proof: { killMobs: { mobIds: [4230126], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
+
+- id: wick-the-lamp-oil
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [excav.heard-wick]
+  price:
+    meso: 15000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 9000 }

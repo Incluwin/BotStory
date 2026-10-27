@@ -2,7 +2,7 @@
     "schemaVersion":  1,
     "catalogId":  "world-standard-portal-route-graph-v1",
     "sourcePath":  "wz/Map.wz/Map",
-    "sourceSha256":  "72efe745e792be355041eeec28ae47ea4f0174be2b42c208e14e5186159a8b6e",
+    "sourceSha256":  "053137d0c87e9aa4050e044e160e7908b17c51ee313085a3d832beb1ccc62823",
     "groups":  [
                    {
                        "id":  "ereve",
@@ -58,10 +58,77 @@
     "excludedRanges":  [
                            {
                                "firstMapId":  200090000,
+                               "endMapId":  200090500,
+                               "reason":  "ferry, crane and boat ride maps"
+                           },
+                           {
+                               "firstMapId":  200090520,
                                "endMapId":  200100000,
                                "reason":  "ferry, crane and boat ride maps"
                            }
                        ],
+    "scriptedPortals":  [
+                            {
+                                "sourceMapId":  100000002,
+                                "destinationMapId":  106020000,
+                                "portalName":  "TD00",
+                                "portalId":  4,
+                                "script":  "TD_MC_first",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  2260
+                                                              ],
+                                             "activeAny":  [
+                                                               2300,
+                                                               2301,
+                                                               2302,
+                                                               2303,
+                                                               2304,
+                                                               2305,
+                                                               2306,
+                                                               2307,
+                                                               2308,
+                                                               2309,
+                                                               2310
+                                                           ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  222020400,
+                                "destinationMapId":  300000100,
+                                "portalName":  "in01",
+                                "portalId":  2,
+                                "script":  "move_elin"
+                            },
+                            {
+                                "sourceMapId":  200090510,
+                                "destinationMapId":  270000100,
+                                "portalName":  "in00",
+                                "portalId":  11,
+                                "script":  "templeenter"
+                            },
+                            {
+                                "sourceMapId":  270000100,
+                                "destinationMapId":  200090510,
+                                "portalName":  "out00",
+                                "portalId":  2,
+                                "script":  "outTemple"
+                            },
+                            {
+                                "sourceMapId":  200090500,
+                                "destinationMapId":  240000110,
+                                "portalName":  "minar00",
+                                "portalId":  5,
+                                "script":  "undodraco"
+                            },
+                            {
+                                "sourceMapId":  240000110,
+                                "destinationMapId":  240000100,
+                                "portalName":  "west00",
+                                "portalId":  4,
+                                "script":  "dracoout"
+                            }
+                        ],
     "edges":  [
                   {
                       "fromMapId":  130000000,
@@ -832,6 +899,14 @@
                       "toMapId":  200082300
                   },
                   {
+                      "fromMapId":  200090500,
+                      "toMapId":  200090510
+                  },
+                  {
+                      "fromMapId":  200090510,
+                      "toMapId":  200090500
+                  },
+                  {
                       "fromMapId":  209000100,
                       "toMapId":  209000000
                   },
@@ -1146,6 +1221,390 @@
                   {
                       "fromMapId":  211050000,
                       "toMapId":  211040000
+                  },
+                  {
+                      "fromMapId":  211060000,
+                      "toMapId":  211040600
+                  },
+                  {
+                      "fromMapId":  211060000,
+                      "toMapId":  211060010
+                  },
+                  {
+                      "fromMapId":  211060010,
+                      "toMapId":  211060000
+                  },
+                  {
+                      "fromMapId":  211060010,
+                      "toMapId":  211060100
+                  },
+                  {
+                      "fromMapId":  211060100,
+                      "toMapId":  211060010
+                  },
+                  {
+                      "fromMapId":  211060100,
+                      "toMapId":  211060200
+                  },
+                  {
+                      "fromMapId":  211060200,
+                      "toMapId":  211060100
+                  },
+                  {
+                      "fromMapId":  211060200,
+                      "toMapId":  211060201
+                  },
+                  {
+                      "fromMapId":  211060200,
+                      "toMapId":  211060300
+                  },
+                  {
+                      "fromMapId":  211060201,
+                      "toMapId":  211060200
+                  },
+                  {
+                      "fromMapId":  211060300,
+                      "toMapId":  211060200
+                  },
+                  {
+                      "fromMapId":  211060300,
+                      "toMapId":  211060400
+                  },
+                  {
+                      "fromMapId":  211060400,
+                      "toMapId":  211060300
+                  },
+                  {
+                      "fromMapId":  211060400,
+                      "toMapId":  211060401
+                  },
+                  {
+                      "fromMapId":  211060400,
+                      "toMapId":  211060410
+                  },
+                  {
+                      "fromMapId":  211060400,
+                      "toMapId":  211060500
+                  },
+                  {
+                      "fromMapId":  211060401,
+                      "toMapId":  211060400
+                  },
+                  {
+                      "fromMapId":  211060410,
+                      "toMapId":  211060400
+                  },
+                  {
+                      "fromMapId":  211060410,
+                      "toMapId":  211060600
+                  },
+                  {
+                      "fromMapId":  211060500,
+                      "toMapId":  211060400
+                  },
+                  {
+                      "fromMapId":  211060500,
+                      "toMapId":  211060600
+                  },
+                  {
+                      "fromMapId":  211060600,
+                      "toMapId":  211060410
+                  },
+                  {
+                      "fromMapId":  211060600,
+                      "toMapId":  211060500
+                  },
+                  {
+                      "fromMapId":  211060600,
+                      "toMapId":  211060601
+                  },
+                  {
+                      "fromMapId":  211060600,
+                      "toMapId":  211060610
+                  },
+                  {
+                      "fromMapId":  211060600,
+                      "toMapId":  211060620
+                  },
+                  {
+                      "fromMapId":  211060600,
+                      "toMapId":  211060700
+                  },
+                  {
+                      "fromMapId":  211060601,
+                      "toMapId":  211060600
+                  },
+                  {
+                      "fromMapId":  211060610,
+                      "toMapId":  211060600
+                  },
+                  {
+                      "fromMapId":  211060610,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060620,
+                      "toMapId":  211060600
+                  },
+                  {
+                      "fromMapId":  211060620,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060700,
+                      "toMapId":  211060600
+                  },
+                  {
+                      "fromMapId":  211060700,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060610
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060620
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060700
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060801
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060810
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060820
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060830
+                  },
+                  {
+                      "fromMapId":  211060800,
+                      "toMapId":  211060900
+                  },
+                  {
+                      "fromMapId":  211060801,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060801,
+                      "toMapId":  211070000
+                  },
+                  {
+                      "fromMapId":  211060810,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060810,
+                      "toMapId":  211061000
+                  },
+                  {
+                      "fromMapId":  211060820,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060820,
+                      "toMapId":  211061000
+                  },
+                  {
+                      "fromMapId":  211060830,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060830,
+                      "toMapId":  211061000
+                  },
+                  {
+                      "fromMapId":  211060900,
+                      "toMapId":  211060800
+                  },
+                  {
+                      "fromMapId":  211060900,
+                      "toMapId":  211061000
+                  },
+                  {
+                      "fromMapId":  211061000,
+                      "toMapId":  211060810
+                  },
+                  {
+                      "fromMapId":  211061000,
+                      "toMapId":  211060820
+                  },
+                  {
+                      "fromMapId":  211061000,
+                      "toMapId":  211060830
+                  },
+                  {
+                      "fromMapId":  211061000,
+                      "toMapId":  211060900
+                  },
+                  {
+                      "fromMapId":  211061000,
+                      "toMapId":  211061001
+                  },
+                  {
+                      "fromMapId":  211061001,
+                      "toMapId":  211061000
+                  },
+                  {
+                      "fromMapId":  211070000,
+                      "toMapId":  211060801
+                  },
+                  {
+                      "fromMapId":  211070110,
+                      "toMapId":  211070100
+                  },
+                  {
+                      "fromMapId":  219000000,
+                      "toMapId":  219000001
+                  },
+                  {
+                      "fromMapId":  219000000,
+                      "toMapId":  219000002
+                  },
+                  {
+                      "fromMapId":  219000000,
+                      "toMapId":  219000003
+                  },
+                  {
+                      "fromMapId":  219000000,
+                      "toMapId":  219000004
+                  },
+                  {
+                      "fromMapId":  219000000,
+                      "toMapId":  219000005
+                  },
+                  {
+                      "fromMapId":  219000000,
+                      "toMapId":  219010000
+                  },
+                  {
+                      "fromMapId":  219000000,
+                      "toMapId":  219020000
+                  },
+                  {
+                      "fromMapId":  219000001,
+                      "toMapId":  219000000
+                  },
+                  {
+                      "fromMapId":  219000002,
+                      "toMapId":  219000000
+                  },
+                  {
+                      "fromMapId":  219000003,
+                      "toMapId":  219000000
+                  },
+                  {
+                      "fromMapId":  219000004,
+                      "toMapId":  219000000
+                  },
+                  {
+                      "fromMapId":  219000005,
+                      "toMapId":  219000000
+                  },
+                  {
+                      "fromMapId":  219010000,
+                      "toMapId":  219000000
+                  },
+                  {
+                      "fromMapId":  219010000,
+                      "toMapId":  219010001
+                  },
+                  {
+                      "fromMapId":  219010000,
+                      "toMapId":  219010100
+                  },
+                  {
+                      "fromMapId":  219010001,
+                      "toMapId":  219010000
+                  },
+                  {
+                      "fromMapId":  219010100,
+                      "toMapId":  219010000
+                  },
+                  {
+                      "fromMapId":  219010100,
+                      "toMapId":  219010101
+                  },
+                  {
+                      "fromMapId":  219010100,
+                      "toMapId":  219010200
+                  },
+                  {
+                      "fromMapId":  219010101,
+                      "toMapId":  219010100
+                  },
+                  {
+                      "fromMapId":  219010200,
+                      "toMapId":  219010100
+                  },
+                  {
+                      "fromMapId":  219010200,
+                      "toMapId":  219010201
+                  },
+                  {
+                      "fromMapId":  219010200,
+                      "toMapId":  219010300
+                  },
+                  {
+                      "fromMapId":  219010201,
+                      "toMapId":  219010200
+                  },
+                  {
+                      "fromMapId":  219010300,
+                      "toMapId":  219010200
+                  },
+                  {
+                      "fromMapId":  219020000,
+                      "toMapId":  219000000
+                  },
+                  {
+                      "fromMapId":  219020000,
+                      "toMapId":  219020001
+                  },
+                  {
+                      "fromMapId":  219020000,
+                      "toMapId":  219020100
+                  },
+                  {
+                      "fromMapId":  219020001,
+                      "toMapId":  219020000
+                  },
+                  {
+                      "fromMapId":  219020100,
+                      "toMapId":  219020000
+                  },
+                  {
+                      "fromMapId":  219020100,
+                      "toMapId":  219020200
+                  },
+                  {
+                      "fromMapId":  219020200,
+                      "toMapId":  219020100
+                  },
+                  {
+                      "fromMapId":  219020200,
+                      "toMapId":  219020300
+                  },
+                  {
+                      "fromMapId":  219020300,
+                      "toMapId":  219020200
+                  },
+                  {
+                      "fromMapId":  219020300,
+                      "toMapId":  219020301
+                  },
+                  {
+                      "fromMapId":  219020301,
+                      "toMapId":  219020300
                   },
                   {
                       "fromMapId":  220000000,
@@ -4472,6 +4931,614 @@
                       "toMapId":  270040100
                   },
                   {
+                      "fromMapId":  271000000,
+                      "toMapId":  270000000
+                  },
+                  {
+                      "fromMapId":  271000000,
+                      "toMapId":  271000100
+                  },
+                  {
+                      "fromMapId":  271000000,
+                      "toMapId":  271010000
+                  },
+                  {
+                      "fromMapId":  271000100,
+                      "toMapId":  271000000
+                  },
+                  {
+                      "fromMapId":  271000100,
+                      "toMapId":  271000200
+                  },
+                  {
+                      "fromMapId":  271000200,
+                      "toMapId":  271000100
+                  },
+                  {
+                      "fromMapId":  271000200,
+                      "toMapId":  271000210
+                  },
+                  {
+                      "fromMapId":  271000200,
+                      "toMapId":  271000300
+                  },
+                  {
+                      "fromMapId":  271000210,
+                      "toMapId":  271000200
+                  },
+                  {
+                      "fromMapId":  271000300,
+                      "toMapId":  271000200
+                  },
+                  {
+                      "fromMapId":  271000300,
+                      "toMapId":  271020100
+                  },
+                  {
+                      "fromMapId":  271000300,
+                      "toMapId":  271030010
+                  },
+                  {
+                      "fromMapId":  271010000,
+                      "toMapId":  271000000
+                  },
+                  {
+                      "fromMapId":  271010000,
+                      "toMapId":  271010001
+                  },
+                  {
+                      "fromMapId":  271010000,
+                      "toMapId":  271010100
+                  },
+                  {
+                      "fromMapId":  271010000,
+                      "toMapId":  271010200
+                  },
+                  {
+                      "fromMapId":  271010000,
+                      "toMapId":  271010300
+                  },
+                  {
+                      "fromMapId":  271010000,
+                      "toMapId":  271020000
+                  },
+                  {
+                      "fromMapId":  271010001,
+                      "toMapId":  271010000
+                  },
+                  {
+                      "fromMapId":  271010100,
+                      "toMapId":  271010000
+                  },
+                  {
+                      "fromMapId":  271010200,
+                      "toMapId":  271010000
+                  },
+                  {
+                      "fromMapId":  271010300,
+                      "toMapId":  271010000
+                  },
+                  {
+                      "fromMapId":  271010300,
+                      "toMapId":  271010301
+                  },
+                  {
+                      "fromMapId":  271010300,
+                      "toMapId":  271010400
+                  },
+                  {
+                      "fromMapId":  271010301,
+                      "toMapId":  271010300
+                  },
+                  {
+                      "fromMapId":  271010400,
+                      "toMapId":  271010300
+                  },
+                  {
+                      "fromMapId":  271010400,
+                      "toMapId":  271010500
+                  },
+                  {
+                      "fromMapId":  271010500,
+                      "toMapId":  271010400
+                  },
+                  {
+                      "fromMapId":  271010500,
+                      "toMapId":  273010000
+                  },
+                  {
+                      "fromMapId":  271020000,
+                      "toMapId":  271010000
+                  },
+                  {
+                      "fromMapId":  271020000,
+                      "toMapId":  271020100
+                  },
+                  {
+                      "fromMapId":  271020100,
+                      "toMapId":  271000300
+                  },
+                  {
+                      "fromMapId":  271020100,
+                      "toMapId":  271020000
+                  },
+                  {
+                      "fromMapId":  271030000,
+                      "toMapId":  271000300
+                  },
+                  {
+                      "fromMapId":  271030010,
+                      "toMapId":  271000300
+                  },
+                  {
+                      "fromMapId":  271030010,
+                      "toMapId":  271030100
+                  },
+                  {
+                      "fromMapId":  271030100,
+                      "toMapId":  271030010
+                  },
+                  {
+                      "fromMapId":  271030100,
+                      "toMapId":  271030101
+                  },
+                  {
+                      "fromMapId":  271030100,
+                      "toMapId":  271030102
+                  },
+                  {
+                      "fromMapId":  271030100,
+                      "toMapId":  271030200
+                  },
+                  {
+                      "fromMapId":  271030101,
+                      "toMapId":  271030100
+                  },
+                  {
+                      "fromMapId":  271030102,
+                      "toMapId":  271030100
+                  },
+                  {
+                      "fromMapId":  271030200,
+                      "toMapId":  271030100
+                  },
+                  {
+                      "fromMapId":  271030200,
+                      "toMapId":  271030202
+                  },
+                  {
+                      "fromMapId":  271030200,
+                      "toMapId":  271030300
+                  },
+                  {
+                      "fromMapId":  271030201,
+                      "toMapId":  271030200
+                  },
+                  {
+                      "fromMapId":  271030201,
+                      "toMapId":  271030202
+                  },
+                  {
+                      "fromMapId":  271030202,
+                      "toMapId":  271030200
+                  },
+                  {
+                      "fromMapId":  271030202,
+                      "toMapId":  271030203
+                  },
+                  {
+                      "fromMapId":  271030203,
+                      "toMapId":  271030202
+                  },
+                  {
+                      "fromMapId":  271030203,
+                      "toMapId":  271030204
+                  },
+                  {
+                      "fromMapId":  271030204,
+                      "toMapId":  271030203
+                  },
+                  {
+                      "fromMapId":  271030204,
+                      "toMapId":  271030205
+                  },
+                  {
+                      "fromMapId":  271030205,
+                      "toMapId":  271030204
+                  },
+                  {
+                      "fromMapId":  271030300,
+                      "toMapId":  271030200
+                  },
+                  {
+                      "fromMapId":  271030300,
+                      "toMapId":  271030310
+                  },
+                  {
+                      "fromMapId":  271030300,
+                      "toMapId":  271030400
+                  },
+                  {
+                      "fromMapId":  271030310,
+                      "toMapId":  271030300
+                  },
+                  {
+                      "fromMapId":  271030310,
+                      "toMapId":  271030320
+                  },
+                  {
+                      "fromMapId":  271030320,
+                      "toMapId":  271030310
+                  },
+                  {
+                      "fromMapId":  271030400,
+                      "toMapId":  271030300
+                  },
+                  {
+                      "fromMapId":  271030400,
+                      "toMapId":  271030410
+                  },
+                  {
+                      "fromMapId":  271030400,
+                      "toMapId":  271030500
+                  },
+                  {
+                      "fromMapId":  271030410,
+                      "toMapId":  271030400
+                  },
+                  {
+                      "fromMapId":  271030500,
+                      "toMapId":  271030400
+                  },
+                  {
+                      "fromMapId":  271030500,
+                      "toMapId":  271030510
+                  },
+                  {
+                      "fromMapId":  271030500,
+                      "toMapId":  271030600
+                  },
+                  {
+                      "fromMapId":  271030510,
+                      "toMapId":  271030500
+                  },
+                  {
+                      "fromMapId":  271030510,
+                      "toMapId":  271030520
+                  },
+                  {
+                      "fromMapId":  271030520,
+                      "toMapId":  271030510
+                  },
+                  {
+                      "fromMapId":  271030520,
+                      "toMapId":  271030530
+                  },
+                  {
+                      "fromMapId":  271030530,
+                      "toMapId":  271030520
+                  },
+                  {
+                      "fromMapId":  271030530,
+                      "toMapId":  271030540
+                  },
+                  {
+                      "fromMapId":  271030540,
+                      "toMapId":  271030530
+                  },
+                  {
+                      "fromMapId":  271030540,
+                      "toMapId":  271030600
+                  },
+                  {
+                      "fromMapId":  271030600,
+                      "toMapId":  271030500
+                  },
+                  {
+                      "fromMapId":  271030600,
+                      "toMapId":  271030540
+                  },
+                  {
+                      "fromMapId":  271030600,
+                      "toMapId":  271040000
+                  },
+                  {
+                      "fromMapId":  271040000,
+                      "toMapId":  271030600
+                  },
+                  {
+                      "fromMapId":  272000000,
+                      "toMapId":  270000000
+                  },
+                  {
+                      "fromMapId":  272000000,
+                      "toMapId":  272000100
+                  },
+                  {
+                      "fromMapId":  272000100,
+                      "toMapId":  272000000
+                  },
+                  {
+                      "fromMapId":  272000100,
+                      "toMapId":  272000200
+                  },
+                  {
+                      "fromMapId":  272000200,
+                      "toMapId":  272000100
+                  },
+                  {
+                      "fromMapId":  272000200,
+                      "toMapId":  272000300
+                  },
+                  {
+                      "fromMapId":  272000300,
+                      "toMapId":  272000200
+                  },
+                  {
+                      "fromMapId":  272000300,
+                      "toMapId":  272000400
+                  },
+                  {
+                      "fromMapId":  272000310,
+                      "toMapId":  272000300
+                  },
+                  {
+                      "fromMapId":  272000400,
+                      "toMapId":  272000300
+                  },
+                  {
+                      "fromMapId":  272000400,
+                      "toMapId":  272000500
+                  },
+                  {
+                      "fromMapId":  272000500,
+                      "toMapId":  272000400
+                  },
+                  {
+                      "fromMapId":  272000500,
+                      "toMapId":  272000600
+                  },
+                  {
+                      "fromMapId":  272000600,
+                      "toMapId":  272000500
+                  },
+                  {
+                      "fromMapId":  272000600,
+                      "toMapId":  272010000
+                  },
+                  {
+                      "fromMapId":  272010000,
+                      "toMapId":  272000600
+                  },
+                  {
+                      "fromMapId":  272010000,
+                      "toMapId":  272010100
+                  },
+                  {
+                      "fromMapId":  272010100,
+                      "toMapId":  272010000
+                  },
+                  {
+                      "fromMapId":  272010100,
+                      "toMapId":  272010200
+                  },
+                  {
+                      "fromMapId":  272010200,
+                      "toMapId":  272010100
+                  },
+                  {
+                      "fromMapId":  272010200,
+                      "toMapId":  272020000
+                  },
+                  {
+                      "fromMapId":  272020000,
+                      "toMapId":  272010200
+                  },
+                  {
+                      "fromMapId":  272020000,
+                      "toMapId":  272020100
+                  },
+                  {
+                      "fromMapId":  272020100,
+                      "toMapId":  272020000
+                  },
+                  {
+                      "fromMapId":  272020110,
+                      "toMapId":  272020100
+                  },
+                  {
+                      "fromMapId":  272020400,
+                      "toMapId":  272020200
+                  },
+                  {
+                      "fromMapId":  272030000,
+                      "toMapId":  270000000
+                  },
+                  {
+                      "fromMapId":  272030000,
+                      "toMapId":  272030100
+                  },
+                  {
+                      "fromMapId":  272030100,
+                      "toMapId":  272030000
+                  },
+                  {
+                      "fromMapId":  272030100,
+                      "toMapId":  272030200
+                  },
+                  {
+                      "fromMapId":  272030200,
+                      "toMapId":  272030100
+                  },
+                  {
+                      "fromMapId":  272030200,
+                      "toMapId":  272030300
+                  },
+                  {
+                      "fromMapId":  272030300,
+                      "toMapId":  272030200
+                  },
+                  {
+                      "fromMapId":  272030420,
+                      "toMapId":  272030400
+                  },
+                  {
+                      "fromMapId":  273000000,
+                      "toMapId":  273010000
+                  },
+                  {
+                      "fromMapId":  273000000,
+                      "toMapId":  273020000
+                  },
+                  {
+                      "fromMapId":  273010000,
+                      "toMapId":  271010500
+                  },
+                  {
+                      "fromMapId":  273010000,
+                      "toMapId":  273000000
+                  },
+                  {
+                      "fromMapId":  273020000,
+                      "toMapId":  273000000
+                  },
+                  {
+                      "fromMapId":  273020000,
+                      "toMapId":  273020100
+                  },
+                  {
+                      "fromMapId":  273020000,
+                      "toMapId":  273030000
+                  },
+                  {
+                      "fromMapId":  273020100,
+                      "toMapId":  273020000
+                  },
+                  {
+                      "fromMapId":  273020100,
+                      "toMapId":  273020200
+                  },
+                  {
+                      "fromMapId":  273020200,
+                      "toMapId":  273020100
+                  },
+                  {
+                      "fromMapId":  273020200,
+                      "toMapId":  273020300
+                  },
+                  {
+                      "fromMapId":  273020300,
+                      "toMapId":  273020200
+                  },
+                  {
+                      "fromMapId":  273020300,
+                      "toMapId":  273020400
+                  },
+                  {
+                      "fromMapId":  273020300,
+                      "toMapId":  273040000
+                  },
+                  {
+                      "fromMapId":  273020400,
+                      "toMapId":  273020300
+                  },
+                  {
+                      "fromMapId":  273030000,
+                      "toMapId":  273020000
+                  },
+                  {
+                      "fromMapId":  273030000,
+                      "toMapId":  273030100
+                  },
+                  {
+                      "fromMapId":  273030100,
+                      "toMapId":  273030000
+                  },
+                  {
+                      "fromMapId":  273030100,
+                      "toMapId":  273030200
+                  },
+                  {
+                      "fromMapId":  273030200,
+                      "toMapId":  273030100
+                  },
+                  {
+                      "fromMapId":  273030200,
+                      "toMapId":  273030300
+                  },
+                  {
+                      "fromMapId":  273030300,
+                      "toMapId":  273030200
+                  },
+                  {
+                      "fromMapId":  273040000,
+                      "toMapId":  273020300
+                  },
+                  {
+                      "fromMapId":  273040000,
+                      "toMapId":  273040100
+                  },
+                  {
+                      "fromMapId":  273040000,
+                      "toMapId":  273050000
+                  },
+                  {
+                      "fromMapId":  273040100,
+                      "toMapId":  273040000
+                  },
+                  {
+                      "fromMapId":  273040100,
+                      "toMapId":  273040200
+                  },
+                  {
+                      "fromMapId":  273040200,
+                      "toMapId":  273040100
+                  },
+                  {
+                      "fromMapId":  273040200,
+                      "toMapId":  273040300
+                  },
+                  {
+                      "fromMapId":  273040300,
+                      "toMapId":  273040200
+                  },
+                  {
+                      "fromMapId":  273050000,
+                      "toMapId":  273040000
+                  },
+                  {
+                      "fromMapId":  273050000,
+                      "toMapId":  273060000
+                  },
+                  {
+                      "fromMapId":  273060000,
+                      "toMapId":  273050000
+                  },
+                  {
+                      "fromMapId":  273060000,
+                      "toMapId":  273060100
+                  },
+                  {
+                      "fromMapId":  273060100,
+                      "toMapId":  273060000
+                  },
+                  {
+                      "fromMapId":  273060100,
+                      "toMapId":  273060200
+                  },
+                  {
+                      "fromMapId":  273060200,
+                      "toMapId":  273060100
+                  },
+                  {
+                      "fromMapId":  273060200,
+                      "toMapId":  273060300
+                  },
+                  {
+                      "fromMapId":  273060300,
+                      "toMapId":  273060200
+                  },
+                  {
                       "fromMapId":  280010000,
                       "toMapId":  280010010
                   },
@@ -4734,6 +5801,10 @@
                   {
                       "fromMapId":  280020001,
                       "toMapId":  280020000
+                  },
+                  {
+                      "fromMapId":  280030001,
+                      "toMapId":  280030000
                   },
                   {
                       "fromMapId":  300000000,
@@ -5002,6 +6073,74 @@
                   {
                       "fromMapId":  541010110,
                       "toMapId":  541000000
+                  },
+                  {
+                      "fromMapId":  541020000,
+                      "toMapId":  540020100
+                  },
+                  {
+                      "fromMapId":  541020000,
+                      "toMapId":  541020100
+                  },
+                  {
+                      "fromMapId":  541020100,
+                      "toMapId":  541020000
+                  },
+                  {
+                      "fromMapId":  541020100,
+                      "toMapId":  541020200
+                  },
+                  {
+                      "fromMapId":  541020200,
+                      "toMapId":  541020100
+                  },
+                  {
+                      "fromMapId":  541020200,
+                      "toMapId":  541020300
+                  },
+                  {
+                      "fromMapId":  541020300,
+                      "toMapId":  541020200
+                  },
+                  {
+                      "fromMapId":  541020300,
+                      "toMapId":  541020400
+                  },
+                  {
+                      "fromMapId":  541020400,
+                      "toMapId":  541020300
+                  },
+                  {
+                      "fromMapId":  541020400,
+                      "toMapId":  541020500
+                  },
+                  {
+                      "fromMapId":  541020500,
+                      "toMapId":  541020400
+                  },
+                  {
+                      "fromMapId":  541020500,
+                      "toMapId":  541020600
+                  },
+                  {
+                      "fromMapId":  541020600,
+                      "toMapId":  541020500
+                  },
+                  {
+                      "fromMapId":  541020600,
+                      "toMapId":  541020610
+                  },
+                  {
+                      "fromMapId":  541020600,
+                      "toMapId":  541020700
+                  },
+                  {
+                      "fromMapId":  541020610,
+                      "toMapId":  541020600
+                  },
+                  {
+                      "fromMapId":  541020700,
+                      "toMapId":  541020600
                   },
                   {
                       "fromMapId":  550000000,
@@ -5898,6 +7037,366 @@
                   {
                       "fromMapId":  800030000,
                       "toMapId":  801030000
+                  },
+                  {
+                      "fromMapId":  800040000,
+                      "toMapId":  800040100
+                  },
+                  {
+                      "fromMapId":  800040100,
+                      "toMapId":  800040000
+                  },
+                  {
+                      "fromMapId":  800040100,
+                      "toMapId":  800040200
+                  },
+                  {
+                      "fromMapId":  800040200,
+                      "toMapId":  800040100
+                  },
+                  {
+                      "fromMapId":  800040200,
+                      "toMapId":  800040201
+                  },
+                  {
+                      "fromMapId":  800040200,
+                      "toMapId":  800040209
+                  },
+                  {
+                      "fromMapId":  800040201,
+                      "toMapId":  800040200
+                  },
+                  {
+                      "fromMapId":  800040201,
+                      "toMapId":  800040202
+                  },
+                  {
+                      "fromMapId":  800040202,
+                      "toMapId":  800040200
+                  },
+                  {
+                      "fromMapId":  800040202,
+                      "toMapId":  800040201
+                  },
+                  {
+                      "fromMapId":  800040202,
+                      "toMapId":  800040203
+                  },
+                  {
+                      "fromMapId":  800040203,
+                      "toMapId":  800040202
+                  },
+                  {
+                      "fromMapId":  800040203,
+                      "toMapId":  800040204
+                  },
+                  {
+                      "fromMapId":  800040203,
+                      "toMapId":  800040209
+                  },
+                  {
+                      "fromMapId":  800040204,
+                      "toMapId":  800040202
+                  },
+                  {
+                      "fromMapId":  800040204,
+                      "toMapId":  800040203
+                  },
+                  {
+                      "fromMapId":  800040204,
+                      "toMapId":  800040205
+                  },
+                  {
+                      "fromMapId":  800040205,
+                      "toMapId":  800040202
+                  },
+                  {
+                      "fromMapId":  800040205,
+                      "toMapId":  800040203
+                  },
+                  {
+                      "fromMapId":  800040205,
+                      "toMapId":  800040206
+                  },
+                  {
+                      "fromMapId":  800040205,
+                      "toMapId":  800040209
+                  },
+                  {
+                      "fromMapId":  800040206,
+                      "toMapId":  800040203
+                  },
+                  {
+                      "fromMapId":  800040206,
+                      "toMapId":  800040205
+                  },
+                  {
+                      "fromMapId":  800040206,
+                      "toMapId":  800040207
+                  },
+                  {
+                      "fromMapId":  800040207,
+                      "toMapId":  800040100
+                  },
+                  {
+                      "fromMapId":  800040207,
+                      "toMapId":  800040204
+                  },
+                  {
+                      "fromMapId":  800040207,
+                      "toMapId":  800040206
+                  },
+                  {
+                      "fromMapId":  800040207,
+                      "toMapId":  800040208
+                  },
+                  {
+                      "fromMapId":  800040208,
+                      "toMapId":  800040203
+                  },
+                  {
+                      "fromMapId":  800040208,
+                      "toMapId":  800040204
+                  },
+                  {
+                      "fromMapId":  800040208,
+                      "toMapId":  800040207
+                  },
+                  {
+                      "fromMapId":  800040208,
+                      "toMapId":  800040209
+                  },
+                  {
+                      "fromMapId":  800040208,
+                      "toMapId":  800040211
+                  },
+                  {
+                      "fromMapId":  800040209,
+                      "toMapId":  800040100
+                  },
+                  {
+                      "fromMapId":  800040209,
+                      "toMapId":  800040201
+                  },
+                  {
+                      "fromMapId":  800040210,
+                      "toMapId":  800040208
+                  },
+                  {
+                      "fromMapId":  800040210,
+                      "toMapId":  800040211
+                  },
+                  {
+                      "fromMapId":  800040211,
+                      "toMapId":  800040208
+                  },
+                  {
+                      "fromMapId":  800040211,
+                      "toMapId":  800040300
+                  },
+                  {
+                      "fromMapId":  800040300,
+                      "toMapId":  800040305
+                  },
+                  {
+                      "fromMapId":  800040300,
+                      "toMapId":  800040308
+                  },
+                  {
+                      "fromMapId":  800040300,
+                      "toMapId":  800040313
+                  },
+                  {
+                      "fromMapId":  800040301,
+                      "toMapId":  800040306
+                  },
+                  {
+                      "fromMapId":  800040301,
+                      "toMapId":  800040309
+                  },
+                  {
+                      "fromMapId":  800040301,
+                      "toMapId":  800040314
+                  },
+                  {
+                      "fromMapId":  800040302,
+                      "toMapId":  800040307
+                  },
+                  {
+                      "fromMapId":  800040302,
+                      "toMapId":  800040310
+                  },
+                  {
+                      "fromMapId":  800040302,
+                      "toMapId":  800040315
+                  },
+                  {
+                      "fromMapId":  800040303,
+                      "toMapId":  800040300
+                  },
+                  {
+                      "fromMapId":  800040303,
+                      "toMapId":  800040308
+                  },
+                  {
+                      "fromMapId":  800040303,
+                      "toMapId":  800040311
+                  },
+                  {
+                      "fromMapId":  800040304,
+                      "toMapId":  800040301
+                  },
+                  {
+                      "fromMapId":  800040304,
+                      "toMapId":  800040309
+                  },
+                  {
+                      "fromMapId":  800040304,
+                      "toMapId":  800040312
+                  },
+                  {
+                      "fromMapId":  800040305,
+                      "toMapId":  800040302
+                  },
+                  {
+                      "fromMapId":  800040305,
+                      "toMapId":  800040310
+                  },
+                  {
+                      "fromMapId":  800040305,
+                      "toMapId":  800040313
+                  },
+                  {
+                      "fromMapId":  800040306,
+                      "toMapId":  800040303
+                  },
+                  {
+                      "fromMapId":  800040306,
+                      "toMapId":  800040311
+                  },
+                  {
+                      "fromMapId":  800040306,
+                      "toMapId":  800040314
+                  },
+                  {
+                      "fromMapId":  800040307,
+                      "toMapId":  800040300
+                  },
+                  {
+                      "fromMapId":  800040307,
+                      "toMapId":  800040304
+                  },
+                  {
+                      "fromMapId":  800040307,
+                      "toMapId":  800040312
+                  },
+                  {
+                      "fromMapId":  800040308,
+                      "toMapId":  800040305
+                  },
+                  {
+                      "fromMapId":  800040308,
+                      "toMapId":  800040313
+                  },
+                  {
+                      "fromMapId":  800040308,
+                      "toMapId":  800040400
+                  },
+                  {
+                      "fromMapId":  800040309,
+                      "toMapId":  800040301
+                  },
+                  {
+                      "fromMapId":  800040309,
+                      "toMapId":  800040306
+                  },
+                  {
+                      "fromMapId":  800040309,
+                      "toMapId":  800040314
+                  },
+                  {
+                      "fromMapId":  800040310,
+                      "toMapId":  800040300
+                  },
+                  {
+                      "fromMapId":  800040310,
+                      "toMapId":  800040302
+                  },
+                  {
+                      "fromMapId":  800040310,
+                      "toMapId":  800040307
+                  },
+                  {
+                      "fromMapId":  800040311,
+                      "toMapId":  800040300
+                  },
+                  {
+                      "fromMapId":  800040311,
+                      "toMapId":  800040303
+                  },
+                  {
+                      "fromMapId":  800040311,
+                      "toMapId":  800040308
+                  },
+                  {
+                      "fromMapId":  800040312,
+                      "toMapId":  800040301
+                  },
+                  {
+                      "fromMapId":  800040312,
+                      "toMapId":  800040304
+                  },
+                  {
+                      "fromMapId":  800040312,
+                      "toMapId":  800040309
+                  },
+                  {
+                      "fromMapId":  800040313,
+                      "toMapId":  800040302
+                  },
+                  {
+                      "fromMapId":  800040313,
+                      "toMapId":  800040305
+                  },
+                  {
+                      "fromMapId":  800040313,
+                      "toMapId":  800040310
+                  },
+                  {
+                      "fromMapId":  800040314,
+                      "toMapId":  800040303
+                  },
+                  {
+                      "fromMapId":  800040314,
+                      "toMapId":  800040306
+                  },
+                  {
+                      "fromMapId":  800040314,
+                      "toMapId":  800040311
+                  },
+                  {
+                      "fromMapId":  800040315,
+                      "toMapId":  800040304
+                  },
+                  {
+                      "fromMapId":  800040315,
+                      "toMapId":  800040307
+                  },
+                  {
+                      "fromMapId":  800040315,
+                      "toMapId":  800040312
+                  },
+                  {
+                      "fromMapId":  800040400,
+                      "toMapId":  800040211
+                  },
+                  {
+                      "fromMapId":  800040400,
+                      "toMapId":  800040401
+                  },
+                  {
+                      "fromMapId":  800040401,
+                      "toMapId":  800040400
                   },
                   {
                       "fromMapId":  801000000,

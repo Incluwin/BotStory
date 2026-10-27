@@ -1,0 +1,31 @@
+# Mu Lung Dojo rumors (wave 4). Each pair is awake together at its spot in those hours (personas/mu-lung-dojo.yaml).
+- id: mu-lung-dojo-the-unbowed
+  participants: [guo, shen]
+  where: { town: mu-lung-dojo, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [18, 19]
+    everyDays: 1
+    requiresArc: { arc: guo-the-unbowed, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: mu-lung-dojo.heard-shen
+  lines:
+    - { by: shen, text: "the door's open, master Guo." }
+    - { by: guo, text: "it's always open, Shen. that's what a door's for." }
+    - { by: shen, text: "the master has asked after you every year since the notice went up. through So Gong." }
+    - { by: guo, text: "and what have you told him?" }
+    - { by: shen, text: "the truth. that you came. that you sat. that you watched them go up." }
+    - { by: guo, text: "...all true." }
+
+- id: mu-lung-dojo-twenty-nine
+  participants: [lianhua, shen]
+  where: { town: mu-lung-dojo, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [16, 17]
+    everyDays: 2
+  lines:
+    - { by: shen, text: "how far today?" }
+    - { by: lianhua, text: "twenty-nine." }
+    - { by: shen, text: "twenty-nine yesterday." }
+    - { by: lianhua, text: "a better twenty-nine than yesterday's." }
+    - { by: shen, text: "master Guo says your left guard drops." }
+    - { by: lianhua, text: "master Guo watches very closely, for a man on a bench." }
+    - { by: shen, text: "he's had a long time to practise." }

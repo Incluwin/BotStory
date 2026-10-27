@@ -1,0 +1,55 @@
+# Ariant Castle quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own
+# data: desert rabbit (m) 2100101 (carrot 4000325; the Tent of the Entertainers 260010600, outside the east entrance
+# 260010700), desert giant 4230600 (sand 4000332; the ruins of desert nomads 260020400, the giant of the sunset
+# 260020401; the queen's make-up kit wants it, as in the stock quest).
+# yusra-the-silk-ledger is the middle beat of Zahra's arc (arcs/town-of-ariant.yaml) and happens once per server.
+
+# ---- Yusra, handmaiden of the palace --------------------------------------------------------------------------------
+
+- id: yusra-the-kings-cake
+  persona: yusra
+  title: "Carrot Cake by the Lamp"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rabbits, type: KILL_MOBS, mobIds: [2100101], count: 20, mapIds: [260010600, 260010700] }
+    - { id: carrots, type: COLLECT_ITEM, itemId: 4000325, count: 12 }
+    - { id: cake, type: DELIVER, to: yusra, take: { itemId: 4000325, count: 12 } }
+  rewards: { meso: 5000, exp: 3000, bondPoints: 35 }
+
+- id: yusra-the-silk-ledger
+  persona: yusra
+  title: "Lost to Sand"
+  length: SHORT
+  requires: { level: { min: 22 }, notFlags: [ariant.silk.unmissed], questsCompleted: [yusra-the-kings-cake, zahra-measure-the-tent] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: darius, type: TALK_TO, persona: darius, say: ["a tray of cake from Yusra, and she'd like me off the wardrobe stair for a quarter of an hour? ...i'm eating cake. i'm looking at the sky. the weather's holding. i see nothing. tell her a quarter of an hour."] }
+    - { id: ledger, type: DELIVER, to: yusra }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 60, worldFlags: [ariant.silk.unmissed] }
+
+# ---- Darius, castle guard -------------------------------------------------------------------------------------------
+
+- id: darius-the-queens-powder
+  persona: darius
+  title: "The Queen's Powder"
+  length: SHORT
+  requires: { level: { min: 38 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: giants, type: KILL_MOBS, mobIds: [4230600], count: 20, mapIds: [260020400, 260020401] }
+    - { id: sand, type: COLLECT_ITEM, itemId: 4000332, count: 15 }
+    - { id: powder, type: DELIVER, to: darius, take: { itemId: 4000332, count: 15 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 35 }
+
+- id: darius-how-to-stand-a-gate
+  persona: darius
+  title: "How to Stand a Gate"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: harun, type: TALK_TO, persona: harun, say: ["how do i stand a gate all day and never look tired? i don't. i sleep standing, with one eye. ...tell the young one the trick is to love the gate a little. not what's behind it. the gate."] }
+    - { id: report, type: DELIVER, to: darius }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 30 }

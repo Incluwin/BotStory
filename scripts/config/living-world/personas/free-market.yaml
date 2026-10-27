@@ -1,0 +1,223 @@
+# Free Market cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 11): 4 Residents, none
+# recruitable, no arc. The Free Market Entrance (910000000) has no monsters: every town's market portal opens here, Miki
+# the grocer, the Hidden Appraiser, Fredrick the store banker and Scrooge the storage keeper stand around it, and the
+# room doors lead off it. Its Residents keep the market honest and send players across Victoria for real trade goods
+# (L15-60): a retired merchant who remembers every price, a runner between the rooms, the pitch-caller at the
+# entrance and the lost-and-found keeper.
+- id: gilbert
+  name: Gilbert
+  look: { gender: male }
+  title: "Retired Merchant of Room Three"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: free-market
+    routine:
+      - { from: 8, to: 14, spot: "venue:by-hidden-appraiser", activity: LINGER }
+      - { from: 14, to: 19, spot: "venue:entrance", activity: SOCIALIZE }
+      - { from: 19, to: 8, materialize: false }
+  recruitable: false
+  knows: [prices, free market, ligator skin]
+  questLines: [gilbert-the-real-thing, gilbert-what-a-skull-was-worth]
+  rumors: [fm-the-price-of-things]
+  relationships:
+    - { persona: marguerite, kind: TAUGHT_TO_CALL }
+    - { persona: basil, kind: PLAYS_CHECKERS_WITH }
+  giftItemIds: [2020009, 2000002]
+  dialogue:
+    greetFirst: ["welcome, welcome. the Free Market. i kept a stall here forty-one years. ask me what anything costs. go on. anything.", "a new face. good. a red potion was forty mesos when i started. it's fifty now. shocking."]
+    greet: ["ah, you.", "hello, hello. prices are steady today.", "you again. good. sit with an old man a minute."]
+    idle: ["(watches a trade across the room, mouths a number, and nods to himself)", "(polishes a brass shop scale he no longer uses and sets it down very square)"]
+    noWork: ["nothing today. the market's honest this morning. i'd hate to interrupt it."]
+    nothingDue: ["we're even. to the meso. i checked."]
+    who: ["Gilbert. i kept a stall in room three for forty-one years. hides, skins, the odd skull. i've retired. i still come every morning. somebody has to remember what things are worth, or the market forgets."]
+    bye: ["mind your purse. not because of anyone here. just mind it."]
+    thanks: ["much obliged."]
+    smallTalk: ["a white potion is three hundred and twenty mesos at any shop on Victoria. if someone sells you one for six hundred in here, come and tell me. i'll go and talk prices with them.", "Marguerite out front calls the pitches. i taught her: never lie about the goods, only about how much you love them. she's very good. she loves everything."]
+    speakPlainly: ["plainly: prices, and the memory of prices."]
+    questOffer.gilbert-the-real-thing: ["a stall in room nine is selling pig hide as ligator skin. i can tell from the door. the buyers can't. bring me the real thing and i'll lay it beside theirs. the ligators in the Swamp of Despair, past Kerning City. twenty-five of them, fifteen skins."]
+    questAccept.gilbert-the-real-thing: ["Kerning City, then out to the swamp. the first three stretches of it. they snap. stand off to the side."]
+    questWaiting.gilbert-the-real-thing: ["fifteen skins. room nine's still at it."]
+    questComplete.gilbert-the-real-thing: ["fifteen. feel that. that's ligator. i laid one beside theirs and said nothing. i didn't have to. room nine sells pig hide as pig hide now, at pig hide prices. here. for honest work."]
+    questOffer.gilbert-what-a-skull-was-worth: ["when i opened my stall a drake skull sold for more than a sword. people hung them over the door. now nobody asks for one, and i want to know why. the drakes in the Drake Hunting Ground and the Tunnel That Lost Light, down past Sleepywood. twenty-five of them, fifteen skulls. let's see what the market says."]
+    questAccept.gilbert-what-a-skull-was-worth: ["Sleepywood, then down. the drakes. they're worth more than you'd think. don't let them keep their skulls."]
+    questWaiting.gilbert-what-a-skull-was-worth: ["fifteen skulls. the market's waiting. it doesn't know it yet."]
+    questComplete.gilbert-what-a-skull-was-worth: ["fifteen. i put three on a cloth in room three this morning. gone by noon, at twice what i'd guessed. people only forgot they wanted one. the market forgets. i don't. here. your share."]
+    about.marguerite: ["Marguerite calls the pitches at the entrance. i taught her everything. she improved on most of it. don't tell her."]
+    about.basil: ["Basil keeps the lost-and-found. we play checkers on his counter. i win on prices, he wins on patience. he wins."]
+    about.sofie: ["Sofie runs messages between the rooms. i've timed her. room one to room fourteen in under a minute. i've never once seen her walk."]
+    aboutUnknown: ["never sold them anything."]
+    friend.close: ["ask me the price of anything, any time. i'll tell you the honest one. i'll tell you the old one too. no charge."]
+    friend.best: ["i've kept a page in my old ledger for you. the price column says 'not for sale'. it's the only line like it."]
+    famed: ["your name's going up in the market. i'd buy."]
+    defamed: ["a bad word about you is like a bad price. it doesn't last if the goods are good."]
+    gift: ["oh, very kind. thank you."]
+    gift.favorite: ["now that's worth more than it cost you. thank you."]
+    gift.again: ["one a day. an old man has to watch his figure."]
+
+- id: sofie
+  name: Sofie
+  look: { gender: female }
+  title: "Runner Between the Market Rooms"
+  job: BEGINNER
+  level: { min: 18, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: free-market
+    routine:
+      - { from: 8, to: 11, spot: "venue:1-entrance", activity: STROLL }
+      - { from: 11, to: 14, spot: "venue:4-entrance", activity: STROLL }
+      - { from: 14, to: 17, spot: "venue:6-entrance", activity: STROLL }
+      - { from: 17, to: 20, spot: "venue:13-entrance", activity: STROLL }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [green mushroom, jr. wraith, tablecloth]
+  questLines: [sofie-the-hat-stall, sofie-tablecloths]
+  relationships:
+    - { persona: marguerite, kind: RUNS_THE_PITCHES_OF }
+    - { persona: basil, kind: BRINGS_LOST_THINGS_TO }
+  giftItemIds: [2002001, 2002010]
+  dialogue:
+    greetFirst: ["hi! can't stop! well, i can stop. i'm stopped. hi. i'm Sofie.", "oh! you're new! welcome! room six wants you. no it doesn't. sorry. hi!"]
+    greet: ["hi! hi.", "you! quick, what's the time? never mind. hi!", "back again! me too. i'm always back again."]
+    idle: ["(jogs on the spot reading a folded note, then stuffs it into a pocket already full of folded notes)", "(darts toward one market door, stops, turns on her heel and darts toward another)"]
+    noWork: ["nothing today! i know. nothing to run. i'm running anyway. it's a habit."]
+    nothingDue: ["nothing owed! all delivered!"]
+    who: ["Sofie. i run between the market rooms. room four wants change, room six wants a word with room eleven, room one's lost a cat. somebody has to carry it all. i'm fast. i'm very fast."]
+    bye: ["bye! running!"]
+    thanks: ["thanks! thank you! okay. running."]
+    smallTalk: ["fourteen rooms, twenty-two if you count the far ones. i've counted. i count while i run. it helps.", "Marguerite calls 'fresh caps in room five' and i'm already in room five. that's teamwork. she calls it shouting."]
+    speakPlainly: ["plainly: messages, and legs."]
+    questOffer.sofie-the-hat-stall: ["room five's hat stall is out of green caps! the green mushrooms on Henesys Hunting Ground II and III wear them. twenty mushrooms, ten caps. i'd go myself but i'm running."]
+    questAccept.sofie-the-hat-stall: ["Henesys, then out to the hunting grounds. the second and third. green ones. they bounce."]
+    questWaiting.sofie-the-hat-stall: ["ten caps! room five keeps asking. i keep running."]
+    questComplete.sofie-the-hat-stall: ["ten! room five says thank you! i said it too. i'm saying it again. thank you! here, they paid me to pay you."]
+    questOffer.sofie-tablecloths: ["every stall in room six wants a tablecloth. a proper one, not a sheet. the jr. wraiths in the Kerning City subway carry tablecloths. nobody knows why. twenty-five wraiths, fifteen cloths."]
+    questAccept.sofie-tablecloths: ["Kerning City, down into the subway. Line 1, the second and third areas, or Line 2, the first and second. they're ghosts. they're polite about it."]
+    questWaiting.sofie-tablecloths: ["fifteen cloths! room six is eating off sheets."]
+    questComplete.sofie-tablecloths: ["fifteen! room six looks like a restaurant now! they're selling more! they said so! i ran and told Gilbert! here!"]
+    about.marguerite: ["Marguerite shouts it and i run it. she's got the loudest voice in the market. i've got the fastest legs. together we're very annoying. people buy things."]
+    about.basil: ["Basil gets everything people drop. i bring it to him. he writes the tag very slowly. i wait. it's the only time i stand still."]
+    about.gilbert: ["Gilbert times me. under a minute, room one to fourteen. i'm going to do it in fifty seconds. don't tell him till i have."]
+    aboutUnknown: ["never ran them a message!"]
+    friend.close: ["i'll run anything for you. anywhere. free. don't tell room four."]
+    friend.best: ["if i'm running and i see you, i'll stop. i never stop. i'll stop for you."]
+    famed: ["everyone's saying your name in every room! i heard it fourteen times! i was running!"]
+    defamed: ["someone said something about you in room nine. i ran straight past it. i'm not carrying that."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh! that'll keep me running all day! thank you!"]
+    gift.again: ["one a day! any more and i'll run into a wall."]
+
+- id: marguerite
+  name: Marguerite
+  look: { gender: female }
+  title: "Pitch-Caller of the Market Entrance"
+  job: BEGINNER
+  level: { min: 26, max: 28 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: free-market
+    routine:
+      - { from: 9, to: 13, spot: "venue:entrance", activity: LINGER }
+      - { from: 13, to: 14, spot: "venue:beside-miki", activity: REST }
+      - { from: 14, to: 20, spot: "venue:entrance", activity: SOCIALIZE }
+      - { from: 20, to: 9, materialize: false }
+  recruitable: false
+  knows: [stirge, lupin, lupin doll]
+  questLines: [marguerite-a-hat-that-catches-the-light, marguerite-lupin-dolls]
+  rumors: [fm-the-price-of-things]
+  relationships:
+    - { persona: gilbert, kind: LEARNED_TO_CALL_FROM }
+    - { persona: sofie, kind: CALLS_FOR }
+  giftItemIds: [2020009, 2020010]
+  dialogue:
+    greetFirst: ["welcome, welcome, WELCOME to the Free Market! ...sorry. habit. hello. i'm Marguerite. i call the pitches.", "new in? come in, come in! fourteen rooms, no waiting, and everything's lovely. most of that's true."]
+    greet: ["hello, hello!", "back for more? everyone comes back.", "you! the best face in the market today."]
+    idle: ["(cups her hands and calls a pitch for room five, then sips something for her throat)", "(rehearses a pitch under her breath, changes one word, and rehearses it again)"]
+    noWork: ["nothing today. the market's selling itself. i'm resting my voice. this is resting."]
+    nothingDue: ["we're square. not a meso between us."]
+    who: ["Marguerite. i call the pitches at the entrance. 'fresh caps in room five! honest skins in room three!' every town's market portal opens right here, so everyone hears me first. Gilbert taught me. i'm louder."]
+    bye: ["come back soon! everyone does!"]
+    thanks: ["oh, thank you!"]
+    smallTalk: ["Gilbert's rule: never lie about the goods, only about how much you love them. i love everything. it's easier.", "my voice goes by evening. orange juice brings it back. grape juice is better. Gilbert says that's a pitch. it isn't. it's medicine."]
+    speakPlainly: ["plainly: a loud voice, and honest goods to shout about."]
+    questOffer.marguerite-a-hat-that-catches-the-light: ["a pitch-caller needs a hat they can see from the portal. stirge wings catch the light like nothing else. the stirges in the Kerning City subway, the transfer area and the first line. twenty-five stirges, twelve wings."]
+    questAccept.marguerite-a-hat-that-catches-the-light: ["Kerning City, down the subway. the transfer area, and Line 1's second area. they swoop. let them."]
+    questWaiting.marguerite-a-hat-that-catches-the-light: ["twelve wings! i'm calling bareheaded."]
+    questComplete.marguerite-a-hat-that-catches-the-light: ["twelve! look, look how it catches the lamps! they'll see me from Henesys. here, for the hat!"]
+    questOffer.marguerite-lupin-dolls: ["i want something to pitch that sells itself. lupin dolls. a child sees one and that's it, the parents are buying. the lupins in the monkey forest south of Ellinia carry them. twenty-five lupins, fifteen dolls."]
+    questAccept.marguerite-lupin-dolls: ["south of Ellinia, Monkey Forest I and II. they throw bananas. duck, and smile."]
+    questWaiting.marguerite-lupin-dolls: ["fifteen dolls. i've written the pitch already."]
+    questComplete.marguerite-lupin-dolls: ["fifteen! 'one lupin doll, and a smile for free!' they were gone in an hour! here, your cut. the gatherer always gets the first cut."]
+    about.gilbert: ["Gilbert taught me to call. he says i'm the best he ever heard. he says it quietly. he's not a caller."]
+    about.sofie: ["i call it, Sofie runs it. she's in room five before i've finished saying 'five'. i've timed her. Gilbert's timed her. she's timed herself."]
+    about.basil: ["Basil keeps the lost-and-found. half of it comes from people who stopped to listen to me and put their bags down. i feel a bit responsible."]
+    aboutUnknown: ["never pitched to them. yet."]
+    friend.close: ["i'll call your name at the entrance. 'a friend in the market!' everybody'll turn round."]
+    friend.best: ["i've written a pitch about you. it's my best one. it's all true. that's never happened before."]
+    famed: ["they're saying your name in every room! i started it. well. i helped."]
+    defamed: ["somebody's calling a bad pitch about you. i'll call louder. i always call louder."]
+    gift: ["oh! for me? thank you!"]
+    gift.favorite: ["oh, that's my voice back for the evening. thank you!"]
+    gift.again: ["one a day! i've got a voice to look after."]
+
+- id: basil
+  name: Basil
+  look: { gender: male }
+  title: "Keeper of the Lost-and-Found"
+  job: BEGINNER
+  level: { min: 34, max: 36 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: free-market
+    routine:
+      - { from: 7, to: 13, spot: "venue:5-entrance", activity: LINGER }
+      - { from: 13, to: 17, spot: "venue:by-hidden-appraiser", activity: LINGER }
+      - { from: 17, to: 21, spot: "venue:14-entrance", activity: LINGER }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [zombie mushroom, shade, someone's hat]
+  questLines: [basil-spare-charms, basil-someones-hat]
+  relationships:
+    - { persona: gilbert, kind: PLAYS_CHECKERS_WITH }
+    - { persona: sofie, kind: WRITES_TAGS_FOR }
+  giftItemIds: [2020004, 2000002]
+  dialogue:
+    greetFirst: ["hello. did you lose something? everyone who comes to my counter has lost something. sometimes it's only their way.", "welcome. i keep the lost-and-found. if you ever lose anything in the market, it'll come here. it always does, in the end."]
+    greet: ["hello. lost anything?", "ah. you. nothing of yours has come in.", "hello again."]
+    idle: ["(ties a paper tag to a single glove and writes on it in very small, careful letters)", "(holds a lost umbrella up to the light, turns it, and files it on a high shelf)"]
+    noWork: ["nothing today. nobody's lost anything. that's very rare. i don't trust it."]
+    nothingDue: ["nothing owed. nothing lost."]
+    who: ["Basil. i keep the lost-and-found for the Free Market. gloves, keys, a cat once, a whole stall another time. everything gets a tag. somebody always comes for it. sometimes it takes years."]
+    bye: ["hold on to your things."]
+    thanks: ["thank you kindly."]
+    smallTalk: ["i've had a single boot on the shelf for six years. somebody's hopping about Victoria. i think of them often.", "people lose lucky charms more than anything. i keep a jar of spares. if somebody comes in crying over a charm, they leave with one. it's not theirs. it helps anyway."]
+    speakPlainly: ["plainly: a counter, a shelf, and a tag on everything."]
+    questOffer.basil-spare-charms: ["my jar of spare charms is empty. the zombie mushrooms in the Ant Tunnel by Sleepywood wear charms against the undead. they don't work, clearly. people like them anyway. twenty-five zombie mushrooms, twelve charms."]
+    questAccept.basil-spare-charms: ["Sleepywood, then the Ant Tunnel, the first and second. they're slow. they look very sad."]
+    questWaiting.basil-spare-charms: ["twelve charms. somebody cried at my counter this morning."]
+    questComplete.basil-spare-charms: ["twelve. into the jar. a girl came in an hour ago about a lost charm. she left with one of these. she said it was exactly like hers. maybe it was. here. for the jar."]
+    questOffer.basil-someones-hat: ["half the hats on my shelf came out of the subway. the shades deep in the Kerning City subway wear other people's hats. i want them back. thirty shades, ten hats. somebody will come for every one."]
+    questAccept.basil-someones-hat: ["Kerning City, all the way down the subway. Line 1, the fourth area, or Line 2, the third. they don't like the light. take a lamp anyway."]
+    questWaiting.basil-someones-hat: ["ten hats. i've written the tags already. 'someone's hat'. it's all i know."]
+    questComplete.basil-someones-hat: ["ten. tagged and shelved. a man came in yesterday about a brown hat. it's the third one down. i'll tell him. here. thank you. that's ten people getting their hats back."]
+    about.gilbert: ["Gilbert plays checkers on my counter. he talks prices the whole game. i let him. i win while he's halfway through a sentence."]
+    about.sofie: ["Sofie brings me everything people drop, at a run. i write the tags slowly. it's the only time she stands still. i think she likes it."]
+    about.marguerite: ["Marguerite's pitches make people stop and put their bags down. then they forget the bags. she brings me tea about it. it evens out."]
+    aboutUnknown: ["nothing of theirs on my shelf."]
+    friend.close: ["if you ever lose anything, anywhere on Victoria, tell me. i'll find it. i usually do."]
+    friend.best: ["i've written a tag with your name on it. it says 'never lost'. i keep it on the counter."]
+    famed: ["your name keeps turning up at my counter. i'd tag it 'found'."]
+    defamed: ["what people say is like what people drop. most of it, nobody comes back for."]
+    gift: ["oh. thank you. i'll tag it. no, i won't. it's mine."]
+    gift.favorite: ["oh, that's lovely. that one doesn't go on the shelf."]
+    gift.again: ["one a day, thank you. i've no shelf for more."]

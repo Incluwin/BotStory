@@ -1,0 +1,28 @@
+# Orbis Park rumors (wave 4). Each pair is awake together at its spot in those hours (personas/orbis-park.yaml).
+- id: orbis-park-after-the-hunt
+  participants: [saffi, odalys]
+  where: { town: orbis-park, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+  setsFlagOnListeners: orbis-park.heard-saffi
+  lines:
+    - { by: odalys, text: "you've pixie glitter in your hair again, Saffi." }
+    - { by: saffi, text: "i've pixie glitter everywhere. it's in my boots. it'll be in my supper." }
+    - { by: odalys, text: "the lunar ones had my blue beds up last week. every bulb." }
+    - { by: saffi, text: "i'll have a word with them tomorrow. a long word." }
+    - { by: odalys, text: "everyone you take up to the cloud parks comes back down with you, you know. every one. Tibalt says so too." }
+    - { by: saffi, text: "that's the job. heal them first, hunt second. if anybody wants a cleric beside them up there, they know where i sit of an evening." }
+
+- id: orbis-park-the-east-wind
+  participants: [tibalt, odalys]
+  where: { town: orbis-park, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [21]
+    everyDays: 2
+  lines:
+    - { by: tibalt, text: "wind's from the east tonight. the Ludibrium run will be early." }
+    - { by: odalys, text: "you say that every night, Tibalt." }
+    - { by: tibalt, text: "and every night it's true of some ship. forty years on deck. you don't stop reading the wind." }
+    - { by: odalys, text: "you could read my roses instead. they're thirsty." }
+    - { by: tibalt, text: "...east wind. dry. i'll fetch the can." }

@@ -33,3 +33,204 @@
     - { id: feathers, type: COLLECT_ITEM, itemId: 4000483, count: 20 }
     - { id: return, type: DELIVER, to: linnea, take: { itemId: 4000483, count: 20 } }
   rewards: { meso: 2000, exp: 600, bondPoints: 20, items: [{ itemId: 2000001, count: 15 }], flags: [linnea.feathers.done] }
+
+# ---- Wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10) ----
+# Fields: the Training Forests (Timu 100122 on 130010100/130010110; Tiv 100121, Tiv's Feather 4000483 at 40%, on
+# 130010000/130010020; Tiguru 100124 on 130010200/130010210; Kiridu's Hatchery 130010220 off Training Forest III).
+# Off the sky ferry, round Ellinia: slime 210100 squishy liquid 4000004 (101010000, 101010100); dark stump 1110101 leaf
+# 4000005 (101010101, 101020000); octopus 1120100 (102040000, 102040001); green mushroom 1110100 cap 4000012
+# (101010102, 102020100); bubbling 1210103 (101020006, 103000101); axe stump 1130100 firewood 4000018 (101020007,
+# 101030402-101030404); evil eye 2230100 tail 4000007 (101020009, 105040000, 105040100); cold eye 4230100 tail
+# 4000023 (105040303). Gear: Caius's earrings Amethyst 1032003 L15 / Leaf 1032025 L25 / Celestial 1032045 L40.
+
+# ---- Isaura: the record of the five (arcs/ereve.yaml) ----
+- id: isaura-the-overdue-books
+  persona: isaura
+  title: "Books in the Grass"
+  length: SHORT
+  requires: { level: { min: 4 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: timus, type: KILL_MOBS, mobIds: [100122], count: 25, mapIds: [130010100, 130010110] }
+    - { id: report, type: DELIVER, to: isaura }
+  rewards: { meso: 1800, exp: 500, bondPoints: 25, items: [{ itemId: 2000001, count: 15 }] }
+
+- id: isaura-the-blank-page
+  persona: isaura
+  title: "The Record of the Five"
+  length: SHORT
+  requires: { level: { min: 8 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: celandine, type: TALK_TO, persona: celandine, say: ["the five? every knight's collar has five emblems stitched inside it, the same as the very first coats. the pattern book calls the fifth one 'the one who stayed in the snow'. a polearm, on a field of white. tell Isaura the thread's blue. it's always been blue."] }
+    - { id: fintan, type: TALK_TO, persona: fintan, say: ["the hatchery's egg-book? the first page is older than Kiridu. it says the first mounts were bred 'the spring after the five went by sea, from the island of snow'. that's all it says about them. the rest is eggs."] }
+    - { id: report, type: DELIVER, to: isaura }
+  rewards: { meso: 3000, exp: 1200, bondPoints: 40, items: [{ itemId: 2000002, count: 10 }], worldFlags: [ereve.record.searched] }
+
+- id: isaura-in-her-words
+  persona: isaura
+  title: "In Her Words"
+  length: MEDIUM
+  requires: { level: { min: 12 }, questsCompleted: [isaura-the-blank-page], flags: [rien.copy.read], notFlags: [ereve.page.written] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eira, type: TALK_TO, persona: eira, say: ["sit down, dear, and listen, and say it back to her exactly. grandmother said it was a grey morning. four of them went down to the shore and into the boat, and didn't look back, because they couldn't bear to. the fifth went up the hill into the ice, because somebody had to be here when the dark came back. and the one on the hill looked back once. grandmother said that's the part that matters."] }
+    - { id: written, type: DELIVER, to: isaura }
+  rewards: { meso: 6000, exp: 3000, bondPoints: 50, items: [{ itemId: 2000002, count: 20 }], worldFlags: [ereve.page.written] }
+
+# ---- Fintan, groom of Kiridu's hatchery ----
+- id: fintan-nest-feathers
+  persona: fintan
+  title: "Soft Nests"
+  length: SHORT
+  requires: { level: { min: 3 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4000483, count: 10 }
+    - { id: nests, type: DELIVER, to: fintan, take: { itemId: 4000483, count: 10 } }
+  rewards: { meso: 1500, exp: 400, bondPoints: 25, items: [{ itemId: 2000000, count: 20 }] }
+
+- id: fintan-the-hatchery-path
+  persona: fintan
+  title: "Quiet at the Hatchery Door"
+  length: SHORT
+  requires: { level: { min: 9 }, questsCompleted: [fintan-nest-feathers] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tigurus, type: KILL_MOBS, mobIds: [100124], count: 20, mapIds: [130010200, 130010210] }
+    - { id: hatchery, type: VISIT_MAP, mapIds: [130010220] }
+    - { id: report, type: DELIVER, to: fintan }
+  rewards: { meso: 3000, exp: 1000, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+# ---- Celandine, tailor of the knights' coats ----
+- id: celandine-collar-starch
+  persona: celandine
+  title: "Starch for the Collars"
+  length: SHORT
+  requires: { level: { min: 8 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: starch, type: COLLECT_ITEM, itemId: 4000004, count: 12 }
+    - { id: collars, type: DELIVER, to: celandine, take: { itemId: 4000004, count: 12 } }
+  rewards: { meso: 2500, exp: 900, bondPoints: 25, items: [{ itemId: 2000001, count: 20 }] }
+
+- id: celandine-thread-from-ellinia
+  persona: celandine
+  title: "The Blue That Holds"
+  length: SHORT
+  requires: { level: { min: 10 }, questsCompleted: [celandine-collar-starch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mirabel, type: TALK_TO, persona: mirabel, say: ["Celandine's blue? it's... it's done. it's been done a while. i was waiting for somebody to ask. here. tell her the blue holds. she'll know what i mean."] }
+    - { id: thread, type: DELIVER, to: celandine }
+  rewards: { meso: 3500, exp: 1400, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: celandine-lining-leaves
+  persona: celandine
+  title: "Green for the Lining"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 10 }, questsCompleted: [celandine-collar-starch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leaves, type: COLLECT_ITEM, itemId: 4000005, count: 10 }
+    - { id: lining, type: DELIVER, to: celandine, take: { itemId: 4000005, count: 10 } }
+  rewards: { meso: 2000, exp: 1000, bondPoints: 10 }
+
+# ---- Cadoc, Thunder Breaker cadet ----
+- id: cadoc-the-octopus-hold
+  persona: cadoc
+  title: "Holding On"
+  length: SHORT
+  requires: { level: { min: 11 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: octopuses, type: KILL_MOBS, mobIds: [1120100], count: 25, mapIds: [102040000, 102040001] }
+    - { id: report, type: DELIVER, to: cadoc }
+  rewards: { meso: 3500, exp: 1600, bondPoints: 25, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: cadoc-kitchen-duty
+  persona: cadoc
+  title: "Kitchen Duty"
+  length: SHORT
+  requires: { level: { min: 14 }, questsCompleted: [cadoc-the-octopus-hold] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000012, count: 12 }
+    - { id: stew, type: DELIVER, to: cadoc, take: { itemId: 4000012, count: 12 } }
+  rewards: { meso: 4000, exp: 2200, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+# ---- Caius (recruit; earrings Amethyst / Leaf / Celestial) ----
+- id: caius-the-quiet-step
+  persona: caius
+  title: "The Quiet Step"
+  length: SHORT
+  requires: { level: { min: 13 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bubblings, type: KILL_MOBS, mobIds: [1210103], count: 25, mapIds: [101020006, 103000101] }
+    - { id: done, type: DELIVER, to: caius }
+  rewards: { meso: 4000, exp: 2000, bondPoints: 30, flags: [caius.intro.done] }
+
+- id: caius-amethyst-earrings
+  persona: caius
+  title: "A Fire That Doesn't Smoke"
+  length: MEDIUM
+  requires: { level: { min: 15 }, friendship: 5, questsCompleted: [caius-the-quiet-step] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [1130100], count: 30, mapIds: [101020007, 101030402, 101030403, 101030404] }
+    - { id: firewood, type: COLLECT_ITEM, itemId: 4000018, count: 12 }
+    - { id: fire, type: DELIVER, to: caius, take: { itemId: 4000018, count: 12 } }
+  rewards:
+    meso: 5000
+    exp: 4000
+    bondPoints: 35
+    gear:
+      - { pool: [1032003], scrolls: [{ success: 100 }] }
+
+- id: caius-leaf-earrings
+  persona: caius
+  title: "Eyes in the Dark"
+  length: MEDIUM
+  requires: { level: { min: 25 }, friendship: 7, questsCompleted: [caius-amethyst-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [2230100], count: 30, mapIds: [101020009, 105040000, 105040100] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000007, count: 10 }
+    - { id: report, type: DELIVER, to: caius, take: { itemId: 4000007, count: 10 } }
+  rewards:
+    meso: 10000
+    exp: 8000
+    bondPoints: 50
+    gear:
+      - { pool: [1032025], scrolls: [{ success: 60 }] }
+
+- id: caius-celestial-earrings
+  persona: caius
+  title: "The Cold Ones, Then the Stars"
+  length: LONG
+  requires: { level: { min: 40 }, friendship: 10, questsCompleted: [caius-leaf-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [4230100], count: 30, mapIds: [105040303] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000023, count: 12 }
+    - { id: report, type: DELIVER, to: caius, take: { itemId: 4000023, count: 12 } }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 60
+    gear:
+      - { pool: [1032045], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: caius-clean-firewood
+  persona: caius
+  title: "The Watch Fire"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 15 }, questsCompleted: [caius-the-quiet-step] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: firewood, type: COLLECT_ITEM, itemId: 4000018, count: 10 }
+    - { id: fire, type: DELIVER, to: caius, take: { itemId: 4000018, count: 10 } }
+  rewards: { meso: 3000, exp: 2000, bondPoints: 10 }

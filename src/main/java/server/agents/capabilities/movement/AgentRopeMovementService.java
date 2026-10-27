@@ -104,7 +104,7 @@ public final class AgentRopeMovementService {
 
     public static void beginGroundJump(AgentRuntimeEntry entry, Character agent, int airVelocityX) {
         AgentClimbStateRuntime.clearBlockedRopeGrab(entry);
-        if (agent.getMap() != null && agent.getMap().isSwim()) {
+        if (AgentMapEnvironmentService.swims(agent.getMap())) {
             beginSwimGroundJump(entry, agent);
             return;
         }
