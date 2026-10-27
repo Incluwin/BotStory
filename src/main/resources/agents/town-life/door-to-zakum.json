@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 2,
+  "profileId": "door-to-zakum",
+  "mapId": 211042300,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 23,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -313,
+    "middleMaxY": -224,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -2810, "y": -210, "seatId": -1 },
+    { "x": -2455, "y": -273, "seatId": -1 },
+    { "x": -1390, "y": -273, "seatId": -1 },
+    { "x": -1120, "y": -213, "seatId": -1 },
+    { "x": -580, "y": -213, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -2285, "y": -277 },
+    { "x": -835, "y": -210 }
+  ],
+  "npcSpots": [
+    { "npcId": 2030008, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -3144, "minY": -284, "maxX": -3004, "maxY": -159, "excludesOccupancy": true },
+    { "id": "portal-ps00", "type": "PORTAL", "minX": -777, "minY": -277, "maxX": -667, "maxY": -167, "excludesOccupancy": true },
+    { "id": "npc-2030008", "type": "NPC_LANE", "minX": -1034, "minY": -304, "maxX": -904, "maxY": -174, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -2980, "y": -215, "seatId": -1 }, { "x": -2895, "y": -213, "seatId": -1 }, { "x": -2810, "y": -210, "seatId": -1 }, { "x": -2725, "y": -210, "seatId": -1 }] },
+    { "id": "middle-west-street", "label": "Middle west street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -2640, "y": -210, "seatId": -1 }, { "x": -2540, "y": -259, "seatId": -1 }, { "x": -2455, "y": -273, "seatId": -1 }, { "x": -2370, "y": -270, "seatId": -1 }] },
+    { "id": "upper-central-street", "label": "Upper central street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -2000, "y": -333, "seatId": -1 }, { "x": -1915, "y": -333, "seatId": -1 }, { "x": -1830, "y": -335, "seatId": -1 }, { "x": -1745, "y": -334, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1575, "y": -333, "seatId": -1 }, { "x": -1475, "y": -298, "seatId": -1 }, { "x": -1390, "y": -273, "seatId": -1 }, { "x": -1305, "y": -273, "seatId": -1 }] },
+    { "id": "by-adobis", "label": "By Adobis", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1305, "y": -273, "seatId": -1 }, { "x": -1205, "y": -238, "seatId": -1 }, { "x": -1120, "y": -213, "seatId": -1 }, { "x": -1035, "y": -213, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -665, "y": -212, "seatId": -1 }, { "x": -580, "y": -213, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "by-adobis-crowd", "venueId": "by-adobis", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "middle-west-street-crowd", "venueId": "middle-west-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

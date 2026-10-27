@@ -570,3 +570,121 @@ Village (Malaysia) belong to another session.
 Wave 1 and wave 2 are untouched apart from one Leafre quest: `hessa-carry-it-home` counts its Nest Golems only in
 the Dangerous Dragon Nest below the peak. A `VISIT_MAP` step advances only when its map is entered while it is the
 current step, so golems killed on the peak itself left the player standing there with the visit still open.
+
+## 10. Wave 4: Ossyria remainder
+
+Asked for 2026-10-25 ("Residents in every town and sub-area"; sub-areas only on safe outpost maps: camp or hub maps
+with NPCs and few or no mobs). Waves 1-3 and the Masteria casts cover most towns; this wave takes the rest of Ossyria
+and its outposts, from the coordinator's town audit (section 1.3 of its `TOWN_AUDIT.md`). Victoria's remainder and the
+route graph are other sessions' work. Branch `feat/ossyria-remainder`, quest-log id block 31100-31449.
+
+### 10.1 Where they live
+
+A Resident lives on one map (its TownLife profile), so each outpost gets a profile of its own, generated with
+`tools\town-life-profiles.bat generate <map>=<id> --index` like wave 3's Aquarium interiors (none is in the ambient
+deployment, so citizen traffic is unchanged).
+
+| Profile (new unless noted) | Map | Why this map | Venues |
+|---|---|---|---|
+| `three-doors` | 270000000 Three Doors | the Temple of Time's hub: town, no mobs, the Temple Keeper, the way to Memory Lane. 270000100 (the temple itself) has no NPC and 6 venues | 9 |
+| `tera-forest-time-gate` | 240070000 Tera Forest Time Gate | Neo City's every era map has mob spawns (lv 70-95) and its mob-free maps are boss-instance copies, so **Neo City's cast lives at the Time Gate**, which is also the Tera Forest outpost | 3 |
+| `ereve`, `rien` (existing) | 130000000, 140000000 | +5 and +6 Residents | 8, 14 |
+| `altaire-camp` (existing, 0 Residents) | 300000000 Altaire Camp | Ellin Forest's camp | 14 |
+| `mu-lung-dojo` | 925020000 Mu Lung Dojo Entrance | the lobby: town, no mobs | 6 |
+| `ice-valley-ii` | 211040200 Ice Valley II | Jeff and Glibber. Yetis spawn on the four lower layers (y -239 to -1490), so its Residents keep to the upper venues (`upper-west-street`, `upper-central-street`, `by-glibber`, `beside-glibber`, y -1745 and above) | 11 |
+| `door-to-zakum` | 211042300 The Door to Zakum | Adobis; no mobs | 6 |
+| `orbis-park` | 200000200 Orbis Park | 6 NPCs, no mobs | 10 |
+| `ludibrium-village` | 220000300 Ludibrium Village | town, no mobs | 14 |
+| `town-of-ariant` | 260000200 The Town of Ariant | town, 9 NPCs, no mobs | 14 |
+| `ariant-castle` | 260000300 Ariant Castle | town, no mobs | 6 |
+| `tent-of-the-entertainers` | 260010600 Tent of the Entertainers | Karcasa. Nine desert rabbits spawn on the ground (y 275), so its Residents keep to the upper venues (`middle-west-street`, `by-karcasa`, `upper-central-street`, `upper-east-street`) | 8 |
+| `zenumist-society`, `alcadno-society` | 261000010, 261000020 | town, no mobs | 3, 2 |
+| `pier-on-the-beach` | 251000100 Pier on the Beach | the dolphin to Aquarium; no mobs | 1 |
+
+13 new profiles (`AgentTownLifeProfileRepositoryTest`: 50 -> 63) and 14 borrowed-portrait towns in
+`ResidentDialogue.PORTRAITS` (the 13, plus Altaire Camp, which had no Residents; Ereve and Rien have theirs).
+
+### 10.2 Cast
+
+56 Residents, 17 recruitable. The kit is wave 1's. All sixteen weapon lines already have three regional tiers, so the
+friendship gear here is armour and accessories, each in its place's level band and chosen so no earlier Resident
+gives the same piece: the Temple of Time continues Della's coats and Perrin's earrings past L100, and the outposts give
+the pieces their places are known for (the Dojo's belts, Zakum's helmet and capes, the Altaire earrings, the Toymaker
+set, the two societies' capes, the Icarus capes, Nett's Pyramid belts).
+
+| Place | Resident | Role (job, level) | Recruit | Friendship gear |
+|---|---|---|---|---|
+| Temple of Time | Solveig | pilgrim of the Road of Regrets, arc owner | - | - |
+| Temple of Time | Osmund | scribe to the Record Keeper | - | Timeless hat for the player's class L120 |
+| Temple of Time | Ilsabet | a traveller who slept through thirty years on the Leafre ship | - | - |
+| Temple of Time | Caedmon | guardian-knight of the three doors (Hero 112) | yes | coats L100 / L110 / Timeless suits L120 (Della's line) |
+| Temple of Time | Liesl | oblivion hunter (Marksman 110) | yes | earrings Rose L90 / Sword L100 / Timeless L120 (Perrin's line) |
+| Neo City (Time Gate) | Calla | a girl from Neo City's 2099 who came back through the gate, arc owner | - | - |
+| Neo City (Time Gate) | Augustin | Leafre's keeper of the gate's logbook, Andy's friend | - | - |
+| Neo City (Time Gate) | Bettany | Omega tinker studying the gate's machinery | - | - |
+| Neo City (Time Gate) | Tobiah | scavenger of the ruined eras (Outlaw 88) | yes | Time Traveler's Circlet L93 |
+| Neo City (Time Gate) | Dashiell | dragon-knight scout of Leafre (Dragon Knight 92) | yes | - |
+| Ereve | Isaura | archivist knight of the Empress's library (Blaze Wizard 2, 40), arc owner | - | - |
+| Ereve | Fintan | groom of Kiridu's hatchery | - | - |
+| Ereve | Celandine | tailor of the knights' uniforms | - | - |
+| Ereve | Caius | Night Walker (2, 34) | yes | earrings Amethyst L15 / Leaf L25 / Celestial L40 |
+| Ereve | Wynn | Thunder Breaker cadet (1, 18) | - | - |
+| Rien | Eira | Rien's oldest, who saw the heroes leave, arc owner | - | - |
+| Rien | Tove | penguin herder | - | - |
+| Rien | Ansgar | ice fisher | - | - |
+| Rien | Brynja | Aran (2, 32) | yes | Ice Jeans L16 / Old Raggedy Cape L25 / Cape of Warmness L35 |
+| Rien | Kjeld | sentry of the Dangerous Forest | - | - |
+| Rien | Saga | a girl who wants to be a hero | - | - |
+| Altaire Camp | Ottavia | the expedition's cartographer, arc owner | - | - |
+| Altaire Camp | Larkin | fairy-born forager | - | - |
+| Altaire Camp | Rosalind | fairy jeweller | - | earrings Moonstar L45 / Altair L50 / Glittering Altaire L50 |
+| Altaire Camp | Ewan | camp cook | - | - |
+| Altaire Camp | Teodor | herbalist of the poison haze (Magician 50) | - | - |
+| Altaire Camp | Maelis | huntress of Boulder Mountain (Ranger 58) | yes | Icarus Capes (1) / (2) / (3) L42 |
+| Altaire Camp | Gaspard | stone-breaker (White Knight 55) | yes | - |
+| Mu Lung Dojo | Shen | the Dojo's doorman | - | - |
+| Mu Lung Dojo | Lianhua | challenger of the Dojo floors (Marauder 75) | yes | belts Blue L45 / Red L60 / Black L75 |
+| Mu Lung Dojo | Guo | retired master who lost to Mu Gong | - | - |
+| Ice Valley II | Torsten | relief guard at Jeff's gate (Crusader 72) | yes | Gordon's Magic Iron L50 |
+| Ice Valley II | Agnetha | runner of potions up to Glibber | - | - |
+| The Door to Zakum | Hrafn | the watch at the door, Sigrun's second (Hero 95) | yes | Zakum Helmet L50 / Wrath of El Nath L100 / Shroud of Zakum L120 |
+| The Door to Zakum | Brenna | Adobis's lava-reader | - | - |
+| The Door to Zakum | Vigdis | guide through the Dead Mine and the Cave of Trial (Bandit 55) | - | - |
+| Orbis Park | Odalys | keeper of the park | - | - |
+| Orbis Park | Tibalt | retired sailor of the sky ships | - | - |
+| Orbis Park | Saffi | pixie hunter (Priest 50) | yes | - |
+| Ludibrium Village | Alder | toymaker | - | Toymaker Cap L40, Toymaker Cape L40 |
+| Ludibrium Village | Winifred | the village schoolteacher | - | - |
+| Ludibrium Village | Rollo | toy-soldier enthusiast (Fighter 45) | yes | - |
+| The Town of Ariant | Zahra | seamstress of the residential quarter | - | - |
+| The Town of Ariant | Idris | palace messenger | - | - |
+| The Town of Ariant | Kasim | sand-bandit lookout (Chief Bandit 50) | yes | Pharaoh Belt L40 / The Immortal Pharaoh Belt L80 |
+| Ariant Castle | Yusra | handmaiden of the palace | - | - |
+| Ariant Castle | Darius | castle guard (Spearman 40) | - | - |
+| Tent of the Entertainers | Pepita | juggler | - | Smiling Mask L25, Crying Mask L25 |
+| Tent of the Entertainers | Rafi | fire-eater (Fire/Poison Wizard 30) | yes | - |
+| Tent of the Entertainers | Zarek | old ringmaster | - | - |
+| Zenumist Society | Ines | apprentice alchemist (Magician 40) | yes | Zenumist's Cape L35 |
+| Zenumist Society | Phineas | doorkeeper of the society | - | - |
+| Alcadno Society | Ferro | apprentice engineer (Brawler 45) | yes | Alcadno's Cape L35 |
+| Alcadno Society | Mathilde | the society's archivist | - | - |
+| Pier on the Beach | Nerys | the dolphin's keeper | - | Oxygen Tank L30 |
+| Pier on the Beach | Bora | pearl seller of the pier | - | - |
+
+Ereve's and Rien's new knights and Aran (Isaura, Caius, Wynn, Brynja) follow `CYGNUS_ARAN_CAREERS_ENABLED` like
+Aldric, Linnea and Torvin; the townsfolk there are always present. Recruits are earned the five ways (item price,
+kill proof after the intro quest, day rate, rumor alone, rumor on top of the intro quest), spread across the wave.
+
+### 10.3 Threads
+
+Each region's arc ends in a once-per-server beat (`requires.notFlags`, pinned in `ArcFinalBeatOncePerServerTest`), as
+wave 3's. Pairs: the Temple of Time and Neo City (time), Ereve and Rien (the heroes who left); Altaire Camp, the two
+Magatia societies, the three Ariant maps, the El Nath outposts (Ice Valley II and the Door to Zakum) and the Dojo
+each have their own. Earlier waves are touched only by gossip (a few `about.<persona>` lines), never gated.
+
+### 10.4 Routes
+
+The Temple of Time (ride map 200090510's `templeenter` portal), the Dojo (NPC warp), and the Door to Zakum (Jeff's
+warp) are in neither route graph, and Ereve, Rien and Altaire Camp are in the knowledge graph only, so `call
+<recruit>` from elsewhere waits on the routes session (`feat/routes-malaysia`), which owns the graph, travel legs,
+`regions.yaml` and `fields.yaml`. Inside their own maps, and for players on foot, everything works.

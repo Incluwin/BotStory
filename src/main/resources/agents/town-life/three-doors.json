@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 2,
+  "profileId": "three-doors",
+  "mapId": 270000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 106,
+    "middleMaxY": 166,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "in00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -2600, "y": 177, "seatId": -1 },
+    { "x": -2175, "y": 177, "seatId": -1 },
+    { "x": -1750, "y": 177, "seatId": -1 },
+    { "x": -1070, "y": 177, "seatId": -1 },
+    { "x": -645, "y": 177, "seatId": -1 },
+    { "x": -35, "y": 177, "seatId": -1 },
+    { "x": 390, "y": 177, "seatId": -1 },
+    { "x": 815, "y": 177, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -2005, "y": 177 },
+    { "x": -1495, "y": 177 },
+    { "x": -1325, "y": 177 },
+    { "x": -900, "y": 177 },
+    { "x": -375, "y": 177 },
+    { "x": 135, "y": 177 },
+    { "x": 560, "y": 177 },
+    { "x": 1155, "y": 177 }
+  ],
+  "npcSpots": [
+    { "npcId": 2140000, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "door-out00", "type": "DOOR", "minX": -2927, "minY": 108, "maxX": -2807, "maxY": 223, "excludesOccupancy": true },
+    { "id": "portal-in00", "type": "PORTAL", "minX": -518, "minY": 107, "maxX": -378, "maxY": 232, "excludesOccupancy": true },
+    { "id": "npc-2140000", "type": "NPC_LANE", "minX": -2539, "minY": 87, "maxX": -2409, "maxY": 217, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-temple-keeper", "label": "By Temple Keeper", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -2685, "y": 177, "seatId": -1 }, { "x": -2600, "y": 177, "seatId": -1 }] },
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -2345, "y": 177, "seatId": -1 }, { "x": -2260, "y": 177, "seatId": -1 }, { "x": -2175, "y": 177, "seatId": -1 }, { "x": -2090, "y": 177, "seatId": -1 }] },
+    { "id": "lower-west-street-2", "label": "Lower west street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1920, "y": 177, "seatId": -1 }, { "x": -1835, "y": 177, "seatId": -1 }, { "x": -1750, "y": 177, "seatId": -1 }, { "x": -1665, "y": 177, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1240, "y": 177, "seatId": -1 }, { "x": -1155, "y": 177, "seatId": -1 }, { "x": -1070, "y": 177, "seatId": -1 }, { "x": -985, "y": 177, "seatId": -1 }] },
+    { "id": "lower-central-street-2", "label": "Lower central street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -815, "y": 177, "seatId": -1 }, { "x": -730, "y": 177, "seatId": -1 }, { "x": -645, "y": 177, "seatId": -1 }, { "x": -560, "y": 177, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -205, "y": 177, "seatId": -1 }, { "x": -120, "y": 177, "seatId": -1 }, { "x": -35, "y": 177, "seatId": -1 }, { "x": 50, "y": 177, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 220, "y": 177, "seatId": -1 }, { "x": 305, "y": 177, "seatId": -1 }, { "x": 390, "y": 177, "seatId": -1 }, { "x": 475, "y": 177, "seatId": -1 }] },
+    { "id": "lower-east-street-3", "label": "Lower east street 3", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 645, "y": 177, "seatId": -1 }, { "x": 730, "y": 177, "seatId": -1 }, { "x": 815, "y": 177, "seatId": -1 }, { "x": 900, "y": 177, "seatId": -1 }] },
+    { "id": "temple-of-time-entrance", "label": "Temple of Time entrance", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -2767, "y": 177, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "three-doors-temple-of-time", "type": "OTHER", "npcId": 0, "destinationMapId": 270000100,
+      "approachPoints": [{ "x": -2767, "y": 177 }],
+      "services": ["enter"] }
+  ],
+  "hotspots": [
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-central-street-crowd", "venueId": "lower-central-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}
