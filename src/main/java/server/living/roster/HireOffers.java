@@ -11,6 +11,8 @@ import server.living.config.LivingContent;
 import server.living.population.Citizen;
 import server.living.population.CitizenInviteDecision;
 import server.living.population.Population;
+import server.living.standing.HireStanding;
+import server.living.standing.Standing;
 import server.living.store.LivingStore.RosterEntry;
 
 import java.util.HashSet;
@@ -32,7 +34,9 @@ import java.util.function.LongSupplier;
  * <p>The party minutes are this guest stint's, in memory: living_acquaintance.party_minutes only counts on a shared
  * map, never resets and is written by the population's own throttled tick, so it stays the temperament's measure of
  * how well they know each other. The pending offer, the minutes and the cooldowns live in memory (the acquaintance
- * table has no column for a cooldown) and a restart forgets them. {@link #tick} runs on companion-ops every minute;
+ * table has no column for a cooldown) and a restart forgets them, except that with HIRE_FRIENDSHIP_ENABLED the cooldown
+ * is read back from the hire.offer rows of living_event_log, and the offer goes by standing (docs/BOT_CONCEPT_PLAN.md
+ * C1.3, {@link CitizenInviteDecision#staysOnByStanding}). {@link #tick} runs on companion-ops every minute;
  * the reads ({@link #pendingOffers}, {@link #pending}) are safe from any thread. Owned by LivingWorld.</p>
  */
 public final class HireOffers {
@@ -41,6 +45,8 @@ public final class HireOffers {
     public static final long TICK_MS = 60_000L;
     /** A pending offer stays open this long (docs "Citizen guest"). */
     static final long OPEN_MS = 10 * 60_000L;
+    /** A cooldown found in the event log is read again after this long (C1.3: one read per half hour, not per minute). */
+    static final long LOG_RECHECK_MS = 30 * 60_000L;
     /** The offer, in the citizen's voice; the hint after it stays as written. */
     static final String OFFER_LINE = "i like running with you. want me to stick around?";
     static final String OFFER_HINT = " double-click me";
@@ -166,8 +172,10 @@ public final class HireOffers {
         int ownerId = owner.getId();
         int citizenId = guest.getId();
         Citizen citizen = population.citizen(citizenId);
+        boolean standing = HireStanding.on(world);
         if (citizen == null || citizen.state() != Citizen.State.ACTIVE || citizen.hired() || open(ownerId) != null
-                || quiet(pair, now) || committed(owner) || !roomFor(owner)) {
+                || quiet(pair, now) || committed(owner) || !roomFor(owner)
+                || standing && quietLogged(pair, ownerId, citizenId, now)) {
             return;
         }
         minutes.remove(pair);
@@ -177,16 +185,19 @@ public final class HireOffers {
         if (persona == null) {
             return;
         }
-        if (!CitizenInviteDecision.staysOn(owner, guest, citizen)) {
-            if (saidNotYet.add(pair)) {
-                world.residents().whisper(persona, owner, hands.voice(citizenId, NOT_YET_LINE));
+        // C1.3: by standing (never under a grudge, never a stranger, always a friend), else by party time and temperament
+        if (!(standing ? CitizenInviteDecision.staysOnByStanding(owner, guest, citizen)
+                : CitizenInviteDecision.staysOn(owner, guest, citizen))) {
+            if (saidNotYet.add(pair) && !(standing && Standing.grudge(HireStanding.warmth(citizenId, ownerId)))) {
+                world.residents().whisper(persona, owner, hands.voice(citizenId, NOT_YET_LINE)); // a grudge says nothing
             }
             return;
         }
         Offer offer = new Offer(ownerId, citizenId, citizen.name(), now, now + OPEN_MS);
         pending.put(ownerId, offer);
         world.residents().whisper(persona, owner, hands.voice(citizenId, OFFER_LINE) + OFFER_HINT);
-        world.store().event(ownerId, hireId, HiredHands.EVENT_OFFER, "after " + together + " party minutes");
+        world.store().event(ownerId, hireId, HiredHands.EVENT_OFFER, "after " + together + " party minutes"
+                + (standing ? ", warmth " + HireStanding.warmth(citizenId, ownerId) : ""));
         log.info("{} offered to stay on with {}", citizen.name(), owner.getName());
     }
 
@@ -199,6 +210,21 @@ public final class HireOffers {
     private boolean quiet(long pair, long now) {
         Long until = quietUntil.get(pair);
         return until != null && now < until;
+    }
+
+    /**
+     * The cooldown as living_event_log keeps it (C1.3), so a restart does not forget it: an offer to this owner made,
+     * declined or expired within HIRE_OFFER_COOLDOWN_MINUTES. A hit keeps the pair quiet in memory for
+     * {@link #LOG_RECHECK_MS} before the log is read again.
+     */
+    private boolean quietLogged(long pair, int ownerId, int citizenId, long now) {
+        long cooldownMs = world.config().HIRE_OFFER_COOLDOWN_MINUTES * 60_000L;
+        if (cooldownMs <= 0 || world.store().countEvents(ownerId, HiredHands.hireId(citizenId), HiredHands.EVENT_OFFER,
+                now - cooldownMs) == 0) {
+            return false;
+        }
+        quietUntil.put(pair, now + LOG_RECHECK_MS);
+        return true;
     }
 
     /** In an event instance, or a companion of theirs tied to a run. */

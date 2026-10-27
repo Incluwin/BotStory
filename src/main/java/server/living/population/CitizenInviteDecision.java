@@ -173,6 +173,27 @@ public final class CitizenInviteDecision {
         return staysOn(profile(population, citizen), owner.getId(), familiarity(population, citizen, guest, owner));
     }
 
+    /**
+     * {@link #staysOn} by standing (docs/BOT_CONCEPT_PLAN.md C1.3, decision D2): never under a grudge, never to someone it
+     * barely knows (warmth under {@link PersonMemory#WARM}: a STRANGER), always to a FRIEND ({@link PersonMemory#FOND}
+     * and up), and for a REGULAR its temperament's roll as before.
+     */
+    public static boolean staysOnByStanding(Character owner, Character guest, Citizen citizen) {
+        Population population = Population.get();
+        if (population == null || citizen == null) {
+            return false;
+        }
+        return staysOnByStanding(profile(population, citizen), owner.getId(),
+                familiarity(population, citizen, guest, owner));
+    }
+
+    static boolean staysOnByStanding(Profile profile, int ownerId, Familiarity familiarity) {
+        if (familiarity.warmth() < PersonMemory.WARM) {
+            return false; // a stranger, and a grudge (COLD) all the more, buddy or guildmate or not
+        }
+        return familiarity.warmth() >= PersonMemory.FOND || staysOn(profile, ownerId, familiarity);
+    }
+
     static boolean staysOn(Profile profile, int ownerId, Familiarity familiarity) {
         int chance = profile.sociability() + switch (profile.temperament()) {
             case RESERVED -> 0;

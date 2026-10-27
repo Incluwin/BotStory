@@ -18,6 +18,7 @@ import server.living.population.Citizen;
 import server.living.population.CitizenStore;
 import server.living.population.CitizenStore.Acquaintance;
 import server.living.population.FieldCatalog;
+import server.living.population.PersonMemories;
 import server.living.population.Population;
 import server.living.population.PopulationContent;
 import server.living.population.PopulationContent.Field;
@@ -443,6 +444,85 @@ class HireOfferTest {
         verify(game.residents).whisper(any(), eq(game.ann), eq(OFFER));
     }
 
+    // ---- by standing (docs/BOT_CONCEPT_PLAN.md C1.3, HIRE_FRIENDSHIP_ENABLED) ----------------------------
+
+    @Test
+    void aGuestWithAGrudgeNeverOffers() {
+        standing(-40);
+        when(voices.voiceOf(any())).thenReturn(voice(0.05d)); // outgoing: today's roll would say yes
+        when(social.sociability(any())).thenReturn(90);
+        guestOfAnn(mira);
+
+        minutes(120);
+
+        assertTrue(offers.pendingOffers(game.ann).isEmpty());
+        verify(game.residents, never()).whisper(any(), any(), anyString()); // not even "not looking for steady work"
+        assertEquals(List.of(), game.store.events(HiredHands.EVENT_OFFER));
+    }
+
+    @Test
+    void aStrangerDoesNotOfferByStanding() {
+        standing(10);
+        guestOfAnn(mira);
+
+        minutes(60);
+
+        assertTrue(offers.pendingOffers(game.ann).isEmpty(), "warmth 10 is under REGULAR (15)");
+        verify(game.residents, times(1)).whisper(any(), eq(game.ann), eq(HireOffers.NOT_YET_LINE)); // once a stint
+    }
+
+    @Test
+    void aRegularOffersAfterItsPartyTime() {
+        standing(20);
+        guestOfAnn(mira);
+
+        minutes(game.config.HIRE_OFFER_PARTY_MINUTES - 1);
+        assertTrue(offers.pendingOffers(game.ann).isEmpty(), "standing plus some party time");
+        minutes(1);
+
+        verify(game.residents).whisper(any(), eq(game.ann), eq(OFFER));
+        assertEquals(List.of(ANN + " " + HIRE + " hire.offer after 10 party minutes, warmth 20"),
+                game.store.events(HiredHands.EVENT_OFFER));
+    }
+
+    @Test
+    void aReservedFriendOffersWithoutItsTemperamentsRoll() {
+        standing(45);
+        when(voices.voiceOf(any())).thenReturn(voice(0.4d)); // reserved: its roll for Ann (27) is over a chance of 10
+        when(social.sociability(any())).thenReturn(10);
+        guestOfAnn(mira);
+
+        offerMade();
+
+        verify(game.residents).whisper(any(), eq(game.ann), eq(OFFER));
+    }
+
+    @Test
+    void aCooldownSurvivesARestart() {
+        standing(20);
+        long[] declinedAt = {0L};
+        when(game.store.store.countEvents(eq(ANN), eq(HIRE), eq(HiredHands.EVENT_OFFER), anyLong())).thenAnswer(inv ->
+                declinedAt[0] > 0 && (long) inv.getArgument(3) <= declinedAt[0] ? 2 : 0); // its offer and its decline
+        guestOfAnn(mira);
+        offerMade();
+        offers.declined(ANN, MIRA);
+        declinedAt[0] = now[0];
+
+        HireOffers restarted = new HireOffers(game.world, () -> now[0]); // a restart: nothing in memory
+        for (int i = 0; i < 60; i++) {
+            now[0] += HireOffers.TICK_MS;
+            restarted.tick();
+        }
+        assertTrue(restarted.pendingOffers(game.ann).isEmpty(), "living_event_log still says it was declined");
+
+        now[0] += game.config.HIRE_OFFER_COOLDOWN_MINUTES * 60_000L;
+        for (int i = 0; i < game.config.HIRE_OFFER_PARTY_MINUTES; i++) {
+            now[0] += HireOffers.TICK_MS;
+            restarted.tick();
+        }
+        assertEquals(1, restarted.pendingOffers(game.ann).size(), "asks again once the cooldown is over");
+    }
+
     // ---- answering by whisper ---------------------------------------------------------------------
 
     @Test
@@ -519,6 +599,14 @@ class HireOfferTest {
     }
 
     // ---- helpers --------------------------------------------------------------------------------
+
+    /** HIRE_FRIENDSHIP_ENABLED, and Mira feels {@code warmth} toward Ann (her memory of Ann). */
+    private void standing(int warmth) {
+        game.config.HIRE_FRIENDSHIP_ENABLED = true;
+        PersonMemories memories = mock(PersonMemories.class);
+        when(memories.warmth(MIRA, ANN)).thenReturn(warmth);
+        when(population.memories()).thenReturn(memories);
+    }
 
     /** Ann can read the hire list: her level (Mira is in range) and her buddy list. */
     private void onTheHireList() {

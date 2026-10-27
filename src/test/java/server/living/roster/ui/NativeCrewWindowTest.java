@@ -774,7 +774,7 @@ class NativeCrewWindowTest {
         when(kira.name()).thenReturn("Kira");
         when(kira.id()).thenReturn(HiredHands.hireId(KIRA));
         when(hands.persona(HiredHands.hireId(KIRA))).thenReturn(kira);
-        when(hands.terms(KIRA)).thenReturn(new HiredHands.Terms(25, "Assassin", 32_000L, 900L));
+        when(hands.terms(any(), eq(KIRA))).thenReturn(new HiredHands.Terms(25, "Assassin", 32_000L, 900L));
         when(hands.voice(eq(KIRA), anyString())).thenAnswer(inv -> inv.getArgument(1));
         when(world.hiredHands()).thenReturn(hands);
 

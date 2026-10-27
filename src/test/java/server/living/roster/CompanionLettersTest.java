@@ -348,6 +348,11 @@ class CompanionLettersTest {
             game.store.store.addHaul(ANN, "hire:77", GLOVE_SCROLL, 1);
             letters.mailGifts(List.of(game.store.row(ANN, "hire:77")), System.currentTimeMillis());
             duey.verify(() -> DueyProcessor.dueyCreatePackage(any(), anyInt(), any(), eq("Hiro"), anyInt()), never());
+
+            game.config.HIRE_FRIENDSHIP_ENABLED = true; // docs/BOT_CONCEPT_PLAN.md C1.2: hires keep friendship now
+            when(friendship.level(ANN, "hire:77")).thenReturn(4);
+            letters.mailGifts(List.of(game.store.row(ANN, "hire:77")), System.currentTimeMillis());
+            duey.verify(() -> DueyProcessor.dueyCreatePackage(any(), anyInt(), any(), eq("Hiro"), eq(ANN)), times(1));
         }
     }
 

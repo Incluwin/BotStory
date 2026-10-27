@@ -30,7 +30,8 @@ import java.util.function.IntFunction;
  *
  * <p>P3: {@code expPercent} (-1 while it is not loaded), {@code camp} (its camp's name, loaded or not), the FARM_ITEM
  * progress ({@code farmed} of {@code farmGoal} {@code farmItem}), the haul ({@code haulMeso}, {@code haulStacks}), its
- * {@code wages} ("paid up for ~2 h" or "working off the haul"), {@code bond} (null when none is kept), {@code guest}
+ * {@code wages} ("paid up for ~2 h" or "working off the haul"), {@code bond} (null when none is kept) and
+ * {@code bondPoints} (the owner's bond points with it; 0 for none), {@code guest}
  * (a citizen guest in the owner's party, not a roster row) and {@code committed} (tied to a run: bench, swap and errands
  * wait until it ends). {@link CompanionViews} keeps what comes from the database per owner, so a menu renders with no
  * database read; {@link #of} reads it all at once, for a caller without the cache. P3b: {@code jobId} (the Job id
@@ -60,6 +61,7 @@ public record CompanionView(String personaId,
                             int haulStacks,
                             String wages,
                             BondStage bond,
+                            int bondPoints,
                             boolean guest,
                             boolean committed) {
     /** Enum words that are two words in the game's job names; the rest are title-cased as they are. */
@@ -94,13 +96,13 @@ public record CompanionView(String personaId,
                     bot.getJob().getId(), mapName(bot), bot.getHp(), bot.getCurrentMaxHp(), stored.duty,
                     bankedPercent(entry.accruedExp(), level), travelMs, bot.getMp(), bot.getCurrentMaxMp(),
                     expPercent(bot.getExp(), level), stored.camp, stored.farmed, stored.farmGoal, stored.farmItem,
-                    entry.haulMeso(), stored.haulStacks, wages, stored.bond, false, committed);
+                    entry.haulMeso(), stored.haulStacks, wages, stored.bond, stored.bondPoints, false, committed);
         }
         int[] levelJob = stored.levelJob(world);
         return new CompanionView(entry.personaId(), stored.name, entry.state(), false, levelJob[0], jobName(levelJob[1]),
                 levelJob[1], stored.camp, 0, 0, stored.duty, bankedPercent(entry.accruedExp(), levelJob[0]), travelMs, 0, 0, -1,
                 stored.camp, stored.farmed, stored.farmGoal, stored.farmItem, entry.haulMeso(), stored.haulStacks, wages,
-                stored.bond, false, committed);
+                stored.bond, stored.bondPoints, false, committed);
     }
 
     /** A citizen guest in the owner's party (a GUEST seat charged to them): its own live numbers, marked guest. */
@@ -108,7 +110,7 @@ public record CompanionView(String personaId,
         int level = citizen.getLevel();
         return new CompanionView(key, citizen.getName(), RosterState.ACTIVE, true, level, jobName(citizen.getJob().getId()),
                 citizen.getJob().getId(), mapName(citizen), citizen.getHp(), citizen.getCurrentMaxHp(), "", 0, 0L, citizen.getMp(), citizen.getCurrentMaxMp(),
-                expPercent(citizen.getExp(), level), "", 0, 0, "", 0L, 0, "", null, true, false);
+                expPercent(citizen.getExp(), level), "", 0, 0, "", 0L, 0, "", null, 0, true, false);
     }
 
     public int hpPercent() {
@@ -233,10 +235,11 @@ public record CompanionView(String personaId,
         final String farmItem;
         final int haulStacks;
         final BondStage bond;
+        final int bondPoints;
         private volatile int[] levelJob;
 
         private Stored(RosterEntry entry, String name, int characterId, String duty, String camp, int farmed, int farmGoal,
-                       String farmItem, int haulStacks, BondStage bond) {
+                       String farmItem, int haulStacks, BondStage bond, int bondPoints) {
             this.entry = entry;
             this.name = name;
             this.characterId = characterId;
@@ -247,6 +250,7 @@ public record CompanionView(String personaId,
             this.farmItem = farmItem;
             this.haulStacks = haulStacks;
             this.bond = bond;
+            this.bondPoints = bondPoints;
         }
 
         static Stored read(LivingWorld world, RosterEntry entry, IntFunction<String> placeNames, IntFunction<String> itemNames) {
@@ -265,7 +269,7 @@ public record CompanionView(String personaId,
             return new Stored(entry, name, world.residents().characterIdOf(entry.personaId()),
                     duty, camp == 0 ? "" : placeNames.apply(camp), farmed,
                     farming ? Math.max(0, entry.assignmentCount()) : 0, farming ? itemNames.apply(entry.assignmentItem()) : "",
-                    haul == null ? 0 : haul.size(), bond == null ? null : bond.stage());
+                    haul == null ? 0 : haul.size(), bond == null ? null : bond.stage(), bond == null ? 0 : bond.points());
         }
 
         /** {level, job id} of its characters row ({0, -1} when it has none yet), read once. */

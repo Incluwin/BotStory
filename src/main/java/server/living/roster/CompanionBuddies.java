@@ -11,6 +11,7 @@ import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.population.CitizenStore.Acquaintance;
 import server.living.population.Population;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -24,7 +25,8 @@ import java.util.function.Supplier;
 /**
  * Companions ask you to be buddies (P9; decisions 2026-10-06, probe 8): a Resident whose friendship with you reached
  * COMPANION_BUDDY_FRIENDSHIP_LEVEL ("Friend"), and a hired hand after COMPANION_BUDDY_HIRE_PARTY_MINUTES in your party
- * (counted in living_acquaintance, as a citizen's), send you the stock buddy request once while you are both online
+ * (counted in living_acquaintance, as a citizen's) or, while HIRE_FRIENDSHIP_ENABLED, once its friendship with you
+ * reaches that level too (docs/BOT_CONCEPT_PLAN.md C1.4), send you the stock buddy request once while you are both online
  * (BuddyRequests: it lists you first). A Resident remembers it asked in its bond's flags, a hired hand in the
  * acquaintance's buddy_asked, as a citizen does. Your own companions land in your "Crew" group as you accept
  * (BuddylistModifyHandler asks {@link #groupFor}); you move them like any friend. COMPANION_BUDDY_REQUESTS off: nobody
@@ -117,13 +119,19 @@ public final class CompanionBuddies {
             }
             boolean together = sameParty(bot, player);
             int minutes = known.partyMinutes() + (together ? 1 : 0);
-            boolean asked = minutes >= world.config().COMPANION_BUDDY_HIRE_PARTY_MINUTES
-                    && (player.getBuddylist().contains(characterId) || BuddyRequests.ask(bot, player));
+            boolean due = minutes >= world.config().COMPANION_BUDDY_HIRE_PARTY_MINUTES || friend(player, entry.personaId());
+            boolean asked = due && (player.getBuddylist().contains(characterId) || BuddyRequests.ask(bot, player));
             if (together || asked) {
                 citizens.store().saveAcquaintance(new Acquaintance(characterId, player.getId(), minutes, known.mapMinutes(),
                         asked, known.guildAsked()));
             }
         }
+    }
+
+    /** A hire's friendship with its owner reached COMPANION_BUDDY_FRIENDSHIP_LEVEL, while HIRE_FRIENDSHIP_ENABLED (C1.4). */
+    private boolean friend(Character player, String hireId) {
+        return HireStanding.on(world)
+                && HireStanding.level(world, player.getId(), hireId) >= world.config().COMPANION_BUDDY_FRIENDSHIP_LEVEL;
     }
 
     private static boolean sameParty(Character bot, Character player) {

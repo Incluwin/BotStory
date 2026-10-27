@@ -32,6 +32,7 @@ import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.roster.RosterVoice;
 import server.living.roster.ui.CompanionMenus.Surface;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -642,7 +643,20 @@ final class CompanionCrewScreens {
     /** A party block row as the Crew window lists it: {@link #partyLine}, or what it went off to do on its own. */
     String partyText(CompanionView view) {
         String errand = menus.errand(view);
-        return errand == null ? partyLine(view) : errandLine(view, errand);
+        return (errand == null ? partyLine(view) : errandLine(view, errand)) + friendship(view);
+    }
+
+    /**
+     * " - Friendship Lv 4" on a hire's row while HIRE_FRIENDSHIP_ENABLED (C1.4): its owner's level with it, from the
+     * view's cached bond points (the native window redraws every second); nothing for a Resident or a guest, or before
+     * the first point.
+     */
+    private String friendship(CompanionView view) {
+        if (view.guest() || view.bondPoints() <= 0 || !LivingContent.isHire(view.personaId()) || !HireStanding.on(world)
+                || world.friendship() == null) {
+            return "";
+        }
+        return " - Friendship Lv " + world.friendship().levelFor(view.bondPoints());
     }
 
     /** A bench block row as the Crew window lists it: {@link #benchLine} with the live bench's note, or its errand. */
@@ -652,7 +666,7 @@ final class CompanionCrewScreens {
             return lent;
         }
         String errand = menus.errand(view);
-        return errand == null ? benchLine(view, benchNote(view)) : errandLine(view, errand);
+        return (errand == null ? benchLine(view, benchNote(view)) : errandLine(view, errand)) + friendship(view);
     }
 
     /**

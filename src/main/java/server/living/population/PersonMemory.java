@@ -187,6 +187,17 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
         return new PersonMemory(warmed, nowMs, firstMetAtMs > 0L ? firstMetAtMs : nowMs, kept(next, nowMs, config));
     }
 
+    /**
+     * This memory feeling at least {@code floor} warm at {@code nowMs} (a warmer one keeps its warmth and its clock), the
+     * episodes as they are: what a hire let go keeps from its friendship (docs/BOT_CONCEPT_PLAN.md C1.3).
+     */
+    public PersonMemory warmedTo(int floor, long nowMs, PopulationConfig config) {
+        if (feltWarmth(nowMs, config) >= floor) {
+            return this;
+        }
+        return new PersonMemory(floor, nowMs, firstMetAtMs > 0L ? firstMetAtMs : nowMs, kept(episodes, nowMs, config));
+    }
+
     private static int partyPoints(int minutes) {
         return Math.min(PARTY_WARMTH_MAX, minutes / PARTY_MINUTES_PER_POINT);
     }

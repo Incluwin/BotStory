@@ -951,8 +951,20 @@ living_world:
     HIRE_MAX_PER_OWNER: 10
     HIRE_OFFER_PARTY_MINUTES: 10
     # Minutes a citizen whose offer to stay on was declined, or went unanswered for 10 minutes, waits before it asks
-    # that friend again (kept in memory; a restart forgets it).
+    # that friend again (kept in memory; a restart forgets it, unless HIRE_FRIENDSHIP_ENABLED reads it back).
     HIRE_OFFER_COOLDOWN_MINUTES: 720
+    # Standing (docs/BOT_CONCEPT_PLAN.md C1): one ladder STRANGER/REGULAR/FRIEND/CLOSE for every bot. With
+    # HIRE_FRIENDSHIP_ENABLED a hired citizen joins the Lv 1-10 friendship meter (seeded from its warmth: 15 -> Lv 2,
+    # 40 -> Lv 4) and earns points from party quests, bosses, fame and gifts like a Resident; a guest offers to stay
+    # on only at REGULAR (warmth 15+), always at FRIEND, never under a grudge; a FRIEND's fee is
+    # FRIEND_FEE_DISCOUNT_PERCENT lower; a hire let go keeps warmth from its friendship; Lv 4 sends a buddy request,
+    # Lv 7 cuts its wages by CLOSE_WAGE_DISCOUNT_PERCENT and Lv 10 keeps it through its owner's long absence.
+    # HIRE_FRIENDSHIP_ENABLED is the kill switch (false: hires keep no friendship, offers go by party time).
+    # Technical: the bond is a living_bond row keyed hire:<characterId> (Friendship/BondService), the offer cooldown is
+    # read back from living_event_log hire.offer rows, and the rungs are server.living.standing.Standing; see !standing.
+    HIRE_FRIENDSHIP_ENABLED: false
+    HIRE_FRIEND_FEE_DISCOUNT_PERCENT: 25
+    HIRE_CLOSE_WAGE_DISCOUNT_PERCENT: 25
     # Decision 18: Residents one friend may keep at once (0 = none), and the days a friend may stay away before
     # their Residents go home (0 = never).
     RESIDENT_CAP_PER_OWNER: 5

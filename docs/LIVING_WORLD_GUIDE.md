@@ -72,7 +72,8 @@ it under the greeting and `@bond <name>` prints it. Points come from:
 
 Gifts are one of anything tradeable from use, etc, setup or equip (never cash, quest or untradeable
 items); the counts use `living_event_log` (`friend.gift`, `friend.pq`, `friend.boss`) and reset at
-midnight in `ROUTINE_ZONE`. Hired citizens are not Residents and keep no friendship. Level changes
+midnight in `ROUTINE_ZONE`. Hired citizens are not Residents and keep no friendship, unless
+`HIRE_FRIENDSHIP_ENABLED` (see Standing below). Level changes
 show as pink text, and reaching Close friend and Best friend plays the persona's `friend.close` /
 `friend.best` line.
 
@@ -237,7 +238,7 @@ the first ones share one crew letter, written by the first of them. One pink lin
   `job.advanced`, `letters.gift` and `citizen.asked` after your newest `letters.away` (written at a logout) or
   `letters.told` (written by a digest) marker, so it tells only the time you were away, once. A companion the letters
   told about has no call-back report to repeat.
-- **Gifts.** A Resident (hires keep no friendship yet) at friendship `LETTERS_GIFT_FRIENDSHIP_LEVEL` or more sometimes
+- **Gifts.** A Resident (or a hire with `HIRE_FRIENDSHIP_ENABLED`) at friendship `LETTERS_GIFT_FRIENDSHIP_LEVEL` or more sometimes
   (`LETTERS_GIFT_CHANCE` a ledger tick, `LETTERS_GIFTS_PER_WEEK` each) mails you one such find from its haul by Duey,
   with a message. It is taken from the haul, never minted; you get Duey's live notice when you are online.
 - **Asking after you.** A citizen with warmth `LETTERS_ASK_WARMTH` or more toward you (its person memory) sometimes
@@ -274,6 +275,71 @@ booked when it leaves its field (EXP and deaths an hour per class line, band and
 `citizen`; AFK time, stints under `CITIZEN_SPOT_MIN_MS` and shop walks are not). Among the fields that fit, it picks by
 what citizens measured, a UCB bonus for fields measured less and a crowding cost for fields already full of citizens,
 drawn by weight so they spread. The same rows sharpen companions' EXP and death priors (`CITIZEN_YIELD_WEIGHT`).
+
+### Standing
+
+One ladder for every bot, **STRANGER, REGULAR, FRIEND, CLOSE** (docs/BOT_CONCEPT_PLAN.md C1, `server.living.standing`).
+It is a view over what each kind of bot already keeps, not a store of its own:
+
+| Rung | Resident (friendship level) | Citizen (warmth) | Hire (friendship level with its owner) |
+|---|---|---|---|
+| STRANGER | Lv 0-1 | under 15 | (none) |
+| REGULAR | Lv 2-3 | 15-39 | Lv 0-3 |
+| FRIEND | Lv 4-6 | 40 and up | Lv 4-6 |
+| CLOSE | Lv 7+ | (only once hired) | Lv 7+ |
+
+`!standing <bot> [player]` (GM 5) prints the rung and the raw numbers: bond points, level and stage; warmth, the
+party and map minutes together and the friendship a hire would start at; a hire's perks.
+
+With `living_world.HIRE_FRIENDSHIP_ENABLED` (off until its live checks pass) a hired citizen joins the friendship meter:
+
+- **The bond.** At the hire it gets a `living_bond` row keyed `hire:<characterId>`, seeded once from its warmth then
+  (40+ the start of Lv 4, 15+ the start of Lv 2, anyone else Lv 1; never below the points an earlier hire left). From
+  then on the Resident sources add to it: party quests, bosses and boss runs, fame, and gifts ("I brought you
+  something..." on its card). Level changes show as pink text. Quests, arcs, the ResidentKit, portraits and weddings
+  stay Residents-only (D1, D3). Its bench pace follows the bond stage, as a Resident's does.
+- **Offers to stay on** go by standing (D2): a guest with a grudge (warmth -30 or under) never offers and says nothing;
+  one under REGULAR does not offer; a FRIEND always offers; a REGULAR's temperament decides as before. Each needs the
+  same `HIRE_OFFER_PARTY_MINUTES` in your party. A FRIEND's fee is `HIRE_FRIEND_FEE_DISCOUNT_PERCENT` lower (at most 90,
+  never free). The offer cooldown is read back from the `hire.offer` rows of `living_event_log`, so a restart keeps it.
+- **Memory while hired.** The population has no session for a hire, so the hooks write its memories directly: a party
+  quest or boss run cleared with a player, and a fame or defame. Let go, it feels at least the warmth of its friendship
+  toward its old owner (Lv 0-3 15, 4-6 40, 7-9 60, 10 80), so it greets them as a friend when they meet again.
+- **Perks.** Lv 4: a buddy request (as a Resident's, besides the old 30 party minutes). Lv 7: wages
+  `HIRE_CLOSE_WAGE_DISCOUNT_PERCENT` lower (the ledger's charge, the Wages page and paying ahead). Lv 10: permanent;
+  an owner away `RESIDENT_OWNER_INACTIVE_DAYS` keeps it. That sweep is the only thing that can end a hire on its own:
+  `hired-hand.yaml` has no end rules and `ROSTER_CONTRACT_MODE` is `PERMANENT_ON_ROSTER`, so a hire never walks out,
+  and the exemption is all "permanent" can mean for one. Letters: a hire at `LETTERS_GIFT_FRIENDSHIP_LEVEL` mails
+  gifts like a Resident.
+- **Display.** Its card shows "Friendship Lv 4 Friend (35 points to Lv 5)"; its Crew window row ends " - Friendship Lv 4"
+  (the dialog and the native window).
+
+**Hire guards** (the audit for C1.2: where code tells a hire apart, and whether that stays):
+
+| Where | Kept or lifted | Why |
+|---|---|---|
+| `Friendship.residentOf` | lifted with the switch | points, gifts and level changes are C1 itself |
+| `ResidentDialogue` gift option; `CompanionCardScreens` "I brought you something..." | lifted with the switch | a gift is a point source |
+| `CompanionLetters.mailGifts` / `gift` | lifted with the switch | letters waited for C1; the friendship gate now applies to hires |
+| `Friendship.onBossRunCleared` (no guard) | as it was | it already befriended hires before C1 (harmless: seeding keeps the higher points) |
+| `ArcService.arcOf`, `RumorScheduler` (2) | kept | arcs and rumors are authored; hires have none (D1) |
+| `QuestLedger.available`, `QuestMarkers.compute` | kept | authored quests stay Residents-only (D1) |
+| `CompanionWeddings.personaOf`, `LoreSpouseDirectory` (2) | kept | no weddings for hires (D3); lore spouses are authored |
+| `ResidentKit.picks`, `LivingWorldHooks` kit refresh, `ResidentRuntime.refreshKit` | kept | the kit is authored quest gear |
+| `ResidentLooks.apply`, `ResidentRuntime.syncLooks` / `ensureCharacter` | kept | a hire's face and character are its own |
+| `ResidentShaper` (2), `ResidentStarterSwap`, `ResidentWardrobe`, `ResidentRuntime.wearMissingEquips` / `prepareCompanion` | kept | a hire's level, job and gear are its own |
+| `ResidentDialogue.portraitOf` | kept | no rendered portrait: the Bulletin Board speaks |
+| `ResidentDialogue` Resident relation | kept | a hire let go is a citizen again, with no persona menu |
+| `ResidentDialogue.hiredHandNamed`, `ResidentRuntime.characterIdOf` / `hireLapsed`, `LivingContent` (2) | kept | identity plumbing, not a gate |
+| `JobErrands.personaJob` | kept | the owner picks a hire's job |
+| `LootTerms.termsOf` | kept | a hire works under `hired-hand.yaml` |
+| `ContractService.blocker`, `RosterService.recruit`, `ResidentAllocation.atCap` | kept | decision 18 b: hires never count toward the Resident cap |
+| `ResidentAllocation.sweep` | kept, plus the Lv 10 exemption | C1.4 permanence |
+| `CompanionBuddies.residents` / `hiredHands` | kept, plus the Lv 4 trigger | a hire's ask is remembered on `living_acquaintance` |
+| `HiredHands.hiresOf`, `HireOffers.roomFor`, `CompanionCrewScreens` hire count | kept | the hire cap |
+| `RosterService.release` / owner deletion (`HIRE_PREFIX`) | kept | a hire goes back to the population; no `resident.released` |
+| `ContentLint` (2) | kept | content may never name a `hire:` id |
+| the population's `citizen.hired()` skips (presence, ledger, churn, social, market, guilds, alliances, errands) | kept | a hire is its owner's, not the population's; its memories come from the hooks above |
 
 ### The in-game quest log
 
@@ -366,7 +432,8 @@ have sub-directories last: its directory offsets assume that order.
 `status`, `census`, `reload` (re-reads content, reports lint errors), `residents`,
 `wake <town|persona>` / `sleep <town>`, `arc <persona> <chapter>`, `flag set|clear <flag>`,
 `bond <player> <persona> <points>`, `rumor play <id>`, `phrases [approve|reject <text>]`,
-`teach <canonical> <phrase...>`, `haul <player>`, `events <player>`.
+`teach <canonical> <phrase...>`, `haul <player>`, `events <player>`. `!standing <bot> [player]` (GM 5) shows a
+player's standing with a Resident, citizen or hire and the numbers behind it (Standing, above).
 
 `tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors; a home town is any TownLife
 profile in `agents/town-life/index.json`, and every routine and rumor spot must name a venue, hotspot or rest spot of

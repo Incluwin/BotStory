@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.RosterEntry;
 
 import java.util.ArrayList;
@@ -50,7 +51,8 @@ public final class ResidentAllocation {
      * On companion-ops: every row of an owner who is offline and was last seen (their last logout, or their account's
      * last login) RESIDENT_OWNER_INACTIVE_DAYS ago or more is released through RosterService.release: a Resident goes
      * home with its bond kept, and resident.released is logged; a hired hand goes back to the population (roster.release
-     * only; one whose character is gone is let go all the same). One still in a run waits for the next sweep. Nothing
+     * only; one whose character is gone is let go all the same, and one at friendship Lv 10 with them stays while
+     * HIRE_FRIENDSHIP_ENABLED, docs/BOT_CONCEPT_PLAN.md C1.4). One still in a run waits for the next sweep. Nothing
      * when the setting is 0. Idempotent: a released row is gone. Returns how many were released.
      */
     public int sweep() {
@@ -78,8 +80,10 @@ public final class ResidentAllocation {
                 Persona persona = world.content().persona(entry.personaId());
                 int characterId = hire ? LivingContent.hireCharacterId(entry.personaId())
                         : world.residents().characterIdOf(entry.personaId());
-                if (persona == null && !hire || commitments != null && characterId != 0 && commitments.isCommitted(characterId)) {
-                    continue;
+                if (persona == null && !hire
+                        || commitments != null && characterId != 0 && commitments.isCommitted(characterId)
+                        || hire && HireStanding.permanent(world, ownerId, entry.personaId())) {
+                    continue; // a hire at friendship Lv 10 is permanent: it waits for its owner however long (C1.4)
                 }
                 if (persona == null) {
                     world.roster().releaseRow(entry, AWAY_REASON); // a hire whose character row is gone

@@ -9,14 +9,18 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import server.agents.auth.AgentClaimGuard;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.integration.AgentPresence;
 import server.living.bond.BondService;
 import server.living.bond.ContractService;
+import server.living.bond.Friendship;
 import server.living.config.Content;
+import server.living.config.Content.BondStage;
 import server.living.config.Content.Contract;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.population.Citizen;
 import server.living.population.FieldCatalog;
+import server.living.population.PersonMemories;
 import server.living.population.Population;
 import server.living.population.PopulationContent;
 import server.living.population.PopulationContent.Field;
@@ -24,7 +28,10 @@ import server.living.population.PresenceScheduler;
 import server.living.population.VoicePacks;
 import server.living.resident.ResidentLooks;
 import server.living.resident.ResidentRuntime;
+import server.living.store.LivingStore;
+import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.CharacterRow;
+import server.living.store.LivingStore.ContractState;
 import server.living.store.LivingStore.PersonaState;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -91,6 +98,9 @@ class HiredHandsTest {
     private final int[] purse = {100_000};
     private final HiredHands hands = new HiredHands(game.world);
     private final Character mira = game.bot(MIRA, "Mira");
+    /** living_bond in memory, "owner:persona" -> its row (friendshipOn). */
+    private final Map<String, Bond> bonds = new HashMap<>();
+    private final PersonMemories memories = mock(PersonMemories.class);
     private MockedStatic<Population> populations;
 
     @BeforeEach
@@ -210,7 +220,7 @@ class HiredHandsTest {
         miraIsAnnsGuest();
         int freeBefore = game.slots.free(game.ann);
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertTrue(outcome.hired(), outcome.toString());
         assertEquals("", outcome.line(), "its deal was said as the fee was paid");
@@ -254,7 +264,7 @@ class HiredHandsTest {
             }
         });
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertEquals(HiredHands.Result.BUSY, outcome.result());
         assertEquals(List.of(MIRA), asked);
@@ -273,7 +283,7 @@ class HiredHandsTest {
         miraIsAnnsGuest();
         game.registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(MIRA)).thenReturn(4242);
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertEquals(HiredHands.Result.BUSY, outcome.result());
         assertNull(game.store.row(ANN, HIRE));
@@ -301,7 +311,7 @@ class HiredHandsTest {
             when(game.residents.ensureCharacter(argThat(persona -> persona != null && HIRE.equals(persona.id()))))
                     .thenAnswer(inv -> residents.ensureCharacter(inv.getArgument(0)));
 
-            HiredHands.Outcome hired = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+            HiredHands.Outcome hired = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
             assertTrue(hired.hired(), hired.toString());
             assertEquals(List.of(MIRA + " false"), handOvers);
             RosterEntry row = game.store.row(ANN, HIRE);
@@ -335,7 +345,7 @@ class HiredHandsTest {
                 .thenReturn(new CharacterRow("Mira", 1, 2, 21001, 31002, 30, HUNTER, skyscraper6));
         when(population.fields().closed(skyscraper6)).thenReturn(true);
 
-        HiredHands.Outcome hired = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome hired = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertTrue(hired.hired(), hired.toString());
         assertEquals(HENESYS, game.store.row(ANN, HIRE).campMapId(), "its home town, not the castle map it was saved on");
@@ -354,7 +364,7 @@ class HiredHandsTest {
             inventory.when(() -> client.inventory.manipulator.InventoryManipulator.addById(any(), eq(2430011), eq((short) 1)))
                     .thenReturn(true);
 
-            assertTrue(hands.hire(game.ann, MIRA, hands.terms(MIRA)).hired());
+            assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
 
             inventory.verify(() -> client.inventory.manipulator.InventoryManipulator.addById(any(), eq(2430011), eq((short) 1)));
         }
@@ -379,7 +389,7 @@ class HiredHandsTest {
         }
         double predicted = yields.mesoPerHour(key, ledger.mesoPrior(30));
 
-        HiredHands.Terms terms = hands.terms(MIRA);
+        HiredHands.Terms terms = hands.terms(game.ann, MIRA);
 
         assertEquals(Math.round(0.15d * predicted), terms.hourlyWage(), "15% of what the camp pays, not 30 a level (900)");
         assertTrue(hands.hire(game.ann, MIRA, terms).hired());
@@ -401,7 +411,7 @@ class HiredHandsTest {
         }
         double predicted = yields.mesoPerHour(key, ledger.mesoPrior(30));
 
-        HiredHands.Terms terms = hands.terms(MIRA);
+        HiredHands.Terms terms = hands.terms(game.ann, MIRA);
 
         assertEquals(Math.round(Math.min(BenchLedger.upkeepPerHour(30), 0.15d * predicted)), terms.hourlyWage(),
                 "the wage of the camp she keeps, not the prior's");
@@ -416,7 +426,7 @@ class HiredHandsTest {
         Character bob = mock(Character.class);
         when(bob.getId()).thenReturn(BOB);
         when(bob.getName()).thenReturn("Bob");
-        HiredHands.Terms terms = hands.terms(MIRA);
+        HiredHands.Terms terms = hands.terms(game.ann, MIRA);
         AtomicReference<HiredHands.Outcome> bobs = new AtomicReference<>();
         // Ann's hire reads Mira's row; right then Bob's hire runs on another thread
         when(game.store.store.characterRow(MIRA)).thenAnswer(inv -> {
@@ -446,7 +456,7 @@ class HiredHandsTest {
         miraIsAnnsGuest();
         try (MockedStatic<server.agents.integration.cosmic.CosmicAgentOfflineLoader> loader =
                      mockStatic(server.agents.integration.cosmic.CosmicAgentOfflineLoader.class)) {
-            assertTrue(hands.hire(game.ann, MIRA, hands.terms(MIRA)).hired());
+            assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
             RosterResult again = game.roster().call(game.ann, hands.persona(HIRE));
 
             assertEquals("Mira is already with you.", RosterVoice.line(hands.persona(HIRE), again));
@@ -461,7 +471,7 @@ class HiredHandsTest {
         miraIsAnnsGuest();
         game.leases.tryAcquire(MIRA, CompanionLeases.Kind.PQ_BACKGROUND, 0);
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertEquals(HiredHands.Result.BUSY, outcome.result());
         assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.PQ_BACKGROUND, 0), game.leases.holder(MIRA));
@@ -493,7 +503,7 @@ class HiredHandsTest {
     @Test
     void aHireLetGoGoesBackToThePopulation() {
         miraIsAnnsGuest();
-        assertTrue(hands.hire(game.ann, MIRA, hands.terms(MIRA)).hired());
+        assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
 
         String line = game.world.contracts().dismiss(game.ann, hands.persona(HIRE));
 
@@ -510,7 +520,7 @@ class HiredHandsTest {
     @Test
     void anOwnerDeletedGivesTheirHiresBackWithoutAResidentRelease() {
         miraIsAnnsGuest();
-        assertTrue(hands.hire(game.ann, MIRA, hands.terms(MIRA)).hired());
+        assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
         game.annOnline = false;
 
         game.roster().ownerDeleted(ANN);
@@ -535,7 +545,7 @@ class HiredHandsTest {
             return false;
         });
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertTrue(outcome.hired(), outcome.toString());
         assertFalse(game.calls.contains("register Mira"), "her logged-off character is never registered under Ann: " + game.calls);
@@ -551,7 +561,7 @@ class HiredHandsTest {
         game.parties.when(() -> net.server.world.Party.joinParty(eq(mira), eq(LifecycleHarness.PARTY_ID), eq(false)))
                 .thenAnswer(inv -> game.members.add(MIRA));
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertTrue(outcome.hired(), outcome.toString());
         assertEquals(List.of(MIRA + " true"), handOvers, "her population life ends without a logout");
@@ -570,7 +580,7 @@ class HiredHandsTest {
         }
         assertEquals(0, game.slots.free(game.ann));
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertTrue(outcome.hired(), outcome.toString());
         assertEquals(List.of(MIRA + " true"), handOvers, "not logged off where she stands");
@@ -603,7 +613,7 @@ class HiredHandsTest {
         miraIsAnnsGuest();
         game.annEntersInstance(KERNING);
 
-        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA));
 
         assertEquals(HiredHands.Result.BUSY, outcome.result());
         assertEquals("after the run.", outcome.line());
@@ -618,15 +628,115 @@ class HiredHandsTest {
         when(game.residents.ensureCharacter(argThat(persona -> persona != null && HIRE.equals(persona.id()))))
                 .thenThrow(new IllegalStateException("a database hiccup"));
 
-        assertThrows(IllegalStateException.class, () -> hands.hire(game.ann, MIRA, hands.terms(MIRA)));
+        assertThrows(IllegalStateException.class, () -> hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)));
 
         assertEquals(100_000, purse[0]);
         assertNull(game.store.row(ANN, HIRE));
         assertFalse(citizens.get(MIRA).hired());
     }
 
+    // ---- friendship (docs/BOT_CONCEPT_PLAN.md C1, HIRE_FRIENDSHIP_ENABLED) -----------------------------
+
+    @Test
+    void aHireAtWarmthFortyStartsAtLvFourAndAPartyQuestClearedWithItAddsPoints() {
+        friendshipOn(40);
+        miraIsAnnsGuest();
+
+        assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
+
+        assertEquals(75, bonds.get(ANN + ":" + HIRE).points(), "warmth 40 seeds 75 points");
+        assertEquals(4, game.world.friendship().level(ANN, HIRE));
+        verify(game.ann).dropMessage(5, "Friendship with Mira: Lv 4 Friend.");
+        assertEquals(77_500, purse[0], "a FRIEND asks 25% less: 22,500 of 30,000");
+
+        Persona hire = hands.persona(HIRE);
+        AgentPresence.install(chr -> chr == mira);
+        try {
+            when(game.residents.personaOf(mira)).thenReturn(hire);
+            game.world.friendship().onPartyQuestCleared(List.of(game.ann, mira));
+        } finally {
+            AgentPresence.install(null);
+        }
+
+        assertEquals(85, bonds.get(ANN + ":" + HIRE).points(), "a party quest cleared together: +10, as with a Resident");
+        assertEquals(List.of(ANN + " " + HIRE + " friend.pq party quest"), game.store.events("friend.pq"));
+    }
+
+    @Test
+    void aHireAtWarmthFifteenStartsAtLvTwoAndPaysTheFullFee() {
+        friendshipOn(15);
+        miraIsAnnsGuest();
+
+        assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
+
+        assertEquals(25, bonds.get(ANN + ":" + HIRE).points());
+        assertEquals(2, game.world.friendship().level(ANN, HIRE));
+        assertEquals(70_000, purse[0]);
+    }
+
+    @Test
+    void aRehireKeepsTheFriendshipItAlreadyHad() {
+        friendshipOn(15);
+        bonds.put(ANN + ":" + HIRE, new Bond(ANN, HIRE, BondStage.TRUSTED, 120, new LinkedHashSet<>(), ContractState.ENDED,
+                0L, 0L, 0, 0L, 0, 0L, 0L));
+        miraIsAnnsGuest();
+
+        assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
+
+        assertEquals(120, bonds.get(ANN + ":" + HIRE).points(), "never seeded below what it had");
+    }
+
+    @Test
+    void aHireLetGoKeepsTheWarmthOfItsFriendship() {
+        friendshipOn(40);
+        miraIsAnnsGuest();
+        assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
+
+        game.world.contracts().dismiss(game.ann, hands.persona(HIRE));
+
+        verify(memories).warmAtLeast(MIRA, ANN, 40); // Lv 4: FRIEND warmth, so it greets Ann as a friend
+        assertFalse(citizens.get(MIRA).hired());
+    }
+
+    @Test
+    void withTheSwitchOffAHireKeepsNoFriendship() {
+        friendshipOn(40);
+        game.config.HIRE_FRIENDSHIP_ENABLED = false;
+        miraIsAnnsGuest();
+
+        assertTrue(hands.hire(game.ann, MIRA, hands.terms(game.ann, MIRA)).hired());
+        game.world.contracts().dismiss(game.ann, hands.persona(HIRE));
+
+        assertNull(bonds.get(ANN + ":" + HIRE));
+        assertEquals(70_000, purse[0], "no friend's discount");
+        verify(memories, never()).warmAtLeast(anyInt(), anyInt(), anyInt());
+    }
 
     // ---- helpers ----------------------------------------------------------------------------------
+
+    /**
+     * HIRE_FRIENDSHIP_ENABLED with the real friendship engine over an in-memory living_bond, and Mira feeling
+     * {@code warmth} toward Ann.
+     */
+    private void friendshipOn(int warmth) {
+        game.config.HIRE_FRIENDSHIP_ENABLED = true;
+        LivingStore store = game.store.store;
+        when(store.bond(anyInt(), anyString())).thenAnswer(inv -> bonds.get(inv.getArgument(0) + ":" + inv.getArgument(1)));
+        doAnswer(inv -> {
+            Bond bond = inv.getArgument(0);
+            bonds.put(bond.characterId() + ":" + bond.personaId(), bond);
+            return null;
+        }).when(store).saveBond(any());
+        when(store.countEvents(anyInt(), anyString(), anyString(), anyLong())).thenAnswer(inv -> (int) game.store
+                .events(inv.getArgument(2)).stream().filter(line -> line.startsWith(inv.getArgument(0) + " " + inv.getArgument(1) + " "))
+                .count());
+        BondService bondService = new BondService(game.world);
+        Friendship friendship = new Friendship(game.world); // reads the world's config: never inside a stubbing
+        when(game.world.bonds()).thenReturn(bondService);
+        when(game.world.friendship()).thenReturn(friendship);
+        when(memories.warmth(MIRA, ANN)).thenReturn(warmth);
+        when(population.memories()).thenReturn(memories);
+    }
 
     /** Mira stands beside Ann in her party, a guest charged to Ann, and the population runs her. */
     private void miraIsAnnsGuest() {
