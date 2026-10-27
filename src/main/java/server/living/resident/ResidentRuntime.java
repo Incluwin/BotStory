@@ -477,6 +477,7 @@ public final class ResidentRuntime {
     }
 
     private void dress(Persona persona, Character agent) {
+        openHomeGate(agent, persona);
         try {
             Loadout loadout = world.content().loadout(currentLoadoutId(persona));
             // its own quest gear first; the wardrobe then dresses every slot the kit does not actually hold
@@ -539,6 +540,17 @@ public final class ResidentRuntime {
         }
     }
 
+    /** {@link ResidentHomeGates#open}: a Resident counts its home town's door quest as done; never in the way of a load. */
+    private void openHomeGate(Character agent, Persona persona) {
+        try {
+            if (ResidentHomeGates.open(agent, persona)) {
+                log.info("Resident {}: its home town's gate quest marked completed", persona.id());
+            }
+        } catch (RuntimeException failure) {
+            log.warn("Resident {}: marking its home town's gate quest failed", persona.id(), failure);
+        }
+    }
+
     /** Its persona state names this character and records no shaping; a state that cannot be read names none. */
     private static boolean neverShaped(LivingStore.PersonaState state, Character agent) {
         return state.characterId() == agent.getId() && state.shapedVersion() == 0;
@@ -566,7 +578,8 @@ public final class ResidentRuntime {
     /**
      * The quest gear a Resident's level now allows (ResidentKit), after a level gained or when the roster or bench loads
      * it as a companion: the same character is the companion, so what it wears goes with it. Runs on the Agent's own
-     * mailbox, as its loot and trades do; a character not live now is dressed when it next appears.
+     * mailbox, as its loot and trades do; a character not live now is dressed when it next appears. Its home town's
+     * door quest (ResidentHomeGates) is marked done with it, so a companion from behind a gated door can be routed home.
      */
     public void refreshKit(Character agent, Persona persona) {
         refreshKit(agent, persona, false);
@@ -582,6 +595,9 @@ public final class ResidentRuntime {
         }
         AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
         if (runtime == null) {
+            if (loading && agent.getClient() != null) {
+                openHomeGate(agent, persona);
+            }
             if (loading && agent.getClient() != null && kitAllowed(agent, persona)) {
                 try {
                     ResidentKit.apply(agent, persona, world.content(), world.config(),
@@ -594,6 +610,9 @@ public final class ResidentRuntime {
         }
         server.agents.runtime.AgentMailboxRuntime.dispatch(runtime, entry -> {
             Character live = entry.bot();
+            if (live != null && live.getId() == agent.getId() && live.getClient() != null) {
+                openHomeGate(live, persona);
+            }
             if (live != null && live.getId() == agent.getId() && live.getClient() != null && kitAllowed(live, persona)) {
                 try {
                     ResidentKit.apply(live, persona, world.content(), world.config(),

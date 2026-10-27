@@ -728,7 +728,13 @@ towns they work, and a recruit follows its owner through the portals and rides t
 Swift's leg) and the Excavation Site are already in the agent graph. Asked of the routes session, not edited here:
 the Pason/Pison boat Lith Harbor <-> Florina Beach, the KerningTrain ride 103000100 <-> 103000310 and the scripted
 portal `TD_MC_first` in 100000002 for the agent graph and `travel.yaml`, and Amoria's Thomas Swift leg for
-`travel.yaml`.
+`travel.yaml`. All four are on `feat/routes-malaysia` (c3d8ce3ca, 2026-10-26), not merged yet.
+
+Mushroom Castle's door checks stock quest 2260 (or 2300-2310 under way), and the router takes a bot through it only
+when the bot passes that check. A Resident who lives behind it has been through it: `ResidentHomeGates` marks its home
+town's gate quest completed on its character (no actions, no rewards) when it is dressed and whenever the roster or
+bench loads it as a companion, so Percival and Fern can be routed home. Kerning Square joins Victoria's citizen towns
+in `regions.yaml` after both branches merge (the routes session noted it for the coordinator).
 
 ### 10.7 As built
 
@@ -787,4 +793,6 @@ What the server's own data changed while writing:
 9. **Rumors** at their hours (or `!world rumor play <id>`): `florina-the-hot-sand`, `ksq-the-night-shift`,
    `excav-the-cookfire`, `fm-the-price-of-things`, `amherst-the-gate`; listeners get the flags in 10.4.
 10. **Recall.** `call Halla` from Henesys works; `call Nerys`, `call Zara`, `call Percival` from another town find no
-    way until the routes session's legs land (10.6).
+    way until the routes session's legs land (10.6). After that merge: recruit Percival, walk out to Henesys with him, `Percival
+    go train` at a Mushroom Castle field: he walks back in through the Empty House (log: his gate quest marked
+    completed on first load), where a character without quest 2260 is told "A strange force is blocking you".
