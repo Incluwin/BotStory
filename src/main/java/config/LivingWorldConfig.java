@@ -476,6 +476,14 @@ public class LivingWorldConfig {
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
 
+    // The tell audit (2026-10-26, docs/BOT_CONCEPT_PLAN.md C2)
+    /**
+     * Measures how bot-like the bots look (reaction times, chat cadence, stacking, presence, walked routes, potion and
+     * buff points, deaths) for GET /runtime/tells and an hourly audit.tells row in living_event_log. false = nothing is
+     * measured and every report is one volatile read.
+     */
+    public boolean TELL_AUDIT_ENABLED = false;
+
     // A companion says why its owner's whisper reached no Agent (2026-10-10)
     /**
      * Least time between two of one companion's whispered "can't right now" lines (a live bench slice keeps it, or its

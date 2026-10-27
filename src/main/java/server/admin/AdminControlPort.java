@@ -178,7 +178,7 @@ public final class AdminControlPort {
         }
     }
 
-    private static String route(String method, String path, String query, String body) {
+    static String route(String method, String path, String query, String body) {
         if ("GET".equals(method)) {
             switch (path) {
                 case "/runtime/uptime": return rUptime();
@@ -211,6 +211,8 @@ public final class AdminControlPort {
                 case "/runtime/budget":                  return AdminBudgetReader.budget(AdminBudgetReader.gcRequested(query));
                 case "/runtime/companions":              return AdminCompanionsReader.all();
                 case "/runtime/companions/audit":        return AdminCompanionsReader.audit();
+                case "/runtime/tells":                   return AdminTellsReader.now();
+                case "/runtime/tells/history":           return AdminTellsReader.history();
                 case "/runtime/sso-pubkey":              return AdminSsoAuth.pubkeyBlob();
                 default:
                     if (path.startsWith("/runtime/character/")) {

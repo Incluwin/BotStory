@@ -531,6 +531,7 @@ public final class LivingWorldHooks {
             return;
         }
         try {
+            server.living.audit.TellAudit.died(chr); // a bot's death counts by class and activity (tell audit)
             // a third death releases a companion: the roster is written on companion-ops
             world.executor().submit("contract.owner_died " + chr.getId(), () -> world.contracts().onOwnerDied(chr));
             world.benchDuty().died(chr.getId()); // a companion on a live bench slice ends it once revived (flow 12)

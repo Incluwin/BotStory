@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.behavior.AgentTellProbe;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -216,6 +217,40 @@ class AgentMapWalkTest {
         assertFalse(AgentMapWalk.tick(entry, agent, 100L));
         verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
         gateways.verify(AgentPrimitiveCapabilityGatewayRuntime::gateway, never());
+    }
+
+    @Test
+    void anArrivedWalkReportsTheRouteItWalkedToTheTellAudit() {
+        java.util.List<Long> routes = new java.util.ArrayList<>();
+        AgentTellProbe.install(new AgentTellProbe.Sink() {
+            @Override public void combatReaction(int agentId, long reactionMs) { }
+            @Override public void chatReply(long delayMs) { }
+            @Override public void potionPoint(int alertPercent) { }
+            @Override public void buffRecast(int percentOfDuration) { }
+            @Override public void routeWalked(int agentId, int fromMapId, int toMapId, long routeHash) {
+                assertEquals(AGENT, agentId);
+                assertEquals(HENESYS, fromMapId);
+                assertEquals(FIELD, toMapId);
+                routes.add(routeHash);
+            }
+        });
+        try {
+            for (int walkNumber = 0; walkNumber < 3; walkNumber++) {
+                standOn(HENESYS, new Point(0, 0));
+                AgentMapWalk.start(entry, agent, AgentMapWalk.Target.map(FIELD), 60_000L, 1_000L);
+                entry.navigationEdgeState().setActiveEdge(walkNumber == 2 ? new AgentNavigationGraph.Edge(1, 2,
+                        AgentNavigationGraph.EdgeType.JUMP, new Point(0, 0), new Point(40, -60), 0, 0, 1, -1, 0, 0, 0, 1)
+                        : null);
+                AgentMapWalk.tick(entry, agent, 1_100L);
+                standOn(FIELD, new Point(-500, 200));
+                AgentMapWalk.tick(entry, agent, 2_000L);
+            }
+        } finally {
+            AgentTellProbe.install(null);
+        }
+        assertEquals(3, routes.size());
+        assertEquals(routes.get(0), routes.get(1), "the same maps and edges: the same route");
+        assertFalse(routes.get(0).equals(routes.get(2)), "a jump on the way: another route");
     }
 
     private void standOn(int mapId, Point position) {

@@ -144,8 +144,11 @@ public final class Population {
                 90_000L, 3_600_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.chatter::tick,
                 20_000L, 20_000L));
-        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.social::tick,
-                45_000L, 60_000L));
+        // and on the same minute the tell audit samples where idle bots stand, folding hourly (BOT_CONCEPT_PLAN.md C2)
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            population.social.tick();
+            server.living.audit.TellAudit.tick(System.currentTimeMillis());
+        }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.partyQuests::tick,

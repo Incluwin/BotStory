@@ -10839,6 +10839,7 @@ public class Character extends AbstractCharacterObject {
                             : null;
                     if (agentChoice != null) {
                         runAutopotAction(agentChoice.position(), agentChoice.itemId());
+                        server.agents.capabilities.behavior.AgentTellProbe.potionPoint(Math.round(autohpAlert * 100));
                     } else if (autohpItem != null) {
                         runAutopotAction(autohpItem.getPosition(), autohpItemid);
                     } else if (agent) {
