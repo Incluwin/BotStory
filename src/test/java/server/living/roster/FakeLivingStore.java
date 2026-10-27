@@ -355,12 +355,12 @@ final class FakeLivingStore {
             List<LivingStore.CharacterEvent> out = new ArrayList<>();
             for (String line : events.subList(from, events.size())) {
                 String[] row = line.split(" ", 4);
-                if (row[0].equals(owner) && kinds.contains(row[2]) && out.size() < (int) inv.getArgument(3)) {
+                if (row[0].equals(owner) && kinds.contains(row[2])) {
                     out.add(new LivingStore.CharacterEvent("null".equals(row[1]) ? null : row[1], row[2],
                             row.length > 3 ? row[3] : null));
                 }
             }
-            return out;
+            return out.subList(Math.max(0, out.size() - (int) inv.getArgument(3)), out.size()); // the newest
         });
         when(store.characterLevel(anyInt())).thenAnswer(inv -> levels.getOrDefault((int) inv.getArgument(0), 0));
         when(store.personaState(anyString())).thenAnswer(inv -> personaStates.getOrDefault((String) inv.getArgument(0),

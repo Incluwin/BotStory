@@ -2167,16 +2167,24 @@ public final class RosterService {
             return persona.name() + " has nothing to send.";
         }
         int packages = 0;
+        boolean left = false;
         for (HaulItem stack : haul) {
-            // an equip stack is that many pieces, each a package of its own
-            int pieces = ItemConstants.isEquipment(stack.itemId()) ? stack.quantity() : 1;
+            boolean equip = ItemConstants.isEquipment(stack.itemId());
+            // an equip stack is that many pieces, each a package of its own; past the cap the rest waits in the haul
+            int pieces = Math.min(equip ? stack.quantity() : 1, SEND_PACKAGES_MAX - packages);
+            if (pieces <= 0) {
+                left = true;
+                break;
+            }
             for (int piece = 0; piece < pieces; piece++) {
                 DueyProcessor.dueyCreatePackage(mailItem(mailedEquips, stack.itemId(), stack.quantity()),
                         packages == 0 ? (int) Math.min(meso, Integer.MAX_VALUE) : 0, null, persona.name(), owner.getId());
                 packages++;
             }
-            world.store().removeHaul(owner.getId(), persona.id(), stack.itemId(), stack.quantity());
-            world.store().recordTransfer(owner.getId(), persona.id(), stack.itemId(), stack.quantity());
+            int sent = equip ? pieces : stack.quantity();
+            left |= sent < stack.quantity();
+            world.store().removeHaul(owner.getId(), persona.id(), stack.itemId(), sent);
+            world.store().recordTransfer(owner.getId(), persona.id(), stack.itemId(), sent);
         }
         if (packages == 0 && meso > 0) {
             DueyProcessor.dueyCreatePackage(null, (int) Math.min(meso, Integer.MAX_VALUE), null, persona.name(), owner.getId());
@@ -2187,8 +2195,12 @@ public final class RosterService {
         CompanionViews.invalidate(world, owner.getId(), persona.id()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.duey", packages + " packages, " + meso + " meso");
         return persona.name() + " sends you " + packages + (packages == 1 ? " package" : " packages")
-                + (meso > 0 ? String.format(Locale.ROOT, " with %,d meso", meso) : "") + " by Duey.";
+                + (meso > 0 ? String.format(Locale.ROOT, " with %,d meso", meso) : "") + " by Duey."
+                + (left ? " The rest is still in its haul." : "");
     }
+
+    /** Packages one "send it" mails at most: the Duey window counts the packages it lists in one byte. */
+    private static final int SEND_PACKAGES_MAX = 100;
 
     /** An equip as a fresh drop of it would be: its stats randomized around the base, as the map's drops are. */
     static final IntFunction<Equip> DROP_LIKE = itemId -> {
@@ -2327,6 +2339,10 @@ public final class RosterService {
                 }
             }
         }
+        if (letters.on()) {
+            // the letters say it all a few seconds on, in one pink line (F3); before the lineup's call-back reports
+            letters.loggedIn(owner, afterLogout);
+        }
         Map<String, long[]> before = benchAtLogout.remove(ownerId);
         if (before != null && !letters.on()) { // with the letters on, their notes tell it instead
             // one whisper sums it up (flow 7 step 6): the call-back reports of those it named are spent, not told again
@@ -2347,9 +2363,7 @@ public final class RosterService {
             }
         }
         parkedParty.remove(ownerId);
-        if (letters.on()) {
-            letters.loggedIn(owner, afterLogout); // the letters say it all a few seconds on, in one pink line (F3)
-        } else {
+        if (!letters.on()) {
             tellAwayReleases(owner);
             tellCampMoves(owner);
         }

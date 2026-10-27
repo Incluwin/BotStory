@@ -56,8 +56,11 @@ public final class CompanionLetters {
     static final String TOLD_EVENT = "letters.told";
     private static final List<String> NEWS = List.of(BenchLedger.REPORT_EVENT, JOB_ADVANCED_EVENT, GIFT_EVENT, ASKED_EVENT);
     private static final List<String> MARKERS = List.of(AWAY_EVENT, TOLD_EVENT);
-    /** Rows one digest reads at most: weeks of a full bench's ledger rows. */
-    private static final int WINDOW_ROWS = 5000;
+    /**
+     * Rows one digest reads at most, the newest: about two weeks of a full bench's (ten companions, a row each a ledger
+     * tick); a longer absence leaves out its oldest news.
+     */
+    private static final int WINDOW_ROWS = 20000;
     /** A note's length, as a player's note is held to. */
     static final int NOTE_MAX = 200;
     /** A note's sender name: the notes table's VARCHAR(13). */
@@ -202,8 +205,9 @@ public final class CompanionLetters {
     // ---- login and logout -------------------------------------------------------------------
 
     /**
-     * A human logged in (RosterService.onOwnerLogin): one that ends a logout, or their first since the boot, gets their
-     * letters LETTERS_DELAY_MS later, after the login's own show of their notes, so they are shown once.
+     * A human logged in (RosterService.onOwnerLogin, before it calls the usual lineup): one that ends a logout, or their
+     * first since the boot, gets their letters LETTERS_DELAY_MS later, after the login's own show of their notes, so
+     * they are shown once. The call-back reports are spent now: a companion seated at once says nothing the letters say.
      */
     void loggedIn(Character owner, boolean afterLogout) {
         if (!on() || AgentPresence.isAgent(owner)) {
@@ -212,6 +216,12 @@ public final class CompanionLetters {
         int ownerId = owner.getId();
         boolean first = seen.add(ownerId);
         if ((afterLogout || first) && due.add(ownerId)) {
+            BenchLedger ledger = world.bench();
+            if (ledger != null) {
+                for (RosterEntry entry : roster.roster(owner)) {
+                    ledger.takeReport(ownerId, entry.personaId(), 0);
+                }
+            }
             roster.later("letters " + ownerId, () -> deliver(ownerId), world.config().LETTERS_DELAY_MS);
         }
     }

@@ -107,4 +107,20 @@ class MailTellsTest {
             assertFalse(game.store.store.haul(ANN, "mira").stream().anyMatch(stack -> stack.quantity() > 0), "the haul is sent");
         }
     }
+
+    @Test
+    void oneSendMailsAHundredPackagesAtMostAndTheRestWaitsInTheHaul() {
+        try (LifecycleHarness game = new LifecycleHarness();
+             MockedStatic<DueyProcessor> duey = mockStatic(DueyProcessor.class)) {
+            Persona mira = game.companion("mira", "Mira", 950, RosterState.BENCHED, HENESYS);
+            game.roster().mailedEquips = itemId -> Equip.restored(itemId, (short) 0);
+            game.store.store.addHaul(ANN, "mira", SWORD, 150);
+            game.store.store.addHaul(ANN, "mira", STOLEN_FENCE, 30);
+
+            assertEquals("Mira sends you 100 packages by Duey. The rest is still in its haul.",
+                    game.roster().sendIt(game.ann, mira));
+            assertEquals(50, game.store.haul.get(FakeLivingStore.key(ANN, "mira")).get(SWORD));
+            assertEquals(30, game.store.haul.get(FakeLivingStore.key(ANN, "mira")).get(STOLEN_FENCE));
+        }
+    }
 }

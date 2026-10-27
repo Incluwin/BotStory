@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
+import static server.living.roster.LifecycleHarness.HENESYS_FIELD;
 import static server.living.roster.LifecycleHarness.LITH;
 
 /**
@@ -188,6 +190,27 @@ class CompanionLettersTest {
             game.runTimers();
             assertEquals(2, notes.sent.size());
             assertEquals(1, game.store.events(CompanionLetters.TOLD_EVENT).size());
+        }
+    }
+
+    @Test
+    void aCompanionCalledBackAtLoginLeavesItsNewsToItsLetter() throws IOException {
+        try (LifecycleHarness game = new LifecycleHarness(); MockedStatic<MapFactory> places = places()) {
+            game.config.LETTERS_ENABLED = true;
+            Persona olwen = game.companion("olwen", "Olwen", 900, RosterState.BENCHED, HENESYS_FIELD); // camps where Ann is
+            BenchLedger ledger = ledger(game);
+            FakeNotes notes = letters(game.roster());
+            game.roster().onOwnerLogout(game.ann, null);
+            game.store.lineup.put(FakeLivingStore.key(ANN, "olwen"), 1); // in Ann's usual lineup
+            ledger.reportHaul(ANN, "olwen", FIELD, 4_000L, GLOVE_SCROLL, 1);
+            ledger.flushReports(0);
+
+            game.roster().onOwnerLogin(game.ann); // the usual lineup is called back
+            game.runTimers();
+
+            verify(game.residents, never()).whisper(eq(olwen), eq(game.ann), startsWith("farmed"));
+            assertEquals(List.of("Olwen: Ann, found a Scroll for Gloves for DEX 60% at Ant Tunnel I. +4.0k meso. - Olwen"),
+                    notes.messages(), "told once, by its letter");
         }
     }
 

@@ -1918,14 +1918,14 @@ public final class LivingStore {
 
     /**
      * The character's events of these {@code kinds} since their newest event of one of the {@code markers} (all of them
-     * when there is none), oldest first, at most {@code limit}: what the letters have not told them yet
+     * when there is none), oldest first: the newest {@code limit} of them, what the letters have not told them yet
      * (CompanionLetters). Null when the read fails.
      */
     public List<CharacterEvent> eventsAfterMarker(int characterId, List<String> kinds, List<String> markers, int limit) {
         String sql = "SELECT persona_id, kind, detail FROM living_event_log WHERE character_id = ? AND kind IN ("
                 + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ")"
                 + " AND id > COALESCE((SELECT MAX(id) FROM living_event_log WHERE character_id = ? AND kind IN ("
-                + String.join(",", java.util.Collections.nCopies(markers.size(), "?")) + ")), 0) ORDER BY id LIMIT ?";
+                + String.join(",", java.util.Collections.nCopies(markers.size(), "?")) + ")), 0) ORDER BY id DESC LIMIT ?";
         List<CharacterEvent> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             int at = 1;
@@ -1947,6 +1947,7 @@ public final class LivingStore {
             log.warn("living_event_log scan failed for {} {}", characterId, kinds, failure);
             return null;
         }
+        java.util.Collections.reverse(out);
         return out;
     }
 
