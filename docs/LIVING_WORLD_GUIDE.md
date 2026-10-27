@@ -433,9 +433,10 @@ on its map is dead or under half HP; each bot has a sliding-hour budget (`IMPERF
 kind's own cap in `Imperfections.Kind`). The Agent engine asks it through `AgentImperfections` and keeps its own
 exclusions (an event instance, a map with a boss, a party quest) and caps whatever the gate says.
 `GET /runtime/imperfections` counts what fired (`fired.<kind>`) and what was held back (`blocked.<reason>`); one INFO
-line an hour too. Acceptance (decision D16): bot deaths per class per bot-hour stay within noise of the tell-audit
-baseline (`tools\tells-report.ps1 -Before <baseline> -After <build>`, its "Deaths per bot-hour" table); anything that
-raises deaths is cut. Engine numbers live in `agent-engine.yaml` (`AgentImperfectionPolicy.*`, `AgentFumbles.*`).
+line an hour too. Acceptance (decision D16): bot deaths per class per bot-hour with the switch on stay within noise of
+the same build with it off (D6 is in both). Both phases run one sha, so save `/runtime/tells` at the end of each 24 h
+phase and compare the files (`tools\tells-report.ps1 -Before off.json -After on.json`, its "Deaths per bot-hour"
+table); anything that raises deaths is cut. Engine numbers live in `agent-engine.yaml` (`AgentImperfectionPolicy.*`, `AgentFumbles.*`).
 
 ## Authoring
 
