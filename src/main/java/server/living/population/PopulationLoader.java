@@ -60,14 +60,18 @@ public final class PopulationLoader {
             "game.lf", "game.title.omok", "game.title.cards", "game.hi", "game.nice", "game.win", "game.loss", "game.tie",
             "game.bye",
             // a citizen asking after a friend who is away (PersonMemories.askAfter, the letters)
-            "memory.asked");
+            "memory.asked",
+            // the needs board (needs.NeedLedger): its request whispered, thanks for a board hand-in, a hand-in in person,
+            // a scroll it was brought passing or failing; and a player who brought it something, met again
+            "need.whisper", "need.thanks", "need.got", "need.scroll.pass", "need.scroll.fail", "memory.greet.fulfilled");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",
             "memory.greet.warm", "memory.greet.vague", "memory.greet.cool", "memory.hello", "memory.hello.cool",
-            "memory.asked");
+            "memory.asked", "memory.greet.fulfilled");
     private static final Set<String> WHERE = Set.of("town", "field", "fm", "lobby", "any");
-    private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega", "room");
+    /** "whisper" lines are only ever composed for a whisper (ChatterEngine.compose), never picked to speak. */
+    private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega", "room", "whisper");
 
     private PopulationLoader() {
     }

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.UnaryOperator;
 
@@ -43,6 +44,10 @@ public final class ChatterEngine {
     private static final double DWELL_BASE_CHANCE = 0.05d;
     /** Shorter map names than this ("fm") are not looked for inside chatter lines. */
     private static final int MIN_PLACE_NAME = 4;
+    /** Intents of the needs board (chatter/needs.yaml): said only by a citizen with a request, and only while it is on. */
+    private static final String NEED_INTENT = "need.";
+    /** The random-basket "B>" talk the needs board replaces while it is on. */
+    private static final Set<String> RANDOM_BUY_INTENTS = Set.of("fm.buy", "town.buy");
 
     /** Something that may make nearby citizens talk. */
     public static final class Event {
@@ -287,7 +292,8 @@ public final class ChatterEngine {
         // ("Ann! that kpq yesterday was fun"): said to a person who just walked up, each person gets them. A boss
         // expedition's talk too.
         boolean partyQuest = trigger.startsWith("pq.") || trigger.startsWith("memory.") || trigger.startsWith("boss.")
-                || trigger.startsWith("game."); // a minigame's gg, every game
+                || trigger.startsWith("game.") // a minigame's gg, every game
+                || trigger.startsWith("need."); // a thanks for what someone just handed it (the needs board)
         for (Intent intent : population.content().intents(trigger)) {
             if (!intent.where().equals("any") && !intent.where().equals(where) && !intent.mapIds().contains(session.mapId)) {
                 continue;
@@ -295,7 +301,7 @@ public final class ChatterEngine {
             if (intent.maxLevel() > 0 && level > intent.maxLevel()) {
                 continue; // "how do i get to orbis" from a level-90 reads scripted
             }
-            if (!channelAvailable(session, intent.channel())) {
+            if (!channelAvailable(session, intent.channel()) || !needsAllow(session, intent)) {
                 continue;
             }
             if (!partyQuest && session.recentIntents.contains(intent.id())) {
@@ -319,6 +325,9 @@ public final class ChatterEngine {
                 chosen = intent;
                 break;
             }
+        }
+        if (chosen.id().startsWith(NEED_INTENT) && !population.needs().slots(session, event, chosen.id())) {
+            return false; // its request ended meanwhile
         }
         String channel = chosen.channel();
         Long lastOnChannel = session.lastSpokeAtMs.get(channel);
@@ -432,15 +441,51 @@ public final class ChatterEngine {
         if (event.need > 0) {
             slots.put("need", String.valueOf(event.need));
         }
-        slots.putAll(event.slots);
+        if (event.item == null && template.startsWith("B>") && needsOn() && !population.needs().slots(session, event, null)) {
+            return null; // the needs board: a citizen asks to buy only what it really lacks
+        }
         Market.Listing listing = event.item != null ? null : population.market().talkAbout(session, random);
         slots.put("item", event.item != null ? event.item : listing == null ? "stuff" : listing.name());
         slots.put("price", listing == null ? "cheap" : Market.formatPrice(listing.price()));
+        slots.putAll(event.slots); // after {item} and {price}: a request's own price wins
         String out = template;
         for (Map.Entry<String, String> slot : slots.entrySet()) {
             out = out.replace("{" + slot.getKey() + "}", slot.getValue());
         }
         return out.contains("{") ? null : out;
+    }
+
+    private boolean needsOn() {
+        return population.needs() != null && population.needs().on();
+    }
+
+    /**
+     * The needs board (docs/BOT_CONCEPT_PLAN.md F1): while it is on, a {@code need.*} line is only for a citizen with a
+     * request to post and the random-basket buy lines go; while it is off, no need line ever comes up.
+     */
+    private boolean needsAllow(CitizenSession session, Intent intent) {
+        boolean needLine = intent.id().startsWith(NEED_INTENT);
+        if (!needsOn()) {
+            return !needLine;
+        }
+        if (RANDOM_BUY_INTENTS.contains(intent.id())) {
+            return false;
+        }
+        return !needLine || population.needs().posting(session.characterId, intent.id()) != null;
+    }
+
+    /**
+     * A filled line of the event's trigger for a whisper (the needs board's): any of its intents, in the citizen's style;
+     * no channel, line budget or cooldown, since it is said to one person. Null when no line fills.
+     */
+    public String compose(Event event) {
+        List<Intent> intents = event == null || event.self == null ? List.of() : population.content().intents(event.trigger);
+        if (intents.isEmpty()) {
+            return null;
+        }
+        Intent intent = intents.get(random.nextInt(intents.size()));
+        List<String> lines = intent.linesFor(population.voices().styleOf(event.self.citizen));
+        return lines.isEmpty() ? null : fill(lines.get(random.nextInt(lines.size())), event.self, event);
     }
 
     private int sociability(CitizenSession session) {
@@ -593,7 +638,8 @@ public final class ChatterEngine {
             if (session.virtual || agent == null) {
                 continue;
             }
-            if (session.citizen.has(Citizen.FLAG_RECRUITER) && agent.getGuildId() > 0 || session.citizen.has(Citizen.FLAG_MERCHANT)) {
+            if (session.citizen.has(Citizen.FLAG_RECRUITER) && agent.getGuildId() > 0 || session.citizen.has(Citizen.FLAG_MERCHANT)
+                    || needsOn() && population.needs().posting(session.characterId) != null) { // a share for real requests
                 speakers.add(session);
             }
         }

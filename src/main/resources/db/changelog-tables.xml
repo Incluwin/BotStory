@@ -666,4 +666,15 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="51-living-need" author="ganre">
+        <!-- The needs board (F1): living_need, what citizens ask for (potions, scrolls, gear, a party seat) and who
+             claimed or handed it in; board hand-ins for an absent citizen wait as inventoryitems type 14. Ships behind
+             population.NEEDS_ENABLED. See docs/BOT_CONCEPT_PLAN.md F1. Listed after 52: changeset 52 went live first,
+             and Liquibase runs what it has not run in file order. -->
+        <sqlFile path="db/tables/042-living-need.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/042-living-need-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

@@ -27,3 +27,18 @@ basket:
   - { itemId: 1452016, price: 400000 }      # Maple Bow
   - { itemId: 2049100, price: 3000000 }     # Chaos Scroll 60%
   - { itemId: 2049000, price: 400000 }      # Clean Slate Scroll 1%
+  # 60% attack scrolls for the other weapon types, so every class can ask for one for its own weapon on the needs board
+  # (docs/BOT_CONCEPT_PLAN.md F1); seed prices only, the index drifts with what sells.
+  - { itemId: 2043101, price: 150000 }      # Scroll for One-Handed Axe for ATT 60%
+  - { itemId: 2043201, price: 150000 }      # Scroll for One-Handed BW for ATT 60%
+  - { itemId: 2043301, price: 2000000 }     # Scroll for Dagger for ATT 60%
+  - { itemId: 2043701, price: 600000 }      # Scroll for Wand for Magic Att. 60%
+  - { itemId: 2043801, price: 300000 }      # Scroll for Staff for Magic Att. 60%
+  - { itemId: 2044001, price: 200000 }      # Scroll for Two-handed Sword for ATT 60%
+  - { itemId: 2044101, price: 150000 }      # Scroll for Two-handed Axe for ATT 60%
+  - { itemId: 2044201, price: 150000 }      # Scroll for Two-handed BW for ATT 60%
+  - { itemId: 2044301, price: 300000 }      # Scroll for Spear for ATT 60%
+  - { itemId: 2044401, price: 300000 }      # Scroll for Pole Arm for ATT 60%
+  - { itemId: 2044601, price: 400000 }      # Scroll for Crossbow for ATT 60%
+  - { itemId: 2044801, price: 500000 }      # Scroll for Knuckler for Attack 60%
+  - { itemId: 2044901, price: 500000 }      # Scroll for Gun for Attack 60%

@@ -18,6 +18,7 @@ import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorldHooks;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Good;
+import server.living.population.needs.NeedLedger;
 import server.maps.PlayerShop;
 import server.maps.reservation.CharacterSpaceReservation;
 import server.maps.reservation.FreeMarketStorePlacementService;
@@ -171,7 +172,8 @@ public final class Market {
             return;
         }
         if (agent.getMapId() == FieldCatalog.FM_ENTRANCE) {
-            int room = FieldCatalog.FM_ENTRANCE + 1 + pickRoom();
+            int wantedRoom = wantedRoom(session, System.currentTimeMillis());
+            int room = wantedRoom > 0 ? wantedRoom : FieldCatalog.FM_ENTRANCE + 1 + pickRoom();
             population.presence().travel(session, Activity.MARKET, room, System.currentTimeMillis());
             return;
         }
@@ -352,16 +354,26 @@ public final class Market {
                     continue;
                 }
                 long unit = Math.round(view.bundlePrice() / (double) view.perBundle());
-                long fair = price(view.itemId());
-                if (unit > fair * BUY_BELOW_INDEX || view.bundlePrice() > agent.getMeso()) {
-                    continue;
-                }
-                if (!spend(session.characterId, view.bundlePrice(), now)) {
-                    return;
+                long wanted = wanted(session, view, now);
+                if (wanted > 0L) { // what it asked for on the needs board: up to its offer, outside the browse budget
+                    if (unit > wanted || view.bundlePrice() > agent.getMeso()) {
+                        continue;
+                    }
+                } else {
+                    long fair = price(view.itemId());
+                    if (unit > fair * BUY_BELOW_INDEX || view.bundlePrice() > agent.getMeso()) {
+                        continue;
+                    }
+                    if (!spend(session.characterId, view.bundlePrice(), now)) {
+                        return;
+                    }
                 }
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
                 if (result.success()) {
                     bought(stall.ownerCharacterId(), view.itemId(), unit);
+                    if (wanted > 0L) {
+                        population.needs().boughtAtMarket(session, agent, view.itemId(), stall.ownerCharacterId(), now);
+                    }
                     if (!population.isCitizen(stall.ownerCharacterId())) { // a player's shop, not a companion's bench stall
                         remember(session, stall.ownerCharacterId(), PersonMemory.Kind.BOUGHT, agent.getMapId(), view.itemId());
                     }
@@ -372,6 +384,46 @@ public final class Market {
                 }
             }
         }
+    }
+
+    /**
+     * The needs board (docs/BOT_CONCEPT_PLAN.md F1): the most it pays a unit for this listing - a single piece of what
+     * its open GEAR or SCROLL want asks for, an equip base or better - else 0.
+     */
+    private long wanted(CitizenSession session, PlayerShop.ListingView view, long now) {
+        NeedLedger needs = population.needs();
+        return needs == null || view.perBundle() != 1 ? 0L
+                : needs.marketOffer(session.characterId, view.itemId(), view.attributes(), now);
+    }
+
+    /**
+     * The needs board: the Free Market room whose player shop sells what the citizen wants at its offer or less, the
+     * room it goes to from the entrance (the Owl of Minerva a player would use); 0 for none or a room nobody loaded.
+     */
+    private int wantedRoom(CitizenSession session, long now) {
+        NeedLedger needs = population.needs();
+        net.server.world.World world = population.gameWorld();
+        net.server.channel.Channel channel = world == null ? null : world.getChannel(session.channel);
+        if (needs == null || channel == null || !needs.wantsFromMarket(session.characterId)) {
+            return 0;
+        }
+        for (int room = FieldCatalog.FM_ENTRANCE + 1; room <= FieldCatalog.FM_ENTRANCE + FM_ROOMS; room++) {
+            if (!channel.getMapFactory().isMapLoaded(room)) {
+                continue;
+            }
+            for (PlayerShop shop : channel.getMapFactory().getMap(room).getAllPlayerShops()) {
+                if (!buysFrom(shop.getOwnerId())) {
+                    continue;
+                }
+                for (PlayerShop.ListingView view : shop.listingSnapshot()) {
+                    long wanted = view.bundles() > 0 ? wanted(session, view, now) : 0L;
+                    if (wanted > 0L && view.bundlePrice() <= wanted) {
+                        return room;
+                    }
+                }
+            }
+        }
+        return 0;
     }
 
     /**

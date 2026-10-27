@@ -13,6 +13,7 @@ import server.knowledge.ContentAnswers;
 import server.knowledge.ContentChat;
 import server.living.LivingWorld;
 import server.living.config.ContentException;
+import server.living.population.needs.NeedLedger;
 import server.maps.MapleMap;
 
 import java.nio.file.Path;
@@ -54,6 +55,7 @@ public final class Population {
     private final CitizenPartyQuests partyQuests;
     private final CitizenMiniGames miniGames;
     private final PersonMemories memories;
+    private final NeedLedger needs;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -85,6 +87,7 @@ public final class Population {
         this.partyQuests = new CitizenPartyQuests(this);
         this.miniGames = new CitizenMiniGames(this);
         this.memories = new PersonMemories(this);
+        this.needs = new NeedLedger(this);
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
     }
@@ -152,6 +155,7 @@ public final class Population {
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             population.social.tick();
             server.living.audit.TellAudit.tick(System.currentTimeMillis());
+            population.needs.tick(); // the needs board's minute (docs/BOT_CONCEPT_PLAN.md F1)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -174,6 +178,7 @@ public final class Population {
         }
         population.timers.clear();
         population.market.closeAll("server shutdown");
+        population.needs.boards().removeAll(); // a later start spawns them again
         population.memories.flushAll(); // before the citizens unload: what happened up to the last event is kept
         population.presence.logoutAll("server shutdown");
         log.info("Population stopped.");
@@ -274,6 +279,11 @@ public final class Population {
     /** Omok and match cards citizens play in towns (docs/BOT_CONCEPT_PLAN.md F5a). */
     public CitizenMiniGames miniGames() {
         return miniGames;
+    }
+
+    /** What citizens ask for on the needs board (docs/BOT_CONCEPT_PLAN.md F1). */
+    public NeedLedger needs() {
+        return needs;
     }
 
     /** What citizens remember of the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md). */

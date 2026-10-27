@@ -233,6 +233,31 @@ public class PopulationConfig {
     /** A TRAIN stint shorter than this is not booked: too short to say what the field pays. */
     public int CITIZEN_SPOT_MIN_MS = 300000;
 
+    // The needs board: citizens ask for real things they lack (docs/BOT_CONCEPT_PLAN.md F1, server.living.population.needs)
+    /** Kill switch: false = no need derived, posted or listed, no board spawned, "B>" chatter and gear as before. */
+    public boolean NEEDS_ENABLED = false;
+    /** Open item needs (SUPPLY, SCROLL, GEAR) a citizen has at once; a forming party's PARTY need is apart from them. */
+    public int NEEDS_PER_CITIZEN = 2;
+    /** A SUPPLY or SCROLL need ends unmet after a random time in this range (hours). */
+    public int NEEDS_EXPIRE_MIN_HOURS = 24;
+    public int NEEDS_EXPIRE_MAX_HOURS = 48;
+    /** Decision D4: this share of a citizen's free gear upgrades becomes a want, granted as before after the deadline. */
+    public double NEEDS_GEAR_WANT_SHARE = 0.3d;
+    public int NEEDS_GEAR_DEADLINE_HOURS = 48;
+    /** A citizen with a basket scroll that fits a worn piece and the purse for it asks for it at a refresh this often. */
+    public double NEEDS_SCROLL_CHANCE = 0.15d;
+    /** A SUPPLY need pays the potion's NPC shop price times this (the index has no market for shop goods). */
+    public double NEEDS_SUPPLY_PREMIUM = 1.15d;
+    /** Requests one player holds at once, and how long each hold lasts. */
+    public int NEEDS_CLAIMS_PER_PLAYER = 3;
+    public int NEEDS_CLAIM_MINUTES = 60;
+    /** A citizen whispers its need to a player it likes on its map at most once per player this often. */
+    public int NEEDS_WHISPER_GAP_MINUTES = 60;
+    /** A loaded citizen's needs are derived again from its state this often (and at every load). */
+    public int NEEDS_REFRESH_MINUTES = 15;
+    /** The same request (kind and item) is not posted again this long after it ended. */
+    public int NEEDS_REPOST_HOURS = 12;
+
     // Boss expeditions citizens run themselves (docs/CITIZEN_EXPEDITIONS_PLAN.md)
     /**
      * The bosses BOSS_RUN_BOSSES may name: only those the server moves itself once a bot signed up (Balrog,
@@ -329,6 +354,16 @@ public class PopulationConfig {
         if (CITIZEN_SPOT_EXPLORE < 0 || CITIZEN_SPOT_CROWDING < 0 || CITIZEN_SPOT_TEMPERATURE < 0 || CITIZEN_SPOT_MIN_MS < 0) {
             throw new IllegalArgumentException("population.CITIZEN_SPOT_EXPLORE, CITIZEN_SPOT_CROWDING,"
                     + " CITIZEN_SPOT_TEMPERATURE and CITIZEN_SPOT_MIN_MS must be >= 0");
+        }
+        if (NEEDS_PER_CITIZEN < 1 || NEEDS_EXPIRE_MIN_HOURS < 1 || NEEDS_EXPIRE_MAX_HOURS < NEEDS_EXPIRE_MIN_HOURS
+                || NEEDS_GEAR_DEADLINE_HOURS < 1 || NEEDS_GEAR_WANT_SHARE < 0 || NEEDS_GEAR_WANT_SHARE > 1
+                || NEEDS_SCROLL_CHANCE < 0 || NEEDS_SCROLL_CHANCE > 1 || NEEDS_SUPPLY_PREMIUM < 1
+                || NEEDS_CLAIMS_PER_PLAYER < 1 || NEEDS_CLAIM_MINUTES < 1 || NEEDS_WHISPER_GAP_MINUTES < 0
+                || NEEDS_REFRESH_MINUTES < 1 || NEEDS_REPOST_HOURS < 0) {
+            throw new IllegalArgumentException("population.NEEDS_PER_CITIZEN, NEEDS_CLAIMS_PER_PLAYER, NEEDS_CLAIM_MINUTES,"
+                    + " NEEDS_REFRESH_MINUTES and NEEDS_GEAR_DEADLINE_HOURS must be >= 1, NEEDS_EXPIRE_MIN_HOURS..MAX_HOURS a"
+                    + " range from 1, NEEDS_GEAR_WANT_SHARE and NEEDS_SCROLL_CHANCE 0..1, NEEDS_SUPPLY_PREMIUM >= 1,"
+                    + " NEEDS_WHISPER_GAP_MINUTES and NEEDS_REPOST_HOURS >= 0");
         }
     }
 }

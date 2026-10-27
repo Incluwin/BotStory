@@ -65,7 +65,9 @@ public final class ProgressionLedger {
                 ResidentShaper.repair(agent, loadout); // a level bumped in SQL, a first job left unspent
             }
             ResidentShaper.wearMissingEquips(agent, loadout, false); // a band edited after shaping (citizens are never dressed)
-            CitizenGear.upgrade(agent, job, loadout); // every load: a level bumped in SQL skipped the shaping above
+            // every load: a level bumped in SQL skipped the shaping above; a want on the needs board holds its pick back
+            CitizenGear.upgrade(agent, job, loadout, population.needs() == null ? CitizenGear.Wants.NONE
+                    : (who, slot, pick) -> population.needs().gearWant(who, slot, pick, System.currentTimeMillis()));
             long expectedMeso = Market.expectedMeso(agent.getLevel());
             if (agent.getMeso() < expectedMeso / 2) {
                 agent.gainMeso((int) Math.min(Integer.MAX_VALUE / 2, expectedMeso - agent.getMeso()), false);
