@@ -58,11 +58,14 @@ public final class PopulationLoader {
             "memory.greet.cool", "memory.hello", "memory.hello.cool",
             // minigames citizens play in towns (CitizenMiniGames): wanting a game, room titles, room chat
             "game.lf", "game.title.omok", "game.title.cards", "game.hi", "game.nice", "game.win", "game.loss", "game.tie",
-            "game.bye");
+            "game.bye",
+            // a citizen asking after a friend who is away (PersonMemories.askAfter, the letters)
+            "memory.asked");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",
-            "memory.greet.warm", "memory.greet.vague", "memory.greet.cool", "memory.hello", "memory.hello.cool");
+            "memory.greet.warm", "memory.greet.vague", "memory.greet.cool", "memory.hello", "memory.hello.cool",
+            "memory.asked");
     private static final Set<String> WHERE = Set.of("town", "field", "fm", "lobby", "any");
     private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega", "room");
 

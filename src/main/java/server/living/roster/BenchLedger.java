@@ -44,6 +44,8 @@ import java.util.function.IntFunction;
  */
 public final class BenchLedger {
     private static final Logger log = LoggerFactory.getLogger(BenchLedger.class);
+    /** What one companion's bench work gained, as a living_event_log row (BenchReport.Row as JSON): the letters' news. */
+    static final String REPORT_EVENT = "bench.report";
     private static final double KILLS_PER_HOUR = 110.0d;
     private static final double MESO_PER_KILL_PER_LEVEL = 9.0d;
     private static final double UPKEEP_PER_LEVEL_PER_HOUR = 30.0d;
@@ -53,8 +55,8 @@ public final class BenchLedger {
     private final LivingWorld world;
     /** Fractional item expectation carried between ticks, keyed by owner:persona:item. */
     private final Map<String, Double> fractions = new ConcurrentHashMap<>();
-    /** What each companion did on the bench, for the one whisper when it is called back. */
-    private final BenchReport report = new BenchReport();
+    /** What each companion did on the bench, for the one whisper when it is called back and the letters' rows. */
+    private final BenchReport report;
     private final IntFunction<String> placeNames;
     private final IntFunction<String> itemNames;
 
@@ -65,18 +67,25 @@ public final class BenchLedger {
     /** {@code placeNames} and {@code itemNames} name a camp and an item in the call-back report (the game's data by default). */
     BenchLedger(LivingWorld world, IntFunction<String> placeNames, IntFunction<String> itemNames) {
         this.world = world;
+        this.report = new BenchReport(() -> world.config() != null && world.config().LETTERS_ENABLED);
         this.placeNames = placeNames;
         this.itemNames = itemNames;
     }
 
     public void tick() {
         long now = System.currentTimeMillis();
-        for (RosterEntry entry : world.store().allBenched()) {
+        List<RosterEntry> benched = world.store().allBenched();
+        for (RosterEntry entry : benched) {
             try {
                 accrue(entry, now);
             } catch (RuntimeException failure) {
                 log.warn("bench ledger failed for {}/{}", entry.characterId(), entry.personaId(), failure);
             }
+        }
+        flushReports(0); // the letters' rows: what this tick and the harvests since the last one gained
+        CompanionLetters letters = world.roster() == null ? null : world.roster().letters();
+        if (letters != null) {
+            letters.mailGifts(benched, now);
         }
     }
 
@@ -517,6 +526,18 @@ public final class BenchLedger {
     void reportSlice(int ownerId, String personaId, int mapId, long exp, int startLevel, int deaths) {
         report.exp(ownerId, personaId, exp, startLevel, mapId);
         report.deaths(ownerId, personaId, deaths, mapId);
+        flushReports(ownerId); // its harvests and its end, before a shutdown's unload is past
+    }
+
+    /**
+     * Writes what the bench work of one owner's companions (0: everyone's) gained since the last flush as bench.report
+     * rows, while the letters are on (docs/BOT_CONCEPT_PLAN.md F3): at the end of each tick, as a slice ends, and for
+     * the letters at a logout and before a digest, so the login digest survives a restart.
+     */
+    public void flushReports(int ownerId) {
+        for (BenchReport.Unwritten row : report.drain(ownerId)) {
+            world.store().event(row.ownerId(), row.personaId(), REPORT_EVENT, row.detail());
+        }
     }
 
     /**

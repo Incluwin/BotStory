@@ -1940,6 +1940,44 @@ public final class LivingStore {
         return out;
     }
 
+    /** One living_event_log row of a character's: the persona it names (null for none), its kind and its detail. */
+    public record CharacterEvent(String personaId, String kind, String detail) { }
+
+    /**
+     * The character's events of these {@code kinds} since their newest event of one of the {@code markers} (all of them
+     * when there is none), oldest first: the newest {@code limit} of them, what the letters have not told them yet
+     * (CompanionLetters). Null when the read fails.
+     */
+    public List<CharacterEvent> eventsAfterMarker(int characterId, List<String> kinds, List<String> markers, int limit) {
+        String sql = "SELECT persona_id, kind, detail FROM living_event_log WHERE character_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ")"
+                + " AND id > COALESCE((SELECT MAX(id) FROM living_event_log WHERE character_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(markers.size(), "?")) + ")), 0) ORDER BY id DESC LIMIT ?";
+        List<CharacterEvent> out = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setInt(at++, characterId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            ps.setInt(at++, characterId);
+            for (String marker : markers) {
+                ps.setString(at++, marker);
+            }
+            ps.setInt(at, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new CharacterEvent(rs.getString(1), rs.getString(2), rs.getString(3)));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log scan failed for {} {}", characterId, kinds, failure);
+            return null;
+        }
+        java.util.Collections.reverse(out);
+        return out;
+    }
+
     /**
      * The last {@code limit} events of one companion of the character's of these {@code kinds}, oldest first, each as
      * {kind, detail} (its own record at its camps, BenchDutyDispatcher.campRecord). Empty when the read fails.

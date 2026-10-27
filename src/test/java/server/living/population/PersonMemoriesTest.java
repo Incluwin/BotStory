@@ -1,7 +1,9 @@
 package server.living.population;
 
 import client.Character;
+import config.LivingWorldConfig;
 import config.PopulationConfig;
+import net.server.world.World;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,10 +11,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.living.LivingWorld;
 import server.living.population.CitizenStore.MemoryRow;
 import server.living.population.CitizenStore.MemoryWrite;
 import server.living.population.PersonMemory.Episode;
 import server.living.population.PersonMemory.Kind;
+import server.living.roster.CompanionLetters;
+import server.living.roster.RosterService;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -316,6 +321,47 @@ class PersonMemoriesTest {
         verifyNoInteractions(store, chatter);
         assertNull(memories.peek(963, ANN));
         assertEquals(0, memories.warmth(963, ANN));
+    }
+
+    @Test
+    void aCitizenAsksAfterAWarmFriendWhoIsOfflineAndTheLettersHearOfIt() {
+        long now = System.currentTimeMillis();
+        LivingWorldConfig living = new LivingWorldConfig();
+        living.LETTERS_ENABLED = true;
+        living.LETTERS_ASK_CHANCE = 1.0d;
+        LivingWorld world = mock(LivingWorld.class);
+        RosterService roster = mock(RosterService.class);
+        CompanionLetters letters = mock(CompanionLetters.class);
+        when(population.world()).thenReturn(world);
+        when(world.config()).thenReturn(living);
+        when(world.roster()).thenReturn(roster);
+        when(roster.letters()).thenReturn(letters);
+        when(letters.on()).thenReturn(true);
+        when(letters.mayAsk(anyInt(), anyLong())).thenReturn(true);
+        World game = mock(World.class, org.mockito.Mockito.RETURNS_DEEP_STUBS);
+        when(population.gameWorld()).thenReturn(game);
+        when(game.getPlayerStorage().getCharacterById(anyInt())).thenReturn(null); // offline
+        when(game.getPlayerStorage().getCharacterById(BOB)).thenReturn(mock(Character.class)); // Bob is on
+        PersonMemory warm = new PersonMemory(60, now, now - 24 * HOUR, List.of());
+        PersonMemory cool = new PersonMemory(20, now, now - 24 * HOUR, List.of());
+        when(store.memories(963)).thenReturn(List.of(new MemoryRow(BOB, warm, 0L), new MemoryRow(12, cool, 0L),
+                new MemoryRow(ANN, warm, 0L)));
+        CitizenSession pip = session(963, "Pip", new Point(0, 0));
+        try (MockedStatic<Character> names = mockStatic(Character.class)) {
+            names.when(() -> Character.getNameById(ANN)).thenReturn("Ann");
+
+            assertTrue(memories.askAfter(pip, now));
+
+            ArgumentCaptor<ChatterEngine.Event> said = ArgumentCaptor.forClass(ChatterEngine.Event.class);
+            verify(chatter).speakTo(said.capture());
+            assertEquals("memory.asked", said.getValue().trigger);
+            assertEquals("Ann", said.getValue().subjectName, "the warm friend who is away, not Bob who is on");
+            verify(letters).asked(ANN, "Pip", now);
+
+            living.LETTERS_ENABLED = false;
+            when(letters.on()).thenReturn(false);
+            assertFalse(memories.askAfter(pip, now), "the kill switch");
+        }
     }
 
     private CitizenSession session(int id, String name, Point at) {

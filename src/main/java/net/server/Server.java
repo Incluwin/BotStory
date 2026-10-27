@@ -1124,6 +1124,11 @@ public class Server {
         return channelDependencies;
     }
 
+    /** The notes service the channels were given (null before the server is up), for the living world's letters. */
+    public NoteService getNoteService() {
+        return channelDependencies == null ? null : channelDependencies.noteService();
+    }
+
     private LoginServer initLoginServer(int port) {
         LoginServer loginServer = new LoginServer(port);
         loginServer.start();

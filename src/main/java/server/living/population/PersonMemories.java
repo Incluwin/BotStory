@@ -294,6 +294,44 @@ public final class PersonMemories {
         return population.chatter().speakTo(event);
     }
 
+    /**
+     * Now and then, in place of an idle line (ChatterEngine.tick), a citizen asks after a friend who is not around
+     * ({@code memory.asked}: "anyone seen Ann?"): someone it feels LETTERS_ASK_WARMTH or more toward who is offline,
+     * when no citizen asked after them in the last LETTERS_ASK_GAP_HOURS. The letters tell them at their next login
+     * (docs/BOT_CONCEPT_PLAN.md F3). True when it asked, so the idle line is not said too.
+     */
+    boolean askAfter(CitizenSession session, long nowMs) {
+        server.living.LivingWorld world = population.world();
+        server.living.roster.CompanionLetters letters = world == null || world.roster() == null ? null : world.roster().letters();
+        if (!on() || letters == null || !letters.on()
+                || java.util.concurrent.ThreadLocalRandom.current().nextDouble() >= world.config().LETTERS_ASK_CHANCE) {
+            return false;
+        }
+        List<MemoryRow> rows = population.store().memories(session.characterId);
+        net.server.world.World game = population.gameWorld();
+        if (rows == null || game == null) {
+            return false;
+        }
+        for (MemoryRow row : rows) {
+            if (row.memory().feltWarmth(nowMs, config()) < world.config().LETTERS_ASK_WARMTH
+                    || game.getPlayerStorage().getCharacterById(row.playerId()) != null || !letters.mayAsk(row.playerId(), nowMs)) {
+                continue;
+            }
+            String name = Character.getNameById(row.playerId());
+            if (name == null) {
+                continue;
+            }
+            ChatterEngine.Event event = ChatterEngine.Event.of("memory.asked", session.mapId, session.channel).self(session)
+                    .subject(name, 0);
+            if (!population.chatter().speakTo(event)) {
+                return false;
+            }
+            letters.asked(row.playerId(), session.name(), nowMs);
+            return true;
+        }
+        return false;
+    }
+
     /** {when}, {place}, {pq}, {item} and {what} of the episode a line brings up. */
     private void slots(ChatterEngine.Event event, Episode episode, long nowMs) {
         if (episode == null) {

@@ -2,6 +2,7 @@ package server.living.roster;
 
 import client.Character;
 import client.Client;
+import client.inventory.Equip;
 import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import client.processor.npc.DueyProcessor;
@@ -67,6 +68,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /**
@@ -154,6 +156,8 @@ public final class RosterService {
     private final InstanceLogoutHandoff handoff;
     /** Each companion's own settings (P3b), applied on every path below that loads or seats it. */
     private final CompanionSettingsApplier settings;
+    /** What happened while the owner was away, by note and Duey (docs/BOT_CONCEPT_PLAN.md F3). */
+    private final CompanionLetters letters;
     /** What a released hire does besides leaving the roster; nothing until HiredHands installs it (P4). */
     private volatile HiredHandRelease hiredHandRelease = (ownerId, personaId, reason) -> { };
 
@@ -163,6 +167,7 @@ public final class RosterService {
         this.channelFollow = new CompanionChannelFollow(world, this);
         this.handoff = new InstanceLogoutHandoff(world, this);
         this.settings = new CompanionSettingsApplier(world, this);
+        this.letters = new CompanionLetters(world, this);
         Commitments commitments = world.commitments();
         if (commitments != null) {
             commitments.addListener(handoff::commitmentEnded); // a companion that finished a run for a friend parks
@@ -194,6 +199,11 @@ public final class RosterService {
     /** The companions' own settings (P3b): the Agent seams' answers, and the Fighting style and Supplies screens'. */
     public CompanionSettingsApplier settings() {
         return settings;
+    }
+
+    /** The letters (F3): the login digest, the gifts by Duey, citizens asking after an absent friend. */
+    public CompanionLetters letters() {
+        return letters;
     }
 
     /** True when the player has recruited anyone (grants companion-command authority). */
@@ -2141,7 +2151,10 @@ public final class RosterService {
         return count + (count == 1 ? " stack" : " stacks");
     }
 
-    /** Mails the haul through Duey, one package per stack, the meso in the first. */
+    /**
+     * Mails the haul through Duey, one package per stack (per piece for equips), the meso in the first, or alone with
+     * no item, as a player's meso-only package; the owner gets Duey's live notice.
+     */
     public String sendIt(Character owner, Persona persona) {
         settleShare(persona);
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
@@ -2153,26 +2166,59 @@ public final class RosterService {
         if (haul.isEmpty() && meso <= 0) {
             return persona.name() + " has nothing to send.";
         }
-        boolean first = true;
+        int packages = 0;
+        boolean left = false;
         for (HaulItem stack : haul) {
-            Item item = ItemConstants.isEquipment(stack.itemId())
-                    ? ItemInformationProvider.getInstance().getEquipById(stack.itemId())
-                    : new Item(stack.itemId(), (short) 0, (short) Math.min(stack.quantity(), Short.MAX_VALUE));
-            DueyProcessor.dueyCreatePackage(item, first ? (int) Math.min(meso, Integer.MAX_VALUE) : 0, persona.name(), owner.getId());
-            world.store().removeHaul(owner.getId(), persona.id(), stack.itemId(), stack.quantity());
-            world.store().recordTransfer(owner.getId(), persona.id(), stack.itemId(), stack.quantity());
-            first = false;
+            boolean equip = ItemConstants.isEquipment(stack.itemId());
+            // an equip stack is that many pieces, each a package of its own; past the cap the rest waits in the haul
+            int pieces = Math.min(equip ? stack.quantity() : 1, SEND_PACKAGES_MAX - packages);
+            if (pieces <= 0) {
+                left = true;
+                break;
+            }
+            for (int piece = 0; piece < pieces; piece++) {
+                DueyProcessor.dueyCreatePackage(mailItem(mailedEquips, stack.itemId(), stack.quantity()),
+                        packages == 0 ? (int) Math.min(meso, Integer.MAX_VALUE) : 0, null, persona.name(), owner.getId());
+                packages++;
+            }
+            int sent = equip ? pieces : stack.quantity();
+            left |= sent < stack.quantity();
+            world.store().removeHaul(owner.getId(), persona.id(), stack.itemId(), sent);
+            world.store().recordTransfer(owner.getId(), persona.id(), stack.itemId(), sent);
         }
-        if (first && meso > 0) {
-            DueyProcessor.dueyCreatePackage(new Item(4000000, (short) 0, (short) 1), (int) Math.min(meso, Integer.MAX_VALUE),
-                    persona.name(), owner.getId());
+        if (packages == 0 && meso > 0) {
+            DueyProcessor.dueyCreatePackage(null, (int) Math.min(meso, Integer.MAX_VALUE), null, persona.name(), owner.getId());
+            packages++;
         }
+        DueyProcessor.dueyNotify(owner);
         saveHaulMeso(entry, 0L);
         CompanionViews.invalidate(world, owner.getId(), persona.id()); // the bag emptied
-        world.store().event(owner.getId(), persona.id(), "haul.duey", haul.size() + " packages, " + meso + " meso");
-        int packages = Math.max(1, haul.size()); // the meso alone go in one
+        world.store().event(owner.getId(), persona.id(), "haul.duey", packages + " packages, " + meso + " meso");
         return persona.name() + " sends you " + packages + (packages == 1 ? " package" : " packages")
-                + (meso > 0 ? String.format(Locale.ROOT, " with %,d meso", meso) : "") + " by Duey.";
+                + (meso > 0 ? String.format(Locale.ROOT, " with %,d meso", meso) : "") + " by Duey."
+                + (left ? " The rest is still in its haul." : "");
+    }
+
+    /** Packages one "send it" mails at most: the Duey window counts the packages it lists in one byte. */
+    private static final int SEND_PACKAGES_MAX = 100;
+
+    /** An equip as a fresh drop of it would be: its stats randomized around the base, as the map's drops are. */
+    static final IntFunction<Equip> DROP_LIKE = itemId -> {
+        ItemInformationProvider ii = ItemInformationProvider.getInstance();
+        return ii.randomizeStats((Equip) ii.getEquipById(itemId));
+    };
+    /** How a mailed equip is made ({@link #DROP_LIKE}; a test installs its own, the game's data being out of reach). */
+    volatile IntFunction<Equip> mailedEquips = DROP_LIKE;
+
+    /**
+     * A haul stack as the item a package carries: an equip made by {@code equips} (the haul keeps only id and count, so
+     * it is a fresh drop-like piece, never the flat base stats), anything else the stack.
+     */
+    static Item mailItem(IntFunction<Equip> equips, int itemId, int quantity) {
+        if (ItemConstants.isEquipment(itemId)) {
+            return equips.apply(itemId);
+        }
+        return new Item(itemId, (short) 0, (short) Math.min(quantity, Short.MAX_VALUE));
     }
 
     public String bankIt(Character owner, Persona persona) {
@@ -2251,7 +2297,8 @@ public final class RosterService {
      * (join-then-travel), in the party they stayed in as offline members; one not called back leaves it then. Only a
      * login that ends a logout (a real one, a Cash Shop visit past the grace, or the boot) calls the usual lineup; a
      * channel change or a Cash Shop exit never does. After a logout one whisper sums up what the bench earned
-     * meanwhile. A roster owner without the Adventurer's Roster gets one.
+     * meanwhile, or, while the letters are on, their notes and one pink line do (CompanionLetters). A roster owner
+     * without the Adventurer's Roster gets one.
      */
     public void onOwnerLogin(Character owner) {
         int ownerId = owner.getId();
@@ -2292,8 +2339,12 @@ public final class RosterService {
                 }
             }
         }
+        if (letters.on()) {
+            // the letters say it all a few seconds on, in one pink line (F3); before the lineup's call-back reports
+            letters.loggedIn(owner, afterLogout);
+        }
         Map<String, long[]> before = benchAtLogout.remove(ownerId);
-        if (before != null) {
+        if (before != null && !letters.on()) { // with the letters on, their notes tell it instead
             // one whisper sums it up (flow 7 step 6): the call-back reports of those it named are spent, not told again
             BenchLedger ledger = world.bench();
             for (String personaId : summarizeBench(owner, before)) {
@@ -2312,47 +2363,73 @@ public final class RosterService {
             }
         }
         parkedParty.remove(ownerId);
-        tellAwayReleases(owner);
-        tellCampMoves(owner);
+        if (!letters.on()) {
+            tellAwayReleases(owner);
+            tellCampMoves(owner);
+        }
+    }
+
+    /**
+     * Companions that left a camp too rough for them while their owner was offline (BenchDutyDispatcher) say so once,
+     * in pink, at the login: "While you were away, Casse moved camp to Line 1 <Area 2>: the old one was too rough."
+     */
+    private void tellCampMoves(Character owner) {
+        for (Persona persona : campMoved(owner)) {
+            RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+            owner.dropMessage(5, "While you were away, " + persona.name() + " moved camp to "
+                    + CompanionView.placeName(entry.campMapId()) + ": the old one was too rough.");
+        }
+    }
+
+    /**
+     * The owner's companions still on their roster that moved camp from one too rough since they were last told, each
+     * once; marked told now (the login's pink lines, or the letters). Empty for an Agent.
+     */
+    List<Persona> campMoved(Character owner) {
+        if (AgentPresence.isAgent(owner)) {
+            return List.of();
+        }
+        List<String> moved = world.store().untoldEvents(owner.getId(), BenchDutyDispatcher.CAMP_MOVED_EVENT, CAMP_TOO_ROUGH,
+                CAMP_MOVES_TOLD_EVENT);
+        if (moved.isEmpty()) {
+            return List.of();
+        }
+        world.store().event(owner.getId(), null, CAMP_MOVES_TOLD_EVENT, moved.size() + " moved while away");
+        List<Persona> out = new ArrayList<>();
+        Set<String> said = new HashSet<>();
+        for (String personaId : moved) {
+            Persona persona = personaId == null ? null : world.content().persona(personaId);
+            RosterEntry entry = persona == null ? null : world.store().rosterEntry(owner.getId(), persona.id());
+            if (entry != null && said.add(persona.id())) {
+                out.add(persona);
+            }
+        }
+        return out;
     }
 
     /**
      * A friend back from RESIDENT_OWNER_INACTIVE_DAYS away hears once, in pink, who went home meanwhile (the allocation
      * sweep's roster.release "owner inactive"): "While you were away, Hadrik went home to Lith Harbor."
      */
-    /**
-     * Companions that left a camp too rough for them while their owner was offline (BenchDutyDispatcher) say so once,
-     * in pink, at the login: "While you were away, Casse moved camp to Line 1 <Area 2>: the old one was too rough."
-     */
-    private void tellCampMoves(Character owner) {
-        if (AgentPresence.isAgent(owner)) {
-            return;
-        }
-        List<String> moved = world.store().untoldEvents(owner.getId(), BenchDutyDispatcher.CAMP_MOVED_EVENT, CAMP_TOO_ROUGH,
-                CAMP_MOVES_TOLD_EVENT);
-        if (moved.isEmpty()) {
-            return;
-        }
-        world.store().event(owner.getId(), null, CAMP_MOVES_TOLD_EVENT, moved.size() + " moved while away");
-        Set<String> said = new HashSet<>();
-        for (String personaId : moved) {
-            Persona persona = personaId == null ? null : world.content().persona(personaId);
-            RosterEntry entry = persona == null ? null : world.store().rosterEntry(owner.getId(), persona.id());
-            if (entry != null && said.add(persona.id())) {
-                owner.dropMessage(5, "While you were away, " + persona.name() + " moved camp to "
-                        + CompanionView.placeName(entry.campMapId()) + ": the old one was too rough.");
-            }
+    private void tellAwayReleases(Character owner) {
+        String gone = awayReleases(owner);
+        if (gone != null) {
+            owner.dropMessage(5, "While you were away, " + gone + ".");
         }
     }
 
-    private void tellAwayReleases(Character owner) {
+    /**
+     * Who went home while the owner was away, once, marked told now: "Hadrik went home to Lith Harbor", "Hadrik and
+     * Mira went home"; null for nobody (or an Agent).
+     */
+    String awayReleases(Character owner) {
         if (AgentPresence.isAgent(owner)) {
-            return;
+            return null;
         }
         List<String> gone = world.store().untoldEvents(owner.getId(), "roster.release", ResidentAllocation.AWAY_REASON,
                 AWAY_TOLD_EVENT);
         if (gone.isEmpty()) {
-            return;
+            return null;
         }
         world.store().event(owner.getId(), null, AWAY_TOLD_EVENT, gone.size() + " let go while away");
         List<Persona> went = new ArrayList<>();
@@ -2363,13 +2440,13 @@ public final class RosterService {
             }
         }
         if (went.size() == 1) {
-            owner.dropMessage(5, "While you were away, " + went.get(0).name() + " went home to "
-                    + townName(went.get(0).homeTown()) + ".");
+            return went.get(0).name() + " went home to " + townName(went.get(0).homeTown());
         } else if (!went.isEmpty()) {
             List<String> names = went.stream().map(Persona::name).toList();
-            owner.dropMessage(5, "While you were away, " + String.join(", ", names.subList(0, names.size() - 1)) + " and "
-                    + names.get(names.size() - 1) + " went home.");
+            return String.join(", ", names.subList(0, names.size() - 1)) + " and " + names.get(names.size() - 1)
+                    + " went home";
         }
+        return null;
     }
 
     /**
@@ -2405,6 +2482,7 @@ public final class RosterService {
         }
         channelFollow.forget(ownerId);
         ownerLogoutAtMs.put(String.valueOf(ownerId), System.currentTimeMillis());
+        letters.loggedOut(owner); // what follows happened while they were away (F3)
         List<RosterEntry> rows = roster(owner);
         if (rows.isEmpty()) {
             return;

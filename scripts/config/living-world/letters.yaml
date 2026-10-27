@@ -1,0 +1,97 @@
+# Letters (docs/BOT_CONCEPT_PLAN.md F3, CompanionLetters, LetterVoice): the notes a companion writes its owner about
+# the time they were away, and the message on a gift it mails by Duey. A note is an opening, the companion's news in
+# the order of the parts below (each part one sentence, the least important dropped first when the note would pass
+# 200 characters) and a closing. Past the first notes of a login the other companions share one crew letter, written
+# by the first of them: crew_open, then a crew_* sentence about each.
+#
+# Each part has `lines` and may give a dialogue style its own (`styles`, keyed by the style the persona's personality
+# resolves to in dialogue-style-profiles.json: quiet-practical-v1 for efficient, friendly-casual-v1 for relaxed,
+# playful-social-v1, curious-millennial-v1); a style without its own uses `lines`. One line is picked at random.
+# Lowercase like the companions' chat, but for the names of places, items and people.
+#
+# Slots: {owner} the reader; {self} the writer; {level} the level its banked EXP is ready for (or it reached out there);
+# {job} the job it advanced to; {drops} what it found ("a Scroll for Gloves for DEX 60%", "2 Steely Throwing-Knives");
+# {camp} the field it last trained at, or moved its camp to; {meso} the meso it put in the haul ("12k"); {times} its
+# deaths as a soft count ("once", "twice", "a few times"); {item} the gift; {name} a companion in the crew letter.
+parts:
+  open:
+    lines: ["hey {owner}!", "hi {owner},", "{owner}!", "hey {owner},"]
+    styles:
+      quiet-practical-v1: ["{owner},", "hey {owner}.", "{owner}. quick update."]
+      playful-social-v1: ["{owner}!!", "heyy {owner}!", "omg {owner} hi!"]
+      curious-millennial-v1: ["hey {owner}!", "{owner}! guess what"]
+  job:
+    lines: ["i made {job}!", "i'm a {job} now!", "finally made {job}."]
+    styles:
+      quiet-practical-v1: ["made {job}.", "{job} now."]
+      playful-social-v1: ["i'm a {job} now!!! so happy", "guess who made {job}!!"]
+  level:
+    lines: ["i'm ready for lv {level} whenever you call me.", "got enough exp for lv {level}, just call me back.",
+            "lv {level} as soon as you call me!"]
+    styles:
+      quiet-practical-v1: ["ready for lv {level} when you call.", "exp banked for lv {level}."]
+      playful-social-v1: ["lv {level} is waiting for me!! call me back", "so close, lv {level} the moment you call!"]
+  levelup:
+    lines: ["hit lv {level} out there.", "made lv {level} today."]
+    styles:
+      quiet-practical-v1: ["lv {level} now."]
+      playful-social-v1: ["lv {level}!!! finally"]
+  drops:
+    lines: ["found {drops} at {camp}.", "picked up {drops} at {camp}, it's in the haul.", "look what dropped: {drops}."]
+    styles:
+      quiet-practical-v1: ["found {drops}. it's in the haul.", "{drops} dropped at {camp}."]
+      playful-social-v1: ["{drops} dropped!!! at {camp} of all places", "found {drops}, so lucky"]
+      curious-millennial-v1: ["{drops} dropped at {camp}, is that good?", "found {drops}! worth anything?"]
+  parcel:
+    lines: ["sent you something by duey.", "check duey, i sent you something."]
+    styles:
+      quiet-practical-v1: ["sent you a parcel. duey has it."]
+      playful-social-v1: ["check duey!! i sent you a little something"]
+  camp:
+    lines: ["moved camp to {camp}, the old one was too rough.", "had to move to {camp}, the old camp was too much."]
+    styles:
+      quiet-practical-v1: ["moved camp to {camp}. old one was too rough."]
+      playful-social-v1: ["the old camp was scary so i moved to {camp} lol"]
+  deaths:
+    lines: ["took a tumble {times}.", "fell {times}, but i'm fine.", "died {times}, oops."]
+    styles:
+      quiet-practical-v1: ["went down {times}. fine now."]
+      playful-social-v1: ["died {times} lol don't tell anyone", "took a tumble {times}, ouch"]
+  meso:
+    lines: ["put {meso} meso in the haul.", "the haul's up {meso} meso."]
+    styles:
+      quiet-practical-v1: ["+{meso} meso in the haul."]
+  close:
+    lines: ["see you soon!", "come say hi!", "- {self}", "talk soon"]
+    styles:
+      quiet-practical-v1: ["- {self}", "see you."]
+      playful-social-v1: ["miss u!! - {self}", "come back soon!!", "xo {self}"]
+      curious-millennial-v1: ["see you soon!", "talk later! - {self}"]
+  crew_open:
+    lines: ["news from the crew:", "the others say hi.", "quick crew update:"]
+    styles:
+      quiet-practical-v1: ["crew update:"]
+      playful-social-v1: ["crew news!!"]
+  crew_job:
+    lines: ["{name} made {job}."]
+  crew_level:
+    lines: ["{name} is ready for lv {level}."]
+  crew_levelup:
+    lines: ["{name} hit lv {level}."]
+  crew_drops:
+    lines: ["{name} found {drops}."]
+  crew_parcel:
+    lines: ["{name} sent you a parcel."]
+  crew_meso:
+    lines: ["{name} put {meso} meso in the haul."]
+  crew_camp:
+    lines: ["{name} moved camp to {camp}."]
+  crew_deaths:
+    lines: ["{name} took a tumble {times}."]
+  gift:
+    lines: ["found this at {camp} and thought of you.", "this dropped at {camp}. it's yours.",
+            "saw this and thought you'd like it."]
+    styles:
+      quiet-practical-v1: ["found this at {camp}. figured you could use it.", "for you. dropped at {camp}."]
+      playful-social-v1: ["surprise!! found this at {camp} and it screamed you", "a little gift!! dropped at {camp}"]
+      curious-millennial-v1: ["found this at {camp}, i think it's good? it's yours!"]

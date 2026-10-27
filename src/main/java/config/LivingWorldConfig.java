@@ -250,6 +250,32 @@ public class LivingWorldConfig {
     /** How often a companion's owed share of its loot is moved from its bag and purse into its haul. */
     public int COMPANION_LOOT_SETTLE_MS = 60000;
 
+    // Letters: what happened while you were away (docs/BOT_CONCEPT_PLAN.md F3, CompanionLetters)
+    /**
+     * Kill switch for letters: the bench's news kept across a restart (bench.report rows), citizens asking after an
+     * absent friend, the login digest by note with its one pink line, and gifts by Duey. false = none of it, and the
+     * login says what it said before.
+     */
+    public boolean LETTERS_ENABLED = false;
+    /** How long after a login the letters arrive: after the login's own note show, so they are shown once. */
+    public int LETTERS_DELAY_MS = 6000;
+    /** Notes one login may bring; the companions past the first ones share one crew letter. */
+    public int LETTERS_MAX_NOTES = 5;
+    /** The rarity rule: a found equip is news when its required level is within this many levels of its owner's. */
+    public int LETTERS_EQUIP_LEVEL_SPAN = 10;
+    /** The friendship level a Resident needs before it mails its owner a gift from what it found. */
+    public int LETTERS_GIFT_FRIENDSHIP_LEVEL = 4;
+    /** The chance, each bench ledger tick, that a Resident with something worth giving mails it. */
+    public double LETTERS_GIFT_CHANCE = 0.03;
+    /** Gifts one companion mails its owner in seven days. */
+    public int LETTERS_GIFTS_PER_WEEK = 1;
+    /** The warmth (PersonMemory, 0-100) a citizen needs before it asks after someone who is not around. */
+    public int LETTERS_ASK_WARMTH = 40;
+    /** The chance that an idle line of a citizen with such a friend offline is asking after them instead. */
+    public double LETTERS_ASK_CHANCE = 0.1;
+    /** Hours before any citizen asks after the same person again. */
+    public int LETTERS_ASK_GAP_HOURS = 6;
+
     // Hired hands and Resident allocation (P4, decisions 2 b, 4 b, 18 b, 19 b)
     /**
      * Hired citizens ({@code hire:<characterId>}) one owner may keep; they count toward ROSTER_MAX, so at most that. The
@@ -678,6 +704,13 @@ public class LivingWorldConfig {
         if (COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL < 0 || COMPANION_LOOT_SETTLE_MS < 1000) {
             throw new IllegalArgumentException("living_world.COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL must be >= 0 and"
                     + " COMPANION_LOOT_SETTLE_MS >= 1000");
+        }
+        if (LETTERS_MAX_NOTES < 1 || LETTERS_MAX_NOTES > 100 || LETTERS_DELAY_MS < 0 || LETTERS_EQUIP_LEVEL_SPAN < 0
+                || LETTERS_GIFT_FRIENDSHIP_LEVEL < 1 || LETTERS_GIFT_FRIENDSHIP_LEVEL > 10 || LETTERS_GIFTS_PER_WEEK < 0
+                || LETTERS_GIFT_CHANCE < 0 || LETTERS_GIFT_CHANCE > 1 || LETTERS_ASK_CHANCE < 0 || LETTERS_ASK_CHANCE > 1
+                || LETTERS_ASK_WARMTH < 0 || LETTERS_ASK_WARMTH > 100 || LETTERS_ASK_GAP_HOURS < 0) {
+            throw new IllegalArgumentException("living_world.LETTERS_MAX_NOTES must be within 1..100,"
+                    + " LETTERS_GIFT_FRIENDSHIP_LEVEL 1..10, LETTERS_ASK_WARMTH 0..100, the chances 0..1, the rest >= 0");
         }
         if (RECALL_MAX_ETA_MS < 0) {
             throw new IllegalArgumentException("living_world.RECALL_MAX_ETA_MS must be >= 0");

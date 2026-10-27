@@ -212,6 +212,35 @@ toward `ownerLevel - paceGap` (banked, granted when called), or meso/items into 
 bench efficiency factor and the daily farming cap; a persona never farms its own quests from
 the bench (24 h haul provenance is checked at turn-in).
 
+### Letters
+
+Off by default: `living_world.LETTERS_ENABLED` (docs/BOT_CONCEPT_PLAN.md F3, `CompanionLetters`). A few seconds
+(`LETTERS_DELAY_MS`) after you log in from a real logout, or for the first time since a restart, each companion that did
+something while you were away writes you a normal note (the memo window), sent as itself and in its voice: the level
+its banked EXP is ready for (or one it reached out there), what it found by the rarity rule (an equip within
+`LETTERS_EQUIP_LEVEL_SPAN` levels of yours, an equip scroll, or an item in the top tenth of the citizens' price index),
+job advances, a camp move from a rough camp, gifts it sent, deaths as a soft count ("took a tumble twice") and the meso
+it put in the haul. At most `LETTERS_MAX_NOTES` notes a login, and never past the 100-unread cap: the companions past
+the first ones share one crew letter, written by the first of them. One pink line sums it up in place of the old
+"While you were away" lines: who wrote, who went home, and which citizens asked after you.
+
+- **The news survives a restart.** Bench work (the ledger's credit, live slices' harvests and ends) is written as
+  `bench.report` rows (JSON) to `living_event_log` at each ledger tick and slice end. The digest reads the rows,
+  `job.advanced`, `letters.gift` and `citizen.asked` after your newest `letters.away` (written at a logout) or
+  `letters.told` (written by a digest) marker, so it tells only the time you were away, once. A companion the letters
+  told about has no call-back report to repeat.
+- **Gifts.** A Resident (hires keep no friendship yet) at friendship `LETTERS_GIFT_FRIENDSHIP_LEVEL` or more sometimes
+  (`LETTERS_GIFT_CHANCE` a ledger tick, `LETTERS_GIFTS_PER_WEEK` each) mails you one such find from its haul by Duey,
+  with a message. It is taken from the haul, never minted; you get Duey's live notice when you are online.
+- **Asking after you.** A citizen with warmth `LETTERS_ASK_WARMTH` or more toward you (its person memory) sometimes
+  says "anyone seen Ann?" in place of an idle line while you are offline (`memory.asked` in `chatter/memory.yaml`; at
+  most once per `LETTERS_ASK_GAP_HOURS` for you); your next login's pink line says who asked.
+- **Voice.** `letters.yaml` in the content directory: per part of a letter, its lines and each dialogue style's own (the
+  style a persona's personality resolves to). Templated: no Jev calls.
+
+Always on, as the fix of two tells: "send it" mails an equip with drop-like random stats (a piece a package), and meso
+alone in a package with no item, as a player's meso-only Duey package; you get Duey's live notice.
+
 ### The in-game quest log
 
 Living quests can appear in the client's quest log next to the stock quests (In Progress and

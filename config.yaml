@@ -891,6 +891,28 @@ living_world:
     COMPANION_LOOT_TERMS_ENABLED: true
     COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL: 1000
     COMPANION_LOOT_SETTLE_MS: 60000
+    # Letters (docs/BOT_CONCEPT_PLAN.md F3): a few seconds after you log in from a real logout, each companion that did
+    # something while you were away writes you a note in its own voice (letters.yaml), sent as itself: the level its
+    # banked EXP is ready for, what it found (an equip within EQUIP_LEVEL_SPAN levels of you, a scroll, or an item in the
+    # price index's top tenth), job advances, camp moves, gifts, deaths as a soft count. At most MAX_NOTES a login; the
+    # rest share one crew letter. One pink line sums it up, with who went home and which citizens asked after you. A
+    # Resident at friendship GIFT_FRIENDSHIP_LEVEL or more sometimes mails you one such find from its haul by Duey, with
+    # a message (GIFT_CHANCE a ledger tick, GIFTS_PER_WEEK each). A citizen with WARMTH toward a friend who is offline
+    # sometimes asks after them in its idle chatter (ASK_CHANCE, once per ASK_GAP_HOURS a friend). LETTERS_ENABLED is
+    # the kill switch (false: none of it; the login lines are as before).
+    # Technical: bench work is written as bench.report rows (JSON) to living_event_log at each ledger tick and slice end,
+    # so a restart loses nothing; the digest reads the rows after the owner's newest letters.away (logout) or
+    # letters.told (digest) marker, sends normal notes through NoteService within the 100-unread cap, then shows them.
+    LETTERS_ENABLED: false
+    LETTERS_DELAY_MS: 6000
+    LETTERS_MAX_NOTES: 5
+    LETTERS_EQUIP_LEVEL_SPAN: 10
+    LETTERS_GIFT_FRIENDSHIP_LEVEL: 4
+    LETTERS_GIFT_CHANCE: 0.03
+    LETTERS_GIFTS_PER_WEEK: 1
+    LETTERS_ASK_WARMTH: 40
+    LETTERS_ASK_CHANCE: 0.1
+    LETTERS_ASK_GAP_HOURS: 6
     # Hired hands (P4): citizens one friend may hire. They count toward ROSTER_MAX, so at most that; the default is
     # ROSTER_MAX, so a friend without Residents can still fill a party and a bench from the hire list. Then the
     # minutes a citizen guest spends in your party before it offers to stay on.

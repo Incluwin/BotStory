@@ -190,3 +190,24 @@ intents:
       - "oh. hi"
       - "hi {name}"
       - "...hey"
+  # memory.asked: a citizen asks after a friend who is not around (PersonMemories.askAfter, the letters of
+  # docs/BOT_CONCEPT_PLAN.md F3), in place of an idle line; {name} = the friend. Asked at most once an hour per citizen.
+  - id: memory.asked.map
+    trigger: memory.asked
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 3600000
+    lines:
+      - "anyone seen {name}?"
+      - "has anyone seen {name} lately"
+      - "wheres {name} been"
+      - "havent seen {name} in a while"
+      - "anyone know if {name} quit?"
+    styles:
+      quiet-practical-v1:
+        - "seen {name}?"
+        - "{name} been on?"
+      playful-social-v1:
+        - "i miss {name} :( anyone seen them?"
+        - "where did {name} go!!"
