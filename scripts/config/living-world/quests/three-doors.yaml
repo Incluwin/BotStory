@@ -1,0 +1,267 @@
+# Temple of Time quests (wave 4). Fields behind Three Doors: Memory Lane 270010100-270010500 (eye of time 8200000
+# cracked hourglass 4000443 everywhere; memory monk 8200001 green cloth 4000444 on 270010100; memory monk trainee
+# 8200002 green cone hat 4000445 on 270010200; memory guardian 8200003 green helmet 4000447 on 270010300-270010400;
+# chief memory guardian 8200004 green heart 4000448 on 270010400-270010500; Dodo 8220004 whale's helmet 4000460 at
+# 270010500); the Road of Regrets 270020100-270020500 (qualm monk 8200005 blue cloth 4000449; trainee 8200006 blue cone
+# hat 4000450; qualm guardian 8200007 blue helmet 4000452; chief 8200008 blue heart 4000453); the Road to Oblivion
+# 270030100-270030500 (oblivion monk 8200009 red cloth 4000454; trainee 8200010; oblivion guardian 8200011). Resting
+# spots 270010110/210/310/410 and 270020110...; the temple is reached from the Orbis-Leafre ship.
+
+# ---- Solveig: the Road of Regrets (arcs/three-doors.yaml) ----
+- id: solveig-the-pilgrims-cairn
+  persona: solveig
+  title: "The Pilgrim's Cairn"
+  length: SHORT
+  requires: { level: { min: 82 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [8200000], count: 25, mapIds: [270020100, 270020200] }
+    - { id: cairn, type: VISIT_MAP, mapIds: [270020110] }
+    - { id: laid, type: DELIVER, to: solveig }
+  rewards: { meso: 22000, exp: 30000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: solveig-the-song-in-the-glass
+  persona: solveig
+  title: "A Song in the Glass"
+  length: MEDIUM
+  requires: { level: { min: 84 }, questsCompleted: [solveig-the-pilgrims-cairn] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [8200000], count: 30, mapIds: [270010300, 270010400] }
+    - { id: glasses, type: COLLECT_ITEM, itemId: 4000443, count: 12 }
+    - { id: listen, type: DELIVER, to: solveig, take: { itemId: 4000443, count: 12 } }
+  rewards: { meso: 26000, exp: 40000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }], worldFlags: [temple.song.found] }
+
+- id: solveig-the-girl-at-the-gate
+  persona: solveig
+  title: "The Girl at the Gate"
+  length: MEDIUM
+  requires: { level: { min: 84 }, questsCompleted: [solveig-the-song-in-the-glass], flags: [neo.harbor.heard], notFlags: [temple.song.traced] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: augustin, type: TALK_TO, persona: augustin, say: ["a harbor? the gate opens on Midnight Harbor, in the year 2099, on some nights. a girl came out of it this spring. Calla. she's by the gate now. ...a song, you say. ask her. i'll say no more. it's not my line to read."] }
+    - { id: calla, type: TALK_TO, persona: calla, say: ["a song from a glass? hum it. ...hm hm hmm. hm hmm. i know the next bit! i don't know how i know it. it's gran's. it's my gran's song. i'd forgotten i'd forgotten it. tell her. tell the pilgrim."] }
+    - { id: told, type: DELIVER, to: solveig }
+  rewards: { meso: 40000, exp: 60000, bondPoints: 60, items: [{ itemId: 2000005, count: 10 }], worldFlags: [temple.song.traced] }
+
+# ---- Osmund (a Timeless hat for the player's class, scaled by friendship) ----
+- id: osmund-blotting-felt
+  persona: osmund
+  title: "Felt for the Blotter"
+  length: SHORT
+  requires: { level: { min: 104 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trainees, type: KILL_MOBS, mobIds: [8200006], count: 25, mapIds: [270020200] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000450, count: 12 }
+    - { id: blotter, type: DELIVER, to: osmund, take: { itemId: 4000450, count: 12 } }
+  rewards: { meso: 36000, exp: 95000, bondPoints: 30, items: [{ itemId: 2000005, count: 10 }] }
+
+- id: osmund-blue-ink
+  persona: osmund
+  title: "Ink for Regrets"
+  length: MEDIUM
+  requires: { level: { min: 114 }, questsCompleted: [osmund-blotting-felt] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200008], count: 25, mapIds: [270020400, 270020500] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000453, count: 12 }
+    - { id: ink, type: DELIVER, to: osmund, take: { itemId: 4000453, count: 12 } }
+  rewards: { meso: 44000, exp: 140000, bondPoints: 35, items: [{ itemId: 2000005, count: 15 }] }
+
+- id: osmund-a-hat-for-the-ages
+  persona: osmund
+  title: "A Hat for the Ages"
+  length: LONG
+  requires: { level: { min: 120 }, friendship: 7, questsCompleted: [osmund-blue-ink] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200009], count: 25, mapIds: [270030100] }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000454, count: 12 }
+    - { id: bound, type: DELIVER, to: osmund, take: { itemId: 4000454, count: 12 } }
+  rewards:
+    meso: 120000
+    exp: 220000
+    bondPoints: 50
+    gear:
+      - { pool: [1002776, 1002777, 1002778, 1002779, 1002780] }
+
+# ---- Ilsabet ----
+- id: ilsabet-the-unruled-line
+  persona: ilsabet
+  title: "The Unruled Line"
+  length: SHORT
+  requires: { level: { min: 80 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: corliss, type: TALK_TO, persona: corliss, say: ["the night ship to Leafre, thirty years back? before my time. the old ledgers are in the back room. ...here. 'Ilsabet, of Ellinia, green hat. boarded.' and nothing after. nobody ever ruled it off. i'll do it now. 'disembarked: the Temple of Time.' there. a closed line. tell her."] }
+    - { id: elsk, type: TALK_TO, persona: elsk, say: ["a lady asleep in the hold, thirty years back? the old porters tell that one. nobody could wake her, so they let her be, and in the morning she wasn't there. they said the temple had her. ...that's her? tell her she's famous. tell her the porters still leave a lamp on in the hold."] }
+    - { id: back, type: DELIVER, to: ilsabet }
+  rewards: { meso: 20000, exp: 30000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: ilsabet-thirty-years-behind
+  persona: ilsabet
+  title: "Thirty Years Behind"
+  length: MEDIUM
+  requires: { level: { min: 90 }, questsCompleted: [ilsabet-the-unruled-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trainees, type: KILL_MOBS, mobIds: [8200002], count: 25, mapIds: [270010200] }
+    - { id: felt, type: COLLECT_ITEM, itemId: 4000445, count: 10 }
+    - { id: mirelle, type: TALK_TO, persona: mirelle, say: ["felt from the temple? lovely stuff. here, a pattern: a hat about twenty years behind. tell her to sew it herself. a hat you've sewn holds your wits better. and tell her hers will come back. they always do."] }
+    - { id: hat, type: DELIVER, to: ilsabet, take: { itemId: 4000445, count: 10 } }
+  rewards: { meso: 25000, exp: 45000, bondPoints: 35, items: [{ itemId: 2000005, count: 5 }] }
+
+# ---- Caedmon (recruit; Della's coats continued: L100 / L110 / Timeless L120) ----
+- id: caedmon-the-third-door
+  persona: caedmon
+  title: "The Third Door"
+  length: SHORT
+  requires: { level: { min: 96 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guardians, type: KILL_MOBS, mobIds: [8200003], count: 30, mapIds: [270010300, 270010400] }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000447, count: 10 }
+    - { id: wall, type: DELIVER, to: caedmon, take: { itemId: 4000447, count: 10 } }
+  rewards: { meso: 45000, exp: 70000, bondPoints: 30, flags: [caedmon.intro.done] }
+
+- id: caedmon-green-steel
+  persona: caedmon
+  title: "Green Steel"
+  length: MEDIUM
+  requires: { level: { min: 100 }, friendship: 5, questsCompleted: [caedmon-the-third-door] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200004], count: 30, mapIds: [270010400, 270010500] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000448, count: 15 }
+    - { id: coat, type: DELIVER, to: caedmon, take: { itemId: 4000448, count: 15 } }
+  rewards:
+    meso: 200000
+    exp: 220000
+    bondPoints: 35
+    gear:
+      - { pool: [1040120, 1041122, 1050102, 1051101, 1050106, 1051105, 1050096, 1051090, 1052131], scrolls: [{ success: 100 }] }
+
+- id: caedmon-the-blue-watch
+  persona: caedmon
+  title: "The Blue Watch"
+  length: LONG
+  requires: { level: { min: 110 }, friendship: 7, questsCompleted: [caedmon-green-steel] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guardians, type: KILL_MOBS, mobIds: [8200007], count: 30, mapIds: [270020300, 270020400] }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000452, count: 15 }
+    - { id: armour, type: DELIVER, to: caedmon, take: { itemId: 4000452, count: 15 } }
+  rewards:
+    meso: 280000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { pool: [1052075, 1052076, 1052071, 1052072, 1052134], scrolls: [{ success: 60 }] }
+
+- id: caedmon-timeless
+  persona: caedmon
+  title: "Behind Every Door"
+  length: LONG
+  requires: { level: { min: 120 }, friendship: 10, questsCompleted: [caedmon-the-blue-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dodo, type: KILL_MOBS, mobIds: [8220004], count: 3, mapIds: [270010500] }
+    - { id: whale, type: COLLECT_ITEM, itemId: 4000460, count: 3 }
+    - { id: trainees, type: KILL_MOBS, mobIds: [8200010], count: 30, mapIds: [270030200] }
+    - { id: suit, type: DELIVER, to: caedmon, take: { itemId: 4000460, count: 3 } }
+  rewards:
+    meso: 350000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { pool: [1052155, 1052156, 1052157, 1052158, 1052159], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: caedmon-the-helmet-wall
+  persona: caedmon
+  title: "The Helmet Wall"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 96 }, questsCompleted: [caedmon-the-third-door] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000447, count: 10 }
+    - { id: wall, type: DELIVER, to: caedmon, take: { itemId: 4000447, count: 10 } }
+  rewards: { meso: 22000, exp: 30000, bondPoints: 10 }
+
+# ---- Liesl (recruit; Perrin's earrings continued: Rose L90 / Sword L100 / Timeless L120) ----
+- id: liesl-the-first-road
+  persona: liesl
+  title: "The First Road"
+  length: SHORT
+  requires: { level: { min: 88 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200001], count: 30, mapIds: [270010100] }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000444, count: 12 }
+    - { id: grip, type: DELIVER, to: liesl, take: { itemId: 4000444, count: 12 } }
+  rewards: { meso: 42000, exp: 55000, bondPoints: 30, flags: [liesl.intro.done] }
+
+- id: liesl-rose-earrings
+  persona: liesl
+  title: "The Quietest Place in Time"
+  length: MEDIUM
+  requires: { level: { min: 90 }, friendship: 5, questsCompleted: [liesl-the-first-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trainees, type: KILL_MOBS, mobIds: [8200002], count: 30, mapIds: [270010200] }
+    - { id: sit, type: VISIT_MAP, mapIds: [270010210] }
+    - { id: back, type: DELIVER, to: liesl }
+  rewards:
+    meso: 180000
+    exp: 200000
+    bondPoints: 35
+    gear:
+      - { pool: [1032017], scrolls: [{ success: 100 }] }
+
+- id: liesl-sword-earrings
+  persona: liesl
+  title: "A Sling for the Long Shots"
+  length: LONG
+  requires: { level: { min: 100 }, friendship: 7, questsCompleted: [liesl-rose-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200005], count: 30, mapIds: [270020100] }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000449, count: 15 }
+    - { id: sling, type: DELIVER, to: liesl, take: { itemId: 4000449, count: 15 } }
+  rewards:
+    meso: 250000
+    exp: 280000
+    bondPoints: 50
+    gear:
+      - { pool: [1032030], scrolls: [{ success: 60 }] }
+
+- id: liesl-one-line
+  persona: liesl
+  title: "Remembered by One"
+  length: LONG
+  requires: { level: { min: 120 }, friendship: 10, questsCompleted: [liesl-sword-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200009], count: 30, mapIds: [270030100] }
+    - { id: guardians, type: KILL_MOBS, mobIds: [8200011], count: 20, mapIds: [270030300, 270030400] }
+    - { id: osmund, type: TALK_TO, persona: osmund, say: ["Anselm. ...yes. there's a line, in the Record Keeper's own hand. 'walked to the end of the road. remembered by one.' tell her that. by one is enough to keep a line. it always has been."] }
+    - { id: back, type: DELIVER, to: liesl }
+  rewards:
+    meso: 350000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { pool: [1032031], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: liesl-the-grip
+  persona: liesl
+  title: "A Worn Grip"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 88 }, questsCompleted: [liesl-the-first-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000444, count: 10 }
+    - { id: grip, type: DELIVER, to: liesl, take: { itemId: 4000444, count: 10 } }
+  rewards: { meso: 20000, exp: 28000, bondPoints: 10 }

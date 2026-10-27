@@ -1,0 +1,223 @@
+# The Town of Ariant cast (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): the residential quarter, where the sand
+# bandits live. 3 residents, 1 recruitable (Kasim the lookout, on his own terms heard at his aunt's door), 1 arc (Zahra's
+# bolt of palace silk, cut for the Tent of the Entertainers; it runs across the town, the castle and the tent). Ids in
+# quests/town-of-ariant.yaml.
+- id: zahra
+  name: Zahra
+  look: { gender: female }
+  title: "Seamstress of the Residential Quarter"
+  job: BEGINNER
+  level: { min: 44, max: 44 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: town-of-ariant
+    routine:
+      - { from: 7, to: 11, spot: "venue:residential-area-1-door", activity: REST }
+      - { from: 11, to: 13, spot: "venue:by-muhamad", activity: SOCIALIZE }
+      - { from: 13, to: 15, materialize: false }
+      - { from: 15, to: 17, spot: "venue:residential-area-4-door", activity: SOCIALIZE }
+      - { from: 17, to: 19, spot: "venue:residential-area-1-door", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [bellamoa, snake rattle, ragged scarf]
+  questLines: [zahra-bells-for-the-hems, zahra-measure-the-tent, zahra-bandit-red, zahra-red-under-the-lanterns]
+  arc: zahra-the-red-silk
+  rumors: [ariant-town-kasims-terms, ariant-town-the-word-goes-out]
+  relationships:
+    - { persona: yusra, kind: MOTHER_OF }
+    - { persona: kasim, kind: RAISED }
+    - { persona: idris, kind: FEEDS }
+    - { persona: zarek, kind: SEWED_FOR }
+    - { persona: yasmin, kind: BUYS_DYE_FROM }
+  giftItemIds: [4000327, 2022155]
+  dialogue:
+    greetFirst: ["mind the pins. they're in the doorway because i'm in the doorway. sit if you like. the step's warm.", "a new face in the quarter. you've sand in your hem. everyone does. i'm the one who sews it out."]
+    greet: ["hello again. hold still, there's a thread on your sleeve. there. gone.", "you're back. the needle's threaded. it's always threaded."]
+    idle: ["(bites off a thread and holds the needle up to the light to thread it again)", "(glances up the street toward the palace, then back at the hem in her lap)"]
+    noWork: ["nothing today. the hems are holding. so am i."]
+    nothingDue: ["you owe me nothing. i don't sew on credit and i don't sew debts."]
+    who: ["Zahra. i sew for the quarter. hems, sashes, wedding sleeves, and the odd thing i don't ask about. my daughter Yusra serves in the palace wardrobe. my nephew Kasim sits on roofs. i worry about both. i sew instead."]
+    bye: ["mind your hem on the stair. the quarter's steps eat cloth."]
+    thanks: ["oh, go on. thank you."]
+    smallTalk: ["there's a loose board under my floor that i never step on. every house in the quarter has one. don't ask what's under mine. i'll tell you when i've decided.", "i sewed for the Tent of the Entertainers when i was a girl. Zarek's coats, Zarek's curtains, Zarek's opinions. i've mended the quarter ever since. it's quieter. it argues less."]
+    speakPlainly: ["plainly: a needle, a doorway, and a family that won't sit still."]
+    questOffer.zahra-bells-for-the-hems: ["the tent's people came through the quarter last week. their hems are bald. no bells, no rattles, nothing to ring when they turn. the bellamoas in the White Rock Desert carry the best rattles in Nihal. twenty-five of them, fifteen rattles?"]
+    questAccept.zahra-bells-for-the-hems: ["the White Rock Desert, west past the cactus country, and the bellamoas' cave off it. the snakes. they rattle before they bite. listen for it."]
+    questWaiting.zahra-bells-for-the-hems: ["fifteen rattles. a hem without a bell is just a hem."]
+    questComplete.zahra-bells-for-the-hems: ["fifteen. listen to them. ...you know what. there's a bolt of red silk under my floor. eleven years it's been there. i can't sell it and i can't wear it. it's going to be costumes. for the tent. there. i've decided."]
+    questOffer.zahra-measure-the-tent: ["i need measurements. the tent, out past the east entrance. Pepita, Rafi and Zarek. performers never come to the seamstress. go and get their numbers. they'll lie. bring me the lies. i'll know."]
+    questAccept.zahra-measure-the-tent: ["the Tent of the Entertainers, out the east gate past the rabbits. they keep to the high boards. Zarek's the old one with the voice. you'll hear him first."]
+    questWaiting.zahra-measure-the-tent: ["three of them. Pepita won't hold still. Rafi will want loose sleeves. Zarek will lie. bring it all."]
+    questComplete.zahra-measure-the-tent: ["Pepita grew. Rafi wants tight sleeves, which means loose. Zarek's chest is what it was thirty years ago, which means it isn't. good. i can cut. if only i knew the palace wasn't still looking for this silk. Yusra might know. she keeps the wardrobe."]
+    questOffer.zahra-bandit-red: ["Kasim's sash is torn again. it's always torn. i need sand-bandit red to mend it, and only Yasmin in the market still dyes it. ask her for two skeins. ask for it by that name."]
+    questAccept.zahra-bandit-red: ["Yasmin. the market, out the town door. she's by Ahmad in the mornings and up on the east ledges after noon. say 'sand-bandit red'. she'll look at you funny. then she'll give it to you."]
+    questWaiting.zahra-bandit-red: ["two skeins. the sash won't hold another day."]
+    questComplete.zahra-bandit-red: ["the same dye as it ever was, and the same reason. ...yes. she would say that. thank you. Kasim will pretend he didn't need it."]
+    questOffer.zahra-red-under-the-lanterns: ["the costumes are done. every scrap of the red. now it's only asking. Zarek has to say yes, Darius has to be off duty, and Kasim has to be on the roofs. go and ask all three. tonight the tent plays the quarter, or it never does."]
+    questAccept.zahra-red-under-the-lanterns: ["the tent for Zarek. the castle for Darius, he stands by Tigun of an evening. Kasim's on the roofs here. ask them plainly. i'll fill the lanterns."]
+    questWaiting.zahra-red-under-the-lanterns: ["Zarek, Darius, Kasim. the lanterns are filled. i'm waiting with a match."]
+    questComplete.zahra-red-under-the-lanterns: ["they came. through the east door at dusk, all of them in red. Pepita rang like a bell at every turn. Rafi ate fire in the middle of the street and nobody's curtains caught. Zarek juggled seven torches and dropped none. the whole quarter stood in the street. Kasim whistled once, for nothing. ...thank you. eleven years under the floor, and it was for this."]
+    about.yusra: ["Yusra's my daughter. she serves in the palace wardrobe and comes home on her day off with her hair pinned like a queen's. she folds my laundry wrong on purpose so i'll fix it. we both know."]
+    about.kasim: ["Kasim's my sister's boy. i raised him. he sits on the roofs and whistles at the palace road. his sash is always torn. i mend it. i don't ask where it tore."]
+    about.idris: ["Idris runs letters for the palace and writes them for the quarter. half the love letters on this street are in his hand. he's never once read one aloud. that's why they trust him."]
+    about.zarek: ["Zarek. i sewed his coats when i was a girl. he had a voice you could hear from the palace. he still does. the palace still hears it."]
+    about.pepita: ["the juggler girl. Pepita. she can't hold still for a measurement. she can hold still on one foot on a rope. performers."]
+    about.rafi: ["Rafi eats fire for the tent. he asks for loose sleeves. i've sewn for fire-eaters before. you never give them what they ask for."]
+    about.darius: ["the young guard who stands by Tigun. Darius. Yusra says he sees nothing very carefully. that's the best kind of guard to have at a palace."]
+    about.yasmin: ["Yasmin dyes in the market. she's the only one left who still makes sand-bandit red. she says the dye's the same as it ever was. so's the reason, she says. she doesn't say the reason."]
+    aboutUnknown: ["never sewn for them. i'd remember the hem."]
+    friend.close: ["i've let out the hem on your coat. no, i didn't ask. you'll thank me on the stairs."]
+    friend.best: ["if i ever need someone to know which board in my floor not to step on, it'll be you. i've told Yusra. she agreed. she never agrees."]
+    famed: ["the quarter's talking about you. kindly. i can tell by the way they pin their sleeves."]
+    defamed: ["the quarter's talking. not kindly. i've heard worse said about better people. sit. i'll fix your collar."]
+    gift: ["oh, for me? thank you."]
+    gift.favorite: ["oh, that's lovely. that goes straight in the sewing basket, on top."]
+    gift.again: ["one's plenty. the basket's only so big."]
+
+- id: idris
+  name: Idris
+  look: { gender: male }
+  title: "Palace Messenger"
+  job: BEGINNER
+  level: { min: 23, max: 23 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: town-of-ariant
+    routine:
+      - { from: 6, to: 9, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 9, to: 14, materialize: false }
+      - { from: 14, to: 17, spot: "venue:by-eleska", activity: STROLL }
+      - { from: 17, to: 19, spot: "venue:residential-area-4-door", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [meerkat, ariant castle, magatia]
+  questLines: [idris-quills-for-the-quarter, idris-a-letter-for-the-wardrobe, idris-the-caravan-post]
+  rumors: [ariant-town-the-word-goes-out]
+  relationships:
+    - { persona: zahra, kind: FED_BY }
+    - { persona: yusra, kind: CARRIES_LETTERS_TO }
+    - { persona: kasim, kind: RACES }
+    - { persona: tariq, kind: COLLECTS_POST_FROM }
+  giftItemIds: [4003004, 2001000]
+  dialogue:
+    greetFirst: ["sorry, sorry, coming through. oh. you're not in the way. i thought you were in the way. hello!", "a new face! are you a letter? no. you'd be folded. hello. i'm Idris. i carry things."]
+    greet: ["hello! three letters in, two out, one lost and found. good morning.", "you again! i've run past you twice today. you didn't notice. that's the job."]
+    idle: ["(checks the seal on a letter against the light, then tucks it into his satchel without reading it)", "(stretches one calf, then the other, counting the stairs up to the roofs under his breath)"]
+    noWork: ["nothing today. the satchel's empty. i hate it when the satchel's empty."]
+    nothingDue: ["we're square. i don't carry debts. too heavy."]
+    who: ["Idris. i run letters for the palace in the mornings and write them for the quarter in the evenings. the palace pays. the quarter feeds me. i've never read a letter i carried. i've read every envelope."]
+    bye: ["mind the stairs. i've counted them. there's one too many."]
+    thanks: ["thanks! that's going in my good satchel."]
+    smallTalk: ["the palace reads every letter that goes in from the quarter. so the quarter doesn't send many. i carry the rest in my head. i'm very good at remembering other people's love letters. i'm terrible at writing my own.", "from the castle gate to Zahra's door is four hundred and twelve strides. back again is four hundred and nine. it's downhill one way. it doesn't feel like it."]
+    speakPlainly: ["plainly: legs, a satchel, and other people's words."]
+    questOffer.idris-quills-for-the-quarter: ["i write letters for half the quarter, and i've worn my last quill to a stump. the meerkats on the north road lose stiff feathers when they scrap. twenty-five meerkats, eight feathers? i'll write you a letter. to anyone."]
+    questAccept.idris-quills-for-the-quarter: ["out Ariant's north entrance and up the first stretch of desert road. the meerkats. they stand up to look at you. that's when you hit them. sorry, meerkats."]
+    questWaiting.idris-quills-for-the-quarter: ["eight feathers. the quarter's backing up. there's a proposal waiting."]
+    questComplete.idris-quills-for-the-quarter: ["eight! i'll cut them tonight. the proposal first. she's going to say yes. i shouldn't know that. i know that."]
+    questOffer.idris-a-letter-for-the-wardrobe: ["a letter from Zahra to her daughter in the palace. i can't carry it in. the palace reads anything from the quarter, and Zahra writes very plainly about the queen. you're a visitor. visitors walk into the castle courtyard. would you?"]
+    questAccept.idris-a-letter-for-the-wardrobe: ["Ariant Castle. the courtyard's open to visitors. Yusra serves in the wardrobe. by the oasis at dawn, by Tigun of an evening. she'll be the one standing very straight."]
+    questWaiting.idris-a-letter-for-the-wardrobe: ["did she read it? did she smile? i want to tell Zahra she smiled."]
+    questComplete.idris-a-letter-for-the-wardrobe: ["she read it twice? and the wardrobe's cold but she's warm. ...i'll tell Zahra exactly that. word for word. it's my one talent."]
+    questOffer.idris-the-caravan-post: ["the post from Magatia comes down the Sahel road with Tariq's caravan. half for the palace, half for the quarter. ask Tariq where the quarter's half is today. he hides it from the palace men. he hides it from me too, for fun."]
+    questAccept.idris-the-caravan-post: ["Tariq. the station platform in the mornings, the middle of the market of an evening. big voice, bigger ledger. ask for the quarter's post."]
+    questWaiting.idris-the-caravan-post: ["the quarter's post. there's a grandmother waiting on a letter from Magatia. she's been at her door all day."]
+    questComplete.idris-the-caravan-post: ["the station door at dusk, and the quarter's half comes off the camel first. ...of course it does. i'll run it before the palace men wake up. the grandmother can stop waiting."]
+    about.zahra: ["Zahra sews for the whole quarter. she gives me a heel of bread every evening and calls it payment for nothing. it's payment for everything. i'd run to Magatia for her."]
+    about.yusra: ["Yusra serves in the palace wardrobe. her mother writes to her every week. i get the letters as far as the castle gate. after that it's luck, or a visitor."]
+    about.kasim: ["Kasim races me across the roofs. he always wins. he says lookouts don't run, they're already there. he cheats. lookouts cheat."]
+    about.tariq: ["Tariq brings the Magatia post down the Sahel road. the quarter's half comes off the camel first and the palace's half second. he says it's so i get the exercise."]
+    about.harun: ["Harun guards the palace gate in the market. i pass him twelve times a day. he says 'pass' every time. one day i'm going to stop and see if he says anything else."]
+    aboutUnknown: ["never carried a letter for them. i'd remember the envelope."]
+    friend.close: ["if you ever need a letter carried, anywhere, i'll run it. free. don't tell the palace i do anything free."]
+    friend.best: ["i've written your name inside my satchel flap. with the people i'd run for in a sandstorm. it's a short list."]
+    famed: ["everyone's saying your name. i've carried it in three letters this week."]
+    defamed: ["people are saying things. i don't carry those. i drop them in the desert."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh, that's useful! that's going in the satchel. the good pocket."]
+    gift.again: ["one's plenty! the satchel's full of other people's things."]
+
+- id: kasim
+  name: Kasim
+  look: { gender: male }
+  title: "Sand-Bandit Lookout"
+  job: BANDIT
+  level: { min: 48, max: 50 }
+  strength: SEASONED
+  loadout: ariant-dagger-l48
+  personality: efficient-v1
+  home:
+    town: town-of-ariant
+    routine:
+      - { from: 5, to: 9, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 9, to: 15, materialize: false }
+      - { from: 15, to: 17, spot: "venue:by-eleska", activity: LINGER }
+      - { from: 17, to: 19, spot: "venue:residential-area-1-door", activity: SOCIALIZE }
+      - { from: 19, to: 23, spot: "venue:upper-east-street", activity: SHOW_OFF }
+      - { from: 23, to: 5, materialize: false }
+  recruitable: true
+  knows: [scorpion, rocky hill, nett's pyramid]
+  contract: kasim-the-lookouts-rule
+  questLines: [kasim-named-for-the-small-ones, kasim-the-pharaoh-belt, kasim-the-immortal-pharaoh, kasim-my-fathers-rule]
+  rumors: [ariant-town-kasims-terms]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: zahra, kind: RAISED_BY }
+    - { persona: yusra, kind: COUSIN_OF }
+    - { persona: idris, kind: RACES }
+    - { persona: sefa, kind: WATCHED_BY }
+    - { persona: darius, kind: UNREPORTED_BY }
+  giftItemIds: [4000333, 2022000]
+  dialogue:
+    greetFirst: ["you've been on this street four minutes. you looked at the palace twice and the roofs once. look at the roofs more. that's where i am.", "new face. relax. i only take from the palace. you don't look like the palace."]
+    greet: ["hm. you.", "saw you coming from the gate. i always see."]
+    idle: ["(crouches at the roof's edge, chin on his fist, watching the palace road without blinking)", "(whistles two low notes down to the street, then waves it off when nobody moves)"]
+    noWork: ["nothing today. the road's quiet. i'm watching it be quiet."]
+    nothingDue: ["we're square. bandits keep count. that's why we're good at it."]
+    who: ["Kasim. i watch the palace road for the quarter. when the queen's men come down the street, i whistle, and the quarter puts away what it shouldn't have. that's what the sand bandits mostly are now. eyes on a roof. my aunt Zahra raised me. she mends my sash and doesn't ask."]
+    bye: ["look up when you leave. i'll be there."]
+    thanks: ["mm. noted."]
+    smallTalk: ["the sand bandits take from the palace and leave the quarter alone. the Red Scorpions take from anyone. people mix us up. we don't mix them up.", "my father rode the desert with Sefa before i was born. he came home with one rule and a bolt of something in a sack. i kept the rule. Zahra kept the sack."]
+    speakPlainly: ["plainly: a roof, a whistle, and a rule."]
+    offer: ["thirty-five thousand for a day. you heard what i told my aunt, so you know where i won't go. that's the price for everywhere else."]
+    join: ["fine. i'll be above you. you'll want me above you."]
+    bench: ["two days. after that the road goes unwatched and i start feeling it."]
+    leave: ["that's me done. the roof's waiting."]
+    refuse.bond: ["i don't watch backs for people i don't know. i watch roads."]
+    refuse.flags: ["come by Zahra's door of an evening, while she's mending my sash. hear what i tell her. then ask."]
+    refuseOwnErrand: ["my watch. you can sit on the roof with me. quietly."]
+    questOffer.kasim-named-for-the-small-ones: ["the Red Scorpions named themselves after the little ones on the Sahel road. bad taste in names, worse taste in work. thin out thirty of the little ones, then go and stand at Rocky Hill, where the big ones keep their door. tell me if anyone's been saying the word."]
+    questAccept.kasim-named-for-the-small-ones: ["the Sahel road, the first two stretches and the desert of dreams, for the scorpions. Rocky Hill's off the Scorching Desert, west of town. stand by the rock. listen. don't knock."]
+    questWaiting.kasim-named-for-the-small-ones: ["thirty, and the rock. was anyone there?"]
+    questComplete.kasim-named-for-the-small-ones: ["nobody at the rock? ...good. quiet season. the Scorpions only come out when the palace is busy looking the other way. you stood my watch for me. i owe you a whistle."]
+    questOffer.kasim-the-pharaoh-belt: ["my father brought two belts back from the desert, out of a pyramid the dunes swallowed. Nett's. the first one's yours if you'll earn it. the dark sand dwarves on the Sahel dig toward that pyramid every year. thirty of them back, then go and stand on the dunes and look at it. you should see where a thing came from before you wear it."]
+    questAccept.kasim-the-pharaoh-belt: ["the desert of serenity and the desert of dreams, off the Sahel road, for the dark dwarves. the pyramid's dunes are off Sahel 3. walk in. look. walk out. don't go further in alone."]
+    questWaiting.kasim-the-pharaoh-belt: ["thirty, and the dunes. did you see it?"]
+    questComplete.kasim-the-pharaoh-belt: ["you saw it. good. then it's yours. the Pharaoh's belt, polished, three safe scrolls, every one took. my father wore it to his wedding. wear it somewhere better than that."]
+    questOffer.kasim-the-immortal-pharaoh: ["the second belt. the immortal one. they say whoever wears it can't stay down. prove you're the kind who gets up. the Zenumist's homunculi in Magatia get up after you've put them down. thirty of those, and five of the scullos that pull themselves back together."]
+    questAccept.kasim-the-immortal-pharaoh: ["Magatia, up the Sahel road. the Zenumist institute, second floor, units two-oh-two and two-oh-three. the scullos are only ever a couple at a time in two-oh-two. be patient. bandits are patient."]
+    questWaiting.kasim-the-immortal-pharaoh: ["thirty and five. they'll get up. you get up faster."]
+    questComplete.kasim-the-immortal-pharaoh: ["you got up every time. i heard. ...the immortal Pharaoh. two tens and a sixty, every one took. my father never wore this one. he said it was for someone who'd earn it. he never met you. he'd have liked you."]
+    questOffer.kasim-my-fathers-rule: ["Sefa rode with my father, before me. she watches the market now. she watches me. ask her if she remembers him. ask her what he was like on the road. i never asked. i'm asking you to."]
+    questAccept.kasim-my-fathers-rule: ["Sefa. the market's east ledges in the morning, the station door after four. she'll see you coming. she'll pretend she didn't."]
+    questWaiting.kasim-my-fathers-rule: ["did she say? did she remember him?"]
+    questComplete.kasim-my-fathers-rule: ["never took a cup of water off anyone. not even dry. ...and she's watching me. she knows i know. good. that's two of us keeping his rule. three, counting you."]
+    about.zahra: ["Zahra raised me. she mends my sash and never asks where it tore. if anyone in the quarter's in trouble, she knows before i do. and i'm on the roof."]
+    about.yusra: ["Yusra's my cousin. she works in the palace wardrobe. she's the only one in the family the queen would trust. that's the funniest thing in Ariant."]
+    about.idris: ["Idris races me across the roofs. he thinks he's fast. lookouts don't run. we're already where we're going."]
+    about.sefa: ["Sefa rode with my father. she watches the market for the likes of me now. she nods. i nod. she knows i only take from the palace. she watches anyway. that's fair."]
+    about.darius: ["Darius stands guard at the castle by Tigun. he's seen me on the palace road four times. he's reported me no times. he's either very bad at his job or very good at it."]
+    aboutUnknown: ["never watched them. means they never mattered to the road."]
+    friend.close: ["if you're ever in the quarter and in trouble, look up and whistle twice. i'll be there."]
+    friend.best: ["i've told the roofs about you. the whole band knows your step now. you'll never walk this street unwatched. that's a gift. trust me."]
+    famed: ["the road says good things about you. the road doesn't say much."]
+    defamed: ["people are talking. i'm not. i'm watching."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh. that's thoughtful. that goes up on the roof with me."]
+    gift.again: ["one's plenty. i'm a lookout. i travel light."]

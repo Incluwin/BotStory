@@ -1,0 +1,122 @@
+# Pier on the Beach cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 2 Residents, none
+# recruitable, no arc. Herb Town's pier, where the Dolphin carries riders down to the Aqua Road and Aquarium. Nerys keeps
+# the dolphin at this end, as Oriel does at the other (personas/aquarium.yaml); Bora sells Sunniva's pearls to the riders.
+- id: nerys
+  name: Nerys
+  look: { gender: female }
+  title: "Keeper of the Dolphin"
+  job: BEGINNER
+  level: { min: 26, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: pier-on-the-beach
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 12, to: 14, materialize: false }
+      - { from: 14, to: 20, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: false
+  knows: [aquarium, pinboom, cico]
+  questLines: [nerys-the-sharp-unknown, nerys-the-other-end, nerys-the-oxygen-tank]
+  rumors: [pier-on-the-beach-the-tide]
+  relationships:
+    - { persona: bora, kind: SHARES_THE_PIER_WITH }
+    - { persona: oriel, kind: KEEPS_THE_OTHER_END_FROM }
+    - { persona: maren, kind: CARRIED_ONCE }
+  giftItemIds: [4000166, 4000163]
+  dialogue:
+    greetFirst: ["going down? she's just gone round the point. she'll be back. she always comes back, even when she's sulking.", "hello. mind the edge, the boards are wet. they're always wet. it's a pier."]
+    greet: ["tide's in.", "hello again. she's out. she'll be back."]
+    idle: ["(sits on the end of the pier with her boots in the water, watching for a fin)", "(coils a long wet rope into a perfect circle, then uncoils it to coil it again)"]
+    noWork: ["nothing today. she's fed, the harness is mended, the sea's calm. i'll just sit."]
+    nothingDue: ["you owe nothing. pay the dolphin. she takes meso. i've no idea what she does with it."]
+    who: ["Nerys. i keep the dolphin at this end. she carries riders down to the Aqua Road and to Aquarium, and back up to me. Oriel keeps her at the other end. we've been sharing a dolphin for nine years and we've met twice."]
+    bye: ["hold on with your knees."]
+    thanks: ["thank you."]
+    smallTalk: ["she drops riders at the Sharp Unknown when they've only the small fare. the pinbooms puff up at her there. she hates it. she goes anyway.", "a dolphin's like a tide. you can't hurry her. you can only be on the pier when she comes in."]
+    speakPlainly: ["plainly: a pier, a rope, and a dolphin who does what she likes."]
+    questOffer.nerys-the-sharp-unknown: ["the pinbooms at the Sharp Unknown puff up and spike her every time she drops a rider. she comes back with her nose sore. twenty-five of them, please. gently. they don't mean it. they're just round."]
+    questAccept.nerys-the-sharp-unknown: ["ride her down on the small fare. she'll leave you at the Sharp Unknown. the spiky round ones. and the coral hill above it, if you've the breath."]
+    questWaiting.nerys-the-sharp-unknown: ["twenty-five. her nose is still sore."]
+    questComplete.nerys-the-sharp-unknown: ["twenty-five. she came back this morning without a scratch and did a loop at the end of the pier. she hasn't done that in a year. thank you."]
+    questOffer.nerys-the-other-end: ["Oriel keeps her at the Aquarium end. we write notes on the harness. the sea gets at them. would you ride down and ask her, properly, what she's been feeding her? she comes back fat and happy and won't touch my fish."]
+    questAccept.nerys-the-other-end: ["ride her down to Aquarium. the Department Store. Oriel's the one talking to the dolphins. she'll be talking to them."]
+    questWaiting.nerys-the-other-end: ["what's Oriel feeding her? i need to know. i'm jealous."]
+    questComplete.nerys-the-other-end: ["shrimp? she's been spoiling her with shrimp. ...that's fine. that's fine. i'll get shrimp. thank you. i feel much better. i'm still jealous."]
+    questOffer.nerys-the-oxygen-tank: ["i keep an old oxygen tank on the pier for riders who come off her halfway. the valve seat's worn. sea horse horn makes a seat that doesn't rust. the cicos on the blue seaweed road. ten horns, and the tank's yours. i've a spare."]
+    questAccept.nerys-the-oxygen-tank: ["the Blue Seaweed Road and the fish resting spot off it. the cicos, the little sea horses with the long noses. ten horns."]
+    questWaiting.nerys-the-oxygen-tank: ["ten horns. the tank's hissing."]
+    questComplete.nerys-the-oxygen-tank: ["ten. (fits a horn seat into an old brass valve and turns it shut) ...there. it holds. this one's yours. you've been down there enough to want a breath you didn't bring."]
+    about.bora: ["Bora sells pearls at the end of the pier. she tells every rider exactly what each one is. they still haggle. she still wins."]
+    about.oriel: ["Oriel keeps her at the Aquarium end. we've met twice in nine years. we write on the harness. she draws dolphins in the corners. i've kept every one."]
+    about.maren: ["Maren came up on her years ago, off the navy cutters, chasing red-nose pirates. she's never ridden back down. she still looks at the sea like it owes her something."]
+    aboutUnknown: ["never rode her. i'd remember. she would too."]
+    friend.close: ["she knows your voice now. she comes in faster for you. don't tell the others."]
+    friend.best: ["if i ever stop keeping her, i'd want you on the pier. she'd want you too. she's very particular."]
+    famed: ["the riders talk well of you. even the ones who fell off."]
+    defamed: ["the riders talk ill of you. the sea doesn't care. neither does she."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's from the Aqua Road. that's going in the harness bag. she'll like the smell."]
+    gift.again: ["one's plenty. the harness bag's full."]
+
+- id: bora
+  name: Bora
+  look: { gender: female }
+  title: "Pearl Seller of the Pier"
+  job: BEGINNER
+  level: { min: 32, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: pier-on-the-beach
+    routine:
+      - { from: 9, to: 13, spot: "venue:lower-east-street", activity: SHOW_OFF }
+      - { from: 13, to: 15, spot: "venue:lower-east-street", activity: REST }
+      - { from: 15, to: 19, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 19, to: 9, materialize: false }
+  recruitable: false
+  knows: [poison poopa, sparker, seal tooth]
+  questLines: [bora-poison-poopas, bora-sunnivas-bag, bora-seal-teeth]
+  rumors: [pier-on-the-beach-the-tide]
+  relationships:
+    - { persona: nerys, kind: SHARES_THE_PIER_WITH }
+    - { persona: sunniva, kind: SELLS_THE_PEARLS_OF }
+    - { persona: sookja, kind: TRADES_A_PEARL_A_MONTH_WITH }
+  giftItemIds: [4000156, 4000158]
+  dialogue:
+    greetFirst: ["pearls! real pearls! going down? a pearl's luck on the water. coming up? a pearl's proof you went. either way, a pearl.", "you've the look of someone who's never bought a pearl. that's all right. today's the day."]
+    greet: ["pearls.", "back again! still no pearl? i'm patient. i'm not, but i'm acting."]
+    idle: ["(holds a pearl up to the light, turns it, and puts it back in the tray very slightly to the left)", "(writes a price on a slip of paper, crosses it out, and writes the same price again)"]
+    noWork: ["nothing today. the tray's full. the pier's empty. one of those will change."]
+    nothingDue: ["you owe me nothing. buy a pearl. then you'll owe me nothing and have a pearl."]
+    who: ["Bora. i sell pearls on the pier to the riders going down to Aquarium and the riders coming up. Sunniva dives them, i sell them. i tell everyone exactly what they're buying. it's very bad for business. i do very well."]
+    bye: ["luck on the water!"]
+    thanks: ["ha. good."]
+    smallTalk: ["a pearl's a grain of sand something got annoyed about for years. i like that. i've been annoyed about things for years. nobody's ever bought me.", "people ask for 'a pearl, but cheaper'. i sell them a seal tooth and tell them it's a seal tooth. they buy it anyway. people are wonderful."]
+    speakPlainly: ["plainly: pearls, and the truth about them."]
+    questOffer.bora-poison-poopas: ["the poison poopas have got thick in the red coral and the crystal gorge. Sunniva won't dive there while they're spitting. no dives, no pearls, no Bora. twenty-five of them?"]
+    questAccept.bora-poison-poopas: ["the Aqua Road, the crystal gorge, the red coral forest, the turban shell hill. the spiny ones that spit. the plain poopas up at Ocean I.C are Sunniva's problem."]
+    questWaiting.bora-poison-poopas: ["twenty-five. the tray's looking thin."]
+    questComplete.bora-poison-poopas: ["twenty-five! Sunniva dived the red coral yesterday and came up with three. three! here. not a pearl. you're not a customer. you're staff."]
+    questOffer.bora-sunnivas-bag: ["Sunniva's bag was meant to come up on the dolphin three days ago. it hasn't. either she's found something wonderful or she's forgotten me. ride down and ask her which."]
+    questAccept.bora-sunnivas-bag: ["Aquarium, the Department Store. Sunniva. she'll have sand in her hair. she always has sand in her hair."]
+    questWaiting.bora-sunnivas-bag: ["wonderful, or forgotten. i need to know which."]
+    questComplete.bora-sunnivas-bag: ["she said what? 'mostly sand, one good one, coming up tomorrow, and tell her to stop charging three times what i ask.' ...two times. i charge two times. she knows i charge two times. thank you."]
+    questOffer.bora-seal-teeth: ["i'm out of seal teeth. for the 'pearl, but cheaper' crowd. the sparkers on the turban shell hill. ten teeth?"]
+    questAccept.bora-seal-teeth: ["the turban shell hill and the west sea fork. the sparkers. they buzz."]
+    questWaiting.bora-seal-teeth: ["ten teeth. three people asked for cheap pearls this morning."]
+    questComplete.bora-seal-teeth: ["ten. i'll tell every one of them it's a seal tooth. they'll buy it anyway. thank you."]
+    about.nerys: ["Nerys keeps the dolphin. she talks to it more than to me. i don't mind. it talks back less than i do."]
+    about.sunniva: ["Sunniva dives the pearls and sends them up on the dolphin. i've met her four times. she's always got sand in her hair and one good pearl in her fist."]
+    about.sookja: ["Sookja in Herb Town gives me a jar of peach tea every month. i give her one pearl. she's never once worn it. she keeps it in the tea tin. i think that's the best place for a pearl."]
+    aboutUnknown: ["never bought a pearl from me. there's still time."]
+    friend.close: ["i'd sell you a pearl at what i paid for it. i've never said that to anyone."]
+    friend.best: ["the best pearl Sunniva ever sent up, i kept. it's for you. no, you can't pay for it."]
+    famed: ["the riders talk well of you. good. i'll put your price up."]
+    defamed: ["the riders talk ill of you. i'll put your price up anyway."]
+    gift: ["oh! thank you."]
+    gift.favorite: ["oh, that's a sea thing. that goes in the tray. not for sale. for looking at."]
+    gift.again: ["one's lovely. two's stock."]

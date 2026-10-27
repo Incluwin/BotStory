@@ -1,0 +1,30 @@
+# Altaire Camp rumors (wave 4). Each pair is awake together at its spot in those hours (personas/altaire-camp.yaml).
+- id: altaire-the-haze-line
+  participants: [ottavia, teodor]
+  where: { town: altaire-camp, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: ottavia-the-map-of-the-forest, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: altaire.heard-haze
+  lines:
+    - { by: teodor, text: "the haze came past the foot of the mushroom hill again last night, Ottavia." }
+    - { by: ottavia, text: "then i'll draw the line again. in pencil. i hate the pencil." }
+    - { by: teodor, text: "the pencil's honest. the haze moves." }
+    - { by: ottavia, text: "everything in this forest moves. the trees walk. the haze walks. only the fairies stay where they are." }
+    - { by: teodor, text: "they were here first. they'll have had a word for this place long before we came with our carts." }
+    - { by: ottavia, text: "Larkin says the old word lives in Ellin's glade. you have to go and stand in it to hear it. it won't come out here." }
+
+- id: altaire-supper-talk
+  participants: [ewan, gaspard]
+  where: { town: altaire-camp, spot: "venue:lower-east-street-2" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 2
+  lines:
+    - { by: gaspard, text: "that's a big pot tonight, Ewan." }
+    - { by: ewan, text: "it's the same pot. you're just hungrier." }
+    - { by: gaspard, text: "i broke a boulder the size of a tent today. a boulder like that makes a man hungry." }
+    - { by: ewan, text: "everything makes you hungry. Maelis's bowl came back clean again." }
+    - { by: gaspard, text: "she still won't come in?" }
+    - { by: ewan, text: "not till the mountain's quiet. it's never quiet. i'll keep sending it." }

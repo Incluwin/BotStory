@@ -1,0 +1,33 @@
+# The Door to Zakum rumors (wave 4). Hrafn, Brenna and Vigdis are all by Adobis in the evening
+# (personas/door-to-zakum.yaml).
+- id: door-to-zakum-the-watch
+  participants: [hrafn, vigdis]
+  where: { town: door-to-zakum, spot: "venue:by-adobis" }
+  when:
+    serverHours: [18]
+    everyDays: 1
+  setsFlagOnListeners: door-to-zakum.heard-hrafn
+  lines:
+    - { by: vigdis, text: "six down today, Hrafn. six down the road, six to your door." }
+    - { by: hrafn, text: "six. i'll peg them." }
+    - { by: vigdis, text: "you count everyone." }
+    - { by: hrafn, text: "someone should." }
+    - { by: vigdis, text: "anyone who wants a blade beside them in the third stretch could do worse than you. you've never once lost one i brought you." }
+    - { by: hrafn, text: "...don't tell them that. they'll ask." }
+    - { by: vigdis, text: "i already have." }
+
+- id: door-to-zakum-the-horn
+  participants: [hrafn, brenna]
+  where: { town: door-to-zakum, spot: "venue:by-adobis" }
+  when:
+    serverHours: [19]
+    everyDays: 1
+    requiresArc: { arc: hrafn-the-horn-line, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: brenna, text: "the lava's orange tonight, Hrafn." }
+    - { by: hrafn, text: "then the bains sleep. good." }
+    - { by: brenna, text: "you're listening up the road again." }
+    - { by: hrafn, text: "a yeti horn carries further than you'd think, Brenna." }
+    - { by: brenna, text: "all the way up to Jeff's gate?" }
+    - { by: hrafn, text: "Torsten listens at dusk, up there. he says he always has." }
+    - { by: brenna, text: "...then send him a long one." }

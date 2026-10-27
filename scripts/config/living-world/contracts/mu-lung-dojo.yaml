@@ -1,0 +1,15 @@
+# Mu Lung Dojo contracts (wave 4): a challenger's day rate, once she has warmed up with the player.
+- id: lianhua-day-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [lianhua.intro.done]
+  price:
+    meso: 90000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 30000 }

@@ -54,6 +54,9 @@
     questWaiting.aldric-tiguru-drill: ["twenty Tigurus. report when it's done."]
     questComplete.aldric-tiguru-drill: ["that's the drill done. you'd pass Mihile's exam, i think. take these, you earned them."]
     about.linnea: ["Linnea watches the sky ferry like it owes her something. best eyes on the island."]
+    about.caius: ["Caius keeps the Empress's watch after dark. i've never once heard him coming. Mihile says that's the point. i say it's rude."]
+    about.wynn: ["Wynn drills beside me every morning. he hits like a storm and falls off the bridge like one. he'll make a fine knight, if the bridge lets him."]
+    about.isaura: ["Isaura lent me a book of sword forms. i turned the corners down. she hasn't forgiven me."]
     aboutUnknown: ["not someone i've trained with."]
 
 - id: linnea
@@ -92,4 +95,339 @@
     questWaiting.linnea-tiv-feathers: ["twenty Tiv feathers. the fluffy ones."]
     questComplete.linnea-tiv-feathers: ["oh, these are perfect. my arrows will fly straight for once."]
     about.aldric: ["he's nice. a bit loud. he practices at dawn and wakes the whole bridge."]
+    about.wynn: ["Wynn fell off the bridge again! he's fine. he always lands in the same bush. i think the bush is used to him."]
+    about.fintan: ["Fintan's the groom at Kiridu's hatchery. i give him my bald feathers for the nests. don't tell him they're my bald ones."]
+    about.celandine: ["Celandine won't sew me a quiver with a flap. she says it's a pocket. it's a quiver."]
     aboutUnknown: ["i don't think i know them."]
+
+# ---- Wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10): +5 Residents, 1 recruitable (Caius). Isaura, Fintan and
+# Celandine are townsfolk and always here; Caius and Wynn follow CYGNUS_ARAN_CAREERS_ENABLED like Aldric and Linnea.
+# Isaura keeps the Empress's record of the five heroes, whose last leaf is blank; Rien remembers what it leaves out
+# (arcs/ereve.yaml, arcs/rien.yaml).
+- id: isaura
+  name: Isaura
+  look: { gender: female }
+  title: "Archivist of the Empress's Library"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ereve
+    routine:
+      - { from: 8, to: 13, spot: "venue:by-cygnus", activity: LINGER }
+      - { from: 13, to: 17, spot: "venue:by-shinsoo", activity: LINGER }
+      - { from: 17, to: 21, spot: "venue:by-cygnus", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [timu, training forest ii, sky ferry]
+  questLines: [isaura-the-overdue-books, isaura-the-blank-page, isaura-in-her-words]
+  arc: isaura-the-record-of-the-five
+  rumors: [ereve-the-five-emblems]
+  relationships:
+    - { persona: celandine, kind: IS_MEASURED_BY }
+    - { persona: fintan, kind: LENDS_BOOKS_TO }
+    - { persona: eira, kind: WRITES_DOWN_THE_WORDS_OF }
+  giftItemIds: [2010009, 2001002]
+  dialogue:
+    greetFirst: ["you're new. the library is that way, the bridges are that way, and the Empress is not to be disturbed before nine.", "hello. if you've come for a book, you'll bring it back. everyone says they will."]
+    greet: ["hello again.", "you. good. nobody's borrowed anything today.", "hello. mind the ink, it's wet."]
+    idle: ["(turns a brittle leaf with the flat of a paper knife, reads it, and turns it back)", "(copies a line from one book into another, letter by careful letter)"]
+    noWork: ["nothing today. the shelves are in order. i'll find something out of order by noon."]
+    nothingDue: ["nothing owed. your card is clean."]
+    who: ["Isaura. i keep the Empress's library. the oldest thing on my shelf is the record of the five, who fought the Black Mage. its last leaf is blank. i've copied every other word of it twice."]
+    bye: ["bring it back."]
+    thanks: ["noted, with thanks."]
+    smallTalk: ["the record of the five says one of them slept in the ice of Snow Island. then the leaf runs out. the copyist must have had a reason. i'd like to know it.", "the cadets read in the Training Forests between drills. they drop the books when the Timus come. i have found books in nests."]
+    speakPlainly: ["plainly: a book with its last leaf blank."]
+    questOffer.isaura-the-overdue-books: ["the cadets take books into Training Forest II and drop them when the Timus come at them. twenty-five Timus fewer, and the books might come home on their own."]
+    questAccept.isaura-the-overdue-books: ["Training Forest II, and Timu's Forest off it. the books will be in the grass. the Timus will be on the books."]
+    questWaiting.isaura-the-overdue-books: ["twenty-five Timus. i've three cards overdue already."]
+    questComplete.isaura-the-overdue-books: ["the cadets brought back four books this morning. one had a Timu in it. here, for your trouble."]
+    questOffer.isaura-the-blank-page: ["the record of the five ends on a blank leaf. before i write a word on it, i want everything Ereve remembers. ask Celandine about her pattern book, and Fintan about the hatchery's egg-book."]
+    questAccept.isaura-the-blank-page: ["Celandine sews by the knights all day. Fintan's at the hatchery, but he comes up to Shinsoo in the mornings and the evenings."]
+    questWaiting.isaura-the-blank-page: ["what did they say? exactly, please."]
+    questComplete.isaura-the-blank-page: ["a polearm on a field of snow, and 'they went by sea, from the island of snow'. both of them point north. Snow Island. somebody there must remember what my leaf doesn't."]
+    questOffer.isaura-in-her-words: ["Eira of Rien has heard my copy read, and she says the end is wrong. she won't write it down. she says it has to be heard. go and hear it, and bring it back to me exactly as she says it."]
+    questAccept.isaura-in-her-words: ["the sky ferry to Ellinia, across to Lith Harbor, and the boat to Rien. she sits by the library there. take your time with her. she'll take hers."]
+    questWaiting.isaura-in-her-words: ["exactly as she said it. i won't change a word."]
+    questComplete.isaura-in-her-words: ["...four went down to the shore, and one went up into the ice, and looked back once. there. it's on the leaf. the record of the five has an ending. thank you. thank her."]
+    about.celandine: ["Celandine measures everyone who stands still. she measured me in the library once. i was reading. i didn't notice till she'd pinned the hem."]
+    about.fintan: ["Fintan borrows books about birds and reads them to the eggs. he says it helps. the eggs have not complained."]
+    about.eira: ["Eira? i don't know the name."]
+    about.caius: ["Caius reads in the library at night with no lamp. i've asked him how. he says the dark's easier to read than people think."]
+    about.wynn: ["Wynn has never returned a book. he's never borrowed one, either. i keep hoping."]
+    about.aldric: ["Aldric borrowed a book of sword forms and brought it back with the corners turned down. every corner."]
+    about.linnea: ["Linnea asks for books about Orbis. i give her the ones with pictures. she's never been."]
+    about.wren: ["Wren keeps the archive in Ellinia's upper tree. we've written to each other for years about bindings. she's wrong about glue."]
+    aboutUnknown: ["not in any record of mine."]
+    friend.close: ["you can borrow anything on my shelf. even the ones i don't lend."]
+    friend.best: ["i've written your name in the margin of the record of the five. small. at the bottom. i hope you don't mind."]
+    famed: ["your name's come up in the knights' reports. i've filed it. favourably."]
+    defamed: ["i've heard things said about you. hearsay isn't a record. i don't file hearsay."]
+    gift: ["oh. thank you. i'll eat it away from the books."]
+    gift.favorite: ["oh, that's lovely. that's a whole afternoon of copying with something nice beside it."]
+    gift.again: ["one a day, please. crumbs are bad for bindings."]
+
+- id: fintan
+  name: Fintan
+  look: { gender: male }
+  title: "Groom of Kiridu's Hatchery"
+  job: BEGINNER
+  level: { min: 14, max: 16 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ereve
+    routine:
+      - { from: 6, to: 9, spot: "venue:by-shinsoo", activity: LINGER }
+      - { from: 9, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:by-shinsoo", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [kiridu's hatchery, tiguru, tiv's feather]
+  questLines: [fintan-nest-feathers, fintan-the-hatchery-path]
+  relationships:
+    - { persona: isaura, kind: BORROWS_BOOKS_FROM }
+    - { persona: wynn, kind: IS_PESTERED_BY }
+  giftItemIds: [2010000, 2010003]
+  dialogue:
+    greetFirst: ["oh, hello. sorry, there's straw on me. there's always straw on me.", "hello. quietly, if you don't mind. i've got an egg in my coat."]
+    greet: ["hello.", "oh, it's you. hello.", "hello. the chicks are well, since you didn't ask. everybody forgets to ask."]
+    idle: ["(holds an egg up to the light and turns it very slowly)", "(picks straw out of his sleeve one piece at a time and puts each piece in his pocket)"]
+    noWork: ["nothing today. the hatchery's quiet. quiet's good for eggs."]
+    nothingDue: ["nothing owed. Kiridu says that about the chicks too. they're square with the world."]
+    who: ["Fintan. i groom at Kiridu's hatchery, past the Training Forests. the knights' mounts start as eggs there. somebody has to keep them warm. i'm good at warm."]
+    bye: ["walk soft near the nests."]
+    thanks: ["oh. thank you."]
+    smallTalk: ["the Tivs in the first forest drop the softest feathers in Ereve. the chicks sleep better on them. so would i.", "i come up to Shinsoo every morning and every evening and tell him how the chicks are. he listens. he's the only one who asks."]
+    speakPlainly: ["plainly: eggs, and straw."]
+    questOffer.fintan-nest-feathers: ["the new nests want lining. Tiv feathers are the softest thing on the island. ten would do. the Tivs are in Training Forest I and Tiv's Forest."]
+    questAccept.fintan-nest-feathers: ["Training Forest I. the round ones. they don't mind losing a feather. i asked."]
+    questWaiting.fintan-nest-feathers: ["ten feathers. the eggs are patient. i'm less patient."]
+    questComplete.fintan-nest-feathers: ["oh, these are soft. the chicks will sleep all night. here. Kiridu says to say thank you properly. thank you properly."]
+    questOffer.fintan-the-hatchery-path: ["the Tigurus have come right up to the hatchery door. they frighten the chicks off their feed. twenty Tigurus in the third forest, and then look in on the hatchery for me, would you? tell me it's quiet."]
+    questAccept.fintan-the-hatchery-path: ["Training Forest III, and Tiguru's Forest past it. the hatchery's just off the third forest. go in softly."]
+    questWaiting.fintan-the-hatchery-path: ["twenty Tigurus, and a look in at the hatchery. is it quiet?"]
+    questComplete.fintan-the-hatchery-path: ["quiet? good. the chicks ate everything this morning. Kiridu smiled. he doesn't, much. here, from both of us."]
+    about.isaura: ["Isaura lends me books about birds. i read them to the eggs. she says nobody's ever read to an egg before. i think that's sad."]
+    about.celandine: ["Celandine made me an apron with pockets the right size for eggs. she measured an egg to do it."]
+    about.caius: ["Caius walks past the hatchery at night and never wakes a chick. i don't know how. i wake them breathing."]
+    about.wynn: ["Wynn asks me every day when he'll get a mount. i tell him when he's stopped falling off the bridge. he asks again the next day."]
+    about.aldric: ["Aldric's loud. the chicks like him anyway. they like loud things that are kind."]
+    about.linnea: ["Linnea brings the chicks the feathers she can't fletch. she won't say so. i know her feathers."]
+    about.oda: ["the station master at Ellinia shouts at the ferry when it's late. i sent a feather once. it came back stamped."]
+    aboutUnknown: ["i don't know them. i mostly know eggs."]
+    friend.close: ["you can come into the hatchery any time. the chicks know your step now."]
+    friend.best: ["Kiridu let me name a chick. i named it after you. it's very loud. it's my favourite."]
+    famed: ["the knights talk about you at the hatchery fence. kindly. the chicks listen too."]
+    defamed: ["i heard someone say something about you. i didn't believe it. the chicks didn't either."]
+    gift: ["oh. for me? thank you."]
+    gift.favorite: ["oh, that's lovely. i'll share it. half for me, half for whoever's hatching."]
+    gift.again: ["one a day's plenty. the chicks will think i'm spoiled."]
+
+- id: celandine
+  name: Celandine
+  look: { gender: female }
+  title: "Tailor of the Knights' Coats"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ereve
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-neinheart", activity: LINGER }
+      - { from: 12, to: 17, spot: "venue:by-irena", activity: LINGER }
+      - { from: 17, to: 21, spot: "venue:by-cygnus", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [slime, squishy liquid, dark stump]
+  questLines: [celandine-collar-starch, celandine-thread-from-ellinia, celandine-lining-leaves]
+  rumors: [ereve-the-five-emblems]
+  relationships:
+    - { persona: isaura, kind: STRAIGHTENS_THE_COLLAR_OF }
+    - { persona: wynn, kind: PATCHES_THE_KNEES_OF }
+    - { persona: mirabel, kind: BUYS_THREAD_FROM }
+  giftItemIds: [2020002, 2010004]
+  dialogue:
+    greetFirst: ["stand still. no, still. ...there. hello. you're wider in the shoulder than you look.", "hello. that seam is coming apart under your arm. no, the other arm. i can see it from here."]
+    greet: ["hello. stand up straight.", "you. your hem's down.", "hello again. hold still a moment."]
+    idle: ["(talks around a mouthful of pins, to nobody, and nods at the answer)", "(turns a cadet's coat inside out and frowns at the collar)"]
+    noWork: ["nothing today. every coat in Ereve is hemmed. i'll find one that isn't."]
+    nothingDue: ["nothing owed. your account's as neat as a french seam."]
+    who: ["Celandine. i sew the knights' coats, cadet to Chief. Neinheart signs the orders, i cut the cloth. five emblems inside every collar, the same as the very first coats. i've stitched them a thousand times."]
+    bye: ["mind the hem."]
+    thanks: ["thank you. stand up straight."]
+    smallTalk: ["the cadets' collars go limp in the sea wind by noon. slime makes a better starch than anything you can buy. i don't tell Neinheart where it comes from.", "every season Wynn tears the knees out of his trousers before the Empress's review. i've started cutting them with spare knees."]
+    speakPlainly: ["plainly: coats, and the people in them."]
+    questOffer.celandine-collar-starch: ["the cadets' collars want starch. the slimes north of Ellinia leave the best squishy liquid for it. twelve, and every collar in Ereve stands up straight."]
+    questAccept.celandine-collar-starch: ["the ferry to Ellinia, then the field up north of it. they bounce. don't let them bounce on you."]
+    questWaiting.celandine-collar-starch: ["twelve squishy liquids. the collars are drooping as we speak."]
+    questComplete.celandine-collar-starch: ["twelve. look at that collar. it stands up by itself. here, and come by when your own collar needs a hand. it does."]
+    questOffer.celandine-thread-from-ellinia: ["Mirabel in Ellinia weaves the only blue thread that holds in sea air. she's had my order for a month. go and ask her nicely. she doesn't like being asked any other way."]
+    questAccept.celandine-thread-from-ellinia: ["Ellinia, up in the trees. she weaves on the middle tree most of the day. be patient with her. she's worth it."]
+    questWaiting.celandine-thread-from-ellinia: ["did Mirabel send the thread? the fifth emblem's waiting on it."]
+    questComplete.celandine-thread-from-ellinia: ["she sent it! and a note. 'the blue holds.' that's all. that's all she ever needs to say. here, for the walk."]
+    questOffer.celandine-lining-leaves: ["ten leaves from the dark stumps round Ellinia? the review coats want a green lining."]
+    questAccept.celandine-lining-leaves: ["the dark stumps north of Ellinia."]
+    questWaiting.celandine-lining-leaves: ["ten leaves."]
+    questComplete.celandine-lining-leaves: ["ten. the green holds. thank you."]
+    about.isaura: ["Isaura's collar has been crooked since the spring. she reads through every fitting. i've pinned her hem while she turned a page."]
+    about.fintan: ["Fintan asked for an apron with pockets for eggs. i measured an egg. it was the strangest fitting i've ever done. it fits beautifully."]
+    about.caius: ["Caius wants no buttons that catch the light. i sewed them in black. he checked every one of them in a dark cupboard."]
+    about.wynn: ["Wynn's on his fourth pair of trousers this season. i've stopped charging him. i've started charging the bridge."]
+    about.aldric: ["Aldric's sword arm is an inch longer than the other. i cut his sleeves to match. he's never noticed."]
+    about.linnea: ["Linnea wants pockets for arrows. i keep telling her that's a quiver. she says a quiver doesn't have a flap."]
+    about.mirabel: ["Mirabel in Ellinia weaves the best thread in Victoria. we've never met. we send each other notes about selvedges."]
+    aboutUnknown: ["never measured them."]
+    friend.close: ["bring me anything you've torn. i'll mend it before the knights' coats. don't tell Neinheart."]
+    friend.best: ["i've stitched a sixth emblem inside your collar. small. nobody else will see it. it's a needle."]
+    famed: ["the knights talk about you at their fittings. i hear everything at a fitting."]
+    defamed: ["somebody was talking about you at a fitting. i stuck them with a pin. by accident."]
+    gift: ["oh, thank you. i'll put it somewhere i won't sew it into anything."]
+    gift.favorite: ["oh, now that's a treat. that's a whole hem's worth of happy."]
+    gift.again: ["one a day. i can't sew with sticky fingers."]
+
+- id: caius
+  name: Caius
+  look: { gender: male }
+  title: "Night Walker of the Empress's Watch"
+  job: NIGHTWALKER2
+  level: { min: 32, max: 34 }
+  strength: SEASONED
+  loadout: kerning-thief-l28
+  personality: efficient-v1
+  home:
+    town: ereve
+    routine:
+      - { from: 14, to: 19, spot: "venue:by-mihile", activity: LINGER }
+      - { from: 19, to: 23, spot: "venue:by-neinheart", activity: SOCIALIZE }
+      - { from: 23, to: 2, spot: "venue:by-cygnus", activity: LINGER }
+      - { from: 2, to: 14, materialize: false }
+  recruitable: true
+  knows: [bubbling, evil eye, cold eye]
+  contract: caius-the-night-shift
+  questLines: [caius-the-quiet-step, caius-amethyst-earrings, caius-leaf-earrings, caius-celestial-earrings, caius-clean-firewood]
+  rumors: [ereve-the-night-watch]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: wynn, kind: IS_FOLLOWED_AROUND_BY }
+    - { persona: isaura, kind: READS_IN_THE_DARK_WITH }
+  giftItemIds: [2000003, 2010001]
+  dialogue:
+    greetFirst: ["you didn't hear me. nobody does. hello.", "...you can see me. good eyes. hello."]
+    greet: ["hm.", "you again.", "evening. it's always evening where i'm standing."]
+    idle: ["(stands so still in the shade of the bridge that a gull lands beside him)", "(walks a throwing star across his knuckles, end over end, without looking)"]
+    noWork: ["nothing tonight."]
+    nothingDue: ["square."]
+    who: ["Caius. Night Walker, second rank. Eckhart taught me that a shadow is only the side of a thing the light forgot. i keep the Empress's watch after dark. by day i hunt where it's dark anyway."]
+    bye: ["walk quiet."]
+    thanks: ["mm. thanks."]
+    smallTalk: ["the tree dungeon north of Ellinia is dark all day. the bubblings in it pop if you breathe wrong. it's where i learned to breathe.", "Eckhart says a Night Walker learns from things that see in the dark. the evil eyes first. then the cold ones. then the stars."]
+    speakPlainly: ["plainly: a shadow with a watch to keep."]
+    offer: ["fifty bubblings in the dark, counted after you ask, and six thousand. then i'm your shadow for a shift."]
+    join: ["lead. i'll be behind you. you won't notice."]
+    bench: ["three days. then the Empress's watch wants me back."]
+    leave: ["back to the watch."]
+    refuse.bond: ["i don't walk beside strangers. i walk behind them."]
+    refuse.flags: ["walk the dark with me first. the bubblings in the tree dungeon north of Ellinia. then ask."]
+    refuseOwnErrand: ["my own drill first. come and walk it."]
+    questOffer.caius-the-quiet-step: ["Eckhart's first drill. the bubblings in the tree dungeon north of Ellinia, or in the subway under Kerning. twenty-five of them, and don't let one see you coming."]
+    questAccept.caius-the-quiet-step: ["the tree dungeon north of Ellinia, the fifth room down. or the first line of the Kerning subway. both dark. good."]
+    questWaiting.caius-the-quiet-step: ["twenty-five. quietly."]
+    questComplete.caius-the-quiet-step: ["twenty-five, and i never heard you once. you'll do. here."]
+    questOffer.caius-amethyst-earrings: ["a Night Walker's fire is small and doesn't smoke. axe stump firewood burns clean. thirty axe stumps, twelve bundles of their firewood, and i'll owe you."]
+    questAccept.caius-amethyst-earrings: ["the tree dungeon north of Ellinia, the sixth room. or the rocky mountain east of Perion. they swing back."]
+    questWaiting.caius-amethyst-earrings: ["twelve bundles. a small fire."]
+    questComplete.caius-amethyst-earrings: ["twelve. that keeps the watch warm a month. take these. amethyst. they don't catch the light. the safe scrolls, every one took."]
+    questOffer.caius-leaf-earrings: ["Eckhart says learn from what sees in the dark. the evil eyes. the tree dungeon's deepest rooms, or the swamp below Sleepywood. thirty of them, ten tails. a tail tells you where an eye was looking."]
+    questAccept.caius-leaf-earrings: ["north of Ellinia, down past the horny mushrooms. or Sleepywood's swamp. they see you before you see them. change that."]
+    questWaiting.caius-leaf-earrings: ["ten tails."]
+    questComplete.caius-leaf-earrings: ["ten. they never saw you. Leaf Earrings. the sixties, every one took. leaves don't shine."]
+    questOffer.caius-celestial-earrings: ["the cold eyes in the dungeon under Sleepywood, the third floor down. thirty of them, twelve tails. after the cold ones, the stars. that's the order."]
+    questAccept.caius-celestial-earrings: ["Sleepywood, down the dungeon stairs, past the lupins and the zombie lupins. it's cold. it's meant to be."]
+    questWaiting.caius-celestial-earrings: ["twelve tails. the stars aren't going anywhere."]
+    questComplete.caius-celestial-earrings: ["twelve. Celestial Earrings. two tens and the rest sixties, every one took. under the stars they look like nothing at all. that's the point."]
+    questOffer.caius-clean-firewood: ["ten bundles of axe stump firewood? the watch fire's low."]
+    questAccept.caius-clean-firewood: ["the tree dungeon's sixth room."]
+    questWaiting.caius-clean-firewood: ["ten."]
+    questComplete.caius-clean-firewood: ["ten. no smoke. good."]
+    about.wynn: ["Wynn follows me around to learn how to walk quietly. he hums while he does it. i haven't told him."]
+    about.isaura: ["Isaura and i read in the library at night. she has a lamp. i don't. we don't talk. it's the best company in Ereve."]
+    about.fintan: ["Fintan's hatchery is the only place on the island quieter than me. i go past it to listen."]
+    about.celandine: ["Celandine sewed my buttons in black and tested them in a cupboard. she's thorough."]
+    about.aldric: ["Aldric swings at the air like it insulted him. maybe it did."]
+    about.linnea: ["Linnea sees me on the bridges at night. she's the only one who does. she never says anything. good eyes."]
+    aboutUnknown: ["never seen them. that means something."]
+    friend.close: ["i'll keep your watch, if you're ever on one. you can sleep."]
+    friend.best: ["if you ever need to not be seen, come and find me. i'll teach you. i don't teach anyone."]
+    famed: ["they say your name in the knights' hall. i was in the corner. nobody noticed. i agreed."]
+    defamed: ["i heard what they said. i know where they sleep. ...that was a joke. mostly."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["...that's good. that's a whole night watch, that is."]
+    gift.again: ["one a day. i travel light."]
+
+- id: wynn
+  name: Wynn
+  look: { gender: male }
+  title: "Thunder Breaker Cadet"
+  job: THUNDERBREAKER1
+  level: { min: 16, max: 18 }
+  strength: ROOKIE
+  loadout: nautilus-deckhand-l10
+  personality: relaxed-v1
+  home:
+    town: ereve
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-mihile", activity: SHOW_OFF }
+      - { from: 11, to: 16, materialize: false }
+      - { from: 16, to: 19, spot: "venue:by-irena", activity: STROLL }
+      - { from: 19, to: 22, spot: "venue:by-neinheart", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [octopus, green mushroom, green mushroom cap]
+  questLines: [wynn-the-octopus-hold, wynn-kitchen-duty]
+  rumors: [ereve-the-night-watch]
+  relationships:
+    - { persona: caius, kind: FOLLOWS_AROUND }
+    - { persona: fintan, kind: PESTERS_ABOUT_MOUNTS }
+    - { persona: celandine, kind: TEARS_TROUSERS_FOR }
+  giftItemIds: [2020004, 2020005]
+  dialogue:
+    greetFirst: ["hi! are you a knight? you look like a knight. i'm going to be one. a Thunder Breaker. i'm nearly one.", "whoa, a new face! watch this. ...okay, that usually works. hi!"]
+    greet: ["hey!", "you're back! i nearly didn't fall off the bridge today.", "hi! did you hear that? that was me. thunder."]
+    idle: ["(punches the air in a fast one-two, overbalances, and catches the railing)", "(checks his knuckle stance in a puddle's reflection, adjusts it, and grins)"]
+    noWork: ["nothing today! i'm drilling. Hawkeye says drill till the lightning's bored."]
+    nothingDue: ["we're even! i think. are we? we are."]
+    who: ["Wynn! Thunder Breaker cadet, first rank. Hawkeye says i hit like a storm. he also says i aim like one."]
+    bye: ["see you! i'll be louder by then."]
+    thanks: ["thanks! really!"]
+    smallTalk: ["Hawkeye says a Thunder Breaker should land a punch the way a wave lands on a beach. all at once. i'm still more of a puddle.", "i'm on kitchen duty in the knights' mess again. i don't know what i did. i think it was the bridge."]
+    speakPlainly: ["plainly! a cadet. a loud one."]
+    questOffer.wynn-the-octopus-hold: ["Hawkeye says i need to learn to hold on when something holds on to me. the octopuses on the construction site north of Kerning hold on to everything. twenty-five of them. show me how?"]
+    questAccept.wynn-the-octopus-hold: ["the ferry to Ellinia, then across to the construction site north of Kerning City, and the top of it. they wiggle!"]
+    questWaiting.wynn-the-octopus-hold: ["twenty-five! they're very wiggly. you can do it."]
+    questComplete.wynn-the-octopus-hold: ["twenty-five! okay. so you don't hold on. you let go first. that's the trick? that's the trick! here, my whole week's pocket money. no, take it."]
+    questOffer.wynn-kitchen-duty: ["kitchen duty. the knights' cook wants green mushroom caps for the stew. twelve. i can't leave the pot or it boils over. it boils over anyway. please?"]
+    questAccept.wynn-kitchen-duty: ["the tree that grew, north of Ellinia, the third one up. or the rocky mountain west of Perion. the green ones. they're grumpy."]
+    questWaiting.wynn-kitchen-duty: ["twelve caps. the pot's boiling over. i'm stirring!"]
+    questComplete.wynn-kitchen-duty: ["twelve! the stew's saved! the cook nearly smiled. nearly! here. it's not stew. the stew's for the knights."]
+    about.caius: ["Caius is the best Night Walker in Ereve. he can walk right past me and i don't even know. i follow him around to learn how. he always knows."]
+    about.fintan: ["Fintan says i get a mount when i stop falling off the bridge. i've only fallen off twice this week!"]
+    about.celandine: ["Celandine sews my trousers. she says i owe her a bridge. i don't know what that means."]
+    about.isaura: ["Isaura looks at me like i owe her a book. i've never borrowed a book! ...should i?"]
+    about.aldric: ["Aldric drills by Mihile in the mornings with me. he's so loud. i want to be that loud."]
+    about.linnea: ["Linnea laughs when i fall off the bridge. she always checks i'm all right first. then she laughs."]
+    aboutUnknown: ["don't know them! should i?"]
+    friend.close: ["you can drill with me any morning! i'll show you my thunder. it's mostly noise."]
+    friend.best: ["when i get my mount, you can ride it first. after me. no, before me. you first."]
+    famed: ["everyone's talking about you! i told them i know you! i do know you!"]
+    defamed: ["somebody said a bad thing about you. i punched the air at them. near them. at the air near them."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["WHOA. that's better than the stew. don't tell the cook."]
+    gift.again: ["one a day! Celandine says i'll split my trousers."]

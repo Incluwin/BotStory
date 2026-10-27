@@ -1,0 +1,177 @@
+# Neo City quests at the Tera Forest Time Gate (wave 4). Neo City's eras through the gate (its drops are 20%, so the
+# hand-ins are small): 2021 Average Town 240070100-240070102 (silver slime 7120104 silver squishy liquid 4000546 on
+# 240070101); 2099 Midnight Harbor 240070200-240070202 (overlord A 7120106 radar device 4000548, overlord B 7120107);
+# 2215 Bombed City Center 240070300-240070302 (iruvata 7120109 laser sword 4000551); 2216 Ruined City 240070400-240070402
+# (afterlord 8120102 chained tire 4000552, prototype lord 8120103 propulsion system 4000553); 2230 Dangerous Tower
+# 240070500-240070502 (maverick type S 8120105, type D 8120106 booster 4000556); 2503 Air Battleship 240070600-240070602
+# (imperial guard 8140511 vacuum tube 4000557, royal guard 8140512 armor 4000558). The era bosses are instance fights and
+# are left alone. Outside the gate: Minar Forest East Border 240010900 (dual beetle 7130003 horn 4000237).
+
+# ---- Calla: the harbor light (arcs/tera-forest-time-gate.yaml) ----
+- id: calla-the-playground
+  persona: calla
+  title: "A Playground in 2021"
+  length: SHORT
+  requires: { level: { min: 70 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [7120104], count: 25, mapIds: [240070101] }
+    - { id: liquid, type: COLLECT_ITEM, itemId: 4000546, count: 8 }
+    - { id: jar, type: DELIVER, to: calla, take: { itemId: 4000546, count: 8 } }
+  rewards: { meso: 17000, exp: 22000, bondPoints: 30, items: [{ itemId: 2000004, count: 10 }] }
+
+- id: calla-the-harbor-listener
+  persona: calla
+  title: "The Harbor Listener"
+  length: MEDIUM
+  requires: { level: { min: 75 }, questsCompleted: [calla-the-playground] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: overlords, type: KILL_MOBS, mobIds: [7120106, 7120107], count: 25, mapIds: [240070200, 240070201] }
+    - { id: radar, type: COLLECT_ITEM, itemId: 4000548, count: 8 }
+    - { id: bettany, type: TALK_TO, persona: bettany, say: ["radar off the overlords? eight? oh, that's plenty. hold them up. ...there, i've marked where every wire goes. Calla can clip them in herself, she's good with a screwdriver. tell her it'll only hear the harbor, not talk to it. tell her i'm sorry about that. i tried."] }
+    - { id: listener, type: DELIVER, to: calla, take: { itemId: 4000548, count: 8 } }
+  rewards: { meso: 20000, exp: 28000, bondPoints: 40, items: [{ itemId: 2000004, count: 15 }], worldFlags: [neo.harbor.heard] }
+
+- id: calla-grans-name
+  persona: calla
+  title: "Gran's Name"
+  length: LONG
+  requires: { level: { min: 80 }, questsCompleted: [calla-the-harbor-listener], flags: [temple.song.traced], notFlags: [neo.gran.home] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: osmund, type: TALK_TO, persona: osmund, say: ["the record of that glass. i'll read it, this once, because it's asked for the right way round. Midnight Harbor, the year 2099, a lamp lit in a window. the singer: Liv, born in Orbis, through the Tera Forest gate at seventeen. the listener: her granddaughter, Calla. ...take that to Solveig first. gently."] }
+    - { id: solveig, type: TALK_TO, persona: solveig, say: ["Liv. ...Liv lived. she kept a lamp by a sea and sang my song to her granddaughter. here. take the glass to the girl. tell her Liv's mother is at the temple door. tell her i'll write by every ship. i've walked the wrong road long enough."] }
+    - { id: home, type: DELIVER, to: calla }
+  rewards: { meso: 40000, exp: 60000, bondPoints: 60, items: [{ itemId: 2000005, count: 10 }], worldFlags: [neo.gran.home] }
+
+# ---- Augustin ----
+- id: augustin-beetle-ink
+  persona: augustin
+  title: "Ink for the Logbook"
+  length: SHORT
+  requires: { level: { min: 74 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: beetles, type: KILL_MOBS, mobIds: [7130003], count: 25, mapIds: [240010900] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000237, count: 12 }
+    - { id: ink, type: DELIVER, to: augustin, take: { itemId: 4000237, count: 12 } }
+  rewards: { meso: 16000, exp: 22000, bondPoints: 30, items: [{ itemId: 2000004, count: 10 }] }
+
+- id: augustin-the-open-line
+  persona: augustin
+  title: "Two Came Back"
+  length: MEDIUM
+  requires: { level: { min: 86 }, questsCompleted: [augustin-beetle-ink] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mavericks, type: KILL_MOBS, mobIds: [8120105], count: 25, mapIds: [240070501, 240070502] }
+    - { id: exit, type: VISIT_MAP, mapIds: [240070502] }
+    - { id: closed, type: DELIVER, to: augustin }
+  rewards: { meso: 24000, exp: 38000, bondPoints: 35, items: [{ itemId: 2000005, count: 5 }] }
+
+# ---- Bettany ----
+- id: bettany-the-same-light
+  persona: bettany
+  title: "The Same Light"
+  length: SHORT
+  requires: { level: { min: 78 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: iruvata, type: KILL_MOBS, mobIds: [7120109], count: 25, mapIds: [240070301, 240070302] }
+    - { id: swords, type: COLLECT_ITEM, itemId: 4000551, count: 8 }
+    - { id: bench, type: DELIVER, to: bettany, take: { itemId: 4000551, count: 8 } }
+  rewards: { meso: 18000, exp: 26000, bondPoints: 30, items: [{ itemId: 2000004, count: 10 }] }
+
+- id: bettany-a-cold-start
+  persona: bettany
+  title: "A Cold Start"
+  length: MEDIUM
+  requires: { level: { min: 84 }, questsCompleted: [bettany-the-same-light] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lords, type: KILL_MOBS, mobIds: [8120103], count: 25, mapIds: [240070401, 240070402] }
+    - { id: engines, type: COLLECT_ITEM, itemId: 4000553, count: 8 }
+    - { id: petra, type: TALK_TO, persona: petra, say: ["Bettany? at the Time Gate? still? tell her: gently. a cold start wants coaxing, not cranking. and tell her to write. she never writes."] }
+    - { id: started, type: DELIVER, to: bettany, take: { itemId: 4000553, count: 8 } }
+  rewards: { meso: 22000, exp: 34000, bondPoints: 35, items: [{ itemId: 2000005, count: 5 }] }
+
+# ---- Tobiah (recruit; the Time Traveler's Circlet) ----
+- id: tobiah-salvage-rights
+  persona: tobiah
+  title: "Salvage Rights"
+  length: SHORT
+  requires: { level: { min: 82 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: afterlords, type: KILL_MOBS, mobIds: [8120102], count: 30, mapIds: [240070400, 240070401] }
+    - { id: tires, type: COLLECT_ITEM, itemId: 4000552, count: 8 }
+    - { id: haul, type: DELIVER, to: tobiah, take: { itemId: 4000552, count: 8 } }
+  rewards: { meso: 40000, exp: 42000, bondPoints: 30, flags: [tobiah.intro.done] }
+
+- id: tobiah-booster-salvage
+  persona: tobiah
+  title: "Booster Salvage"
+  length: MEDIUM
+  requires: { level: { min: 88 }, questsCompleted: [tobiah-salvage-rights] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mavericks, type: KILL_MOBS, mobIds: [8120106], count: 30, mapIds: [240070502] }
+    - { id: boosters, type: COLLECT_ITEM, itemId: 4000556, count: 8 }
+    - { id: haul, type: DELIVER, to: tobiah, take: { itemId: 4000556, count: 8 } }
+  rewards: { meso: 48000, exp: 60000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }
+
+- id: tobiah-the-travelers-circlet
+  persona: tobiah
+  title: "The Time Traveler's Circlet"
+  length: LONG
+  requires: { level: { min: 93 }, friendship: 10, questsCompleted: [tobiah-booster-salvage] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guards, type: KILL_MOBS, mobIds: [8140512], count: 30, mapIds: [240070601, 240070602] }
+    - { id: plates, type: COLLECT_ITEM, itemId: 4000558, count: 8 }
+    - { id: circlet, type: DELIVER, to: tobiah, take: { itemId: 4000558, count: 8 } }
+  rewards:
+    meso: 250000
+    exp: 280000
+    bondPoints: 60
+    gear:
+      - { pool: [1003039], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: tobiah-scrap-tires
+  persona: tobiah
+  title: "Scrap Tires"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 82 }, questsCompleted: [tobiah-salvage-rights] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tires, type: COLLECT_ITEM, itemId: 4000552, count: 8 }
+    - { id: sold, type: DELIVER, to: tobiah, take: { itemId: 4000552, count: 8 } }
+  rewards: { meso: 16000, exp: 18000, bondPoints: 10 }
+
+# ---- Dashiell (recruit; day rate) ----
+- id: dashiell-the-ship-over-leafre
+  persona: dashiell
+  title: "The Ship over Leafre"
+  length: SHORT
+  requires: { level: { min: 88 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guards, type: KILL_MOBS, mobIds: [8140511], count: 30, mapIds: [240070600, 240070601] }
+    - { id: deck, type: VISIT_MAP, mapIds: [240070602] }
+    - { id: report, type: DELIVER, to: dashiell }
+  rewards: { meso: 42000, exp: 45000, bondPoints: 30, flags: [dashiell.intro.done] }
+
+- id: dashiell-what-keeps-it-up
+  persona: dashiell
+  title: "What Keeps It Up"
+  length: MEDIUM
+  requires: { level: { min: 91 }, questsCompleted: [dashiell-the-ship-over-leafre] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guards, type: KILL_MOBS, mobIds: [8140511], count: 25, mapIds: [240070600, 240070601] }
+    - { id: tubes, type: COLLECT_ITEM, itemId: 4000557, count: 8 }
+    - { id: runa, type: TALK_TO, persona: runa, say: ["a glass tube? off a ship with no wings? tell Dashiell the wyverns don't have any and they fly fine. tell him to stop staring at the ship and start watching the guards. they're the ones not falling off."] }
+    - { id: report, type: DELIVER, to: dashiell, take: { itemId: 4000557, count: 8 } }
+  rewards: { meso: 48000, exp: 60000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }

@@ -1,0 +1,37 @@
+# Altaire Camp arc (wave 4): the expedition's map of the forest, its walking western edge, the haze line drawn in
+# pencil, and the name the fairies' glade keeps for the forest, written across the top. Its last beat happens once per
+# server (quests/altaire-camp.yaml).
+- id: ottavia-the-map-of-the-forest
+  persona: ottavia
+  chapters:
+    - id: chapter-1
+      title: "Blank Edges"
+    - id: chapter-2
+      title: "Trees That Walk"
+      dialogueOverrides:
+        greet: ["hello. the west is inked. the whole west, to the mountain's foot. i keep going back to look at it.", "you again. good. the south's still a guess. i don't like guesses."]
+        who: ["Ottavia. i draw the map for the expedition. the west is done, to the boulders. the south is where the haze is, and the haze won't hold still to be drawn."]
+        smallTalk: ["the west is inked and the trees in it still walk. i've decided that's their problem now.", "Teodor walks the haze line every morning. i ask him where it is every evening. i've a whole page of where it used to be."]
+        chapterEnter: ["(inks a long line down the west edge of the map in one stroke, and blows on it until it dries)"]
+      unlocks:
+        rumors: [altaire-the-haze-line]
+    - id: chapter-3
+      title: "Drawn in Pencil"
+      dialogueOverrides:
+        greet: ["hello. the haze line's on the map. in pencil. i rub it out every evening and draw it again.", "you again. the map's nearly done. nearly is the worst word i know."]
+        who: ["Ottavia. i draw the map for the expedition. the west is inked, the haze line is in pencil, and the top of the map is blank. a map ought to have a name. this one doesn't yet."]
+        idle: ["(rubs out a faint pencil line along the south of the map and draws it again a hair further north)", "(stares at the blank strip across the top of the map, pencil raised, and doesn't write anything)"]
+        smallTalk: ["'the forest'. that's what the camp calls it. you can't write 'the forest' across the top of a map. it's like calling a person 'the person'.", "Larkin says the fairies have a word for this place and only the glade says it out loud. i don't speak glade."]
+        chapterEnter: ["(draws the haze line along the south of the map in light pencil, then looks for a long time at the empty space across the top)"]
+    - id: chapter-4
+      title: "Ellin's Forest"
+      enterWhen: { flags: [altaire.forest.named] }
+      dialogueOverrides:
+        greet: ["hello. look at the top of the map. go on. look.", "you again. Ellin's forest. i say it every morning now. it's a good name to wake up to."]
+        who: ["Ottavia. i draw the map of Ellin's forest for the expedition. the name came up out of the fairies' glade. it was always the name. we only had to ask properly."]
+        idle: ["(traces the big letters across the top of the map with one finger, not quite touching the ink)", "(copies the map onto a fresh sheet for Athena, letter by careful letter, and starts the name first)"]
+        smallTalk: ["Athena read the name off the map and said it twice, quietly. she says when we build, the town goes under that name. i've drawn a little square where it'll go. it's only a square. it's a start.", "the haze line's still in pencil. the name's in ink. one of them's going to win. i know which one i'm drawing for."]
+        speakPlainly: ["plainly: a map with a name on it, at last."]
+        about.larkin: ["Larkin carried the forest's name up from the glade. he says it's always had it. we just hadn't asked. he's been insufferable about it. he's earned it."]
+        friend.best: ["the copy that goes to Athena has your name in the corner, where the cartographer signs. beside mine. under Ellin's."]
+        chapterEnter: ["(writes ELLIN'S across the top of the map in big careful letters, then sits back and doesn't say anything for a while)"]

@@ -1,0 +1,16 @@
+# Pier on the Beach rumors (wave 4). Nerys and Bora share the pier's one street in those hours
+# (personas/pier-on-the-beach.yaml).
+- id: pier-on-the-beach-the-tide
+  participants: [nerys, bora]
+  where: { town: pier-on-the-beach, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [16, 17]
+    everyDays: 1
+  lines:
+    - { by: bora, text: "she's late, Nerys." }
+    - { by: nerys, text: "she's never late. she stops to look at things." }
+    - { by: bora, text: "a dolphin that goes sightseeing." }
+    - { by: nerys, text: "she carries people all day. she's allowed to look." }
+    - { by: bora, text: "i sold a pearl to a man going down. he asked if it was real." }
+    - { by: nerys, text: "was it?" }
+    - { by: bora, text: "it was. i told him so. he didn't believe me and bought it anyway." }

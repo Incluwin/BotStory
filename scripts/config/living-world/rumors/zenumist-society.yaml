@@ -1,0 +1,17 @@
+# Zenumist Society rumors (wave 4). The pair is awake together at the hidden room door in those hours
+# (personas/zenumist-society.yaml).
+- id: zenumist-the-doorkeepers-rule
+  participants: [ines, phineas]
+  where: { town: zenumist-society, spot: "venue:zenumist-hidden-room-door" }
+  when:
+    serverHours: [20, 21]
+    everyDays: 1
+  setsFlagOnListeners: zenumist.heard-ines
+  lines:
+    - { by: phineas, text: "late again, Ines. the door shuts at ten." }
+    - { by: ines, text: "then i've an hour. Phineas, a traveller asked if i'd hunt with them. out in the desert." }
+    - { by: phineas, text: "a Zenumist doesn't sell her fire. rule twenty-two." }
+    - { by: ines, text: "i'm not selling it. i'm lending it. thirty thousand for a day, to anyone who's helped me with my glass first. and i won't hide who i'm out with. not from the Alcadno, not from you." }
+    - { by: phineas, text: "rule twenty-two says nothing about lending." }
+    - { by: ines, text: "i know. i read it this morning." }
+    - { by: phineas, text: "...then i'll shut the door at eleven." }

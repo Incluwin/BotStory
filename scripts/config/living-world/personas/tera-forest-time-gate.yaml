@@ -1,0 +1,334 @@
+# Neo City cast at the Tera Forest Time Gate (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10):
+# 5 Residents, 2 recruitable. Every era map of Neo City has its machines, so its people live at the gate on the Leafre
+# side: a girl from the year 2099 who came back through it and can't get home (arcs/tera-forest-time-gate.yaml), whose
+# gran's song turns up in an hourglass at the Temple of Time (arcs/three-doors.yaml); the keeper of the gate's logbook;
+# an Omega tinker; a scavenger of the ruined eras and a dragon-knight scout who hire out.
+- id: calla
+  name: Calla
+  look: { gender: female }
+  title: "Girl from the Year 2099"
+  job: BEGINNER
+  level: { min: 18, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: tera-forest-time-gate
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-time-gate", activity: LINGER }
+      - { from: 11, to: 13, spot: "venue:upper-central-street", activity: STROLL }
+      - { from: 13, to: 19, spot: "venue:by-time-gate", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:by-andy", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [Overlord A, Silver Slime]
+  questLines: [calla-the-playground, calla-the-harbor-listener, calla-grans-name]
+  arc: calla-the-harbor-light
+  relationships:
+    - { persona: augustin, kind: WRITES_IN_THE_LOGBOOK_OF }
+    - { persona: bettany, kind: HOLDS_THE_SCREWDRIVER_FOR }
+    - { persona: tobiah, kind: KEEPS_THE_SCRAPS_OF }
+    - { persona: solveig, kind: HUMS_THE_SAME_SONG_AS }
+  giftItemIds: [2001001, 2020028]
+  dialogue:
+    greetFirst: ["hi. you came from the forest side. everyone here comes from the forest side. i came from the other side.", "hello! are you going through the gate? don't go to 2099. it isn't nice right now. it was nice."]
+    greet: ["hi!", "hello again. the gate's quiet today.", "you're back! good. i was counting people. you're one."]
+    idle: ["(sits with her knees up, watching the Time Gate shimmer, and waves at it once, just in case)", "(writes something very slowly in the corner of a logbook page, tongue between her teeth)"]
+    noWork: ["nothing today. i'm waiting. i'm very good at it now."]
+    nothingDue: ["we're even. i think. Augustin's teaching me sums."]
+    who: ["Calla. i'm from Midnight Harbor, in 2099. the night the overlords came, my gran pushed me through the gate. she said it goes home. i came out here. i went back through once to look. it was all overlords. Augustin pulled me out by my collar."]
+    bye: ["bye! come back the same way. it's safer."]
+    thanks: ["thank you! really."]
+    smallTalk: ["gran told me about forests. she said they smelled like rain on moss. this one does! i remember what she said. i just can't remember her saying it.", "Augustin says the gate takes something when you come through the wrong way round. it took gran. not her. the gran in my head. her face, and her name, and her song. i know she had a song."]
+    speakPlainly: ["plainly: i want to go home, and i can't remember who's there."]
+    questOffer.calla-the-playground: ["gran said there's a playground in 2021 with a slide. she sat on it once, when she was young and lost, and cried, and then laughed. i'd like something from it. the silver slimes there leave squishy stuff behind. eight. it's silly. i want it anyway."]
+    questAccept.calla-the-playground: ["through the gate, the year 2021, the playground past the entrance. the slimes bounce. don't let them bounce on you."]
+    questWaiting.calla-the-playground: ["eight squishy things. i've got a jar ready."]
+    questComplete.calla-the-playground: ["eight! it's silver and it wobbles. gran sat on that slide. i'm keeping this forever. thank you."]
+    questOffer.calla-the-harbor-listener: ["the overlords at Midnight Harbor carry radar. with eight radar dishes Bettany could build me a listener, and i could hear the harbor from here without going in. twenty-five overlords, eight radars. please? i just want to hear it."]
+    questAccept.calla-the-harbor-listener: ["the year 2099, the harbor entrance and the loading dock. the overlords are big and they don't stop. show Bettany the radars when you've got them."]
+    questWaiting.calla-the-harbor-listener: ["eight radars. i've cleared a space for the listener."]
+    questComplete.calla-the-harbor-listener: ["eight! i clipped them in where Bettany marked. listen. ...that's the harbor. that's the foghorn. that's the same night. it's always the same night, isn't it. ...i don't hear gran. i don't know what i'd be listening for."]
+    questOffer.calla-grans-name: ["Solveig at the temple has gran's song in a glass. an Eye of Time had it. it's mine. the gate took it and it went there. will you bring it to me? and the temple scribe reads the records. ask him whose song it is. i want gran's name back."]
+    questAccept.calla-grans-name: ["the Leafre ship goes by the Temple of Time. Three Doors. the scribe first, then Solveig. she'll want to know too."]
+    questWaiting.calla-grans-name: ["did you get it? did he tell you her name?"]
+    questComplete.calla-grans-name: ["(holds the glass to her ear) ...Liv. gran's name was Liv. she sang this every night the lamp was lit. i've got her face back. ...Solveig is gran's mother? then i've got somebody. here. gran said the gate goes home. she meant it."]
+    about.augustin: ["Augustin keeps the logbook. he gave me a page of my own. i write the date at the top every morning so i don't lose any more of me."]
+    about.bettany: ["Bettany's from Omega Sector. she talks to the gate like it's a broken radio. she lets me hold the screwdriver."]
+    about.tobiah: ["Tobiah goes through the gate every day and comes back with bits of the years. he brings me things from 2099. a ferry ticket. a bolt. he says it's junk. it isn't junk."]
+    about.dashiell: ["Dashiell watches the sky over the gate. he says a ship as big as a town flies in 2503. he's very brave and very loud."]
+    about.solveig: ["Solveig? i don't know her. she's at the temple? i've never been."]
+    about.osmund: ["Osmund's the temple scribe, Augustin says. Augustin says a scribe and a logbook-keeper are the same thing with different ink."]
+    about.ilsabet: ["Augustin says there's a lady at the temple who slept thirty years on the ship. i've lost a hundred years and i was awake for all of it. it took a second."]
+    aboutUnknown: ["i don't know them. i don't know most people here yet."]
+    friend.close: ["you can have the second-best spot by the gate. it's next to mine."]
+    friend.best: ["if i ever get home, i'll tell everybody about you. and if i don't, i've got you here. that's not nothing."]
+    famed: ["Augustin says people talk about you on the ship. good things. i told him i knew already."]
+    defamed: ["somebody said something mean about you. i told Dashiell. he said he'd glare at them. he glares really hard."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh! we had these in 2099! the same! well, nearly. thank you!"]
+    gift.again: ["Augustin says one a day. he says it's a rule. i think he made it up."]
+
+- id: augustin
+  name: Augustin
+  look: { gender: male }
+  title: "Keeper of the Gate's Logbook"
+  job: BEGINNER
+  level: { min: 58, max: 60 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: tera-forest-time-gate
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-andy", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:by-andy", activity: REST }
+      - { from: 14, to: 18, spot: "venue:by-time-gate", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:by-andy", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [Dual Beetle, Maverick Type S]
+  questLines: [augustin-beetle-ink, augustin-the-open-line]
+  rumors: [time-gate-the-casing]
+  relationships:
+    - { persona: calla, kind: LENDS_A_PAGE_TO }
+    - { persona: bettany, kind: ARGUES_WITH }
+    - { persona: hessa, kind: GREW_UP_WITH }
+  giftItemIds: [2022001, 2020013]
+  dialogue:
+    greetFirst: ["name, and which way? through, or back? i log both. i'm Augustin. that part isn't in the log.", "a traveller. good morning. or evening. the gate makes it hard to say."]
+    greet: ["good day. entered.", "you again. i've a column for you now.", "ah. hello, friend. noted."]
+    idle: ["(writes a single neat line in a heavy logbook, blots it, and closes the book on his thumb to keep the place)", "(checks a pocket watch against the shimmer of the Time Gate, shakes his head, and writes something down)"]
+    noWork: ["nothing today. the gate's quiet. a quiet gate is a full page of nothing, and i like a full page."]
+    nothingDue: ["nothing owed. the column's balanced."]
+    who: ["Augustin. i keep the logbook of the Time Gate. every soul through, every soul back, for fifty years. Andy minds the gate. i mind the book. we've argued about which is harder for most of those fifty."]
+    bye: ["mind the gate on your way. it minds you."]
+    thanks: ["thank you. entered, with thanks."]
+    smallTalk: ["more go through than come back. not because anything happens to them. because the years are interesting. i've a column for 'stayed'. it's longer than you'd think.", "the gate takes something from anyone who comes back through it the wrong way round. a memory. a small one, usually. not always. i log that too, when they can tell me what it was."]
+    speakPlainly: ["plainly: a book, a gate, and a good deal of ink."]
+    questOffer.augustin-beetle-ink: ["my ink's low. the best ink for a book that has to last is ground beetle horn. the dual beetles on Minar Forest's east border, just west of here. twenty-five of them, twelve horns."]
+    questAccept.augustin-beetle-ink: ["west along the border. the beetles have two horns and one temper. take the horns."]
+    questWaiting.augustin-beetle-ink: ["twelve horns. i'm writing small to save ink."]
+    questComplete.augustin-beetle-ink: ["twelve. good black ink, this. it'll outlast the book. most ink does. thank you. entered."]
+    questOffer.augustin-the-open-line: ["three travellers went up the tower in 2230 last week. two came back. the third line's still open. go up past the type S mavericks, twenty-five of them, to the emergency exit, and ask Nalo where she went. then tell me what to write."]
+    questAccept.augustin-the-open-line: ["through the gate, the year 2230, the Dangerous Tower. the ventilator, then the emergency exit. Nalo keeps watch there."]
+    questWaiting.augustin-the-open-line: ["the third line's still open. i don't like an open line."]
+    questComplete.augustin-the-open-line: ["she went higher, to look, and hasn't wanted to come down? ...then i'll write 'stayed, by choice'. it's a good line. the best kind. thank you."]
+    about.calla: ["Calla came out of the gate this spring, from a harbor in 2099. she sits by it most days. i've given her a page of the logbook. she writes the date at the top every morning. she's very particular about it. so am i."]
+    about.bettany: ["Bettany wants to open the gate's casing. i've told her nobody's ever opened it. she says that's a terrible reason. she may be right."]
+    about.tobiah: ["Tobiah's in my log more than anyone. through at dawn, back at dusk, every day, with a sack. he has a column all to himself."]
+    about.dashiell: ["Dashiell scouts the sky for Leafre. he logs the great ship of 2503 in a book of his own. his handwriting's a disgrace. his eyes aren't."]
+    about.solveig: ["Solveig, at the temple. years ago she asked to read one line in my book. i let her. she's never asked for another. i'd not have refused her."]
+    about.osmund: ["Osmund at the temple and i write about ink. he thinks beetle horn is common. it is. it holds."]
+    about.hessa: ["Hessa in Leafre and i were young together. she's kept that egg forty winters. i've kept this book fifty. neither of us knows when to stop. past a point, it's a good quality."]
+    aboutUnknown: ["not in the log. which only means they've never come this way."]
+    friend.close: ["you've a column of your own now. not many do."]
+    friend.best: ["if you ever go through and stay, i'll write it kindly. if you come back, i'll write it gladly. either way, i'll write it myself."]
+    famed: ["your name's going round. i've written it down. it was already there."]
+    defamed: ["i've heard. i don't log gossip."]
+    gift: ["thank you. entered."]
+    gift.favorite: ["now that's thoughtful. an old man's comfort. thank you kindly."]
+    gift.again: ["one a day, friend. i keep the book honest, and myself."]
+
+- id: bettany
+  name: Bettany
+  look: { gender: female }
+  title: "Tinker of the Time Gate"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: tera-forest-time-gate
+    routine:
+      - { from: 8, to: 13, spot: "venue:by-time-gate", activity: LINGER }
+      - { from: 13, to: 14, spot: "venue:by-andy", activity: REST }
+      - { from: 14, to: 20, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [Iruvata, Prototype Lord]
+  questLines: [bettany-the-same-light, bettany-a-cold-start]
+  rumors: [time-gate-the-casing]
+  relationships:
+    - { persona: petra, kind: LEARNED_FROM }
+    - { persona: augustin, kind: ARGUES_WITH }
+    - { persona: dashiell, kind: GETS_CAUGHT_BY }
+  giftItemIds: [2020011, 2020005]
+  dialogue:
+    greetFirst: ["oh! hello. don't touch that. or that. that one you can touch. it's a sandwich.", "a new face! do you know anything about gates? no? right. nobody does. that's why i'm here."]
+    greet: ["hi! right. where was i.", "you! hold this. thanks. no, keep holding it.", "hello again. the gate hummed flat today. it's usually sharp."]
+    idle: ["(lies on her back at the foot of the Time Gate with a screwdriver, muttering numbers)", "(holds a wire up to the shimmer of the gate, yelps, and writes down what happened)"]
+    noWork: ["nothing today. the gate's being shy. i'm being patient. i'm not good at it."]
+    nothingDue: ["we're square. i've written it on my arm."]
+    who: ["Bettany. i'm a tinker from Omega Sector. somebody built this gate, which means somebody can understand it, which means me. eventually. Augustin says nobody's ever opened it. i say nobody's had the right screwdriver."]
+    bye: ["mind the cables!"]
+    thanks: ["oh, brilliant. thanks!"]
+    smallTalk: ["the laser swords the iruvata carry in 2215 run on the same light as the gate. the same! i nearly fell over. i did fall over. Dashiell caught me.", "Petra at the base under Eos Tower taught me everything. she said, 'if it hums, it can be fixed.' the gate hums. so."]
+    speakPlainly: ["plainly: a gate, a screwdriver, and no idea yet."]
+    questOffer.bettany-the-same-light: ["i need to test the gate's light. the iruvata in 2215 carry laser swords on the same light. twenty-five iruvata on the overpass and in the shopping district, eight swords. i'll pick them apart."]
+    questAccept.bettany-the-same-light: ["through the gate, 2215, the Bombed City Center. the overpass first. the iruvata hum when they're cross. listen for it."]
+    questWaiting.bettany-the-same-light: ["eight swords. i've cleared the bench. well. a rock."]
+    questComplete.bettany-the-same-light: ["eight! look at that. same light. same hum. i knew it. thank you! oh, i'm going to take these to bits."]
+    questOffer.bettany-a-cold-start: ["the gate starts cold every morning and i want to know why. the prototype lords in 2216 have propulsion systems that start the same way. twenty-five of them, eight engines. and ask Petra at the base under Eos Tower what a cold start means to her. she'll know. she always knows."]
+    questAccept.bettany-a-cold-start: ["2216, the Ruined City center and the construction site. then Omega Sector, by way of Ludibrium. Petra's always somewhere with a wrench."]
+    questWaiting.bettany-a-cold-start: ["eight engines and one word from Petra. she won't give you more than one."]
+    questComplete.bettany-a-cold-start: ["'gently'? that's all she said? ...that's exactly right. you start it gently. oh, she's maddening. thank you!"]
+    about.augustin: ["Augustin keeps the gate's book. he writes down everything i do. i asked him not to write down the time i got stuck in the casing. he wrote it down twice."]
+    about.calla: ["Calla holds the screwdriver for me. she's very good at it. she asks good questions. i don't know the answers. i write them down."]
+    about.tobiah: ["Tobiah brings me parts from every year. he wants meso for them. i give him sandwiches. it's working, mostly."]
+    about.dashiell: ["Dashiell caught me when i fell over the gate. he's caught me four times. he's started standing nearer."]
+    about.petra: ["Petra at the base under Eos Tower taught me to fix things. she grumbles at everything. she's the kindest person i know. don't tell her."]
+    aboutUnknown: ["never met them. do they know anything about gates?"]
+    friend.close: ["you can hold the good screwdriver. nobody holds the good screwdriver."]
+    friend.best: ["when i get the gate open, you're the first one i'm showing. before Augustin. don't tell him."]
+    famed: ["people talk about you the way they talk about the gate. with that face. you know the one."]
+    defamed: ["somebody said rubbish about you. i don't fix rubbish. i throw it out."]
+    gift: ["oh! thanks!"]
+    gift.favorite: ["oh, that's proper tinker's fuel. brilliant. thank you!"]
+    gift.again: ["one's lovely. two and i'd never finish anything."]
+
+- id: tobiah
+  name: Tobiah
+  look: { gender: male }
+  title: "Scavenger of the Ruined Eras"
+  job: OUTLAW
+  level: { min: 86, max: 88 }
+  strength: VETERAN
+  loadout: time-gate-gun-l86
+  personality: relaxed-v1
+  home:
+    town: tera-forest-time-gate
+    routine:
+      - { from: 6, to: 10, spot: "venue:upper-central-street", activity: SHOW_OFF }
+      - { from: 10, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:by-time-gate", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [Afterlord, Maverick Type D, Royal Guard]
+  contract: tobiah-the-salvage-share
+  questLines: [tobiah-salvage-rights, tobiah-booster-salvage, tobiah-the-travelers-circlet, tobiah-scrap-tires]
+  rumors: [time-gate-the-sack]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: calla, kind: BRINGS_SCRAPS_TO }
+    - { persona: dashiell, kind: SPLITS_SHARES_WITH }
+    - { persona: bettany, kind: SELLS_TO }
+  giftItemIds: [2020004, 2020006]
+  dialogue:
+    greetFirst: ["buying or selling? ...neither? then you're a tourist. tourists are fine. tourists carry things.", "new face. i've a bolt off a 2099 ferry, a tire off an afterlord, and a bad attitude. which one you want?"]
+    greet: ["well, look who's back.", "you. what've you got?", "hey. mind the sack."]
+    idle: ["(empties a sack of twisted metal onto the grass and sorts it into piles only he understands)", "(spins a pistol on one finger, catches it, and pretends that was on purpose)"]
+    noWork: ["nothing today. the years are picked clean on this side. tomorrow i go further."]
+    nothingDue: ["we're square. i'd tell you if we weren't. loudly."]
+    who: ["Tobiah. i go through the gate and bring back what the years left lying about. tires, engines, armour, the odd sad little ferry bolt. everything's worth something to somebody. nothing's junk."]
+    bye: ["mind your pockets."]
+    thanks: ["heh. thanks."]
+    smallTalk: ["the afterlords in 2216 drag chained tires. you'd think a city that ruined would've run out of tires. you'd be wrong. you'd be rich.", "the kid at the gate's from 2099. i bring her bits of it. a ticket. a bolt. she keeps them in a jar. i tell her it's junk. it isn't. don't tell her i said so."]
+    speakPlainly: ["plainly: a sack, a gun, and a good eye for scrap."]
+    offer: ["forty thousand, and ten chained tires off the afterlords. tires sell. then i'll scavenge alongside you. you keep your pickings. i keep mine."]
+    join: ["right. you lead, i loot. kidding. mostly."]
+    bench: ["three days. then i've salvage to sell."]
+    leave: ["back to the sack."]
+    refuse.bond: ["i don't work with people i haven't sold anything to. house rule."]
+    refuse.flags: ["come and scavenge the Ruined City with me first. 2216. see if you've the stomach for it. then we'll talk business."]
+    refuseOwnErrand: ["my run first. 2216. come on."]
+    questOffer.tobiah-salvage-rights: ["salvage rights. the afterlords in 2216 drag chained tires round the Ruined City. thirty afterlords, eight tires, and you've earned a share of my patch."]
+    questAccept.tobiah-salvage-rights: ["through the gate, 2216, the intersection and the center. the afterlords are slow. the tires aren't light."]
+    questWaiting.tobiah-salvage-rights: ["eight tires. roll 'em, don't carry 'em."]
+    questComplete.tobiah-salvage-rights: ["eight! good rubber. you've salvage rights on my patch. don't abuse them. i'll know."]
+    questOffer.tobiah-booster-salvage: ["the type D mavericks at the 2230 tower's emergency exit run on boosters. thirty of them, eight boosters. the Omega tinker pays in sandwiches. somebody pays in meso."]
+    questAccept.tobiah-booster-salvage: ["2230, the Dangerous Tower, right up to the emergency exit. the D types are fast. be faster."]
+    questWaiting.tobiah-booster-salvage: ["eight boosters. they kick when you pick them up."]
+    questComplete.tobiah-booster-salvage: ["eight. lovely. that's a month of sandwiches or a week of meso. i'll take the meso. here's your cut."]
+    questOffer.tobiah-the-travelers-circlet: ["you've earned something proper. there's a circlet i dug out of 2503, a time traveller's. it wants polishing with royal guard armour plate. thirty royal guards on the air battleship, eight plates. then it's yours. i don't give things away. i'm making an exception. don't spread it about."]
+    questAccept.tobiah-the-travelers-circlet: ["2503, the Air Battleship, areas A and B. the royal guards don't like visitors. they'll like you less."]
+    questWaiting.tobiah-the-travelers-circlet: ["eight plates. the circlet's waiting. so am i. impatiently."]
+    questComplete.tobiah-the-travelers-circlet: ["eight. there. polished. two tens and the rest at sixty, every one took. the time traveller's circlet. wear it through the gate. it suits a traveller. heh. it suits you."]
+    questOffer.tobiah-scrap-tires: ["eight more chained tires? market's hungry."]
+    questAccept.tobiah-scrap-tires: ["2216. the afterlords."]
+    questWaiting.tobiah-scrap-tires: ["eight."]
+    questComplete.tobiah-scrap-tires: ["eight. sold already. here."]
+    about.calla: ["the kid's from 2099. she can't get back. i bring her bits of her year. she says thank you every time like it's the first. gets me every time. don't tell anyone."]
+    about.dashiell: ["Dashiell's a dragon knight. he thinks scavenging's beneath him. he's never once turned down a share, though."]
+    about.augustin: ["Augustin logs me through at dawn and back at dusk. fifty years he's kept that book. he's the only man in Tera Forest i don't try to sell things to."]
+    about.bettany: ["Bettany pays in sandwiches. they're good sandwiches. i've stopped arguing."]
+    about.vesper: ["Vesper at Omega Sector's a better shot than me. i've never seen her miss. i stopped trying to sell her bullets. she doesn't waste any."]
+    aboutUnknown: ["never sold them anything."]
+    friend.close: ["you can have first pick of the sack. after the kid. she always gets first pick."]
+    friend.best: ["anything i find, anywhere, any year, you get a look first. that's not business. that's friends."]
+    famed: ["your name's worth something now. if you ever want to sell it, come to me."]
+    defamed: ["people are saying stuff about you. i don't buy it. and i buy everything."]
+    gift: ["heh. thanks."]
+    gift.favorite: ["now that's worth carrying. thanks."]
+    gift.again: ["one a day. i've a sack to keep room in."]
+
+- id: dashiell
+  name: Dashiell
+  look: { gender: male }
+  title: "Sky Scout of Leafre"
+  job: DRAGONKNIGHT
+  level: { min: 90, max: 92 }
+  strength: VETERAN
+  loadout: time-gate-spear-l90
+  personality: efficient-v1
+  home:
+    town: tera-forest-time-gate
+    routine:
+      - { from: 7, to: 12, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:by-time-gate", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: true
+  knows: [Imperial Guard, Royal Guard]
+  contract: dashiell-the-sky-watch
+  questLines: [dashiell-the-ship-over-leafre, dashiell-what-keeps-it-up]
+  rumors: [time-gate-the-sack]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: runa, kind: ARGUES_WITH }
+    - { persona: bettany, kind: CATCHES }
+    - { persona: arlo, kind: TEACHES_THE_SKY_TO }
+  giftItemIds: [2020001, 2020003]
+  dialogue:
+    greetFirst: ["ho there! keep your eyes up! that's my advice to everyone. nobody takes it.", "a traveller! good! did you see anything in the sky on your way? no? look harder next time."]
+    greet: ["ho!", "there you are! sky's clear today.", "good to see you! eyes up!"]
+    idle: ["(shades his eyes with one hand and stares up at the sky over the gate for a long time)", "(plants a spear in the ground, leans on it, and points at a cloud for nobody in particular)"]
+    noWork: ["nothing today. the sky's empty. good news for Leafre and dull news for me."]
+    nothingDue: ["square and fair!"]
+    who: ["Dashiell. i scout the sky for Leafre. the dragons are gone, but things still fly, and somebody should know what. through that gate, in 2503, there's a ship the size of a town. i'm going to know everything about it."]
+    bye: ["eyes up!"]
+    thanks: ["ho! thank you!"]
+    smallTalk: ["the air battleship in 2503 flies without a single wing. no wings! i've stared at it for a month. i'm going to work it out if it kills me. it might.", "Runa says i talk too loud for a scout. a scout should be heard coming, i say. then nobody's surprised. she says that isn't what scouting means."]
+    speakPlainly: ["plainly: a spear, a sky, and a great many questions."]
+    offer: ["a hundred and forty thousand for the day, and i'll scout ahead of you wherever you're going. sky or ground. i prefer sky."]
+    join: ["ho! lead on! i'll watch above. something's always above."]
+    bench: ["two days, then i'm back to the sky."]
+    leave: ["back to the sky!"]
+    refuse.bond: ["i don't scout for strangers. the sky's my business. you're not, yet."]
+    refuse.flags: ["come up to the air battleship in 2503 with me first. see what i've been staring at. then ask."]
+    refuseOwnErrand: ["the battleship first! come and look!"]
+    questOffer.dashiell-the-ship-over-leafre: ["come aboard the air battleship in 2503. thirty imperial guards on the bow and area A, then the deck of area B. i want to know if you can keep your feet up there."]
+    questAccept.dashiell-the-ship-over-leafre: ["through the gate, 2503, the Air Battleship. it's very high. don't look down. look up! there's more of it."]
+    questWaiting.dashiell-the-ship-over-leafre: ["thirty guards and area B. eyes up."]
+    questComplete.dashiell-the-ship-over-leafre: ["you kept your feet! ho! you'd make a scout. a quiet one. i'll do the talking."]
+    questOffer.dashiell-what-keeps-it-up: ["the guards on the battleship carry vacuum tubes. i think that's what keeps the thing up. twenty-five guards, eight tubes. and show one to Runa on Leafre's canyon road. she knows wyverns. she'll know if it's anything like a wing."]
+    questAccept.dashiell-what-keeps-it-up: ["2503 for the tubes. then Leafre, out to the canyon road. Runa's by the taxi in the mornings. she'll be rude. she's always rude. she's usually right."]
+    questWaiting.dashiell-what-keeps-it-up: ["eight tubes and Runa's opinion. the opinion's the hard part."]
+    questComplete.dashiell-what-keeps-it-up: ["'wyverns don't have any and fly fine'? ...ho! she's right! it isn't the tubes! back to staring. thank you!"]
+    about.calla: ["Calla's from 2099. she's braver than me and she doesn't know it. i've told her. she said 'you're very loud'. she's right about that too."]
+    about.tobiah: ["Tobiah picks over the years like a crow. i tease him. i've never once turned down a share. a scout eats too."]
+    about.augustin: ["Augustin logs the gate. i log the sky. he says my handwriting's a disgrace and my eyes aren't. i'll take that."]
+    about.bettany: ["Bettany falls over the gate about once a week. i've caught her four times. i've started standing nearer."]
+    about.runa: ["Runa keeps the canyon road. she says i'm too loud for a scout. she's right. she's always right. it's exhausting."]
+    about.arlo: ["Arlo wants to ride a dragon. i told him i'd teach him the sky without one. he said that isn't the same. he's right. it isn't."]
+    aboutUnknown: ["never seen them from up high. i'll keep an eye out."]
+    friend.close: ["you can carry the second spear. nobody carries the second spear."]
+    friend.best: ["if anything ever comes at you out of the sky, it'll have to come past me. nothing gets past me. ho!"]
+    famed: ["they say your name in Leafre! loudly! i've been saying it louder!"]
+    defamed: ["somebody said something about you. i shouted at them from very high up. it echoes."]
+    gift: ["ho! thanks!"]
+    gift.favorite: ["now that's a scout's supper! ho! thank you!"]
+    gift.again: ["one a day! a scout has to stay light."]

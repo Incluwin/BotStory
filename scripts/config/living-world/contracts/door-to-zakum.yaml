@@ -1,0 +1,17 @@
+# The Door to Zakum contracts (wave 4): the watch at the door, once the player has cleared his cerebes and heard Vigdis
+# on him, for meso and bain collars from the third stretch.
+- id: hrafn-the-door-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [hrafn.intro.done, door-to-zakum.heard-hrafn]
+  price:
+    meso: 40000
+    items: [{ itemId: 4000080, count: 20 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 20000 }

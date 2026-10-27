@@ -1,0 +1,45 @@
+# The El Nath outposts arc (wave 4): the door to Zakum is a day's climb below Jeff's gate, and nothing said at one end
+# is heard at the other. Hrafn, the watch at the door, hangs a line of yeti horns up the road: horns from Torsten's
+# valley (his first quest), tempered in the lava's breath by Brenna and hung by Vigdis (world flag el-nath.horns.hung),
+# and the gate's own horn carried up to Torsten for the first call (world flag el-nath.horns.answered). Its last beat
+# happens once per server (quests/door-to-zakum.yaml).
+- id: hrafn-the-horn-line
+  persona: hrafn
+  chapters:
+    - id: chapter-1
+      title: "Out of Earshot"
+    - id: chapter-2
+      title: "Yeti Horn"
+      dialogueOverrides:
+        greet: ["still ten fingers? good. i'm cutting horn.", "the door's shut. the horns aren't done. sit."]
+        who: ["Hrafn. Sigrun's second. i stand at the door and count who goes back up. i'm making a horn line: yeti horn, one at every stretch from here to Jeff's gate. a call from the door, and the gate hears it the same hour. if the horns hold."]
+        idle: ["(scrapes a yeti horn hollow with a short knife, blows through it, frowns, and scrapes again)", "(sets a cerebes tooth into a board of pegged holes and counts the row under his breath)"]
+        smallTalk: ["Brenna says horn cracks in the heat down here unless it's tempered in the lava's breath. i don't know what that means. she does. that's enough.", "the man at the gate listens down the valley at dusk. Torsten. six years i've known his name. i've never heard his voice."]
+        questOffer.hrafn-a-horn-for-the-door: ["a horn line wants spares. the passage eats them. twelve more yeti horns from up by Jeff's gate, and tell Torsten the line's coming."]
+        questComplete.hrafn-a-horn-for-the-door: ["twelve. spares for the line. thank you. ...he still listens at dusk? good."]
+        chapterEnter: ["(lays a row of hollowed yeti horns along the ledge by the door, longest to shortest)"]
+      unlocks:
+        rumors: [door-to-zakum-the-horn]
+    - id: chapter-3
+      title: "One at Every Stretch"
+      enterWhen: { flags: [el-nath.horns.hung] }
+      dialogueOverrides:
+        greet: ["still ten fingers? good. the horns are hung.", "the line's up. the gate's horn isn't. sit."]
+        who: ["Hrafn. Sigrun's second. i count who reaches the door. there's a yeti horn hung at every stretch of the road now; Vigdis hung them, Brenna tempered them. the last one's for the gate. nobody's blown the first call yet."]
+        idle: ["(touches the horn hanging by the door, very lightly, and does not blow it)", "(sets a cerebes tooth into a board of pegged holes and counts the row under his breath)"]
+        smallTalk: ["Vigdis hung two in the passage. she says it swallows people. she'd know. she's walked it more than anyone living.", "Brenna held every horn over a firebomb's flame till it rang. they ring true. they haven't rung far. not yet."]
+        questOffer.hrafn-a-horn-for-the-door: ["a horn line wants spares. the passage cracks one a month. twelve more yeti horns from up by Jeff's gate, and tell Torsten the line's still standing."]
+        questComplete.hrafn-a-horn-for-the-door: ["twelve. spares for the line. thank you. ...he still listens at dusk? good."]
+        chapterEnter: ["(hangs a tempered horn on the iron hook beside the door and stands back to look at it)"]
+    - id: chapter-4
+      title: "The Gate Answers"
+      enterWhen: { flags: [el-nath.horns.answered] }
+      dialogueOverrides:
+        greet: ["still ten fingers? good. the gate answered. it answers every dusk now.", "the door's shut. the line's open. sit."]
+        who: ["Hrafn. Sigrun's second. i count who reaches the door, and every dusk i blow one long call up the road and the gate blows one long back down. a climber in trouble blows three short, and every horn between here and Jeff's gate hears it."]
+        idle: ["(lifts the horn by the door, blows one long note up the road, and waits with his head tilted)", "(sets a cerebes tooth into a board of pegged holes and counts the row under his breath)"]
+        smallTalk: ["the first call took the length of a meal to come back down. Torsten says it was quicker. we'll never agree. we've still never met.", "three short means come. a climber in the passage blew three short last week, and Vigdis was there before the third. the line works. it's the best thing i've ever hung on a wall."]
+        about.torsten: ["Torsten. the top of my road. i've never seen his face. i hear his horn every dusk. that's better than a face."]
+        questOffer.hrafn-a-horn-for-the-door: ["a horn line wants spares. the passage cracks one a month. twelve more yeti horns from up by Jeff's gate, and tell Torsten i heard him last night."]
+        questComplete.hrafn-a-horn-for-the-door: ["twelve. spares for the line. thank you. ...he still listens at dusk? he answers now. that's the difference."]
+        chapterEnter: ["(lowers the horn from his lips, listens a long moment, and nods once when the answer comes down the road)"]

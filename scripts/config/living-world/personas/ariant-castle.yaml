@@ -1,0 +1,120 @@
+# Ariant Castle cast (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): the courtyard below the palace, open to
+# visitors. 2 residents, none recruitable. Yusra keeps the queen's wardrobe ledgers, which matter to her mother Zahra's arc
+# (arcs/town-of-ariant.yaml). Ids in quests/ariant-castle.yaml.
+- id: yusra
+  name: Yusra
+  look: { gender: female }
+  title: "Handmaiden of the Palace"
+  job: BEGINNER
+  level: { min: 24, max: 24 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ariant-castle
+    routine:
+      - { from: 6, to: 9, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 9, to: 14, materialize: false }
+      - { from: 14, to: 17, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 17, to: 19, materialize: false }
+      - { from: 19, to: 22, spot: "venue:by-tigun", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [ariant castle, desert rabbit (m), carrot]
+  questLines: [yusra-the-kings-cake, yusra-the-silk-ledger]
+  rumors: [ariant-castle-the-night-watch]
+  relationships:
+    - { persona: zahra, kind: DAUGHTER_OF }
+    - { persona: kasim, kind: COUSIN_OF }
+    - { persona: darius, kind: WORKS_BESIDE }
+    - { persona: idris, kind: HEARS_LETTERS_FROM }
+  giftItemIds: [4000325, 2020002]
+  dialogue:
+    greetFirst: ["you're in the castle courtyard. visitors are welcome here. visitors are welcome to look. i'd keep my hands in my sleeves if i were you. i say that kindly.", "a new face. you're not from the palace. you look rested. nobody from the palace looks rested."]
+    greet: ["good day. the queen is in a mood. it's a quiet sort of mood. those are the worst.", "you're back. walk slowly in the courtyard. it looks like you belong here."]
+    idle: ["(folds a length of white linen into a perfect square without looking at her hands)", "(dips her fingers in the oasis, touches them to her temples, and straightens her collar)"]
+    noWork: ["nothing today. the wardrobe's in order. the queen isn't. that's not my department."]
+    nothingDue: ["we're square. the palace keeps ledgers. i keep my word."]
+    who: ["Yusra. i serve in the queen's wardrobe. i fold her silks, i keep her ledgers, i say yes very quietly. my mother sews for the quarter. we have the same hands. we use them for different people."]
+    bye: ["walk straight past the guards. it helps."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the king likes carrot cake. nobody in the palace knows but me and the cake. i bake it on my evening off and leave it by his reading lamp. he's never said a word. the plate always comes back clean.", "the queen owns three hundred bolts of silk and has them counted twice a year. i do the counting. she does the frowning."]
+    speakPlainly: ["plainly: a wardrobe, a ledger, and a cake no one mentions."]
+    questOffer.yusra-the-kings-cake: ["the king's cake wants carrots. the palace kitchen only buys what the queen eats, and the queen doesn't eat carrots. the male rabbits by the tent dig them up. twenty rabbits, twelve carrots? don't ask why i bake for the king. he's kind when he thinks nobody's looking."]
+    questAccept.yusra-the-kings-cake: ["out Ariant's east entrance, and on to the Tent of the Entertainers. the rabbits with the carrots, the boys. the girls carry clover. you want the boys."]
+    questWaiting.yusra-the-kings-cake: ["twelve carrots. the lamp's lit and the plate's empty."]
+    questComplete.yusra-the-kings-cake: ["twelve. lovely and orange. the king will find a cake by his lamp tonight and say nothing. he's a terrible king. he's a very nice man. it's complicated."]
+    questOffer.yusra-the-silk-ledger: ["my mother's cutting red silk. palace red. i know that silk. if the queen's still looking for it, my mother's in trouble. the old ledgers are in the wardrobe, up the stair Darius watches. take him this tray of cake and keep him busy a quarter of an hour. i'll do the rest."]
+    questAccept.yusra-the-silk-ledger: ["Darius. at the lower gate in the day, by Tigun of an evening. give him the tray. talk about the weather. he loves the weather. it's the only thing nobody's ever ordered him not to love."]
+    questWaiting.yusra-the-silk-ledger: ["a quarter of an hour. that's all i need. the wardrobe stair is very long."]
+    questComplete.yusra-the-silk-ledger: ["i found it. eleven years back, in the old steward's hand. 'one bolt crimson silk, palace order, lost to sand on the road.' lost to sand. nobody looked for it. nobody ever will. ...tell my mother. you'll get there before my day off does."]
+    about.zahra: ["my mother sews for the quarter. she writes to me every week, very plainly, about the queen. the letters don't come through the palace. they come through Idris. and visitors."]
+    about.kasim: ["Kasim's my cousin. he sits on roofs and whistles at the palace. i serve the palace. at family dinners we pass the bread very politely."]
+    about.darius: ["Darius guards the courtyard. he's very good at seeing nothing. it's the most useful thing a palace guard can be. he's also kind. that's less useful. i like it more."]
+    about.idris: ["Idris brings my mother's letters as far as the castle gate and says the plain parts to me through the bars, in her voice. he does a very good Zahra. don't tell her."]
+    about.harun: ["Harun guards the palace gate in the market. Darius wants to be him when he's older. i've told Darius he'll need to be taller. he's started standing on his toes."]
+    aboutUnknown: ["not in any of the queen's ledgers. lucky them."]
+    friend.close: ["i've put your name in the wardrobe ledger, under 'thread, red, one spool'. the queen will never find it. it's there."]
+    friend.best: ["if i ever leave the palace, you'll be the first one i tell. after my mother. she'd never forgive me."]
+    famed: ["the palace has heard of you. the queen frowned. that's a compliment."]
+    defamed: ["the palace has heard of you. the queen smiled. that's not."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's thoughtful. that goes in my apron. the left pocket. the left's for good things."]
+    gift.again: ["one's plenty. the palace counts everything i bring in."]
+
+- id: darius
+  name: Darius
+  look: { gender: male }
+  title: "Castle Guard"
+  job: SPEARMAN
+  level: { min: 38, max: 40 }
+  strength: SEASONED
+  loadout: perion-spear-l35
+  personality: efficient-v1
+  home:
+    town: ariant-castle
+    routine:
+      - { from: 6, to: 14, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 14, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:by-tigun", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [desert giant, sand, ariant castle]
+  questLines: [darius-the-queens-powder, darius-how-to-stand-a-gate]
+  rumors: [ariant-castle-the-night-watch]
+  relationships:
+    - { persona: yusra, kind: WORKS_BESIDE }
+    - { persona: harun, kind: LOOKS_UP_TO }
+    - { persona: kasim, kind: NEVER_REPORTS }
+  giftItemIds: [4000332, 2002004]
+  dialogue:
+    greetFirst: ["halt. ...sorry. you weren't doing anything. i'm told to say halt to anyone who isn't doing anything. it's most people.", "welcome to Ariant Castle. the courtyard's open. the palace isn't. the oasis is very nice. you may look at it."]
+    greet: ["good day. the weather's holding.", "you again. the weather's still holding. i checked."]
+    idle: ["(stands at attention, spear upright, and glances up at a palace window before looking quickly away)", "(squints at the sky over the castle wall, as if checking it for orders)"]
+    noWork: ["nothing today. the courtyard's quiet. i'm guarding the quiet."]
+    nothingDue: ["you owe the castle nothing. i'd remember. i write everything down. then i lose it."]
+    who: ["Darius. i guard the castle courtyard with Tigun. Tigun talks to visitors. i stand very straight and see nothing. those are my orders. some days they're the easiest orders in the world."]
+    bye: ["mind the oasis steps. they're slippery when the queen's in a mood. it's not related. it feels related."]
+    thanks: ["the castle thanks you. i do too. separately."]
+    smallTalk: ["Tigun says a guard should stand straight so the queen can see him from her window. the queen goes to bed at eight. i stand straight till midnight anyway. somebody up there keeps a lamp on.", "Harun's guarded the palace gate in the market longer than i've been alive. he never yawns. i yawn behind my hand. he says that still counts as a yawn."]
+    speakPlainly: ["plainly: a spear, a courtyard, and a great deal of nothing seen."]
+    questOffer.darius-the-queens-powder: ["the queen powders her face with sunset sand, sifted fine. once a month a guard fetches it from the desert giants. this month it's me, and i'm needed in the courtyard. twenty giants, fifteen handfuls? don't tell the queen who fetched it. she'd want to thank you. it isn't pleasant."]
+    questAccept.darius-the-queens-powder: ["the ruins of the desert nomads up the north road, and the giant of the sunset past them. the giants. they're slow. don't stand still near them."]
+    questWaiting.darius-the-queens-powder: ["fifteen handfuls. the queen's mirror is waiting. so is the queen."]
+    questComplete.darius-the-queens-powder: ["fifteen. fine as flour. the queen will look exactly as she always looks. i'll say so, if asked. i'm never asked."]
+    questOffer.darius-how-to-stand-a-gate: ["Harun, at the palace gate in the market. he's stood there longer than i've been alive and never once looked tired. ask him how. i can't ask. i'd go red."]
+    questAccept.darius-how-to-stand-a-gate: ["the palace gate, out in the market. Harun's there from dawn till the afternoon, and on the west street of an evening. the one with the mace, standing like a wall that learned to breathe."]
+    questWaiting.darius-how-to-stand-a-gate: ["did he say? how does he do it?"]
+    questComplete.darius-how-to-stand-a-gate: ["love the gate a little. not what's behind it. the gate. ...oh. that's it. that's why he never looks tired. i've been loving the wrong thing."]
+    about.yusra: ["Yusra serves in the wardrobe. she brings me cake on cold nights and asks me to look at the sky. i look at the sky. i've never once asked why."]
+    about.harun: ["Harun guards the palace gate in the market. he's the best guard in Ariant. he waves at an ex-bandit every evening. i don't understand it. i want to."]
+    about.kasim: ["there's a lad on the roofs of the quarter who whistles at the palace road. i've seen him four times. i've reported him no times. if anyone asks, i've seen nothing. i'm very good at it."]
+    about.zahra: ["Yusra's mother. she sews for the quarter. she once took in my uniform without being asked. it fits now. i didn't know it didn't."]
+    aboutUnknown: ["never passed the courtyard. i'd remember. i'd forget, but i'd write it down first."]
+    friend.close: ["you may walk the courtyard any hour. i'll see nothing. it's my best skill."]
+    friend.best: ["if the queen ever orders me to stop you at the gate, i'll stop you. very slowly. you'll be gone by the time i've finished stopping."]
+    famed: ["the castle's heard good things about you. i've heard them too, standing very still."]
+    defamed: ["the castle's heard hard things. i'm sure they're wrong. i'm not allowed to say so."]
+    gift: ["for me? thank you."]
+    gift.favorite: ["oh. that's thoughtful. that goes in my boot. it's where guards keep good things."]
+    gift.again: ["one's plenty. the captain checks our boots."]

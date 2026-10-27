@@ -1,0 +1,340 @@
+# Altaire Camp quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own data:
+# Ellin Forest mossy snail 4250000 (moss snail shell 4000436; mossy tree forest entrance 300010000, western region 1
+# 300010100, eastern region 300030000), tree rod 4250001 (tree trunk 4000438; western regions 1-2 300010100/300010200,
+# mossy tree forest trail 300010300), stone bug 5250001 (rubble 4000439; the trail, southern regions 1-2
+# 300020000/300020100), mossy mushroom 5250000 (black mushroom spore 4000437; southern region 2, mushroom hill entrance
+# 300020200), primitive boar 5250002 (tough leather 4000440; Boulder Mountain entrance 300010400). Ellin's glade is the
+# deep fairy forest 300030100. One Victoria errand: Larkin asks Thessaly in Ellinia (personas/ellinia.yaml).
+# Gear: Rosalind's earrings Moonstar 1032044 L45 / Altair 1032060 L50 / Glittering Altaire 1032061 L50; Maelis's capes
+# Icarus Cape (1) 1102054 / (2) 1102055 / (3) 1102056, all L42.
+
+# ---- Ottavia, cartographer of the expedition: her arc ----------------------------------------------------------------
+
+- id: ottavia-the-walking-trees
+  persona: ottavia
+  title: "Trees That Walk"
+  length: SHORT
+  requires: { level: { min: 44 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rods, type: KILL_MOBS, mobIds: [4250001], count: 30, mapIds: [300010100, 300010200, 300010300] }
+    - { id: west, type: VISIT_MAP, mapIds: [300010400] }
+    - { id: report, type: DELIVER, to: ottavia }
+  rewards: { meso: 13000, exp: 14000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: ottavia-the-map-of-the-forest, to: chapter-2 } }
+
+- id: ottavia-the-haze-line
+  persona: ottavia
+  title: "Drawn in Pencil"
+  length: SHORT
+  requires: { level: { min: 52 }, questsCompleted: [ottavia-the-walking-trees] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [5250000], count: 25, mapIds: [300020100, 300020200] }
+    - { id: teodor, type: TALK_TO, persona: teodor, say: ["the haze line? this morning it stood at the foot of the mushroom hill, three paces further than yesterday. tell her to draw it in pencil. it'll move again by tonight."] }
+    - { id: report, type: DELIVER, to: ottavia }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: ottavia-the-map-of-the-forest, to: chapter-3 } }
+
+- id: ottavia-a-name-on-the-map
+  persona: ottavia
+  title: "A Name Across the Top"
+  length: SHORT
+  requires: { level: { min: 52 }, flags: [altaire.heard-haze], notFlags: [altaire.forest.named], questsCompleted: [ottavia-the-haze-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: glade, type: VISIT_MAP, mapIds: [300030100] }
+    - { id: larkin, type: TALK_TO, persona: larkin, say: ["you stood in the glade? then the leaves told you, even if you didn't catch it. Ellin's. the forest is Ellin's. it's been Ellin's since before there were trees to say it. tell Ottavia to write it big, across the top."] }
+    - { id: report, type: DELIVER, to: ottavia }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 60, items: [{ itemId: 2050000, count: 10 }], worldFlags: [altaire.forest.named] }
+
+- id: ottavia-green-ink
+  persona: ottavia
+  title: "Green That Doesn't Fade"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 40 }, questsCompleted: [ottavia-the-walking-trees] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000436, count: 15 }
+    - { id: ink, type: DELIVER, to: ottavia, take: { itemId: 4000436, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 10 }
+
+# ---- Larkin, fairy-born forager ---------------------------------------------------------------------------------------
+
+- id: larkin-dew-shells
+  persona: larkin
+  title: "Cups for the Dew"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [4250000], count: 25, mapIds: [300010000, 300010100, 300030000] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000436, count: 12 }
+    - { id: cups, type: DELIVER, to: larkin, take: { itemId: 4000436, count: 12 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 35 }
+
+- id: larkin-do-they-still-sing
+  persona: larkin
+  title: "Do They Still Sing?"
+  length: MEDIUM
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: thessaly, type: TALK_TO, persona: thessaly, say: ["do they still sing? ...every dusk, at the top of the tree. i've counted them for years. i lose count every time. tell whoever asked: they never stopped. not once."] }
+    - { id: report, type: DELIVER, to: larkin }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 35 }
+
+# ---- Ewan, cook of the camp -------------------------------------------------------------------------------------------
+
+- id: ewan-firewood
+  persona: ewan
+  title: "Firewood That Stays Put"
+  length: SHORT
+  requires: { level: { min: 44 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rods, type: KILL_MOBS, mobIds: [4250001], count: 25, mapIds: [300010100, 300010200, 300010300] }
+    - { id: trunks, type: COLLECT_ITEM, itemId: 4000438, count: 12 }
+    - { id: fire, type: DELIVER, to: ewan, take: { itemId: 4000438, count: 12 } }
+  rewards: { meso: 13000, exp: 14000, bondPoints: 35 }
+
+- id: ewan-supper-for-the-mountain
+  persona: ewan
+  title: "Supper for the Mountain"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: maelis, type: TALK_TO, persona: maelis, say: ["supper? ...he sends it every night and i never go in. tell him the boar was good. tell him i'll come in when the mountain's quiet. it's never quiet."] }
+    - { id: report, type: DELIVER, to: ewan }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
+
+- id: ewan-the-woodpile
+  persona: ewan
+  title: "The Woodpile Walks Again"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 44 }, questsCompleted: [ewan-firewood] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trunks, type: COLLECT_ITEM, itemId: 4000438, count: 15 }
+    - { id: pile, type: DELIVER, to: ewan, take: { itemId: 4000438, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 10 }
+
+# ---- Teodor, herbalist of the poison haze ---------------------------------------------------------------------------
+
+- id: teodor-spores-under-glass
+  persona: teodor
+  title: "Spores Under Glass"
+  length: SHORT
+  requires: { level: { min: 52 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [5250000], count: 25, mapIds: [300020100, 300020200] }
+    - { id: spores, type: COLLECT_ITEM, itemId: 4000437, count: 12 }
+    - { id: glass, type: DELIVER, to: teodor, take: { itemId: 4000437, count: 12 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 35 }
+
+- id: teodor-leather-masks
+  persona: teodor
+  title: "Masks Against the Haze"
+  length: SHORT
+  requires: { level: { min: 54 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [5250002], count: 20, mapIds: [300010400] }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000440, count: 10 }
+    - { id: masks, type: DELIVER, to: teodor, take: { itemId: 4000440, count: 10 } }
+  rewards: { meso: 15000, exp: 17000, bondPoints: 35 }
+
+- id: teodor-more-spores
+  persona: teodor
+  title: "The Book Grows"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 52 }, questsCompleted: [teodor-spores-under-glass] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spores, type: COLLECT_ITEM, itemId: 4000437, count: 15 }
+    - { id: glass, type: DELIVER, to: teodor, take: { itemId: 4000437, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Rosalind, fairy jeweller (her earrings) ------------------------------------------------------------------------
+
+- id: rosalind-a-glint-in-the-rubble
+  persona: rosalind
+  title: "A Glint in the Rubble"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bugs, type: KILL_MOBS, mobIds: [5250001], count: 25, mapIds: [300010300, 300020000, 300020100] }
+    - { id: rubble, type: COLLECT_ITEM, itemId: 4000439, count: 12 }
+    - { id: sift, type: DELIVER, to: rosalind, take: { itemId: 4000439, count: 12 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 35 }
+
+- id: rosalind-moonstar-earrings
+  persona: rosalind
+  title: "A Moon of Shell"
+  length: MEDIUM
+  requires: { level: { min: 45 }, friendship: 5, questsCompleted: [rosalind-a-glint-in-the-rubble] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [4250000], count: 30, mapIds: [300010000, 300010100, 300030000] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000436, count: 15 }
+    - { id: set, type: DELIVER, to: rosalind, take: { itemId: 4000436, count: 15 } }
+  rewards:
+    meso: 40000
+    exp: 35000
+    bondPoints: 35
+    gear:
+      - { pool: [1032044], scrolls: [{ success: 100 }] }
+
+- id: rosalind-altair-earrings
+  persona: rosalind
+  title: "Amber Behind the Star"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 7, questsCompleted: [rosalind-moonstar-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rods, type: KILL_MOBS, mobIds: [4250001], count: 30, mapIds: [300010100, 300010200, 300010300] }
+    - { id: trunks, type: COLLECT_ITEM, itemId: 4000438, count: 15 }
+    - { id: amber, type: DELIVER, to: rosalind, take: { itemId: 4000438, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 50
+    gear:
+      - { pool: [1032060], scrolls: [{ success: 60 }] }
+
+- id: rosalind-glittering-altaire-earrings
+  persona: rosalind
+  title: "The Light of the Glade"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [rosalind-altair-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [5250002], count: 30, mapIds: [300010400] }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000440, count: 15 }
+    - { id: glade, type: VISIT_MAP, mapIds: [300030100] }
+    - { id: setting, type: DELIVER, to: rosalind, take: { itemId: 4000440, count: 15 } }
+  rewards:
+    meso: 55000
+    exp: 50000
+    bondPoints: 60
+    gear:
+      - { pool: [1032061], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+# ---- Maelis, huntress of Boulder Mountain (recruitable; her capes) --------------------------------------------------
+
+- id: maelis-the-boar-trail
+  persona: maelis
+  title: "The Boar Trail"
+  length: SHORT
+  requires: { level: { min: 54 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [5250002], count: 30, mapIds: [300010400] }
+    - { id: report, type: DELIVER, to: maelis }
+  rewards: { meso: 15000, exp: 17000, bondPoints: 30, flags: [maelis.intro.done] }
+
+- id: maelis-icarus-cape-one
+  persona: maelis
+  title: "Ribs Like a Wing"
+  length: MEDIUM
+  requires: { level: { min: 42 }, friendship: 5, questsCompleted: [maelis-the-boar-trail] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rods, type: KILL_MOBS, mobIds: [4250001], count: 30, mapIds: [300010100, 300010200, 300010300] }
+    - { id: trunks, type: COLLECT_ITEM, itemId: 4000438, count: 15 }
+    - { id: ribs, type: DELIVER, to: maelis, take: { itemId: 4000438, count: 15 } }
+  rewards:
+    meso: 40000
+    exp: 35000
+    bondPoints: 35
+    gear:
+      - { pool: [1102054], scrolls: [{ success: 100 }] }
+
+- id: maelis-icarus-cape-two
+  persona: maelis
+  title: "A Skin for the Wind"
+  length: LONG
+  requires: { level: { min: 42 }, friendship: 7, questsCompleted: [maelis-icarus-cape-one] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [5250002], count: 30, mapIds: [300010400] }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000440, count: 15 }
+    - { id: skin, type: DELIVER, to: maelis, take: { itemId: 4000440, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 50
+    gear:
+      - { pool: [1102055], scrolls: [{ success: 60 }] }
+
+- id: maelis-icarus-cape-three
+  persona: maelis
+  title: "Where She First Jumped"
+  length: LONG
+  requires: { level: { min: 42 }, friendship: 10, questsCompleted: [maelis-icarus-cape-two] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [5250000], count: 30, mapIds: [300020100, 300020200] }
+    - { id: spores, type: COLLECT_ITEM, itemId: 4000437, count: 15 }
+    - { id: drop, type: VISIT_MAP, mapIds: [300010400] }
+    - { id: dye, type: DELIVER, to: maelis, take: { itemId: 4000437, count: 15 } }
+  rewards:
+    meso: 55000
+    exp: 50000
+    bondPoints: 60
+    gear:
+      - { pool: [1102056], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: maelis-boar-hides
+  persona: maelis
+  title: "Hides for the Masks"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 54 }, questsCompleted: [maelis-the-boar-trail] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000440, count: 15 }
+    - { id: masks, type: DELIVER, to: maelis, take: { itemId: 4000440, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Gaspard, stone-breaker (recruitable) ----------------------------------------------------------------------------
+
+- id: gaspard-the-trail-stones
+  persona: gaspard
+  title: "My Wall, Please"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bugs, type: KILL_MOBS, mobIds: [5250001], count: 30, mapIds: [300010300, 300020000, 300020100] }
+    - { id: report, type: DELIVER, to: gaspard }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 30, flags: [gaspard.intro.done] }
+
+- id: gaspard-a-north-for-the-stone
+  persona: gaspard
+  title: "A North for the Stone"
+  length: SHORT
+  requires: { level: { min: 44 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ottavia, type: TALK_TO, persona: ottavia, say: ["a corner stone? where the trail bends to the mountain. tell him to carve a north on it. people forget which way is north in this forest. i do, and i draw the map."] }
+    - { id: report, type: DELIVER, to: gaspard }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
+
+- id: gaspard-rubble-for-perzen
+  persona: gaspard
+  title: "Rubble That Hums"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 48 }, questsCompleted: [gaspard-the-trail-stones] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rubble, type: COLLECT_ITEM, itemId: 4000439, count: 15 }
+    - { id: sack, type: DELIVER, to: gaspard, take: { itemId: 4000439, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 10 }

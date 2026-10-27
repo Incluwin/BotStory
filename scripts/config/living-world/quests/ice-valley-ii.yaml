@@ -1,0 +1,85 @@
+# Ice Valley II quests (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own data:
+# yeti 6300000 (yeti horn 4000049; Ice Valley I 211040100, Ice Valley II's lower layers 211040200), pepe 6130103 (the
+# Crown-Flyer 211040001, a hidden street off Cold Field II 211040000), jr. yeti 5100000 (jr. yeti skin 4000048; Ice
+# Valley I, Sharp Cliff I 211040300), past Jeff's gate (his warp to Sharp Cliff I): dark pepe 6230200 (dark pepe beak
+# 4000057; Sharp Cliff II 211040400), dark yeti 6400000 (dark yeti horn 4000056; Sharp Cliff I/II, Dangerous Cliff
+# 211040700). Errands: Oskar in El Nath (wave 1).
+# Gear: Torsten's Gordon's Magic Iron 1122013 (L50 pendant), his own piece.
+
+# ---- Torsten, relief guard at Jeff's gate (recruitable; kill proof on his dark pepes) ---------------------------------
+
+- id: torsten-past-the-gate
+  persona: torsten
+  title: "Past Jeff's Gate"
+  length: SHORT
+  requires: { level: { min: 60 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepes, type: KILL_MOBS, mobIds: [6230200], count: 30, mapIds: [211040400] }
+    - { id: back-up, type: DELIVER, to: torsten }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 30, flags: [torsten.intro.done] }
+
+- id: torsten-gordons-magic-iron
+  persona: torsten
+  title: "Gordon's Magic Iron"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 5, questsCompleted: [torsten-past-the-gate] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000056, count: 12 }
+    - { id: oskar, type: TALK_TO, persona: oskar, say: ["Gordon's iron? the gate iron? let me see the horn. ...good horn. dark yeti doesn't freeze, doesn't crack. Gordon used it for the first bale. tell Torsten: boil it soft, split it with the grain, two turns round the ring. Gordon did three. three's wrong. and what are those on your feet?"] }
+    - { id: bale, type: DELIVER, to: torsten, take: { itemId: 4000056, count: 12 } }
+  rewards:
+    meso: 50000
+    exp: 50000
+    bondPoints: 35
+    gear:
+      - { pool: [1122013], scrolls: [{ success: 100 }] }
+
+- id: torsten-whistles
+  persona: torsten
+  title: "A Whistle for the Cliffs"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 60 }, questsCompleted: [torsten-past-the-gate] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: beaks, type: COLLECT_ITEM, itemId: 4000057, count: 15 }
+    - { id: whistles, type: DELIVER, to: torsten, take: { itemId: 4000057, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Agnetha, potion runner of Ice Valley -----------------------------------------------------------------------------
+
+- id: agnetha-the-lower-layers
+  persona: agnetha
+  title: "Straight Up the Middle"
+  length: SHORT
+  requires: { level: { min: 62 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [6300000], count: 25, mapIds: [211040200] }
+    - { id: report, type: DELIVER, to: agnetha }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 35, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: agnetha-the-crown-flyer
+  persona: agnetha
+  title: "Chased on the Crown-Flyer"
+  length: SHORT
+  requires: { level: { min: 57 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepes, type: KILL_MOBS, mobIds: [6130103], count: 25, mapIds: [211040001] }
+    - { id: report, type: DELIVER, to: agnetha }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 35 }
+
+- id: agnetha-new-soles
+  persona: agnetha
+  title: "Soles for the Climb"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000048, count: 12 }
+    - { id: oskar, type: TALK_TO, persona: oskar, say: ["Agnetha's soles again? she runs through them like a wolf through a henhouse. jr. yeti, good, she's learning. tell her to bring the skins on her morning run and wait while i do it. tell her it's free. and tell her to stop coming down the valley on her heels."] }
+    - { id: skins-back, type: DELIVER, to: agnetha, take: { itemId: 4000048, count: 12 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 35 }

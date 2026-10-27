@@ -21,3 +21,216 @@
     - { id: cull, type: KILL_MOBS, mobIds: [100134], count: 25, mapIds: [140010200] }
     - { id: report, type: DELIVER, to: torvin, say: ["twenty-five. Lilin will sleep tonight."] }
   rewards: { meso: 4500, exp: 1300, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }], flags: [torvin.cull.done] }
+
+# ---- Wave 4 (docs/REGIONAL_RESIDENTS_PLAN.md section 10) ----
+# Fields: Muru 100130, Muru's Furball 4000493 (Dangerous Forest 140010100); Murupa 100131 (Snow-covered Field 1
+# 140020000); Murupia 100132, Murupia's Furball 4000495 (Field 2 140020100); Murumuru 100133 (Field 3 140020200);
+# Murukun 100134, Murukun's Furball 4000497 (Dangerous Forest 140010200); Rien Library 1st Floor 140000010. Off the
+# boat to Lith Harbor: ribbon pig 1210101 (104010001, 104010002); green mushroom 1110100 (104040001, 104040002); wild
+# boar 2230102 tooth 4000020 (101030001, 101030405, 101030406); jr. wraith 3230101 tablecloth 4000035 (103000103,
+# 103000200, 103000201). Gear: Brynja's warm line Ice Jeans 1062000 L16 / Old Raggedy Cape 1102053 L25 / Cape of
+# Warmness 1102109 L35.
+
+# ---- Eira: the day they left (arcs/rien.yaml) ----
+- id: eira-the-hearth-shawl
+  persona: eira
+  title: "Grandmother's Shawl"
+  length: SHORT
+  requires: { level: { min: 5 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fur, type: COLLECT_ITEM, itemId: 4000495, count: 12 }
+    - { id: darned, type: DELIVER, to: eira, take: { itemId: 4000495, count: 12 } }
+  rewards: { meso: 2000, exp: 600, bondPoints: 30, items: [{ itemId: 2000001, count: 15 }] }
+
+- id: eira-the-copy-from-ereve
+  persona: eira
+  title: "What the Book Says"
+  length: MEDIUM
+  requires: { level: { min: 10 }, questsCompleted: [eira-the-hearth-shawl], flags: [ereve.record.searched], notFlags: [rien.copy.read] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: isaura, type: TALK_TO, persona: isaura, say: ["somebody in Rien wants to hear the record? here's a fair copy, to the last line: 'and the fifth slept in the ice of Snow Island, and the others...' and then the leaf is blank. tell her i'd give the whole shelf for one line of what she knows."] }
+    - { id: read, type: DELIVER, to: eira }
+  rewards: { meso: 5000, exp: 2500, bondPoints: 50, items: [{ itemId: 2000002, count: 20 }], worldFlags: [rien.copy.read] }
+
+- id: eira-on-rien-shelf
+  persona: eira
+  title: "On Rien's Shelf"
+  length: MEDIUM
+  requires: { level: { min: 12 }, questsCompleted: [eira-the-hearth-shawl], flags: [ereve.page.written], notFlags: [rien.book.shelved] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: isaura, type: TALK_TO, persona: isaura, say: ["the copy for Rien. bound in blue, like the thread in the fifth emblem. tell Eira i didn't change a word. not one. i wanted to fix a comma. i didn't."] }
+    - { id: shelf, type: VISIT_MAP, mapIds: [140000010] }
+    - { id: home, type: DELIVER, to: eira }
+  rewards: { meso: 8000, exp: 4000, bondPoints: 60, items: [{ itemId: 2022001, count: 10 }], worldFlags: [rien.book.shelved] }
+
+# ---- Tove, penguin herder ----
+- id: tove-nest-lining
+  persona: tove
+  title: "Fluff for the Chicks"
+  length: SHORT
+  requires: { level: { min: 2 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fluff, type: COLLECT_ITEM, itemId: 4000493, count: 12 }
+    - { id: nests, type: DELIVER, to: tove, take: { itemId: 4000493, count: 12 } }
+  rewards: { meso: 1200, exp: 300, bondPoints: 25, items: [{ itemId: 2000000, count: 15 }] }
+
+- id: tove-the-stray-chick
+  persona: tove
+  title: "The Small One"
+  length: SHORT
+  requires: { level: { min: 5 }, questsCompleted: [tove-nest-lining] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: saga, type: TALK_TO, persona: saga, say: ["the small one? it went out past the first field this morning, all by itself! i didn't follow it. i promised. it'll be in the second field. it likes looking at the Murupias."] }
+    - { id: field, type: VISIT_MAP, mapIds: [140020100] }
+    - { id: home, type: DELIVER, to: tove }
+  rewards: { meso: 2000, exp: 600, bondPoints: 30, items: [{ itemId: 2000001, count: 15 }] }
+
+# ---- Ansgar, ice fisher ----
+- id: ansgar-holes-in-the-ice
+  persona: ansgar
+  title: "Holes in the Ice"
+  length: SHORT
+  requires: { level: { min: 7 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: murumurus, type: KILL_MOBS, mobIds: [100133], count: 25, mapIds: [140020200] }
+    - { id: report, type: DELIVER, to: ansgar }
+  rewards: { meso: 2500, exp: 800, bondPoints: 25, items: [{ itemId: 2000001, count: 20 }] }
+
+- id: ansgar-fish-for-the-galley
+  persona: ansgar
+  title: "Fish for the Galley"
+  length: SHORT
+  requires: { level: { min: 10 }, questsCompleted: [ansgar-holes-in-the-ice] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mirel, type: TALK_TO, persona: mirel, say: ["Rien ice-fish? oh, love, it got here. best fish on the boat. the harbor ate the lot in a day. tell him smoked again, twice as much, and to stop putting jokes in the box. no, tell him to keep the jokes."] }
+    - { id: report, type: DELIVER, to: ansgar }
+  rewards: { meso: 3500, exp: 1200, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+# ---- Kjeld, sentry of the Dangerous Forest ----
+- id: kjeld-the-long-round
+  persona: kjeld
+  title: "The Long Round"
+  length: SHORT
+  requires: { level: { min: 6 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: murupias, type: KILL_MOBS, mobIds: [100132], count: 20, mapIds: [140020100] }
+    - { id: ice, type: VISIT_MAP, mapIds: [140020200] }
+    - { id: report, type: DELIVER, to: kjeld }
+  rewards: { meso: 2200, exp: 700, bondPoints: 25, items: [{ itemId: 2000001, count: 15 }] }
+
+- id: kjeld-boot-lining
+  persona: kjeld
+  title: "Warm Soles"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 9 }, questsCompleted: [kjeld-the-long-round] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fur, type: COLLECT_ITEM, itemId: 4000497, count: 10 }
+    - { id: boots, type: DELIVER, to: kjeld, take: { itemId: 4000497, count: 10 } }
+  rewards: { meso: 1500, exp: 800, bondPoints: 10 }
+
+# ---- Saga, a girl who wants to be a hero ----
+- id: saga-hero-practice
+  persona: saga
+  title: "Hero Practice"
+  length: SHORT
+  requires: { level: { min: 3 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: murupas, type: KILL_MOBS, mobIds: [100131], count: 15, mapIds: [140020000] }
+    - { id: report, type: DELIVER, to: saga }
+  rewards: { meso: 1200, exp: 350, bondPoints: 25, items: [{ itemId: 2000000, count: 10 }] }
+
+- id: saga-the-heroes-names
+  persona: saga
+  title: "What Were They Called?"
+  length: SHORT
+  requires: { level: { min: 4 }, questsCompleted: [saga-hero-practice] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eira, type: TALK_TO, persona: eira, say: ["their names? grandmother never said them, dear, and neither did hers. she said a hero's name is only what people call them afterwards. tell Saga a hero is whoever goes when somebody has to. she'll like that. she'll like it too much."] }
+    - { id: report, type: DELIVER, to: saga }
+  rewards: { meso: 1500, exp: 400, bondPoints: 30, items: [{ itemId: 2000001, count: 10 }] }
+
+# ---- Brynja (recruit; the warm line out of Rien's chest) ----
+- id: brynja-the-first-shore
+  persona: brynja
+  title: "The First Shore"
+  length: SHORT
+  requires: { level: { min: 12 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [1210101], count: 25, mapIds: [104010001, 104010002] }
+    - { id: report, type: DELIVER, to: brynja }
+  rewards: { meso: 3500, exp: 1800, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: brynja-ice-jeans
+  persona: brynja
+  title: "Warm All the Way Down"
+  length: MEDIUM
+  requires: { level: { min: 16 }, friendship: 5, questsCompleted: [brynja-the-first-shore] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [1110100], count: 30, mapIds: [104040001, 104040002] }
+    - { id: report, type: DELIVER, to: brynja }
+  rewards:
+    meso: 5000
+    exp: 3500
+    bondPoints: 35
+    gear:
+      - { pool: [1062000], scrolls: [{ success: 100 }] }
+
+- id: brynja-old-raggedy-cape
+  persona: brynja
+  title: "Older Than Both of Us"
+  length: MEDIUM
+  requires: { level: { min: 25 }, friendship: 7, questsCompleted: [brynja-ice-jeans] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [2230102], count: 30, mapIds: [101030001, 101030405, 101030406] }
+    - { id: tusks, type: COLLECT_ITEM, itemId: 4000020, count: 12 }
+    - { id: toggles, type: DELIVER, to: brynja, take: { itemId: 4000020, count: 12 } }
+  rewards:
+    meso: 10000
+    exp: 8000
+    bondPoints: 50
+    gear:
+      - { pool: [1102053], scrolls: [{ success: 60 }] }
+
+- id: brynja-cape-of-warmness
+  persona: brynja
+  title: "The Last Thing in the Chest"
+  length: LONG
+  requires: { level: { min: 35 }, friendship: 10, questsCompleted: [brynja-old-raggedy-cape] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [3230101], count: 30, mapIds: [103000103, 103000200, 103000201] }
+    - { id: cloths, type: COLLECT_ITEM, itemId: 4000035, count: 12 }
+    - { id: lining, type: DELIVER, to: brynja, take: { itemId: 4000035, count: 12 } }
+  rewards:
+    meso: 28000
+    exp: 22000
+    bondPoints: 60
+    gear:
+      - { pool: [1102109], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: brynja-boar-tusks
+  persona: brynja
+  title: "Toggles for the Chest"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 25 }, questsCompleted: [brynja-the-first-shore] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tusks, type: COLLECT_ITEM, itemId: 4000020, count: 10 }
+    - { id: toggles, type: DELIVER, to: brynja, take: { itemId: 4000020, count: 10 } }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 10 }

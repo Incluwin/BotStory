@@ -1,0 +1,214 @@
+# The Door to Zakum cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): 3 Residents, 1
+# recruitable. The bottom of the El Nath road, past the dead mine and the cave of trial, where Adobis keeps the way to
+# the altar. Hrafn is Sigrun's second at the door; his arc (arcs/door-to-zakum.yaml) hangs a line of yeti horns up the
+# road to Torsten at Jeff's gate (personas/ice-valley-ii.yaml). Brenna reads the lava for Adobis; Vigdis guides
+# climbers down the mine and the cave and back up.
+- id: hrafn
+  name: Hrafn
+  look: { gender: male }
+  title: "The Watch at the Door"
+  job: CRUSADER
+  level: { min: 93, max: 95 }
+  strength: ELITE
+  loadout: zakum-door-2h-sword-l80
+  personality: efficient-v1
+  home:
+    town: door-to-zakum
+    routine:
+      - { from: 20, to: 8, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 8, to: 14, materialize: false }
+      - { from: 14, to: 18, spot: "venue:upper-central-street", activity: SHOW_OFF }
+      - { from: 18, to: 20, spot: "venue:by-adobis", activity: SOCIALIZE }
+  recruitable: true
+  knows: [door to zakum, cerebes, bain]
+  contract: hrafn-the-door-share
+  questLines: [hrafn-the-door-dogs, hrafn-a-horn-for-the-door, hrafn-zakum-helmet, hrafn-wrath-of-el-nath, hrafn-shroud-of-zakum, hrafn-tally-teeth, hrafn-the-first-call]
+  arc: hrafn-the-horn-line
+  rumors: [door-to-zakum-the-watch, door-to-zakum-the-horn]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: sigrun, kind: SECOND_TO }
+    - { persona: torsten, kind: SHARES_A_ROAD_WITH }
+    - { persona: vigdis, kind: COUNTS_CLIMBERS_WITH }
+  giftItemIds: [4000080, 2000005]
+  dialogue:
+    greetFirst: ["you came the whole road. sit down before you fall down. then look at the door. everyone looks.", "stop there. count your fingers. all ten? good. welcome to the bottom of the mountain."]
+    greet: ["still ten fingers?", "the door's shut. sit a while."]
+    idle: ["(stands with his back to the door and his eyes on the cave mouth, as if the door were the safe side)", "(sets a cerebes tooth into a board of pegged holes and counts the row under his breath)"]
+    noWork: ["nothing needs doing. the door's shut. that's the good kind of nothing."]
+    nothingDue: ["you owe the door nothing. it'll take its own if you let it. don't let it."]
+    who: ["Hrafn. Sigrun's second. she decides who comes down this far. i stand at the door when they get here, and i count who goes back up. the gate's a day's climb above me. a climber can die in the cave and nobody up top hears of it for a month."]
+    bye: ["go back up the way you came. count your fingers at the gate."]
+    thanks: ["noted."]
+    smallTalk: ["a peg in the board for every climber who reaches the door. a cerebes tooth makes a good peg. the board's nearly full. i've never had a way to tell the gate how full.", "Adobis talks to the door. Brenna talks to the lava. Vigdis talks to everyone. i talk to the cave. it's very noisy for the bottom of a mountain."]
+    speakPlainly: ["plainly: a door, a board of pegs, and a long way up."]
+    offer: ["forty thousand, and twenty spiky collars off the bains of the third stretch, so i know you've walked it. then i'll stand beside you wherever you're going. even through that door."]
+    join: ["right. you swing first. i swing longer. i'll count."]
+    bench: ["two days. then i'm back at the door. someone has to count."]
+    leave: ["that's my time. the door wants counting. go up the way you came."]
+    refuse.bond: ["i don't leave the door with someone i haven't counted."]
+    refuse.flags: ["clear the grown cerebes off the cave road for me first. and come by Adobis one evening and hear what Vigdis says about me. then ask."]
+    refuseOwnErrand: ["that's mine to do. you can count with me."]
+    questOffer.hrafn-the-door-dogs: ["the cerebes are the door's dogs. they come up the cave road at night and sniff at whoever's made it this far. thirty of the grown ones, any of the three stretches. then come back and i'll count you."]
+    questAccept.hrafn-the-door-dogs: ["the cave of trial, back the way you came. the big three-headed ones. two heads bite. the third one watches."]
+    questWaiting.hrafn-the-door-dogs: ["thirty. i can still hear them on the road."]
+    questComplete.hrafn-the-door-dogs: ["thirty, and back to the door. (sets a cerebes tooth into the board) ...that peg's yours."]
+    questOffer.hrafn-a-horn-for-the-door: ["the gate's a day above me and nobody up there hears a thing down here. a yeti horn carries. the loudest horn on the mountain grows on the yetis by Jeff's gate. twelve horns. and ask the man at the gate if he'd listen for one."]
+    questAccept.hrafn-a-horn-for-the-door: ["Ice Valley I and II, the big white yetis. Torsten stands the gate at night. i've never met him. he'll know my name."]
+    questWaiting.hrafn-a-horn-for-the-door: ["twelve horns, and Torsten's word."]
+    questComplete.hrafn-a-horn-for-the-door: ["he listens at dusk. he always has. ...right. a horn at the door, a horn at every stretch, a horn at the gate. a call goes up the road from horn to horn, whoever hears it blows the next. Brenna says they'll crack in the heat down here. Brenna's usually right."]
+    questOffer.hrafn-zakum-helmet: ["this helmet came back up off the altar with me, the one time i went through. it's yours, if you clear the werewolves off the first two wolf stretches. they come down the road at night. twenty."]
+    questAccept.hrafn-zakum-helmet: ["Wolf Territory I and II, above the sharp cliffs. the big grey ones. leave the white fangs; Bjarke likes them."]
+    questWaiting.hrafn-zakum-helmet: ["twenty werewolves. the helmet's polished. it's waiting."]
+    questComplete.hrafn-zakum-helmet: ["twenty. the road's quieter. here. the Zakum Helmet, every scroll a safe one and every one took. wear it the first time you go through. bring it back up."]
+    questOffer.hrafn-wrath-of-el-nath: ["the Wrath of El Nath. it's the mountain's own cape, and the mountain's angriest at both ends of this road. fifteen dark yetis and pepes on the dangerous cliff, thirty bains in the third stretch. then it's yours."]
+    questAccept.hrafn-wrath-of-el-nath: ["the dangerous cliff, up past the sharp cliffs. then all the way down to the third stretch of the cave. that's the whole road. walk it."]
+    questWaiting.hrafn-wrath-of-el-nath: ["fifteen on the cliff, thirty in the cave. the cape doesn't care which first."]
+    questComplete.hrafn-wrath-of-el-nath: ["the whole road, top and bottom. ...the Wrath of El Nath. sixties, every one, and every one took. that's the mountain saying yes. it doesn't say it often."]
+    questOffer.hrafn-shroud-of-zakum: ["the Shroud of Zakum. i've kept one since my first night at this door, for whoever brings him down. go through with an expedition. bring Zakum down. then come back and tell me how he fell."]
+    questAccept.hrafn-shroud-of-zakum: ["Adobis keeps the way through. take friends. take more friends than that. the arms first, then the rest of him."]
+    questWaiting.hrafn-shroud-of-zakum: ["Zakum. down. then come and tell me."]
+    questComplete.hrafn-shroud-of-zakum: ["he's down, and you came back up. ...the Shroud of Zakum. two tens and the rest sixties, every one took. i've kept it a long time. i'm glad it's you."]
+    questOffer.hrafn-tally-teeth: ["a peg for every climber who reaches the door. cerebes teeth make the best pegs. the board's running out. fifteen?"]
+    questAccept.hrafn-tally-teeth: ["the cave of trial, any stretch. the grown cerebes. the young ones' teeth are too small to count with."]
+    questWaiting.hrafn-tally-teeth: ["fifteen teeth. three climbers today and no pegs."]
+    questComplete.hrafn-tally-teeth: ["fifteen. three pegs in already. thank you."]
+    questOffer.hrafn-the-first-call: ["every stretch has its horn but the last. the gate's. take it up to Torsten. tell him: at dusk i blow one long, he blows one long back. three short means come down. then come back to me and listen."]
+    questAccept.hrafn-the-first-call: ["all the way up. Jeff's gate, after dark. Torsten. carry it level. it's tempered, but it's still horn."]
+    questWaiting.hrafn-the-first-call: ["the gate's horn. Torsten. dusk."]
+    questComplete.hrafn-the-first-call: ["you're back, and it's nearly dusk. stand here. (lifts the horn by the door and blows one long note up the road. a long silence. then, very faint, from very far above, one long note comes back down) ...that's the gate. six years. that's the first time i've heard his voice."]
+    about.brenna: ["Brenna reads the lava for Adobis. she's the only one down here who looks at the fire instead of the door. i trust her book more than my own eyes."]
+    about.vigdis: ["Vigdis brings them down and i count them back up. she's never brought me one i couldn't send home. she'll tell you that. let her."]
+    about.torsten: ["Torsten stands Jeff's gate at night. the top of my road. six years i've passed him climbers and never once seen his face."]
+    about.sigrun: ["Sigrun decides who comes down this far. i'm her second. i stand at the bottom so she can stand at the top. she says 'good' about twice a year. i keep count."]
+    about.maud: ["Maud reads the miners' names every night up in El Nath. mine's a different list. mine's the ones who came back up. it's longer than hers. it's shorter than it should be."]
+    aboutUnknown: ["never reached the door. not yet."]
+    friend.close: ["you've a peg in the board with your name scratched on it. nobody else has a name. just pegs."]
+    friend.best: ["if you're ever in trouble on this road, i'll come up it. all of it. that's a long way. i mean it the whole way."]
+    famed: ["they talk well of you on the road. climbers don't talk well of anything. noted."]
+    defamed: ["they talk ill of you on the road. i don't count talk. i count who comes back."]
+    gift: ["thank you. noted."]
+    gift.favorite: ["that's from someone who's walked the cave. good. i'll keep it by the board."]
+    gift.again: ["one's enough. the door doesn't need spoiling."]
+
+- id: brenna
+  name: Brenna
+  look: { gender: female }
+  title: "Lava-Reader to Adobis"
+  job: BEGINNER
+  level: { min: 40, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: door-to-zakum
+    routine:
+      - { from: 6, to: 13, spot: "venue:by-adobis", activity: LINGER }
+      - { from: 13, to: 16, spot: "venue:middle-central-street", activity: REST }
+      - { from: 16, to: 22, spot: "venue:by-adobis", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [zakum, firebomb, flyeye]
+  questLines: [brenna-smoked-glass, brenna-tempered-in-the-breath, brenna-wings-for-reading]
+  rumors: [door-to-zakum-the-horn]
+  relationships:
+    - { persona: hrafn, kind: KEEPS_WARM }
+    - { persona: vigdis, kind: TRADES_NEWS_WITH }
+    - { persona: sigrun, kind: SHOWS_HER_BOOK_TO }
+  giftItemIds: [4000076, 4000081]
+  dialogue:
+    greetFirst: ["you came all the way down. look at the lava a moment. no, through this. there. that's orange. orange is good.", "a climber! sit on the warm side. everyone's cold when they get here. it's the road, not the door."]
+    greet: ["the lava's orange today. a good day.", "hello. sit on the warm side."]
+    idle: ["(holds a thin dark wing up to one eye and stares at the lava through it for a long time)", "(writes a single colour word in a small book, then the hour beside it)"]
+    noWork: ["nothing today. the lava's orange. orange means sleep."]
+    nothingDue: ["you owe me nothing. the lava doesn't charge."]
+    who: ["Brenna. i read the lava for Adobis. orange is sleep. red is turning over. white is waking. i write the colour down every hour, and Adobis reads my book before he sends anyone through."]
+    bye: ["keep warm on the way up."]
+    thanks: ["oh, that's kind."]
+    smallTalk: ["you can't look at the lava with your eyes. you look through a flyeye wing. it's thin as smoke and dark as a cellar. i go through three a week.", "the bains sleep when the lava's orange. Vigdis brings climbers down on orange days. i like to think i've saved a few. i'll never know which."]
+    speakPlainly: ["plainly: colours in a book."]
+    questOffer.brenna-smoked-glass: ["my last wing cracked. i read the lava through flyeye wings; nothing else is thin enough to see through and dark enough not to blind you. the flyeyes in the dead mine and the passage. twelve wings?"]
+    questAccept.brenna-smoked-glass: ["back up the road, the dead mine and the passage under it. the flying eyes. they scream. don't scream back."]
+    questWaiting.brenna-smoked-glass: ["twelve wings. i'm reading with one eye shut."]
+    questComplete.brenna-smoked-glass: ["twelve. (holds one up to the lava) ...orange. clear as anything. thank you. Adobis will want to thank you too. he won't. he'll nod."]
+    questOffer.brenna-tempered-in-the-breath: ["Hrafn's horns will split down here. yeti horn is a cold thing. it has to be tempered in the lava's breath, and the lava's breath is what the firebombs carry. ten of their flames, and then tell Vigdis the horns are ready to hang."]
+    questAccept.brenna-tempered-in-the-breath: ["the firebombs in the first and third stretches of the cave. ten flames. then Vigdis, by Adobis in the evening, or at the cave mouth at dawn."]
+    questWaiting.brenna-tempered-in-the-breath: ["ten flames. the horns are waiting in a row by the door. they look cold."]
+    questComplete.brenna-tempered-in-the-breath: ["ten. (holds each horn over a flame in turn until it rings and does not crack) ...they ring true now. Vigdis is hanging them on her way up. a horn at every stretch of the road. the gate's is Hrafn's to send."]
+    questOffer.brenna-wings-for-reading: ["three wings a week. it's the heat. twelve more?"]
+    questAccept.brenna-wings-for-reading: ["the dead mine and the passage."]
+    questWaiting.brenna-wings-for-reading: ["twelve. one eye shut again."]
+    questComplete.brenna-wings-for-reading: ["twelve. orange, all day. thank you."]
+    about.hrafn: ["Hrafn counts. climbers, teeth, steps, days. he'd count the lava if it held still. he's kind under it. he'd count that against himself."]
+    about.vigdis: ["Vigdis knows every turn of the road. she's never once been lost. she says that's because she's never once been sure where she was."]
+    about.sigrun: ["Sigrun comes down twice a year to read my book. she reads it standing up. then she says 'good' and goes back up. i keep the 'good'."]
+    aboutUnknown: ["never come down this far. lucky them, or not yet."]
+    friend.close: ["i've written your name in my book. next to an orange day. that's the best kind."]
+    friend.best: ["if the lava ever goes white, you're the one i'll send word to first. after Adobis. he'd sulk."]
+    famed: ["they speak well of you up the road. Vigdis brought it down. she brings everything down."]
+    defamed: ["they speak ill of you up the road. it's cold up there. people say cold things."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's a cave thing. that's useful down here. thank you."]
+    gift.again: ["one's lovely. i'll only melt the second."]
+
+- id: vigdis
+  name: Vigdis
+  look: { gender: female }
+  title: "Guide of the Dead Mine and the Cave of Trial"
+  job: BANDIT
+  level: { min: 53, max: 55 }
+  strength: SEASONED
+  loadout: masteria-dagger-l55
+  personality: efficient-v1
+  home:
+    town: door-to-zakum
+    routine:
+      - { from: 5, to: 9, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 9, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:by-adobis", activity: REST }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [dead mine, jr. cerebes, coolie zombie]
+  questLines: [vigdis-the-cave-within, vigdis-the-dead-trees, vigdis-a-name-for-the-roll]
+  rumors: [door-to-zakum-the-watch]
+  relationships:
+    - { persona: hrafn, kind: BRINGS_CLIMBERS_TO }
+    - { persona: brenna, kind: TIMES_THE_ROAD_BY }
+    - { persona: maud, kind: READS_NAMES_TO }
+  giftItemIds: [4000078, 2000004]
+  dialogue:
+    greetFirst: ["you made it down without me. well done. next time hire a guide. i'm a guide.", "new face at the bottom. let me guess. you came through the passage with your eyes shut. everyone does, once."]
+    greet: ["still on the road?", "you again. i saw you in the mine. you went left. it's right."]
+    idle: ["(draws the road in the ash with a stick: cliffs, wolves, trees, mine, cave, door, then rubs it out)", "(retightens a lantern strap and counts the day's climbers off on her fingers)"]
+    noWork: ["no climbers today. i'll walk the road anyway, so it remembers me."]
+    nothingDue: ["you owe me nothing. next time, pay a guide."]
+    who: ["Vigdis. i guide climbers down through the dead mine and the cave of trial to the door, and back up again. the back up is the part they forget to pay for."]
+    bye: ["right at the fork in the mine. right. not left."]
+    thanks: ["mm. good."]
+    smallTalk: ["the passage under the mine is the one that swallows people. it's dark, it bends, and the flyeyes scream. i walk it with one hand on the wall.", "there's a cave inside the second stretch of the cave of trial. most guides don't know it. i don't tell them."]
+    speakPlainly: ["plainly: down, and back up. mostly the back up."]
+    questOffer.vigdis-the-cave-within: ["there's a cave inside the cave. off the second stretch, behind the stone. the young cerebes den in it. i want you to know it's there. go in, clear twenty-five, come back."]
+    questAccept.vigdis-the-cave-within: ["the cave of trial, second stretch. there's a way in behind the rock. you'll feel the warm air before you see it."]
+    questWaiting.vigdis-the-cave-within: ["twenty-five, and you've been inside. both."]
+    questComplete.vigdis-the-cave-within: ["you found it. now you're one of six people who know it's there. don't make it seven."]
+    questOffer.vigdis-the-dead-trees: ["the forest of dead trees is where climbers turn back. the coolie zombies walk the road there at night and stand in it by day. thirty of them, so my next climbers get through without turning round."]
+    questAccept.vigdis-the-dead-trees: ["up the road, past the wolves, the four stretches of dead trees before the mine. they shuffle. they don't stop shuffling."]
+    questWaiting.vigdis-the-dead-trees: ["thirty. my climbers are waiting at the wolf stretch."]
+    questComplete.vigdis-the-dead-trees: ["thirty. the trees are clear. my climbers came through this morning and nobody turned round. here. guide's cut."]
+    questOffer.vigdis-a-name-for-the-roll: ["the tall miner by the lower shaft, in the fourth stretch of the mine. he's got a name stitched on his collar. i read it last week and lost it on the way up. go and read it again, and take it up to Maud in El Nath. i've climbers all week."]
+    questAccept.vigdis-a-name-for-the-roll: ["Dead Mine IV. the tall one. don't fight him for it. just read. then Maud, in El Nath. she reads the roll by Jade in the evenings."]
+    questWaiting.vigdis-a-name-for-the-roll: ["the name, and Maud."]
+    questComplete.vigdis-a-name-for-the-roll: ["she had him as 'the tall one'? ten years? ...good. now she has him properly. thank you. i'll stop looking at his collar now."]
+    about.hrafn: ["Hrafn's never lost a climber i've brought him. he counts every one back up. he'd hate me saying it. i say it to everyone."]
+    about.brenna: ["Brenna reads the lava for Adobis. orange days, the bains sleep. half my timing is her book. the other half is luck."]
+    about.maud: ["Maud keeps the roll of the mine's miners up in El Nath. i walk past them every week. some of them still have their names stitched on. i bring her what i can read."]
+    about.bjarke: ["Bjarke hunts the wolf stretches. when i bring climbers through, he walks it with us and talks the whole way. the wolves know he's coming. so do we."]
+    aboutUnknown: ["never guided them. never buried them either."]
+    friend.close: ["you can walk the road without me now. i'd still rather you didn't."]
+    friend.best: ["if you're ever lost on the road, stand still and shout my name. i'll find you. i always find them."]
+    famed: ["they talk well of you on the road. i've heard it six times this week."]
+    defamed: ["they talk ill of you on the road. i heard it twice. i walked on."]
+    gift: ["thanks."]
+    gift.favorite: ["that's road gear. that's going straight in the pack. thank you."]
+    gift.again: ["one's plenty. the pack's full."]

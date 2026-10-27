@@ -1,0 +1,15 @@
+# The Town of Ariant contracts (wave 4): a sand-bandit lookout who names his terms at his aunt's door.
+- id: kasim-the-lookouts-rule
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ariant.heard-kasim]
+  price:
+    meso: 35000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
