@@ -28,19 +28,21 @@ public final class AgentCombatPlanRuntime {
                     entry, bot, target, config));
             boolean sealed = bot.hasDisease(Disease.SEAL);
             List<Integer> attackSkillIds = attackSkillIds(entry);
+            WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
 
             // A wand swing is the emergency fallback for a magician, not a competing damage plan. Allowing
             // it into the score alongside a usable spell can select an invisible-looking basic hit at melee
-            // range instead of broadcasting the magic-skill packet.
+            // range instead of broadcasting the magic-skill packet. A shooter's basic shot is the same kind of
+            // fallback: only while out of MP for its attack skills.
             if (!attackSkillRequired(entry) && (sealed || (!hasUsableMagicSkill(candidates)
-                    && !hasLearnedMagicSkill(bot, attackSkillIds)))) {
+                    && !hasLearnedMagicSkill(bot, attackSkillIds)
+                    && basicShotAllowed(bot, weaponType, attackSkillIds)))) {
                 AgentAttackPlan basicAttack = AgentBasicAttackPlanRuntime.planBasicAttack(bot, target);
                 basicAttack = AgentCombatObjectiveTargetStateRuntime.restrictAttackPlan(entry, basicAttack);
                 if (basicAttack != null) {
                     candidates.add(basicAttack);
                 }
             }
-            WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
             List<AgentAttackPlan> eligible = preferRangedBossCandidates(target, weaponType, candidates);
             // Filming: rotate through the skills instead of repeating the best one.
             AgentAttackPlan shown = AgentSkillShowcase.pick(entry, eligible);
@@ -107,6 +109,30 @@ public final class AgentCombatPlanRuntime {
             return attackSkillIds.stream().filter(skillId -> skillId == requiredSkillId).toList();
         }
         return attackSkillIds.stream().filter(skillId -> !constraint.banned(skillId)).toList();
+    }
+
+    /**
+     * Whether a bow, crossbow, claw or gun Agent may add its basic shot: 2026-10-27 (user) "ranged characters normal
+     * attacks throw projectiles if out of mp only", so only while it cannot pay the MP of any attack skill it has
+     * learned for the weapon (or has none). The cost check is the skill planner's own (StatEffect.canPaySkillCost).
+     * Any other weapon may.
+     */
+    static boolean basicShotAllowed(Character bot, WeaponType weaponType, List<Integer> attackSkillIds) {
+        if (!AgentCombatAmmoCounter.isRangedAmmoWeapon(weaponType)) {
+            return true;
+        }
+        for (int skillId : attackSkillIds) {
+            Skill skill = AgentSkillGatewayRuntime.skills().getSkill(skillId);
+            int skillLevel = skill == null ? 0 : bot.getSkillLevel(skill);
+            if (skillLevel <= 0 || !AgentCombatWeaponPolicy.canUseAttackSkillWithWeapon(skillId, weaponType)) {
+                continue;
+            }
+            StatEffect effect = skill.getEffect(skillLevel);
+            if (effect != null && effect.canPaySkillCost(bot)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static boolean hasUsableMagicSkill(List<AgentAttackPlan> candidates) {

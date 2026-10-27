@@ -2,9 +2,6 @@ package server.agents.capabilities.combat;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,17 +40,16 @@ class AgentCombatImmediateTargetPolicyTest {
                     .thenReturn(WeaponType.BOW);
             attacks.when(() -> AgentAttackExecutionProvider.determineBasicWeaponRoute(WeaponType.BOW))
                     .thenReturn(AgentAttackRoute.RANGED);
-            attacks.when(() -> AgentAttackExecutionProvider.shouldDegenerateRangedAttack(
-                    eq(WeaponType.BOW), any(Point.class), any(Point.class))).thenReturn(false);
 
             assertTrue(AgentCombatImmediateTargetPolicy.isImmediateProjectileTarget(agent, target, false, 0));
         }
     }
 
+    /** 2026-10-27: a point-blank monster is a projectile target too; an Agent shoots it rather than whack it. */
     @Test
-    void shouldRejectBasicRangedProjectileWhenDegenerateRangedAttackIsRequired() {
+    void shouldAcceptBasicRangedProjectileAtPointBlank() {
         Character agent = agentAt(100, 100);
-        Monster target = monsterAt(250, 100, true);
+        Monster target = monsterAt(130, 100, true);
 
         try (MockedStatic<AgentAttackExecutionProvider> attacks =
                      Mockito.mockStatic(AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS)) {
@@ -61,10 +57,8 @@ class AgentCombatImmediateTargetPolicyTest {
                     .thenReturn(WeaponType.BOW);
             attacks.when(() -> AgentAttackExecutionProvider.determineBasicWeaponRoute(WeaponType.BOW))
                     .thenReturn(AgentAttackRoute.RANGED);
-            attacks.when(() -> AgentAttackExecutionProvider.shouldDegenerateRangedAttack(
-                    eq(WeaponType.BOW), any(Point.class), any(Point.class))).thenReturn(true);
 
-            assertFalse(AgentCombatImmediateTargetPolicy.isImmediateProjectileTarget(agent, target, false, 0));
+            assertTrue(AgentCombatImmediateTargetPolicy.isImmediateProjectileTarget(agent, target, false, 0));
         }
     }
 
@@ -87,11 +81,6 @@ class AgentCombatImmediateTargetPolicyTest {
                      Mockito.mockStatic(AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS)) {
             attacks.when(() -> AgentAttackExecutionProvider.determineSkillRoute(agent, 30_000))
                     .thenReturn(AgentAttackRoute.RANGED);
-            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(agent))
-                    .thenReturn(WeaponType.CLAW);
-            attacks.when(() -> AgentAttackExecutionProvider.canUseRangedAttackRoute(
-                    eq(AgentAttackRoute.RANGED), eq(WeaponType.CLAW), any(Point.class), any(Point.class)))
-                    .thenReturn(true);
 
             assertTrue(AgentCombatImmediateTargetPolicy.isImmediateProjectileSkillTarget(agent, target, 30_000, skills));
         }

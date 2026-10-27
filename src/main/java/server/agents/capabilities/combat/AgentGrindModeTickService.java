@@ -97,7 +97,6 @@ public final class AgentGrindModeTickService {
         target = commitment.target();
         Point targetPosition = commitment.targetPosition();
         attackPlan = commitment.attackPlan();
-        Monster rangedPriorityTarget = commitment.rangedPriorityTarget();
         if (attackPlan == null) {
             attackPlan = AgentCombatPlanRuntime.planAttack(entry, agent, target, AgentCombatConfig.cfg);
         }
@@ -106,7 +105,7 @@ public final class AgentGrindModeTickService {
         AgentGrindRangedEngagementService.Result engagement =
                 AgentGrindRangedEngagementService.engage(
                         entry, agent, agentPosition, currentTargetPos, target, targetPosition, attackPlan,
-                        rangedPriorityTarget, hooks.rangedEngagementHooks());
+                        hooks.rangedEngagementHooks());
         WeaponType grindWeaponType = engagement.weaponType();
         AgentAttackRoute grindAttackRoute = engagement.navigationAttackRoute();
         boolean shouldRetreatForRangedSpacing = engagement.shouldRetreatForRangedSpacing();

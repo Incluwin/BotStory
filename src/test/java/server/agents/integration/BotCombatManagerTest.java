@@ -1308,6 +1308,39 @@ class BotCombatManagerTest {
         }
     }
 
+    /**
+     * 2026-10-27 (user: "bots should never whack"): a monster inside the client's point-blank band still takes the
+     * ranged skill. The planner used to refuse it there ("ranged-route-degenerate") and the Agent swung its bow.
+     */
+    @Test
+    void skillAttackPlanRuntimeShootsARangedSkillAtPointBlankRange() {
+        MapleMap map = mock(MapleMap.class);
+        Character bot = mockBot(new Point(100, 200), map, 20_000, null);
+        Monster target = mockMob(new Point(130, 200), 9300509);
+        when(map.getAllMonsters()).thenReturn(List.of(target));
+        doReturn(perception(List.of(target))).when(map).getPerceptionSnapshot();
+
+        Skill doubleShot = skillWithAttack(Archer.DOUBLE_SHOT, 2, 1, 130);
+        when(bot.getSkillLevel(doubleShot)).thenReturn((byte) 1);
+        SkillGateway skills = mock(SkillGateway.class);
+        when(skills.getSkill(Archer.DOUBLE_SHOT)).thenReturn(doubleShot);
+
+        try (MockedStatic<AgentAttackExecutionProvider> attacks =
+                     Mockito.mockStatic(AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS)) {
+            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(WeaponType.BOW);
+            assertTrue(AgentAttackExecutionProvider.shouldDegenerateRangedAttack(
+                    WeaponType.BOW, bot.getPosition(), target.getPosition()), "inside the client's whack band");
+
+            AgentAttackPlan plan = AgentSkillAttackPlanRuntime.planSkillAttack(
+                    bot, target, Archer.DOUBLE_SHOT, AgentCombatConfig.cfg, skills);
+
+            assertNotNull(plan, AgentSkillAttackPlanRuntime.lastRejection());
+            assertEquals(Archer.DOUBLE_SHOT, plan.skillId);
+            assertEquals(AgentAttackRoute.RANGED, plan.route);
+            assertEquals(List.of(target), plan.targets);
+        }
+    }
+
     @Test
     void combatPlanRuntimeSelectsBasicAttackWhenNoSkillIsCached() {
         MapleMap map = mock(MapleMap.class);

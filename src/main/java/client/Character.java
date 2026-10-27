@@ -44,6 +44,7 @@ import client.keybind.QuickslotBinding;
 import client.newyear.NewYearCardRecord;
 import client.processor.action.PetAutopotProcessor;
 import client.processor.npc.FredrickProcessor;
+import client.processor.stat.AssignAPProcessor;
 import config.YamlConfig;
 import constants.game.ExpTable;
 import constants.game.GameConstants;
@@ -1500,6 +1501,7 @@ public class Character extends AbstractCharacterObject {
         markPersistenceDirty(PersistenceSection.STATS);
 
         if (grantAdvancementRewards) {
+            resetApForFirstJob(oldJob, newJob);
             int spGain = 1;
             if (GameConstants.hasSPTable(newJob)) {
                 spGain += 2;
@@ -9267,6 +9269,39 @@ public class Character extends AbstractCharacterObject {
 
     public void removeVisibleMapObject(MapObject mo) {
         visibleMapObjects.remove(mo);
+    }
+
+    /**
+     * A Beginner's (Noblesse's, Legend's, Evan's) advancement takes STR, DEX, INT and LUK back to the new job's floors
+     * (AssignAPProcessor.getMinStatFloor: 35 STR for a warrior, 25 DEX for a bowman or thief, ...) and returns the rest
+     * as AP to place. 2026-10-27 (user): "all characters reset ap when they job advance to 1st job from beginner". The
+     * first-job instructors' cm.resetStats() did it for players only; Agents advance without one and kept their
+     * USE_AUTOASSIGN_STARTERS_AP points on STR (35-53 of them on 82-85% of archer and thief bots).
+     */
+    void resetApForFirstJob(Job oldJob, Job newJob) {
+        if (!isBeginnerJobId(oldJob.getId()) || isBeginnerJobId(newJob.getId())) {
+            return;
+        }
+        int floorStr = AssignAPProcessor.getMinStatFloor(newJob, Stat.STR);
+        int floorDex = AssignAPProcessor.getMinStatFloor(newJob, Stat.DEX);
+        int floorInt = AssignAPProcessor.getMinStatFloor(newJob, Stat.INT);
+        int floorLuk = AssignAPProcessor.getMinStatFloor(newJob, Stat.LUK);
+        effLock.lock();
+        statWlock.lock();
+        try {
+            int ap = remainingAp + str + dex + int_ + luk - floorStr - floorDex - floorInt - floorLuk;
+            if (ap >= 0) {
+                updateStrDexIntLuk(floorStr, floorDex, floorInt, floorLuk, ap);
+            }
+        } finally {
+            statWlock.unlock();
+            effLock.unlock();
+        }
+    }
+
+    private static boolean isBeginnerJobId(int jobId) {
+        return jobId == Job.BEGINNER.getId() || jobId == Job.NOBLESSE.getId()
+                || jobId == Job.LEGEND.getId() || jobId == Job.EVAN.getId();
     }
 
     public synchronized void resetStats() {

@@ -58,7 +58,7 @@ public final class AgentSkillAttackPlanRuntime {
     /**
      * Plans {@code skillId} swung at {@code aim} with no monster in it (CWKPQ plan B3: a sigil, which only a hit of one
      * of its skills turns): the same gates as a monster attack (combo, form, charge, energy, cooldown, level, cost,
-     * weapon, ammo, a ranged route that is not degenerate) and the same packet fields and timing, aimed at the point,
+     * weapon, ammo) and the same packet fields and timing, aimed at the point,
      * with no targets. Its hit box is the skill's own area from where the Agent stands, facing the point (a skill with
      * none: a 1x1 box at the point, which its caller then holds the Agent close enough for). Null when a gate refuses
      * ({@link #lastRejection} says which). Meso Explosion is never planned so: it needs mesos to blow up.
@@ -115,10 +115,6 @@ public final class AgentSkillAttackPlanRuntime {
                 != AgentSkillAttackPlanner.SkillAmmoReadiness.READY) {
             return reject("ammo");
         }
-        if (!AgentAttackExecutionProvider.isShortRangeProjectileSkill(skillId)
-                && !AgentAttackExecutionProvider.canUseRangedAttackRoute(route, weaponType, bot.getPosition(), aim)) {
-            return reject("ranged-route-degenerate");
-        }
         String action = AgentAttackExecutionProvider.resolveSkillAttackAction(bot, skill, skillLevel, weaponType);
         boolean facingLeft = aim.x < bot.getPosition().x;
         Rectangle hitBox = effect.hasBoundingBox() ? effect.calculateBoundingBox(bot.getPosition(), facingLeft)
@@ -126,7 +122,7 @@ public final class AgentSkillAttackPlanRuntime {
         int attackCount = AgentCombatHitCounter.packetSafeHitCount(
                 bot, route, AgentCombatHitCounter.effectiveHitCount(effect));
         AgentAttackExecutionProvider.BasicAttackData fallbackAttackData =
-                AgentAttackExecutionProvider.buildBasicAttackData(bot, aim);
+                AgentAttackExecutionProvider.buildMonsterBasicAttackData(bot, aim);
         String fallbackAction = AgentAttackDataProvider.getInstance().getBasicAttackSpec(weaponType).primaryAction();
         AgentSkillAttackPlanner.SkillAttackPacketFields packetFields =
                 AgentSkillAttackPlanner.resolveSkillAttackPacketFields(
@@ -227,14 +223,10 @@ public final class AgentSkillAttackPlanRuntime {
         int attackCount = AgentCombatHitCounter.packetSafeHitCount(
                 bot, route, AgentCombatHitCounter.effectiveHitCount(effect));
         java.awt.Point aimPoint = AgentCombatAimPointPolicy.aimPoint(bot, primaryTarget);
-        if (!AgentAttackExecutionProvider.isShortRangeProjectileSkill(skillId)
-                && !AgentAttackExecutionProvider.canUseRangedAttackRoute(
-                route, weaponType, bot.getPosition(), aimPoint)) {
-            return reject("ranged-route-degenerate");
-        }
-
+        // 2026-10-27: a ranged skill fires at any distance. The v83 client swings instead within 50 px; an Agent
+        // never whacks (AgentAttackExecutionProvider.buildMonsterBasicAttackData).
         AgentAttackExecutionProvider.BasicAttackData fallbackAttackData =
-                AgentAttackExecutionProvider.buildBasicAttackData(bot, aimPoint);
+                AgentAttackExecutionProvider.buildMonsterBasicAttackData(bot, aimPoint);
         AgentAttackDataProvider.AttackAnimationSpec attackSpec =
                 AgentAttackDataProvider.getInstance().getBasicAttackSpec(weaponType);
         String fallbackAction = attackSpec.primaryAction();
