@@ -582,7 +582,8 @@ public final class ResidentDialogue {
                 if (seat == null || seat.kind() != CompanionSlots.Kind.GUEST || seat.ownerId() != clicker.getId()) {
                     // you carry what its request asks for: its hand-over window (the needs board); else the stock char info
                     server.living.population.Population population = server.living.population.Population.get();
-                    return population != null && population.needs().boards().screens().inPerson(clicker, target);
+                    return population != null && population.needs() != null
+                            && population.needs().boards().screens().inPerson(clicker, target);
                 }
                 new HireScreens(world).terms(clicker, citizen.characterId(), HireScreens.Context.HIRE_LIST);
                 return true;
