@@ -22,6 +22,8 @@ import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.maps.MapleMap;
 import server.quest.Quest;
 import tools.StringUtil;
@@ -538,7 +540,7 @@ public final class AgentMushroomKingdomCohortService {
         for (Map.Entry<String, PendingBonus> entry : payable) {
             PendingBonus bonus = entry.getValue();
             if (bonus.experience() > 0) agent.gainExp(bonus.experience(), false, false);
-            if (bonus.mesos() > 0) agent.gainMeso(bonus.mesos(), false);
+            if (bonus.mesos() > 0) try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { agent.gainMeso(bonus.mesos(), false); }
             synchronized (run) {
                 run.accelerationActivity.put(participantName, "paid " + entry.getKey().substring(
                         entry.getKey().indexOf(':') + 1) + ": +" + bonus.experience()

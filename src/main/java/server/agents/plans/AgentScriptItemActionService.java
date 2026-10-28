@@ -8,6 +8,8 @@ import server.agents.integration.InventoryGateway;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 
 public final class AgentScriptItemActionService {
     private AgentScriptItemActionService() {
@@ -22,7 +24,7 @@ public final class AgentScriptItemActionService {
         if (agent == null || agent.getMap() == null || amount < 10 || amount > agent.getMeso()) {
             return false;
         }
-        agent.gainMeso(-amount, false, true, false);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.SCRIPT)) { agent.gainMeso(-amount, false, true, false); }
         agent.getMap().spawnMesoDrop(amount, agent.getPosition(), agent, agent,
                 true, (byte) 2, (short) 0);
         return true;

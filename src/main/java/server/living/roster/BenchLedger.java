@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import config.YamlConfig;
 import constants.game.ExpTable;
 import constants.inventory.ItemConstants;
 import net.server.Server;
@@ -8,6 +9,9 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 import server.knowledge.Decisions;
 import server.knowledge.DropSource;
 import server.knowledge.FarmSites;
@@ -173,6 +177,7 @@ public final class BenchLedger {
                         terms.payCut(persona.id(), farmed - gained);
                     }
                     haulMeso += gained;
+                    MesoFlows.record(MesoAccount.BENCH_SIM, MesoHolder.BOT, gained);
                     report.haul(entry.characterId(), persona.id(), key.campMapId(), gained, 0, 0);
                     farmSecondsToday += (int) (hours * 3600);
                     note = "farm +" + gained + " meso";
@@ -205,12 +210,14 @@ public final class BenchLedger {
             case SELL -> {
                 long sold = sellHaul(entry, 1.0d, 1.0d);
                 haulMeso += sold;
+                MesoFlows.record(MesoAccount.BENCH_SALE, MesoHolder.BOT, sold);
                 report.sold(entry.characterId(), persona.id(), sold);
                 note = sold > 0 ? "sold haul for " + sold : null;
             }
             case STALL -> {
-                long sold = sellHaul(entry, STALL_MARKUP, STALL_FRACTION_PER_TICK);
+                long sold = sellHaul(entry, offlineStallMarkup(), STALL_FRACTION_PER_TICK);
                 haulMeso += sold;
+                MesoFlows.record(MesoAccount.BENCH_SALE, MesoHolder.BOT, sold);
                 report.sold(entry.characterId(), persona.id(), sold);
                 note = sold > 0 ? "stall sold for " + sold : null;
             }
@@ -221,6 +228,7 @@ public final class BenchLedger {
             double factor = HireStanding.wageFactor(world, entry.characterId(), entry.personaId());
             long upkeep = Math.round(upkeepPerHour(botLevel, key) * factor * hours);
             haulMeso -= upkeep; // prepaid wages cover upkeep; otherwise the haul pays, and an unpaid haul slows the work
+            MesoFlows.record(MesoAccount.SERVICE, MesoHolder.BOT, -upkeep);
         }
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), accruedExp, haulMeso,
@@ -230,6 +238,14 @@ public final class BenchLedger {
         if (note != null) {
             world.store().event(entry.characterId(), entry.personaId(), "bench.ledger", note);
         }
+    }
+
+    /**
+     * An offline STALL has no buyer, so it sells at the NPC price as SELL does (economy.BENCH_OFFLINE_STALL_AT_NPC_PRICE);
+     * its markup minted meso out of nothing. A live stall slice still sells to real buyers at its own price.
+     */
+    static double offlineStallMarkup() {
+        return YamlConfig.config.economy.BENCH_OFFLINE_STALL_AT_NPC_PRICE ? 1.0d : STALL_MARKUP;
     }
 
     /** Unpaid upkeep (a haul below zero): half speed until the haul recovers. */

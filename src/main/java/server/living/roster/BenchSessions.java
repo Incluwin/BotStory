@@ -8,6 +8,8 @@ import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
 import server.ItemInformationProvider;
 import server.agents.runtime.AgentInteractionRuntime;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.habits.OwnerHabitBook;
@@ -141,7 +143,7 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
         LootTerms terms = world.lootTerms();
         long gainedMeso = terms == null ? pickedMeso : terms.benchShare(entry.characterId(), entry.personaId(), pickedMeso);
         if (gainedMeso > 0) {
-            agent.gainMeso((int) -gainedMeso, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.HAUL)) { agent.gainMeso((int) -gainedMeso, false); }
             haulMeso += gainedMeso;
             world.bench().reportHaul(entry.characterId(), entry.personaId(), slice.mapId(), gainedMeso, 0, 0);
         }

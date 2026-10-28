@@ -38,6 +38,8 @@ import server.ItemInformationProvider;
 import server.StatEffect;
 import server.ThreadManager;
 import server.TimerManager;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.monitoring.ThrottledLogger;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionDeathCount;
@@ -227,12 +229,12 @@ public class EventInstanceManager {
 
         if (mapId == -1) {
             for (Character mc : players) {
-                mc.gainMeso(gain * mc.getMesoRate());
+                try (var ledgerScope = MesoFlows.as(MesoAccount.EVENT)) { mc.gainMeso(gain * mc.getMesoRate()); }
             }
         } else {
             for (Character mc : players) {
                 if (mc.getMapId() == mapId) {
-                    mc.gainMeso(gain * mc.getMesoRate());
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.EVENT)) { mc.gainMeso(gain * mc.getMesoRate()); }
                 }
             }
         }

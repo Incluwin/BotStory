@@ -25,6 +25,8 @@ import client.Character;
 import config.YamlConfig;
 import provider.Data;
 import provider.DataTool;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.quest.Quest;
 import server.quest.QuestActionType;
 
@@ -53,12 +55,12 @@ public class MesoAction extends AbstractQuestAction {
 
     public static void runAction(Character chr, int gain) {
         if (gain < 0) {
-            chr.gainMeso(gain, true, false, true);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.QUEST)) { chr.gainMeso(gain, true, false, true); }
         } else {
             if (!YamlConfig.config.server.USE_QUEST_RATE) {
-                chr.gainMeso(gain * chr.getMesoRate(), true, false, true);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.QUEST)) { chr.gainMeso(gain * chr.getMesoRate(), true, false, true); }
             } else {
-                chr.gainMeso(gain * chr.getQuestMesoRate(), true, false, true);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.QUEST)) { chr.gainMeso(gain * chr.getQuestMesoRate(), true, false, true); }
             }
         }
     }

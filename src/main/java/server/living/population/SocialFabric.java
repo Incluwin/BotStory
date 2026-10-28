@@ -1,6 +1,7 @@
 package server.living.population;
 
 import client.Character;
+import config.YamlConfig;
 import net.server.Server;
 import net.server.coordinator.world.InviteCoordinator;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
@@ -13,6 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.personality.AgentPersonalityProfileRepository;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 import server.integration.AgentPresence;
 import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorld;
@@ -264,8 +268,12 @@ public final class SocialFabric {
             if (name == null || founder == null || founder.hired()) {
                 return; // hired since it was picked: a companion founds no guild
             }
+            if (!payFoundingFee(leader.characterId())) {
+                return; // it cannot afford a guild yet: another sweep, another founder
+            }
             int guildId = Guild.createGuild(leader.characterId(), name);
             if (guildId <= 0) {
+                refundFoundingFee(leader.characterId());
                 return;
             }
             population.store().setGuild(leader.characterId(), guildId, 1);
@@ -282,6 +290,52 @@ public final class SocialFabric {
             population.update(leader.characterId(), current -> current.withGuild(guildId).withFlag(Citizen.FLAG_RECRUITER));
             log.info("bot guild '{}' ({}) founded by {} lv{}", name, guildId, leader.name(), leaderLevel);
         }
+    }
+
+    /**
+     * A founder pays what a player pays the guild NPC (server.CREATE_GUILD_COST, economy.CITIZEN_GUILD_FEE): a loaded one
+     * from its purse, an offline one in SQL. False when it has less.
+     */
+    private boolean payFoundingFee(int characterId) {
+        int cost = foundingFee();
+        if (cost <= 0) {
+            return true;
+        }
+        Character online = onlineCharacter(characterId);
+        if (online != null) {
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GUILD)) {
+                return online.tryPayMeso(cost, false);
+            }
+        }
+        if (!population.store().chargeMeso(characterId, cost)) {
+            return false;
+        }
+        MesoFlows.record(MesoAccount.GUILD, MesoHolder.CITIZEN, -cost);
+        return true;
+    }
+
+    private void refundFoundingFee(int characterId) {
+        int cost = foundingFee();
+        if (cost <= 0) {
+            return;
+        }
+        Character online = onlineCharacter(characterId);
+        if (online != null) {
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GUILD)) {
+                online.gainMeso(cost, false);
+            }
+        } else if (population.store().chargeMeso(characterId, -cost)) {
+            MesoFlows.record(MesoAccount.GUILD, MesoHolder.CITIZEN, cost);
+        }
+    }
+
+    private static int foundingFee() {
+        return YamlConfig.config.economy.CITIZEN_GUILD_FEE ? YamlConfig.config.server.CREATE_GUILD_COST : 0;
+    }
+
+    private Character onlineCharacter(int characterId) {
+        net.server.world.World world = population.gameWorld();
+        return world == null ? null : world.getPlayerStorage().getCharacterById(characterId);
     }
 
     /**

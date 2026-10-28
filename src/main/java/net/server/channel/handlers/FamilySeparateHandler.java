@@ -25,6 +25,8 @@ import client.FamilyEntry;
 import config.YamlConfig;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 
 public class FamilySeparateHandler extends AbstractPacketHandler {
@@ -65,7 +67,7 @@ public class FamilySeparateHandler extends AbstractPacketHandler {
             c.sendPacket(PacketCreator.sendFamilyMessage(isSenior ? 81 : 80, cost));
             return;
         }
-        c.getPlayer().gainMeso(-cost);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { c.getPlayer().gainMeso(-cost); }
         int repCost = separateRepCost(forkOn);
         senior.gainReputation(-repCost, false);
         if (senior.getSenior() != null) {

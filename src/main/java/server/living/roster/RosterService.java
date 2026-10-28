@@ -33,6 +33,8 @@ import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.integration.AgentPresence;
 import server.knowledge.Decisions;
 import server.knowledge.EntityKind;
@@ -2081,7 +2083,7 @@ public final class RosterService {
         // an hour of wages is an hour of its upkeep at its camp (decision 19 b), never less than a meso
         long hoursMs = Math.round(meso / Math.max(1.0d, world.bench().upkeepPerHour(entry)) * 3_600_000.0d);
         long from = Math.max(System.currentTimeMillis(), entry.wagesPaidUntilMs());
-        owner.gainMeso((int) -meso, true);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { owner.gainMeso((int) -meso, true); }
         RosterEntry paid = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), entry.haulMeso(),
                 from + hoursMs, entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay(),
@@ -2141,7 +2143,7 @@ public final class RosterService {
         }
         long meso = entry.haulMeso();
         if (meso > 0) {
-            owner.gainMeso((int) Math.min(meso, Integer.MAX_VALUE), true);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.HAUL)) { owner.gainMeso((int) Math.min(meso, Integer.MAX_VALUE), true); }
             saveHaulMeso(entry, 0L);
         }
         CompanionViews.invalidate(world, owner.getId(), persona.id()); // the bag emptied

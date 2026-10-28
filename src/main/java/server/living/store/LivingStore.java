@@ -565,6 +565,14 @@ public final class LivingStore {
         return rosterWhere("state IN ('TRAVELLING','HOLD','PARKED')", ps -> { });
     }
 
+    /** Meso held in every bench haul, on the caller's connection so a supply snapshot reads all pools at once. */
+    public static long totalHaulMeso(Connection con) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("SELECT COALESCE(SUM(haul_meso), 0) FROM living_roster");
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        }
+    }
+
     private interface Binder {
         void bind(PreparedStatement ps) throws SQLException;
     }

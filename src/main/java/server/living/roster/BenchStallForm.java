@@ -16,6 +16,8 @@ import server.agents.capabilities.shop.AgentFreeMarketStallService;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.population.Population;
@@ -574,7 +576,7 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         world.store().saveStallStock(slice.ownerId(), slice.personaId(), stall.held());
         long taken = Math.max(0L, Math.min(meso, agent.getMeso()));
         if (taken > 0) {
-            agent.gainMeso((int) -taken, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.HAUL)) { agent.gainMeso((int) -taken, false); }
             agent.saveCharToDB(true);
         }
         world.store().saveRosterProgress(new RosterEntry(roster.characterId(), roster.personaId(), roster.state(),

@@ -5,6 +5,8 @@ import client.Client;
 import client.command.Command;
 import client.command.CommandTargetPolicy;
 import client.command.commands.gm3.MesoCommand;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 
 public class GiveMesoCommand extends Command {
     {
@@ -30,7 +32,7 @@ public class GiveMesoCommand extends Command {
             actor.yellowMessage("Invalid meso amount.");
             return;
         }
-        target.gainMeso(amount, true);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { target.gainMeso(amount, true); }
         actor.message("MESO given to " + target.getName() + ".");
     }
 }

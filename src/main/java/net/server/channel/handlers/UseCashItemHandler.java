@@ -64,6 +64,8 @@ import server.Shop;
 import server.ShopFactory;
 import server.TimerManager;
 import server.agents.capabilities.social.AgentScrollReactionNotificationService;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.maps.AbstractMapObject;
 import server.maps.FieldLimit;
 import server.maps.Kite;
@@ -474,7 +476,7 @@ public final class UseCashItemHandler extends AbstractPacketHandler {
             c.sendPacket(PacketCreator.enableActions());
             remove(c, position, itemId);
         } else if (itemType == 520) {
-            player.gainMeso(ii.getMeso(itemId), true, false, true);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.ITEM)) { player.gainMeso(ii.getMeso(itemId), true, false, true); }
             remove(c, position, itemId);
             c.sendPacket(PacketCreator.enableActions());
         } else if (itemType == 523) {

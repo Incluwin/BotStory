@@ -3,6 +3,8 @@ package server.economy;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.security.SecurityEventRuntime;
 import server.security.SecurityEventType;
 import server.security.SecuritySeverity;
@@ -63,7 +65,8 @@ public final class EconomyTransactionCoordinator {
         if (second != null) {
             second.lock();
         }
-        try {
+        // meso the mutation moves, and a rollback puts back, books to the operation's account unless it names its own
+        try (var ledgerScope = MesoFlows.as(MesoAccount.forOperation(kind))) {
             EconomyParticipantSnapshot primaryBefore = EconomyParticipantSnapshot.capture(primary);
             EconomyParticipantSnapshot secondaryBefore = secondary == null
                     ? null : EconomyParticipantSnapshot.capture(secondary);

@@ -36,6 +36,8 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.maps.HiredMerchant;
 import service.NoteService;
 import tools.DatabaseConnection;
@@ -406,6 +408,7 @@ public class FredrickProcessor {
                     List<Pair<Item, InventoryType>> originalInventory = null;
                     List<Pair<Item, InventoryType>> items;
                     int settledMeso;
+                    int fredrickFee; // the 1 % a day Fredrick kept (MesoFlows)
                     try (Connection con = DatabaseConnection.getConnection()) {
                         con.setAutoCommit(false);
                         try {
@@ -426,6 +429,8 @@ public class FredrickProcessor {
                             }
 
                             settledMeso = Math.addExact(chr.getMeso(), merchantBalance.netMeso());
+
+                            fredrickFee = merchantBalance.storedMeso() - merchantBalance.netMeso();
                             persistRetrieval(con, chr, snapshotInventory(chr), merchantBalance.storedMeso(),
                                     settledMeso);
                             con.commit();
@@ -439,6 +444,8 @@ public class FredrickProcessor {
                     }
 
                     chr.applyCommittedMerchantRetrieval(settledMeso);
+
+                    MesoFlows.record(MesoAccount.FREDRICK_FEE, MesoFlows.holder(chr), -fredrickFee);
                     HiredMerchant merchant = chr.getHiredMerchant();
                     if (merchant != null) {
                         merchant.clearItems();

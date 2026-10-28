@@ -71,6 +71,8 @@ import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.registry.AgentResolvedCharacter;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.life.LifeFactory;
 import server.life.Monster;
 import server.life.OverrideMonsterStats;
@@ -1250,10 +1252,10 @@ public final class AgentSkillProbeService {
     /** Meso Explosion precondition: the Agent's own meso drops around the target. */
     private static String dropMesosAround(Character bot, MapleMap map, Monster mob) throws InterruptedException {
         if (bot.getMeso() < MESO_DROP_COUNT * MESO_DROP_AMOUNT) {
-            bot.gainMeso(MESO_DROP_COUNT * MESO_DROP_AMOUNT, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { bot.gainMeso(MESO_DROP_COUNT * MESO_DROP_AMOUNT, false); }
         }
         for (int i = 0; i < MESO_DROP_COUNT; i++) {
-            bot.gainMeso(-MESO_DROP_AMOUNT, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { bot.gainMeso(-MESO_DROP_AMOUNT, false); }
             map.spawnMesoDrop(MESO_DROP_AMOUNT, new Point(mob.getPosition().x + (i - 2) * 10, mob.getPosition().y),
                     bot, bot, true, (byte) 2, (short) 0);
         }

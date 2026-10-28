@@ -29,6 +29,8 @@ import client.command.Command;
 import client.inventory.Pet;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.id.ItemId;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.maps.MapItem;
 import server.maps.MapObject;
 import server.maps.MapObjectType;
@@ -56,7 +58,7 @@ public class ForceVacCommand extends Command {
                 }
 
                 if (mapItem.getMeso() > 0) {
-                    player.gainMeso(mapItem.getMeso(), true);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.FLOOR)) { player.gainMeso(mapItem.getMeso(), true); }
                 } else if (player.applyConsumeOnPickup(mapItem.getItemId())) {    // thanks Vcoc for pointing out consumables on pickup not being processed here
                 } else if (ItemId.isNxCard(mapItem.getItemId())) {
                     // Add NX to account, show effect and make item disappear

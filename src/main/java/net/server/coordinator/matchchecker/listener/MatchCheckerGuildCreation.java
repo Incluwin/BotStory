@@ -33,6 +33,8 @@ import net.server.guild.GuildPackets;
 import net.server.world.Party;
 
 import java.util.Set;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 
 /**
  * @author Ronan
@@ -117,7 +119,7 @@ public class MatchCheckerGuildCreation implements MatchCheckerListenerRecipe {
                     broadcastGuildCreationDismiss(matchPlayers);
                     return;
                 }
-                leader.gainMeso(-YamlConfig.config.server.CREATE_GUILD_COST, true, false, true);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.GUILD)) { leader.gainMeso(-YamlConfig.config.server.CREATE_GUILD_COST, true, false, true); }
 
                 leader.getMGC().setGuildId(gid);
                 Guild guild = Server.getInstance().getGuild(leader.getGuildId(), leader.getWorld(), leader);  // initialize guild structure

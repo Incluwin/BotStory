@@ -39,6 +39,8 @@ import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.capabilities.trade.AgentOwnerItemNotificationService;
 import server.economy.EconomyOperationKind;
 import server.economy.EconomyTransactionCoordinator;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 import tools.Pair;
 
@@ -141,7 +143,9 @@ public class Trade {
         if (exchangeMeso > 0) {
             int fee = getFee(exchangeMeso);
 
-            chr.gainMeso(exchangeMeso - fee, show, true, show);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.TRADE)) { chr.gainMeso(exchangeMeso - fee, show, true, show); }
+
+            MesoFlows.reclassify(MesoFlows.holder(chr), MesoAccount.TRADE, MesoAccount.TAX, fee);
             if (fee > 0) {
                 chr.dropMessage(1, "Transaction completed. You received " + GameConstants.numberWithCommas(exchangeMeso - fee) + " mesos due to trade fees.");
             } else {
@@ -168,7 +172,7 @@ public class Trade {
             InventoryManipulator.addFromDrop(chr.getClient(), item, show);
         }
         if (meso > 0) {
-            chr.gainMeso(meso, show, true, show);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.TRADE)) { chr.gainMeso(meso, show, true, show); }
         }
         meso = 0;
         if (items != null) {
@@ -207,7 +211,7 @@ public class Trade {
             return;
         }
         if (chr.getMeso() >= meso) {
-            chr.gainMeso(-meso, false, true, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.TRADE)) { chr.gainMeso(-meso, false, true, false); }
             this.meso += meso;
             chr.sendPacket(PacketCreator.getTradeMesoSet((byte) 0, this.meso));
             if (partner != null) {

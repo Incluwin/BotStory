@@ -13,6 +13,9 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 import server.integration.AgentPresence;
 import server.living.population.CitizenStore.GuildMeta;
 import server.living.population.GuildTies.Side;
@@ -593,18 +596,24 @@ public final class CitizenAlliances {
             if (online.getMeso() < fee) {
                 return false;
             }
-            online.gainMeso((int) -fee, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GUILD)) { online.gainMeso((int) -fee, false); }
             return true;
         }
-        return population.store().chargeMeso(masterId, fee);
+        if (!population.store().chargeMeso(masterId, fee)) {
+            return false;
+        }
+        MesoFlows.record(MesoAccount.GUILD, MesoHolder.CITIZEN, -fee);
+        return true;
     }
 
     private void refund(int masterId, long fee) {
         Character online = onlineCharacter(masterId);
         if (online != null) {
-            online.gainMeso((int) fee, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GUILD)) { online.gainMeso((int) fee, false); }
         } else {
-            population.store().chargeMeso(masterId, -fee);
+            if (population.store().chargeMeso(masterId, -fee)) {
+                MesoFlows.record(MesoAccount.GUILD, MesoHolder.CITIZEN, fee);
+            }
         }
     }
 

@@ -6,6 +6,8 @@ import constants.game.GameConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.build.AgentJobPath;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.living.config.Content.Loadout;
 import server.living.population.PopulationContent.Career;
 import server.living.resident.ResidentShaper;
@@ -43,6 +45,19 @@ public final class ProgressionLedger {
     }
 
     /**
+     * The pocket money a citizen gets on this load: its purse up to {@link Market#expectedMeso} when it holds under half
+     * of that. With {@code once} (economy.CITIZEN_POCKET_MONEY_ONCE) only at its first load: a top-up on every load
+     * refilled whatever it had spent, which printed the meso it bought from players with.
+     */
+    static long pocketMoney(Citizen citizen, int meso, int level, boolean once) {
+        if (once && citizen.lastOnlineAtMs() > 0L) {
+            return 0L;
+        }
+        long expected = Market.expectedMeso(level);
+        return meso < expected / 2 ? Math.min(Integer.MAX_VALUE / 2, expected - meso) : 0L;
+    }
+
+    /**
      * On load: shape up to the life-curve target (job chain, growth repair, AP, loadout for the level), else repair the
      * growth and skills of levels this ledger wrote alone. The first and second job come here; a third or fourth job
      * only for a backlog citizen or with job errands off (CitizenJobPath), and then that job is returned (else null).
@@ -68,9 +83,10 @@ public final class ProgressionLedger {
             // every load: a level bumped in SQL skipped the shaping above; a want on the needs board holds its pick back
             CitizenGear.upgrade(agent, job, loadout, population.needs() == null ? CitizenGear.Wants.NONE
                     : (who, slot, pick) -> population.needs().gearWant(who, slot, pick, System.currentTimeMillis()));
-            long expectedMeso = Market.expectedMeso(agent.getLevel());
-            if (agent.getMeso() < expectedMeso / 2) {
-                agent.gainMeso((int) Math.min(Integer.MAX_VALUE / 2, expectedMeso - agent.getMeso()), false);
+            long pocketMoney = pocketMoney(citizen, agent.getMeso(), agent.getLevel(),
+                    config.YamlConfig.config.economy.CITIZEN_POCKET_MONEY_ONCE);
+            if (pocketMoney > 0L) {
+                try (var ledgerScope = MesoFlows.as(MesoAccount.TOP_UP)) { agent.gainMeso((int) pocketMoney, false); }
             }
             PartyMegaphones.stock(population, agent, citizen); // a few megaphones for its PQ parties (F5c)
         } catch (RuntimeException failure) {

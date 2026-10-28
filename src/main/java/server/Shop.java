@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import server.agents.capabilities.trade.AgentOwnerItemNotificationService;
 import server.economy.EconomyOperationKind;
 import server.economy.EconomyTransactionCoordinator;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 
@@ -118,7 +120,7 @@ public class Shop {
             EconomyTransactionCoordinator.execute(player, null, EconomyOperationKind.SHOP_BUY,
                     shopSummary("buy", itemId, purchased, amount), () -> {
                         InventoryManipulator.addById(c, itemId, purchased, "", -1);
-                        player.gainMeso(-amount, false);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_PURCHASE)) { player.gainMeso(-amount, false); }
                     });
         } else {
             short slotMax = ii.getSlotMax(c, item.getItemId());
@@ -131,7 +133,7 @@ public class Shop {
             EconomyTransactionCoordinator.execute(player, null, EconomyOperationKind.SHOP_BUY,
                     shopSummary("buy", itemId, slotMax, item.getPrice()), () -> {
                         InventoryManipulator.addById(c, itemId, slotMax, "", -1);
-                        player.gainMeso(-item.getPrice(), false);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_PURCHASE)) { player.gainMeso(-item.getPrice(), false); }
                     });
         }
         return TransactionResult.SUCCESS;
@@ -165,7 +167,7 @@ public class Shop {
                 shopSummary("recharge", item.getItemId(), (short) (slotMax - item.getQuantity()), price), () -> {
                     item.setQuantity(slotMax);
                     player.forceUpdateItem(item);
-                    player.gainMeso(-price, false, true, false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_RECHARGE)) { player.gainMeso(-price, false, true, false); }
                 });
         return TransactionResult.SUCCESS;
     }
@@ -182,7 +184,7 @@ public class Shop {
         EconomyTransactionCoordinator.execute(player, null, EconomyOperationKind.SHOP_SELL,
                 shopSummary("sell", item.getItemId(), sold, receivedMesos), () -> {
                     InventoryManipulator.removeFromSlot(player.getClient(), type, (byte) slot, sold, false);
-                    if (receivedMesos > 0) player.gainMeso(receivedMesos, false);
+                    if (receivedMesos > 0) try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_SALE)) { player.gainMeso(receivedMesos, false); }
                 });
         return TransactionResult.SUCCESS;
     }
@@ -218,7 +220,7 @@ public class Shop {
                     EconomyTransactionCoordinator.execute(c.getPlayer(), null, EconomyOperationKind.SHOP_BUY,
                             shopSummary("buy", itemId, purchased, charged), () -> {
                                 InventoryManipulator.addById(c, itemId, purchased, "", -1);
-                                c.getPlayer().gainMeso(-charged, false);
+                                try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_PURCHASE)) { c.getPlayer().gainMeso(-charged, false); }
                             });
                     notifyBotIfEquipBought(c, itemId);
                     c.sendPacket(PacketCreator.shopTransaction((byte) 0));
@@ -337,7 +339,7 @@ public class Shop {
                     shopSummary("sell", item.getItemId(), sold, recvMesos), () -> {
                         InventoryManipulator.removeFromSlot(c, type, (byte) slot, sold, false);
                         if (recvMesos > 0) {
-                            c.getPlayer().gainMeso(recvMesos, false);
+                            try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_SALE)) { c.getPlayer().gainMeso(recvMesos, false); }
                         }
                     });
             Item left = c.getPlayer().getInventory(type).getItem(slot);
@@ -368,7 +370,7 @@ public class Shop {
                                 (short) (slotMax - item.getQuantity()), price), () -> {
                             item.setQuantity(slotMax);
                             c.getPlayer().forceUpdateItem(item);
-                            c.getPlayer().gainMeso(-price, false, true, false);
+                            try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_RECHARGE)) { c.getPlayer().gainMeso(-price, false, true, false); }
                         });
                 c.sendPacket(PacketCreator.shopTransaction((byte) 0x8));
             } else {

@@ -37,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.Storage;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 import server.security.SecurityEventRuntime;
 import server.security.SecurityEventType;
@@ -104,7 +106,7 @@ public class StorageProcessor {
                             c.sendPacket(PacketCreator.getStorageError((byte) 0x0B));
                             return;
                         } else {
-                            chr.gainMeso(-takeoutFee, false);
+                            try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { chr.gainMeso(-takeoutFee, false); }
                         }
 
                         if (InventoryManipulator.checkSpace(c, item.getItemId(), item.getQuantity(), item.getOwner())) {
@@ -189,7 +191,7 @@ public class StorageProcessor {
                             inv.unlockInventory();
                         }
 
-                        chr.gainMeso(-storeFee, false, true, false);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { chr.gainMeso(-storeFee, false, true, false); }
 
                         KarmaManipulator.toggleKarmaFlagToUntradeable(item);
                         item.setQuantity(quantity);
@@ -237,7 +239,7 @@ public class StorageProcessor {
                             }
                         }
                         storage.setMeso(storageMesos - meso);
-                        chr.gainMeso(meso, false, true, false);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.STORAGE)) { chr.gainMeso(meso, false, true, false); }
                         chr.setUsedStorage();
                         log.debug("Chr {} {} {} mesos", c.getPlayer().getName(), meso > 0 ? "took out" : "stored", Math.abs(meso));
                         storage.sendMeso(c);

@@ -1,5 +1,6 @@
 package server.living.population;
 
+import client.Character;
 import config.PopulationConfig;
 import config.YamlConfig;
 import net.server.Server;
@@ -9,6 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 import server.knowledge.ContentAnswers;
 import server.knowledge.ContentChat;
 import server.living.LivingWorld;
@@ -140,6 +143,7 @@ public final class Population {
             population.registry.put(citizen.characterId(), citizen);
         }
         population.markJobBacklogOnce();
+        CitizenPurseReset.runOnce(); // decision D1, before the first sweep can load a citizen (economy.CITIZEN_PURSE_RESET)
         population.social.installSeams();
         population.conversation.installSeams();
         // the boss runs of the expeditions citizens lead report to the population (docs/CITIZEN_EXPEDITIONS_PLAN.md)
@@ -152,6 +156,7 @@ public final class Population {
             Population current = instance;
             return current != null && current.isCitizen(characterId);
         });
+        MesoFlows.installClassifier(Population::mesoHolder); // the economy ledger tells citizens from players
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
@@ -181,12 +186,23 @@ public final class Population {
                 content.census(), config.TARGET_CITIZENS, config.ONLINE_MAX, population.channels);
     }
 
+    /** Who holds a character's meso for the economy ledger: a hired citizen is a player's companion now. */
+    static MesoHolder mesoHolder(Character chr) {
+        Population current = instance;
+        if (current != null && current.isCitizen(chr.getId())) {
+            Citizen citizen = current.citizen(chr.getId());
+            return citizen != null && citizen.hired() ? MesoHolder.BOT : MesoHolder.CITIZEN;
+        }
+        return MesoFlows.defaultHolder(chr);
+    }
+
     public static synchronized void stop() {
         Population population = instance;
         if (population == null) {
             return;
         }
         instance = null;
+        MesoFlows.installClassifier(null);
         AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
             timer.cancel(false);
