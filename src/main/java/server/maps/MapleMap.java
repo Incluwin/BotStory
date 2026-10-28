@@ -34,8 +34,8 @@ import client.inventory.Item;
 import client.inventory.Pet;
 import client.status.MonsterStatus;
 import client.status.MonsterStatusEffect;
-import constants.skills.Bandit;
 import config.YamlConfig;
+import constants.skills.Bandit;
 import constants.game.GameConstants;
 import constants.id.MapId;
 import constants.id.MobId;
@@ -64,6 +64,8 @@ import server.agents.diagnostics.MobReactionCaptureRuntime;
 import server.agents.events.AgentEventPriority;
 import server.agents.operations.events.AgentMobKilledEvent;
 import server.agents.operations.events.AgentOperationalEventPublisher;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.events.gm.Coconut;
 import server.events.gm.Fitness;
 import server.events.gm.Ola;
@@ -718,6 +720,21 @@ public class MapleMap {
         }
     }
 
+    /** The chance of {@link #dropItemsFromMonsterOnMap} that marks a drop as certain (special and pinata drops). */
+    private static final int GUARANTEED_DROP_RATE = 1_000_000;
+
+    /**
+     * The rate a drop entry's chance is multiplied by: the killer's drop rate, except a meso row's (decision D2,
+     * economy.MESO_CHANCE_IGNORES_DROP_RATE), which drops at its own chance; meso_rate still scales its amount.
+     * A certain drop stays certain.
+     */
+    static int entryRate(MonsterDropEntry de, int chRate) {
+        if (de.itemId == 0 && chRate < GUARANTEED_DROP_RATE && YamlConfig.config.economy.MESO_CHANCE_IGNORES_DROP_RATE) {
+            return 1;
+        }
+        return chRate;
+    }
+
     private byte dropItemsFromMonsterOnMap(List<MonsterDropEntry> dropEntry, Point pos, byte index, int chRate,
                                            byte droptype, int mobpos, Character chr, Monster mob, short delay) {
         if (dropEntry.isEmpty()) {
@@ -731,7 +748,7 @@ public class MapleMap {
 
         for (final MonsterDropEntry de : dropEntry) {
             float cardRate = chr.getCardRate(de.itemId);
-            int dropChance = (int) Math.min((float) de.chance * chRate * cardRate, Integer.MAX_VALUE);
+            int dropChance = (int) Math.min((float) de.chance * entryRate(de, chRate) * cardRate, Integer.MAX_VALUE);
 
             if (Randomizer.nextInt(1_000_000) < dropChance) {
                 if (droptype == 3) {
@@ -746,10 +763,8 @@ public class MapleMap {
                         if (chr.getBuffedValue(BuffStat.MESOUP) != null) {
                             mesos = (int) (mesos * chr.getBuffedValue(BuffStat.MESOUP).doubleValue() / 100.0);
                         }
-                        mesos = mesos * chr.getMesoRate();
-                        if (mesos <= 0) {
-                            mesos = Integer.MAX_VALUE;
-                        }
+                        // clamped: an overflow used to become a full 2,147,483,647 drop
+                        mesos = (int) Math.min((long) mesos * chr.getMesoRate(), Integer.MAX_VALUE);
 
                         if (droptype == 3) {
                             // Pinata / explosive-reward style mobs: keep mesos on the floor so the visual fan-out is preserved.
@@ -760,17 +775,19 @@ public class MapleMap {
                             // Monster.killBy() → getHighestDamagerId() before dropFromMonster() is invoked.
                             // Party split mirrors Character.pickupItem() so party play isn't regressed.
                             List<Character> mpcs = chr.getPartyMembersOnSameMap();
-                            if (!mpcs.isEmpty()) {
-                                int share = mesos / mpcs.size();
-                                for (Character pm : mpcs) {
-                                    if (pm.isLoggedinWorld()) {
-                                        pm.gainMeso(share, true, true, false);
-                                        server.living.LivingWorldHooks.looted(pm, 0, 0, share, pm == chr);
+                            try (var ignored = MesoFlows.as(MesoAccount.MOB_DROP)) {
+                                if (!mpcs.isEmpty()) {
+                                    int share = mesos / mpcs.size();
+                                    for (Character pm : mpcs) {
+                                        if (pm.isLoggedinWorld()) {
+                                            pm.gainMeso(share, true, true, false);
+                                            server.living.LivingWorldHooks.looted(pm, 0, 0, share, pm == chr);
+                                        }
                                     }
+                                } else {
+                                    chr.gainMeso(mesos, true, true, false);
+                                    server.living.LivingWorldHooks.looted(chr, 0, 0, mesos, true);
                                 }
-                            } else {
-                                chr.gainMeso(mesos, true, true, false);
-                                server.living.LivingWorldHooks.looted(chr, 0, 0, mesos, true);
                             }
                         }
                     }
@@ -900,7 +917,7 @@ public class MapleMap {
 
         final byte droptype = (byte) (chr.getParty() != null ? 1 : 0);
         final int mobpos = mob.getPosition().x;
-        int chRate = 1000000;   // guaranteed item drop
+        int chRate = GUARANTEED_DROP_RATE;   // guaranteed item drop
         byte d = 1;
         Point pos = new Point(0, mob.getPosition().y);
 

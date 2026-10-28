@@ -2,6 +2,7 @@ package server.admin;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.economy.ledger.EconomyLedger;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -139,22 +140,48 @@ final class AdminStatsReader {
         }
     }
 
+    /** All the meso there is by pool and holder, and the ledger's balance since boot (docs/ECONOMY_PLAN.md E0). */
     static String mesoSupply() {
-        String sql = "SELECT SUM(meso) AS total, COUNT(*) AS n FROM characters";
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            long total = 0, count = 0;
-            if (rs.next()) {
-                total = rs.getLong("total");
-                count = rs.getLong("n");
-            }
-            return "{\"ok\":true,\"total_mesos\":" + total + ",\"character_count\":" + count
-                    + ",\"mean\":" + (count > 0 ? (total / Math.max(1, count)) : 0) + "}";
+        try {
+            return EconomyLedger.supplyJson();
         } catch (SQLException e) {
             log.debug("mesoSupply failed", e);
             return sqlErr();
         }
+    }
+
+    static String mesoFlows(int days) {
+        try {
+            return EconomyLedger.flowsJson(days);
+        } catch (SQLException e) {
+            log.debug("mesoFlows failed", e);
+            return sqlErr();
+        }
+    }
+
+    static String closes(int days) {
+        try {
+            return EconomyLedger.closesJson(days);
+        } catch (SQLException e) {
+            log.debug("closes failed", e);
+            return sqlErr();
+        }
+    }
+
+    /** {@code days=N} from the query (1-365), else {@code fallback}. */
+    static int days(String rawQuery, int fallback) {
+        if (rawQuery != null) {
+            for (String pair : rawQuery.split("&")) {
+                if (pair.startsWith("days=")) {
+                    try {
+                        return Math.clamp(Integer.parseInt(pair.substring(5)), 1, 365);
+                    } catch (NumberFormatException ignored) {
+                        return fallback;
+                    }
+                }
+            }
+        }
+        return fallback;
     }
 
     static String newAccountsPerDay(int days) {

@@ -202,6 +202,8 @@ public final class AdminControlPort {
                 case "/runtime/stats/job-distribution":  return AdminStatsReader.jobDistribution();
                 case "/runtime/stats/top-maps":          return AdminStatsReader.topMaps(20);
                 case "/runtime/stats/meso-supply":       return AdminStatsReader.mesoSupply();
+                case "/runtime/stats/meso-flows":        return AdminStatsReader.mesoFlows(AdminStatsReader.days(query, 7));
+                case "/runtime/stats/cpi":               return AdminStatsReader.closes(AdminStatsReader.days(query, 30));
                 case "/runtime/stats/new-accounts":      return AdminStatsReader.newAccountsPerDay(30);
                 case "/runtime/stats/retention":         return AdminStatsReader.retention();
                 case "/runtime/reports/list":            return AdminReportsReader.list(200);

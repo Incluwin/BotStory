@@ -9,6 +9,8 @@ import net.server.world.Party;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.integration.AgentPresence;
 import server.knowledge.ContentChat;
 import server.living.LivingWorld;
@@ -294,7 +296,7 @@ public final class QuestLedger {
                 }
                 case PAY -> {
                     if (chr.getMeso() >= step.meso()) {
-                        chr.gainMeso(-step.meso(), true);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.QUEST)) { chr.gainMeso(-step.meso(), true); }
                         advance(chr, persona, quest, state);
                         any = true;
                     } else {
@@ -624,7 +626,7 @@ public final class QuestLedger {
         world.markers().forget(chr);
         Reward reward = quest.rewards();
         if (reward.meso() > 0) {
-            chr.gainMeso(reward.meso(), true);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.QUEST)) { chr.gainMeso(reward.meso(), true); }
         }
         if (reward.exp() > 0) {
             chr.gainExp(reward.exp(), true, true);

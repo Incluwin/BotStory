@@ -2478,6 +2478,12 @@ public class Character extends AbstractCharacterObject {
     }
 
     public final void pickupItem(MapObject ob, int petIndex) {     // yes, one picks the MapObject, not the MapItem
+        try (var ignored = server.economy.ledger.MesoFlows.as(server.economy.ledger.MesoAccount.FLOOR)) {
+            pickupItemBooked(ob, petIndex); // meso off the floor (MesoFlows, docs/ECONOMY_PLAN.md E0)
+        }
+    }
+
+    private void pickupItemBooked(MapObject ob, int petIndex) {
         if (ob == null) {                                               // pet index refers to the one picking up the item
             return;
         }
@@ -4229,6 +4235,7 @@ public class Character extends AbstractCharacterObject {
         } finally {
             petLock.unlock();
         }
+        server.economy.ledger.MesoFlows.purse(this, gain);
 
         if (gain != 0) {
             updateSingleStat(Stat.MESO, (int) nextMeso, enableActions);
@@ -4258,6 +4265,7 @@ public class Character extends AbstractCharacterObject {
         } finally {
             petLock.unlock();
         }
+        server.economy.ledger.MesoFlows.purse(this, -amount);
         updateSingleStat(Stat.MESO, nextMeso, false);
         if (show) {
             sendPacket(PacketCreator.getShowMesoGain(-amount, false));
@@ -7380,7 +7388,7 @@ public class Character extends AbstractCharacterObject {
         }
 
         if (Server.getInstance().increaseGuildCapacity(guildid)) {
-            gainMeso(-cost, true, false, true);
+            try (var ledgerScope = server.economy.ledger.MesoFlows.as(server.economy.ledger.MesoAccount.GUILD)) { gainMeso(-cost, true, false, true); }
         } else {
             dropMessage(1, "Your guild already reached the maximum capacity of players.");
         }
@@ -7886,7 +7894,9 @@ public class Character extends AbstractCharacterObject {
 
     private void setDropCouponRate(int couponId, int couponQty) {
         this.dropCoupon *= (getCouponMultiplier(couponId) * couponQty);
-        this.mesoCoupon *= (getCouponMultiplier(couponId) * couponQty);
+        if (!YamlConfig.config.economy.DROP_COUPONS_SKIP_MESO) { // decision D3: drop coupons double drops, not meso
+            this.mesoCoupon *= (getCouponMultiplier(couponId) * couponQty);
+        }
     }
 
     private void revertCouponsEffects() {
@@ -7945,7 +7955,8 @@ public class Character extends AbstractCharacterObject {
 
             this.expCoupon = maxExpRate;
             this.dropCoupon = maxDropRate;
-            this.mesoCoupon = maxDropRate;
+            // decision D3 (economy.DROP_COUPONS_SKIP_MESO): a drop coupon doubles item drops, not meso
+            this.mesoCoupon = YamlConfig.config.economy.DROP_COUPONS_SKIP_MESO ? 1 : maxDropRate;
         }
 
         this.expRate *= this.expCoupon;
@@ -10679,6 +10690,12 @@ public class Character extends AbstractCharacterObject {
     }
 
     public synchronized void withdrawMerchantMesos() {
+        try (var ignored = server.economy.ledger.MesoFlows.as(server.economy.ledger.MesoAccount.FREDRICK)) {
+            withdrawMerchantMesosUnbooked();
+        }
+    }
+
+    private void withdrawMerchantMesosUnbooked() {
         int merchantMeso = this.getMerchantNetMeso();
         int playerMeso = this.getMeso();
 
@@ -10728,12 +10745,16 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void applyCommittedMerchantRetrieval(int settledMeso) {
+        int before;
         petLock.lock();
         try {
-            meso.set(settledMeso);
+            before = meso.getAndSet(settledMeso);
             merchantmeso = 0;
         } finally {
             petLock.unlock();
+        }
+        try (var ignored = server.economy.ledger.MesoFlows.as(server.economy.ledger.MesoAccount.FREDRICK)) {
+            server.economy.ledger.MesoFlows.purse(this, (long) settledMeso - before);
         }
         updateSingleStat(Stat.MESO, settledMeso);
         markPersistenceDirty(PersistenceSection.STATS);

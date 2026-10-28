@@ -13,6 +13,8 @@ import server.bot.BotReconciliationTask;
 import server.bot.BotSeedingUtility;
 import server.bot.BotSmtService;
 import server.bot.BotTreasuryService;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -235,7 +237,7 @@ public class BotEconomyCommand extends Command {
                 "!boteconomy award to " + target,
                 c.getAccountName());
         if (!ok) { gm.message("refused: insufficient gm_reserve_balance"); return; }
-        victim.gainMeso((int) Math.min(Integer.MAX_VALUE, amount), true);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { victim.gainMeso((int) Math.min(Integer.MAX_VALUE, amount), true); }
         audit(gm, "award", target + " " + amount, "awarded " + amount + " meso from gm_reserve");
         gm.message("awarded " + amount + " meso to " + target);
     }

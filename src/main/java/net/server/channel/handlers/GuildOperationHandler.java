@@ -38,6 +38,8 @@ import net.server.world.Party;
 import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 
 import java.util.HashSet;
@@ -242,7 +244,7 @@ public final class GuildOperationHandler extends AbstractPacketHandler {
                     Server.getInstance().allianceMessage(alliance.getId(), GuildPackets.getGuildAlliances(alliance, c.getWorld()), -1, -1);
                 }
 
-                mc.gainMeso(-YamlConfig.config.server.CHANGE_EMBLEM_COST, true, false, true);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.GUILD)) { mc.gainMeso(-YamlConfig.config.server.CHANGE_EMBLEM_COST, true, false, true); }
                 mc.getGuild().broadcastNameChanged();
                 mc.getGuild().broadcastEmblemChanged();
                 break;

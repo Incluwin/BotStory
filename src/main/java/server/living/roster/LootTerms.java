@@ -9,6 +9,9 @@ import server.ItemInformationProvider;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Contract;
@@ -266,7 +269,7 @@ public final class LootTerms {
         }
         long movedMeso = Math.min(meso, Math.max(0, bot.getMeso()));
         if (movedMeso > 0) {
-            bot.gainMeso((int) -movedMeso, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.HAUL)) { bot.gainMeso((int) -movedMeso, false); }
         }
         int movedStacks = 0;
         for (Map.Entry<Integer, Integer> owed : items.entrySet()) {
@@ -330,6 +333,7 @@ public final class LootTerms {
         }
         try (Connection con = DatabaseConnection.getConnection()) {
             world.store().addCharacterMeso(con, characterId, (int) cut);
+            MesoFlows.record(MesoAccount.BENCH_SIM, MesoHolder.BOT, cut);
             return true;
         } catch (SQLException failure) {
             log.debug("companion {} kept its cut of {} meso at camp: {}", personaId, cut, failure.getMessage());

@@ -93,8 +93,12 @@ final class CitizenGear {
             }
             if (AgentEquipmentService.equipInSlot(agent, pick, position)) {
                 changed = true;
-                if (wornId != 0 && (loadout == null || !loadout.equipIds().contains(wornId))) {
-                    removeOne(agent, wornId); // shaping re-adds the authored pieces anyway
+                if (wornId != 0 && (loadout == null || !loadout.equipIds().contains(wornId)
+                        || config.YamlConfig.config.economy.CITIZEN_DISPLACED_GEAR_REMOVED)) {
+                    // shaping re-adds the authored pieces anyway; a loadout piece kept in the bag was free stock its
+                    // stall could sell (economy.CITIZEN_DISPLACED_GEAR_REMOVED), and wearMissingEquips only puts one
+                    // back on when it beats what is worn
+                    removeOne(agent, wornId);
                 }
             } else if (added) {
                 removeOne(agent, pick); // it could not wear it: no junk piles up

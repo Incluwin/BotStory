@@ -41,6 +41,8 @@ import server.CashShop;
 import server.CashShop.CashItem;
 import server.CashShop.CashItemFactory;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import service.NoteService;
 import tools.PacketCreator;
 import tools.Pair;
@@ -367,7 +369,7 @@ public final class CashOperationHandler extends AbstractPacketHandler {
 
                     if (chr.getMeso() >= itemPrice) {
                         if (chr.canHold(itemId)) {
-                            chr.gainMeso(-itemPrice, false);
+                            try (var ledgerScope = MesoFlows.as(MesoAccount.CASH_SHOP)) { chr.gainMeso(-itemPrice, false); }
                             InventoryManipulator.addById(c, itemId, (short) 1, "", -1);
                             c.sendPacket(PacketCreator.showBoughtQuestItem(itemId));
                         }

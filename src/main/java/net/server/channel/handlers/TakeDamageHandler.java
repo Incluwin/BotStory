@@ -43,6 +43,8 @@ import org.slf4j.LoggerFactory;
 import net.server.services.task.channel.ServerMobAutonomyService;
 import server.StatEffect;
 import server.combat.PhysicalContactDamagePolicy;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.life.LifeFactory.loseItem;
 import server.life.MobAttackInfo;
 import server.life.MobAttackInfoFactory;
@@ -280,10 +282,10 @@ public final class TakeDamageHandler extends AbstractPacketHandler {
                 damage = Math.round(damage / 2);
                 int mesoloss = (int) (damage * (mesoguard.doubleValue() / 100.0));
                 if (chr.getMeso() < mesoloss) {
-                    chr.gainMeso(-chr.getMeso(), false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.SKILL)) { chr.gainMeso(-chr.getMeso(), false); }
                     chr.cancelBuffStats(BuffStat.MESOGUARD);
                 } else {
-                    chr.gainMeso(-mesoloss, false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.SKILL)) { chr.gainMeso(-mesoloss, false); }
                 }
                 chr.addMPHP(-damage, -mpattack);
             } else {

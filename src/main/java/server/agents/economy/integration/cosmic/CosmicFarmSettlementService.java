@@ -13,6 +13,8 @@ import server.economy.EconomyOperationContext;
 import server.economy.EconomyTransactionCoordinator;
 import server.DeathPenaltyService;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.maps.MapleMap;
 import server.agents.capabilities.recovery.AgentDeathConfig;
 import server.agents.capabilities.recovery.AgentRespawnHealthPolicy;
@@ -95,7 +97,7 @@ public final class CosmicFarmSettlementService {
         if (outcome.mesos() > 0) {
             if (!agent.canHoldMeso((int) outcome.mesos()))
                 throw new IllegalStateException("farm mesos exceed wallet capacity");
-            agent.gainMeso((int) outcome.mesos(), false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.AGENT_SIM)) { agent.gainMeso((int) outcome.mesos(), false); }
         }
         if (outcome.experience() > 0) agent.gainExp((int) outcome.experience(), false, false);
         Map<String, Object> questProgress = advanceQuestKills(agent, outcome.killCounts());

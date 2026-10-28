@@ -20,6 +20,8 @@ import server.agents.plans.AgentUniversalPlanRuntime;
 import server.agents.plans.mapleisland.cohort.MapleIslandCohortCharacterCatalog;
 import server.agents.integration.cosmic.CosmicMapleIslandCohortIdentity;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.quest.Quest;
 
 import java.io.IOException;
@@ -301,7 +303,7 @@ public final class AgentMushroomKingdomFixtureService {
     private static void provisionSecondJobTravel(
             Character agent, AgentSecondJobCatalog.Branch branch) {
         if (agent.getMeso() < SECOND_JOB_TRAVEL_MESO) {
-            agent.gainMeso(SECOND_JOB_TRAVEL_MESO - agent.getMeso(), false, false, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { agent.gainMeso(SECOND_JOB_TRAVEL_MESO - agent.getMeso(), false, false, false); }
         }
         InventoryGateway inventory = AgentInventoryGatewayRuntime.inventory();
         require(inventory.addItem(agent, NEAREST_TOWN_SCROLL_ITEM_ID, (short) 10),

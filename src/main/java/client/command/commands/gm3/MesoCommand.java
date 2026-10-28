@@ -3,6 +3,8 @@ package client.command.commands.gm3;
 import client.Character;
 import client.Client;
 import client.command.Command;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 
 public class MesoCommand extends Command {
     {
@@ -21,7 +23,7 @@ public class MesoCommand extends Command {
             player.yellowMessage("Invalid meso amount.");
             return;
         }
-        player.gainMeso(amount, true);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { player.gainMeso(amount, true); }
     }
 
     public static Integer parseAmount(String value) {

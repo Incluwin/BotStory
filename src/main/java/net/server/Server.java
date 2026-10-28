@@ -38,6 +38,7 @@ import constants.net.OpcodeConstants;
 import constants.net.ServerConstants;
 import database.DatabaseMigrations;
 import server.economy.EconomyTransactionCoordinator;
+import server.economy.ledger.EconomyLedger;
 import server.security.SecurityEventRuntime;
 import server.security.SecurityEventReviewService;
 import database.note.NoteDao;
@@ -929,6 +930,7 @@ public class Server {
         server.knowledge.KnowledgeLoader.start(); // async: knowledge file + live drop/shop overlay
         server.mods.ServerMods.boot(); // config.yaml mods.SWITCHES
         EconomyTransactionCoordinator.initializePersistentJournal();
+        EconomyLedger.start(); // the meso ledger (docs/ECONOMY_PLAN.md E0): supply at boot, before any character loads
 
         channelDependencies = registerChannelDependencies();
 
@@ -2425,6 +2427,8 @@ public class Server {
 
         resetServerWorlds();
         offline = true;
+
+        stopQuietly("economy-ledger", EconomyLedger::stop); // its last minute of flows
 
         ExpLogger.shutdown();
         ThreadManager.getInstance().stop();

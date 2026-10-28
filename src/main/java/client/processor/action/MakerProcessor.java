@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.MakerItemFactory;
 import server.MakerItemFactory.MakerItemCreateEntry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 import tools.Pair;
 
@@ -135,7 +137,7 @@ public class MakerProcessor {
                 int cost = recipe.getCost();
                 if (stimulantid == -1 && reagentids.isEmpty()) {
                     if (cost > 0) {
-                        c.getPlayer().gainMeso(-cost, false);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.MAKER)) { c.getPlayer().gainMeso(-cost, false); }
                     }
 
                     for (Pair<Integer, Integer> pair : recipe.getGainItems()) {
@@ -156,7 +158,7 @@ public class MakerProcessor {
                     }
 
                     if (cost > 0) {
-                        c.getPlayer().gainMeso(-cost, false);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.MAKER)) { c.getPlayer().gainMeso(-cost, false); }
                     }
                     makerSucceeded = addBoostedMakerItem(c, toCreate, stimulantid, reagentids);
                 }
@@ -203,7 +205,7 @@ public class MakerProcessor {
 
         int cost = recipe.getCost();
         if (cost > 0) {
-            c.getPlayer().gainMeso(-cost, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.MAKER)) { c.getPlayer().gainMeso(-cost, false); }
         }
 
         for (Pair<Integer, Integer> pair : recipe.getGainItems()) {
@@ -258,7 +260,7 @@ public class MakerProcessor {
 
         int cost = recipe.getCost();
         if (cost > 0) {
-            c.getPlayer().gainMeso(-cost, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.MAKER)) { c.getPlayer().gainMeso(-cost, false); }
         }
 
         for (Pair<Integer, Integer> pair : recipe.getGainItems()) {

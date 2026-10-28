@@ -1574,6 +1574,26 @@ knowledge:
     CITIZEN_GEAR: true
     GUIDES: true
 
+# The one economy (docs/ECONOMY_PLAN.md). E0: every meso made, destroyed or moved is counted by account and holder and
+# each UTC day closes into economy_flow_daily / economy_supply_daily / economy_cpi_daily (/runtime/stats/meso-supply,
+# /runtime/stats/meso-flows, /runtime/stats/cpi). E1: the switches below stop bots minting meso; false restores the old
+# behaviour. CPI_BASKET (item ids, comma-separated) defaults to 43 goods players trade; set it here to change the basket.
+economy:
+    LEDGER_ENABLED: true
+    JOURNAL_RETENTION_DAYS: 90
+    CPI_MIN_SALES: 3
+    MESO_CHANCE_IGNORES_DROP_RATE: true     # D2: drop_rate no longer multiplies a mob's meso chance (meso_rate still applies)
+    DROP_COUPONS_SKIP_MESO: true            # D3: drop coupons double item drops only
+    CITIZEN_POCKET_MONEY_ONCE: true         # pocket money at a citizen's first load only, not a top-up on every load
+    BENCH_OFFLINE_STALL_AT_NPC_PRICE: true  # an offline bench STALL sells at the NPC price (no 1.8x markup without a buyer)
+    CITIZEN_GUILD_FEE: true                 # citizens pay server.CREATE_GUILD_COST to found a guild
+    CITIZEN_DISPLACED_GEAR_REMOVED: true    # a loadout piece displaced by a gear upgrade leaves the citizen's bag
+    # D1: once, at the next boot, every citizen purse is reset to a level-shaped draw (median 3x Market.expectedMeso);
+    # the old purses are kept in economy_purse_reset and the world flag economy.purse-reset stops a second run.
+    CITIZEN_PURSE_RESET: true
+    PURSE_RESET_MEDIAN: 3.0
+    PURSE_RESET_SIGMA: 0.6
+
 # Server mods and the kaentake client's login feature handshake (docs/CLIENT_FEATURE_HANDSHAKE.md). ASCII only.
 mods:
     # One switch per server mod (server.mods.ServerMods), read at boot; "!mods <id> on|off" flips one until the next

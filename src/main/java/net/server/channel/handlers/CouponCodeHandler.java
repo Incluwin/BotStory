@@ -34,6 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.CashShop;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 import tools.Pair;
@@ -209,7 +211,7 @@ public final class CouponCodeHandler extends AbstractPacketHandler {
                         CashShop cs = c.getPlayer().getCashShop();
                         switch (type) {
                             case 0:
-                                c.getPlayer().gainMeso(quantity, false); //mesos
+                                try (var ledgerScope = MesoFlows.as(MesoAccount.COUPON)) { c.getPlayer().gainMeso(quantity, false); } //mesos
                                 mesos += quantity;
                                 break;
                             case 4:

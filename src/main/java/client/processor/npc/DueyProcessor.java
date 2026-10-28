@@ -41,6 +41,8 @@ import org.slf4j.LoggerFactory;
 import server.DueyPackage;
 import server.ItemInformationProvider;
 import server.Trade;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 import tools.Pair;
@@ -369,7 +371,8 @@ public class DueyProcessor {
                     c.sendPacket(PacketCreator.sendDueyMSG(DueyProcessor.Actions.TOCLIENT_SEND_ENABLE_ACTIONS.getCode()));
                     return;
                 }
-                c.getPlayer().gainMeso((int) -finalcost, false);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.DUEY)) { c.getPlayer().gainMeso((int) -finalcost, false); }
+                MesoFlows.reclassify(MesoFlows.holder(c.getPlayer()), MesoAccount.DUEY, MesoAccount.TAX, fee);
 
                 int res = addPackageItemFromInventory(packageId, c, invTypeId, itemPos, amount);
                 if (res == 0) {
@@ -472,7 +475,7 @@ public class DueyProcessor {
                     if (dpItem != null) {
                         InventoryManipulator.addFromDrop(c, dpItem, false);
                     }
-                    c.getPlayer().gainMeso(dp.getMesos(), false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.DUEY)) { c.getPlayer().gainMeso(dp.getMesos(), false); }
                     c.sendPacket(PacketCreator.removeItemFromDuey(false, packageId));
                 } catch (SQLException e) {
                     monitoring.RuntimeFailureLogger.log(e);

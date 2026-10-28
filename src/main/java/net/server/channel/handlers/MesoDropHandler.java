@@ -26,6 +26,8 @@ import client.Client;
 import config.YamlConfig;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 
 /**
@@ -51,7 +53,7 @@ public final class MesoDropHandler extends AbstractPacketHandler {
         if (c.tryacquireClient()) {     // thanks imbee for noticing players not being able to throw mesos too fast
             try {
                 if (meso <= player.getMeso() && meso > 9 && meso < 50001) {
-                    player.gainMeso(-meso, false, true, false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.FLOOR)) { player.gainMeso(-meso, false, true, false); }
                 } else {
                     c.sendPacket(PacketCreator.enableActions());
                     return;

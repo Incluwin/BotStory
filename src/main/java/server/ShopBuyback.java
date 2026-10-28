@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.economy.EconomyOperationKind;
 import server.economy.EconomyTransactionCoordinator;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.mods.ServerMods;
 import server.mods.features.FeatureHandshake;
 import tools.PacketCreator;
@@ -166,7 +168,7 @@ public final class ShopBuyback {
                             throw new IllegalStateException("buyback item did not fit");
                         }
                         if (entry.price() > 0) {
-                            chr.gainMeso(-entry.price(), false);
+                            try (var ledgerScope = MesoFlows.as(MesoAccount.NPC_BUYBACK)) { chr.gainMeso(-entry.price(), false); }
                         }
                     });
         } catch (RuntimeException e) {

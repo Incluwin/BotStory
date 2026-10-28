@@ -26,6 +26,8 @@ import client.Client;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.Server;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.DatabaseConnection;
 import server.security.typesafe.JevReportTriage;
 import tools.PacketCreator;
@@ -50,7 +52,7 @@ public final class ReportHandler extends AbstractPacketHandler {
             if (c.getPlayer().getPossibleReports() > 0) {
                 if (c.getPlayer().getMeso() > 299) {
                     c.getPlayer().decreaseReports();
-                    c.getPlayer().gainMeso(-300, true);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { c.getPlayer().gainMeso(-300, true); }
                 } else {
                     c.sendPacket(PacketCreator.reportResponse((byte) 4));
                     return;
@@ -70,7 +72,7 @@ public final class ReportHandler extends AbstractPacketHandler {
             if (c.getPlayer().getPossibleReports() > 0) {
                 if (c.getPlayer().getMeso() > 299) {
                     c.getPlayer().decreaseReports();
-                    c.getPlayer().gainMeso(-300, true);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { c.getPlayer().gainMeso(-300, true); }
                 } else {
                     c.sendPacket(PacketCreator.reportResponse((byte) 4));
                     return;

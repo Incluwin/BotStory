@@ -27,6 +27,8 @@ import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 
 import java.util.Calendar;
@@ -96,7 +98,7 @@ public class Fishing {
             switch (rand) {
                 case 0:
                     int mesoAward = (int) (1400.0 * Math.random() + 1201) * chr.getMesoRate() + (15 * chr.getLevel() / 5);
-                    chr.gainMeso(mesoAward, true, true, true);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.EVENT)) { chr.gainMeso(mesoAward, true, true, true); }
 
                     rewardStr = mesoAward + " mesos.";
                     break;

@@ -37,6 +37,8 @@ import net.packet.Packet;
 import net.server.Server;
 import server.ItemInformationProvider;
 import server.Trade;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
@@ -346,7 +348,8 @@ public class HiredMerchant extends AbstractMapObject {
                 }
 
                 if (canBuy(c, newItem)) {
-                    c.getPlayer().gainMeso(-price, false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.HIRED_MERCHANT)) { c.getPlayer().gainMeso(-price, false); }
+                    MesoFlows.reclassify(MesoFlows.holder(c.getPlayer()), MesoAccount.HIRED_MERCHANT, MesoAccount.TAX, price - proceeds);
 
                     synchronized (sold) {
                         sold.add(new SoldItem(c.getPlayer().getName(), pItem.getItem().getItemId(), newItem.getQuantity(), proceeds));

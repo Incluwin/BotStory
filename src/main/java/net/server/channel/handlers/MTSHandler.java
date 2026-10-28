@@ -38,6 +38,8 @@ import org.slf4j.LoggerFactory;
 import server.CashShop;
 import server.ItemInformationProvider;
 import server.MTSItemInfo;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 import tools.Pair;
@@ -193,7 +195,7 @@ public final class MTSHandler extends AbstractPacketHandler {
                     } catch (SQLException e) {
                         monitoring.RuntimeFailureLogger.log(e);
                     }
-                    c.getPlayer().gainMeso(-5000, false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { c.getPlayer().gainMeso(-5000, false); }
                     c.sendPacket(PacketCreator.MTSConfirmSell());
                     c.sendPacket(getMTS(1, 0, 0));
                     c.enableCSActions();

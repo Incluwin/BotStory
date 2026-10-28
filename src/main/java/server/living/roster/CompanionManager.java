@@ -29,6 +29,9 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.economy.EconomyOperationKind;
 import server.economy.EconomyTransactionCoordinator;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.population.Population;
@@ -702,11 +705,14 @@ public final class CompanionManager {
                         if (refusedMeanwhile[0] != null) {
                             return;
                         }
-                        owner.gainMeso(-amount, true);
+                        try (var ledgerScope = MesoFlows.as(MesoAccount.COMPANION)) { owner.gainMeso(-amount, true); }
                         if (bot != null) {
-                            bot.gainMeso(amount, false);
+                            try (var ledgerScope = MesoFlows.as(MesoAccount.COMPANION)) { bot.gainMeso(amount, false); }
                         } else {
-                            context.enlist(con -> world.store().addCharacterMeso(con, characterId, amount), () -> { });
+                            context.enlist(con -> {
+                                world.store().addCharacterMeso(con, characterId, amount);
+                                MesoFlows.record(MesoAccount.COMPANION, MesoHolder.BOT, amount);
+                            }, () -> { });
                         }
                     });
         } catch (RuntimeException failure) {

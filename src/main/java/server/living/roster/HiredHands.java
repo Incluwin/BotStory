@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.living.LivingWorld;
 import server.living.config.Content;
 import server.living.config.Content.Contract;
@@ -310,7 +312,11 @@ public final class HiredHands {
         if (world.roster().onlineCharacter(owner.getId()) != owner) {
             return new Outcome(Result.GONE, "", ""); // the session that clicked is gone: its purse is not theirs any more
         }
-        if (!owner.tryPayMeso(fee, true)) {
+        boolean paid;
+        try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) {
+            paid = owner.tryPayMeso(fee, true);
+        }
+        if (!paid) {
             return cannotPay(characterId, terms); // spent meanwhile
         }
         // how it feels about them before its population life ends: the friendship it starts with (C1.2)
@@ -349,7 +355,7 @@ public final class HiredHands {
         } finally {
             if (!hired && world.roster().entry(owner.getId(), hireId) == null) {
                 if (fee > 0) {
-                    owner.gainMeso(fee, true); // nothing was hired, even on a failure: exactly the fee goes back
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { owner.gainMeso(fee, true); } // nothing was hired, even on a failure: exactly the fee goes back
                 }
                 giveBack(characterId);
                 if (roles != null && role != null) {

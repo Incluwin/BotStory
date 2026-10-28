@@ -48,6 +48,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.StatEffect;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 import tools.Randomizer;
 
@@ -180,7 +182,7 @@ public final class RangedAttackHandler extends AbstractDealDamageHandler {
                     if (money > chr.getMeso()) {
                         money = chr.getMeso();
                     }
-                    chr.gainMeso(-money, false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.SKILL)) { chr.gainMeso(-money, false); }
                 }
             }
         }

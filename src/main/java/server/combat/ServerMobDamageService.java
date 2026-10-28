@@ -11,6 +11,8 @@ import constants.skills.Aran;
 import server.StatEffect;
 import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
 import server.agents.capabilities.combat.AgentCombatDamageRuntime;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.life.MobAttackInfo;
 import server.life.MobAttackInfoFactory;
 import server.life.MobSkill;
@@ -210,10 +212,10 @@ public final class ServerMobDamageService {
             hpLoss = Math.round(damage / 2.0f);
             int mesoLoss = (int) (hpLoss * (mesoGuard.doubleValue() / 100.0d));
             if (target.getMeso() < mesoLoss) {
-                target.gainMeso(-target.getMeso(), false);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.SKILL)) { target.gainMeso(-target.getMeso(), false); }
                 target.cancelBuffStats(BuffStat.MESOGUARD);
             } else {
-                target.gainMeso(-mesoLoss, false);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.SKILL)) { target.gainMeso(-mesoLoss, false); }
             }
         }
 

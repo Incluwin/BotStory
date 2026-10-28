@@ -50,6 +50,8 @@ import provider.wz.WZFiles;
 import scripting.AbstractPlayerInteraction;
 import server.*;
 import server.SkillbookInformationProvider.SkillBookEntry;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.events.gm.Event;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
@@ -316,11 +318,11 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
     }
 
     public void gainMeso(int gain) {
-        getPlayer().gainMeso(gain);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.SCRIPT)) { getPlayer().gainMeso(gain); }
     }
 
     public void gainMeso(Double gain) {
-        getPlayer().gainMeso(gain.intValue());
+        try (var ledgerScope = MesoFlows.as(MesoAccount.SCRIPT)) { getPlayer().gainMeso(gain.intValue()); }
     }
 
     public void gainExp(int gain) {

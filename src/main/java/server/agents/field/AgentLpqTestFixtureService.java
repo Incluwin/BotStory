@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 
 /** Legal level-45 LPQ observation builds with deterministic role coverage. */
 public final class AgentLpqTestFixtureService {
@@ -98,7 +100,7 @@ public final class AgentLpqTestFixtureService {
                         SHOES_SPEED_SCROLL_10_ITEM_ID, loadout.capeScrollItemId(), nowMs);
         if (!prepared.completeBuild()) throw new IllegalStateException("LPQ fixture has unspent AP/SP");
         if (agent.getMeso() < ROOM_MARKER_MESO_RESERVE) {
-            agent.gainMeso(ROOM_MARKER_MESO_RESERVE - agent.getMeso(), false, false, false);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.GM_GRANT)) { agent.gainMeso(ROOM_MARKER_MESO_RESERVE - agent.getMeso(), false, false, false); }
             AgentCharacterGatewayRuntime.characters().save(agent, false);
         }
         return new PreparationResult(prepared.level(), prepared.career(),

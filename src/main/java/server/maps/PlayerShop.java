@@ -35,6 +35,8 @@ import server.economy.EconomyTransactionCoordinator;
 import server.economy.EconomyOperationContext;
 import server.economy.EconomyItemEvidence;
 import server.economy.EconomyTaxOverride;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 import tools.Pair;
 
@@ -322,8 +324,11 @@ public class PlayerShop extends AbstractMapObject {
                                         if (!InventoryManipulator.addFromDrop(c, newItem, false)) {
                                             throw new IllegalStateException("PlayerShop inventory changed during purchase");
                                         }
-                                        c.getPlayer().gainMeso(-buyerDebit, false);
-                                        owner.gainMeso(sellerProceeds, true);
+                                        try (var ignored = MesoFlows.as(MesoAccount.PLAYER_SHOP)) {
+                                            c.getPlayer().gainMeso(-buyerDebit, false);
+                                            owner.gainMeso(sellerProceeds, true);
+                                        }
+                                        MesoFlows.reclassify(MesoFlows.holder(owner), MesoAccount.PLAYER_SHOP, MesoAccount.TAX, fee);
                                         pItem.setBundles((short) (pItem.getBundles() - quantity));
                                         if (pItem.getBundles() < 1) pItem.setDoesExist(false);
                                         context.recordEvidence("marketSale", Map.of(

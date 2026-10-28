@@ -7,6 +7,8 @@ import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.BondStage;
@@ -202,7 +204,7 @@ public final class ContractService {
     private String execute(Character chr, Persona persona, Contract contract, Bond bond, long mesoDue) {
         long owed = Math.max(0L, mesoDue - bond.paidMeso());
         if (owed > 0) {
-            chr.gainMeso((int) -Math.min(owed, Integer.MAX_VALUE), true);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { chr.gainMeso((int) -Math.min(owed, Integer.MAX_VALUE), true); }
         }
         List<ContractItem> kept = new ArrayList<>();
         for (ContractItem item : contract.price().items()) {
@@ -268,7 +270,7 @@ public final class ContractService {
         if (chr.getMeso() < pay) {
             return "you don't have " + pay + " meso.";
         }
-        chr.gainMeso((int) -pay, true);
+        try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { chr.gainMeso((int) -pay, true); }
         Bond updated = new Bond(bond.characterId(), bond.personaId(), bond.stage(), bond.points(), bond.flags(),
                 bond.contractState(), bond.contractStartedAtMs(), bond.offerExpiresAtMs(), bond.proofProgress(),
                 bond.paidMeso() + pay, bond.partySeconds(), bond.leftAtMs(), System.currentTimeMillis());

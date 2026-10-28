@@ -12,14 +12,19 @@ public final class JdbcCosmicOutboxSource implements CosmicOutboxSource {
 
     public JdbcCosmicOutboxSource(DataSource dataSource) { this.dataSource = Objects.requireNonNull(dataSource); }
 
+    /** A row that failed this many deliveries is left for an operator: it no longer blocks the rows behind it. */
+    static final int MAX_DELIVERY_ATTEMPTS = 5;
+
     @Override
     public List<CosmicOutboxRecord> pending(int limit) {
         if (limit <= 0) throw new IllegalArgumentException("limit must be positive");
-        String sql = "SELECT * FROM economy_transaction_outbox WHERE published_at IS NULL "
-                + "ORDER BY created_at, outbox_id LIMIT ?";
+        // fewest attempts first: a failed row (markFailed never publishes it) used to be polled first forever
+        String sql = "SELECT * FROM economy_transaction_outbox WHERE published_at IS NULL AND delivery_attempts < ? "
+                + "ORDER BY delivery_attempts, created_at, outbox_id LIMIT ?";
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, limit);
+            statement.setInt(1, MAX_DELIVERY_ATTEMPTS);
+            statement.setInt(2, limit);
             List<CosmicOutboxRecord> result = new ArrayList<>();
             try (ResultSet rows = statement.executeQuery()) {
                 while (rows.next()) {

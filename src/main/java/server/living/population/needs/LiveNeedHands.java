@@ -13,6 +13,9 @@ import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.economy.EconomyOperationKind;
 import server.economy.EconomyTransactionCoordinator;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 import server.living.population.Population;
 import tools.Pair;
 
@@ -106,13 +109,14 @@ final class LiveNeedHands implements NeedLedger.Hands {
                         kept.add(new Pair<>(copy, type));
                     }
                 }
-                player.gainMeso((int) pay, true);
+                try (var ledgerScope = MesoFlows.as(MesoAccount.NEEDS)) { player.gainMeso((int) pay, true); }
                 if (citizen != null) {
-                    citizen.gainMeso((int) -pay, false);
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.NEEDS)) { citizen.gainMeso((int) -pay, false); }
                     context.enlist(con -> store.update(con, after), () -> { });
                 } else {
                     context.enlist(con -> {
                         store.debit(con, need.citizenId(), pay);
+                        MesoFlows.record(MesoAccount.NEEDS, MesoHolder.CITIZEN, -pay);
                         store.saveEscrow(con, need.citizenId(), kept);
                         store.update(con, after);
                     }, () -> { });

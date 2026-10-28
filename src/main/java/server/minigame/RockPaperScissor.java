@@ -4,6 +4,8 @@ import client.Client;
 import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.id.ItemId;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import tools.PacketCreator;
 import tools.Randomizer;
 
@@ -20,7 +22,7 @@ public class RockPaperScissor {
     public RockPaperScissor(final Client c, final byte mode) {
         c.sendPacket(PacketCreator.rpsMode((byte) (9 + mode)));
         if (mode == 0) {
-            c.getPlayer().gainMeso(-1000, true, true, true);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { c.getPlayer().gainMeso(-1000, true, true, true); }
         }
     }
 
