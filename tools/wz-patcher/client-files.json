@@ -31,8 +31,8 @@
  },
  {
   "path": "Custom.wz",
-  "size": 347345,
-  "sha256": "6e55a4944dc5083c6d12d8e1e6fbbd84da1d581be48103e432e17fbb9e05011b",
+  "size": 2919962,
+  "sha256": "7e15544ecab19699c258bdaae8163d496d9d976494cc9a99135cb2098f98910b",
   "source": "BotStory WZ patcher (tools/wz-patcher)"
  },
  {
@@ -139,8 +139,8 @@
  },
  {
   "path": "Kaentake.dll",
-  "size": 262656,
-  "sha256": "b5d5b52245630f1e24138ee8cb5fa521f2a9cb4969cb79eec1b6fc9477b0ec31",
+  "size": 659968,
+  "sha256": "0b64ee19c0f2836632e3f62862a31af510b435be8d8c83a13464c45581a37bed",
   "source": "Incluwin/kaentake build (Launch Game.exe = Kaentake.exe)"
  },
  {
@@ -151,8 +151,8 @@
  },
  {
   "path": "Launch Game.exe",
-  "size": 80896,
-  "sha256": "37c14f11e3a72c7438ded7482bb9ba3d0fb46bdc09a29eb7409da9d084a8e2f4",
+  "size": 94208,
+  "sha256": "a7121c82a17a84e38639d841d61bbc0d1dc5eadb03ff6312172d706a639acbe2",
   "source": "Incluwin/kaentake build (Launch Game.exe = Kaentake.exe)"
  },
  {
@@ -165,7 +165,7 @@
   "path": "Map.wz",
   "size": 1442051954,
   "sha256": "f5c6308fc0b826f05aa9c99ffcca811150a1befacf0fe48ce073bb5a7e2523b9",
-  "source": "base WZ, unchanged (Community Repack or clean Cosmic)"
+  "source": "BotStory WZ patcher (tools/wz-patcher)"
  },
  {
   "path": "MapleStory.exe",
@@ -177,7 +177,7 @@
   "path": "Mob.wz",
   "size": 1432923627,
   "sha256": "498271db2858fb682ad75295bdde2890ebd74f05b2a9521786f1cbecc349e25b",
-  "source": "base WZ, unchanged (Community Repack or clean Cosmic)"
+  "source": "BotStory WZ patcher (tools/wz-patcher)"
  },
  {
   "path": "Morph.wz",
@@ -231,7 +231,7 @@
   "path": "Reactor.wz",
   "size": 58356511,
   "sha256": "e844b05f2a6b4a3236af8510b623a8c998eb4e67a8ae588b22d29e995e56b977",
-  "source": "base WZ, unchanged (Community Repack or clean Cosmic)"
+  "source": "BotStory WZ patcher (tools/wz-patcher)"
  },
  {
   "path": "ResMan.dll",
@@ -247,8 +247,8 @@
  },
  {
   "path": "Skill.wz",
-  "size": 122792134,
-  "sha256": "19f21ac93917a2a2c295e88290c066c0ab8720692b2ce914d76398109f2998eb",
+  "size": 122792242,
+  "sha256": "8045447017980c2cc558a4e48b67d9ccc969d8d8cbf4e7ad4137f5f14e171009",
   "source": "BotStory WZ patcher (tools/wz-patcher)"
  },
  {
