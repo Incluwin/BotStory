@@ -229,6 +229,10 @@ final class CompanionCardScreens {
         options.add(unlessCommitted(committed, new Option("Camp somewhere else...", () -> campPicker(owner, persona, null))));
         options.add(new Option("Fighting style...", () -> fightingStyle(owner, persona, "")));
         options.add(new Option("Supplies & loot...", () -> supplies(owner, persona, "")));
+        if (here && CompanionQuestScreens.any(world, owner, persona)) { // its own quests: its owner's chat never reaches it
+            options.add(new Option(CompanionQuestScreens.LABEL,
+                    () -> CompanionQuestScreens.show(world, owner, persona, () -> reopen(owner, persona, ""))));
+        }
         if (CompanionSettings.habitsOn()) {
             options.add(new Option("Learned from you...", () -> learned(owner, persona, "")));
         }
