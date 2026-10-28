@@ -355,7 +355,7 @@ public final class RosterService {
             return current == owner.getId() ? new RosterResult.Ok(persona.name() + " is already yours.")
                     : new RosterResult.Failed(persona.name() + " already travels with someone else.");
         }
-        int rostered = roster(owner).size();
+        int rostered = CompanionRoles.rosterSlots(world, roster(owner)); // a mentor holds no roster slot (F4)
         if (rostered >= world.config().ROSTER_MAX) {
             return new RosterResult.RosterFull(world.config().ROSTER_MAX);
         }
@@ -385,7 +385,7 @@ public final class RosterService {
             return persona.name() + (ownerOf(persona.id()) == owner.getId()
                     ? " is already on " + owner.getName() + "'s roster." : " already travels with someone else.");
         }
-        int rostered = roster(owner).size();
+        int rostered = CompanionRoles.rosterSlots(world, roster(owner));
         if (rostered >= world.config().ROSTER_MAX) {
             return owner.getName() + "'s roster is full (" + world.config().ROSTER_MAX + ").";
         }
@@ -413,7 +413,7 @@ public final class RosterService {
             return current == owner.getId() ? new RosterResult.Ok(persona.name() + " is already yours.")
                     : new RosterResult.Failed(persona.name() + " already travels with someone else.");
         }
-        int rostered = roster(owner).size();
+        int rostered = CompanionRoles.rosterSlots(world, roster(owner));
         if (rostered >= world.config().ROSTER_MAX) {
             return new RosterResult.RosterFull(world.config().ROSTER_MAX);
         }
@@ -433,7 +433,8 @@ public final class RosterService {
             handOver.getAsBoolean();
             result = callHire(owner, persona);
         }
-        if (rostered == 0 && world.store().rosterEntry(owner.getId(), persona.id()) != null) {
+        if (rostered == 0 && CompanionRoles.takesRosterSlot(world, persona.id())
+                && world.store().rosterEntry(owner.getId(), persona.id()) != null) {
             handOverRosterBook(owner, persona);
         }
         return result;
@@ -1850,6 +1851,26 @@ public final class RosterService {
     }
 
     /**
+     * A mentor's duty (F4): REST at {@code campMapId} (its newcomer's map), in one write whatever its state, so the bench
+     * never sends it farming and a call brings it straight back to them. The row now, or null when it is gone.
+     */
+    public RosterEntry restAt(int ownerId, String personaId, int campMapId) {
+        RosterEntry entry = world.store().rosterEntry(ownerId, personaId);
+        if (entry == null || entry.state() == RosterState.RELEASED) {
+            return null;
+        }
+        if (entry.assignment() == Assignment.REST && entry.campMapId() == campMapId) {
+            return entry;
+        }
+        RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), Assignment.REST, 0, 0,
+                campMapId, entry.accruedExp(), entry.haulMeso(), entry.wagesPaidUntilMs(), entry.recruitedAtMs(),
+                entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay(), entry.etaAtMs(),
+                entry.holdMapId(), entry.parkedAtMs());
+        write(updated);
+        return updated;
+    }
+
+    /**
      * Your call's own pick (BenchDutyDispatcher, before a slice of a row on Your call): the duty (no item, no count) and
      * the camp, in one write, Your call staying on. The row now, or null when it is gone or not on the bench.
      */
@@ -1880,6 +1901,10 @@ public final class RosterService {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null) {
             return new RosterResult.NotOwned();
+        }
+        RosterResult mentor = CompanionRoles.refusal(world, persona.id(), persona.name());
+        if (mentor != null) {
+            return mentor; // a mentor rests while benched, and takes no bench work (F4)
         }
         RosterResult lentOut = onLoan(owner, persona);
         if (lentOut != null) {
@@ -1928,6 +1953,10 @@ public final class RosterService {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return new RosterResult.NotOwned();
+        }
+        RosterResult mentor = CompanionRoles.refusal(world, persona.id(), persona.name());
+        if (mentor != null) {
+            return mentor;
         }
         RosterResult lentOut = onLoan(owner, persona);
         if (lentOut != null) {
@@ -2007,7 +2036,7 @@ public final class RosterService {
     }
 
     /** Its next arrival (the end of a trip, or a seat at once) says {@code line} instead of its join line; null forgets it. */
-    void sayOnArrival(String personaId, String line) {
+    public void sayOnArrival(String personaId, String line) {
         if (line == null) {
             arrivalLines.remove(personaId);
         } else {
@@ -2256,7 +2285,7 @@ public final class RosterService {
         if (persona == null || isOwned(persona.id())) {
             return null;
         }
-        if (roster(owner).size() >= world.config().ROSTER_MAX) {
+        if (CompanionRoles.rosterSlots(world, roster(owner)) >= world.config().ROSTER_MAX) {
             return refuseEscort(owner, persona, quest, "you've got a full crew already. i'll find my own way.",
                     new RosterResult.RosterFull(world.config().ROSTER_MAX));
         }
@@ -2309,7 +2338,7 @@ public final class RosterService {
             lastOpenMap.put(ownerId, new Spot(here.getId(), owner.getPosition() == null ? null : new Point(owner.getPosition())));
         }
         List<RosterEntry> entries = roster(owner);
-        if (!entries.isEmpty()) {
+        if (CompanionRoles.rosterSlots(world, entries) > 0) { // a mentor alone needs no roster book (F4)
             grantRosterBook(owner);
         }
         Set<String> following = channelFollow.ownerArrived(owner);

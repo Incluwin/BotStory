@@ -108,6 +108,10 @@ public final class LivingWorldHooks {
         }
         world.markers().forget(chr);
         server.living.population.PopulationHooks.levelUp(chr);
+        if (world.mentors() != null) {
+            world.mentors().levelUp(chr); // a newcomer's Lv 8 / Lv 10 tips (F4.2)
+            world.apprentices().levelUp(chr); // an apprentice due a job asks its owner which (F4.5)
+        }
         if (AgentPresence.isAgent(chr) && !server.living.resident.ResidentShaper.shaping()) {
             Persona persona = world.residents().personaOf(chr);
             if (persona != null && !LivingContent.isHire(persona.id())) {
@@ -119,10 +123,15 @@ public final class LivingWorldHooks {
 
     /** Any character advanced a job. */
     public static void jobAdvanced(Character chr) {
-        if (LivingWorld.get() == null) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null) {
             return;
         }
         server.living.population.PopulationHooks.jobAdvanced(chr);
+        if (world.mentors() != null) {
+            world.mentors().jobAdvanced(chr); // a newcomer's second job graduates its mentor (F4.4)
+            world.apprentices().jobAdvanced(chr); // an apprentice's build, and its second job graduates it (F4.5)
+        }
     }
 
     /**
@@ -221,6 +230,9 @@ public final class LivingWorldHooks {
             if (world.ownerHabits() != null) {
                 world.ownerHabits().mapEntered(chr, map); // an owner's training stints per field (F2)
             }
+            if (world.mentors() != null) {
+                world.mentors().mapEntered(chr, map.getId()); // a newcomer reaching Victoria (F4.2)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
         }
@@ -233,6 +245,9 @@ public final class LivingWorldHooks {
             return false;
         }
         try {
+            if (world.mentors() != null) {
+                world.mentors().chat(speaker, text); // "quiet please", or a branch word, to a newcomer's mentor (F4)
+            }
             if (world.dialogue().onMapChat(speaker, text)) {
                 return true;
             }
@@ -240,6 +255,19 @@ public final class LivingWorldHooks {
         } catch (RuntimeException failure) {
             log.warn("living world chat hook failed", failure);
             return false;
+        }
+    }
+
+    /** Party chat (MultiChatHandler, after it went out): a newcomer's word to its mentor (F4). Takes nothing. */
+    public static void partyChat(Character speaker, String text) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || speaker == null || text == null || world.mentors() == null) {
+            return;
+        }
+        try {
+            world.mentors().chat(speaker, text);
+        } catch (RuntimeException failure) {
+            log.warn("living world partyChat hook failed", failure);
         }
     }
 
@@ -268,6 +296,10 @@ public final class LivingWorldHooks {
             world.questLog().reconcile(chr);
             if (world.ownerHabits() != null) {
                 world.ownerHabits().loggedIn(chr); // an owner's habits are read (F2)
+            }
+            if (world.mentors() != null) {
+                world.mentors().loggedIn(chr); // a first login's mentor offer, or its mentor back (F4)
+                world.apprentices().loggedIn(chr); // an apprentice's open job pick (F4.5)
             }
         } catch (RuntimeException failure) {
             log.warn("living world login hook failed", failure);
@@ -578,6 +610,9 @@ public final class LivingWorldHooks {
             }
             if (world.ownerHabits() != null) {
                 world.ownerHabits().died(chr); // an owner's drinks just before it came too late (F2)
+            }
+            if (world.mentors() != null) {
+                world.mentors().died(chr); // a newcomer's first death (F4.2)
             }
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
@@ -1115,6 +1150,22 @@ public final class LivingWorldHooks {
             return server.living.resident.LivingTalk.respond(client, lastMsg, action, packet);
         } catch (RuntimeException failure) {
             log.warn("living world npc talk hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
+     * True for a mentor (F4.1): it earns no kill EXP of its own, so only its newcomer's level sets its own, and its
+     * party split already leaves its newcomer's share whole (COMPANION_EXP_SHARE).
+     */
+    public static boolean withholdsKillExp(Character attacker) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || attacker == null || world.mentors() == null) {
+            return false;
+        }
+        try {
+            return world.mentors().isMentor(attacker.getId());
+        } catch (RuntimeException failure) {
             return false;
         }
     }

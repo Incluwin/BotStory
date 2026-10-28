@@ -334,7 +334,7 @@ With `living_world.HIRE_FRIENDSHIP_ENABLED` (off until its live checks pass) a h
 | `ResidentDialogue.portraitOf` | kept | no rendered portrait: the Bulletin Board speaks |
 | `ResidentDialogue` Resident relation | kept | a hire let go is a citizen again, with no persona menu |
 | `ResidentDialogue.hiredHandNamed`, `ResidentRuntime.characterIdOf` / `hireLapsed`, `LivingContent` (2) | kept | identity plumbing, not a gate |
-| `JobErrands.personaJob` | kept | the owner picks a hire's job |
+| `JobErrands.personaJob` | kept | the owner picks a hire's job (an apprentice's pick is `role_target`, read by `JobErrands.jobOf`) |
 | `LootTerms.termsOf` | kept | a hire works under `hired-hand.yaml` |
 | `ContractService.blocker`, `RosterService.recruit`, `ResidentAllocation.atCap` | kept | decision 18 b: hires never count toward the Resident cap |
 | `ResidentAllocation.sweep` | kept, plus the Lv 10 exemption | C1.4 permanence |
@@ -343,6 +343,77 @@ With `living_world.HIRE_FRIENDSHIP_ENABLED` (off until its live checks pass) a h
 | `RosterService.release` / owner deletion (`HIRE_PREFIX`) | kept | a hire goes back to the population; no `resident.released` |
 | `ContentLint` (2) | kept | content may never name a `hire:` id |
 | the population's `citizen.hired()` skips (presence, ledger, churn, social, market, guilds, alliances, errands) | kept | a hire is its owner's, not the population's; its memories come from the hooks above |
+
+### Mentor and apprentice
+
+Two switches, both off until their live checks pass (docs/BOT_CONCEPT_PLAN.md F4, decisions D8 and D9):
+`living_world.MENTOR_ENABLED` and `living_world.APPRENTICE_ENABLED`. The roles live on the roster row
+(`living_roster.role` MENTOR or APPRENTICE and `role_target`, changeset 54), read by `server.living.roster.CompanionRoles`.
+
+**The mentor** (`server.living.mentor.Mentorship`, lines in `scripts/config/living-world/mentor.yaml`):
+
+- **The offer (D8).** There is no new-character hook, so a first login is read from the character itself: a human's
+  Lv 1 Explorer Beginner on Maple Island whose `lastLogoutTime` is still the column default, with no `mentor.*` row in
+  `living_event_log` (`FirstLogin`). `MENTOR_OFFER_DELAY_MS` later a yes/no window asks whether a traveller may show it
+  around. The window goes through LivingTalk's own guard and never over another window (a second NPC_TALK disconnects
+  the v83 client): with one open it tries again every `MENTOR_OFFER_RETRY_MS`, `MENTOR_OFFER_TRIES` times, and an offer
+  that never got on screen (`mentor.pending`) is offered again at the next login. `mentor.offered` is written just
+  before the window shows, so it is offered once whatever the answer: No, or closing the window, is final.
+- **Who it is.** Yes: a citizen is born for the newcomer (`CitizenGenerator.birthMentor`: an Explorer, homed in
+  Victoria so it has somewhere to live afterwards, `MENTOR_LEAD_MIN`..`MAX` levels above it: "a player on a fresh
+  alt"), with one of the authored voices in `mentor.yaml` (drawn by the newcomer's id). It is hired at no fee
+  (`HiredHands.hireAs`, role MENTOR), camps on the newcomer's map so it walks in from the nearest portal, and joins
+  the party. It holds a party seat but no roster slot and counts toward neither `ROSTER_MAX` nor
+  `HIRE_MAX_PER_OWNER`; its loot is QUEST_ONLY; it rests while benched and turns duties and delegated jobs
+  down ("i'm just here to show you around"); the newcomer's login brings it back.
+- **Staying ahead.** It earns no kill EXP of its own (`LivingWorldHooks.withholdsKillExp`; the newcomer's share is
+  already whole with `COMPANION_EXP_SHARE`). Instead, one level at a time and `MENTOR_LEVEL_DELAY_MIN_MS`..`MAX_MS`
+  after the newcomer's, it gains exactly a level (a real level-up: effect, AP, SP) until it is its lead ahead again.
+  It never goes down. Its own jobs come by the companions' instructor errand (its career's line), only on Victoria,
+  never mid-lead, and its first only after the newcomer's.
+- **Tips (F4.2).** Each once per mentorship, at most `MENTOR_TIPS_PER_HOUR`, in party chat (a whisper without a
+  party): the first time under `MENTOR_LOW_HP_PERCENT` HP (potions and a hotkey), the first death (where to train,
+  from ContentAnswers), Lv 8 (the jobs; a window to pick one, so nothing needs typing), Lv 10 (advance now, or first
+  get off the island), reaching Victoria (how to become the picked branch, or where to train). Facts are
+  ContentAnswers' deterministic replies; the framing is `mentor.yaml`. "quiet please", "shh" or "no more tips" mutes
+  them, "tips on" brings them back; both are kept (`mentor.muted`). A branch word in chat ("i wanna be a mage") is
+  the newcomer's pick too.
+- **The lead (F4.3).** Companions follow, never lead; `MentorLead` is the one exception. It leads when a map is
+  outgrown (its top monster's level + `MENTOR_OUTGROWN_LEVELS`, at once out of Mushroom Town), to Shanks at
+  Southperry from Lv 7 with the 150 meso fare (he refuses less, so it says so and waits), on landing at Lith Harbor
+  to the cab by the dock (or, short of the fare, off the ship deck by its hidden portal and on foot), and to the
+  picked branch's instructor once the level fits (Henesys when undecided). On a two-way portal it walks ahead, goes
+  through and waits `MENTOR_LEAD_WAIT_MS` on the far side; not followed, it comes back ("you coming?") up to
+  `MENTOR_LEAD_TRIES` times, then just follows. The first four hops out of Mushroom Town are one-way, so there it
+  waits beside the portal and lets the newcomer go first; NPC legs (Shanks, the cab, the instructor) wait beside the
+  NPC. While it leads, the follow guard holds it off follow. Riding along needs no code: a newcomer warped by Shanks
+  or the cab is followed there by the follow sync. No route graph covers Maple Island, so the road is `MentorRoute`'s
+  own list: `MentorRouteTest` checks every hop against WZ and `MentorRouteWalkTest` walks each map in the movement
+  lab (the hops themselves, and Lith's far side to its road out, are live checks).
+- **Graduation (F4.4, D9).** At the newcomer's second job: its goodbye lines a beat apart, then `MENTOR_GIFT_ITEMS`
+  dropped in front of them (owner-locked; into their bag on a map that bars drops), then a step later its last line
+  and home: its warmth toward them floored at 40 (FRIEND) and, with `HIRE_FRIENDSHIP_ENABLED`, its hire bond at
+  Lv 4, so a later hire starts as a friend. Released, it is a citizen of its Victoria town again. A newcomer away
+  `MENTOR_ABANDON_DAYS` lets it go quietly; `release <name>` ends it early; switched off, it goes home at the
+  newcomer's next login.
+
+**The apprentice** (`server.living.mentor.Apprentices`, F4.5): a player of `APPRENTICE_ADOPT_MIN_OWNER_LEVEL`+ takes
+a Beginner citizen of up to `APPRENTICE_ADOPT_MAX_LEVEL` on, by double-clicking it at REGULAR standing (warmth 15+),
+or with no standing needed through its "looking for a mentor" request (needs board kind MENTOR: at most
+`APPRENTICE_NEEDS_MAX` open, posted at a load with `APPRENTICE_NEED_CHANCE`, said once on its map; its board details
+offer "Take them on as your apprentice"). It is a hire at no fee with role APPRENTICE, counted like any hire. At each
+advancement (Lv 8 Magician or Lv 10, then Lv 30) its owner picks the branch in a window, then the build where the
+branch has more than one (Thief claw or dagger, Pirate gun or knuckle: its career bundle); the window comes at the
+level-up, at the owner's next login, and from its card ("Choose <name>'s path..."). The pick goes in `role_target`,
+and `JobErrands` sends it to its instructor for the job. A job word in chat to an apprentice opens that window instead
+of the instant change (`AgentJobPath.Rule.holdsChatJobChange`; every other companion keeps the instant change). At
+its second job it graduates: the role goes, it is a companion like any other, and its friendship (its `hire:` bond)
+is untouched. Switched off, an apprentice is a plain hire.
+
+`!mentor <player>` (GM 5) shows a newcomer's mentor, lead, voice, pick, tips told and muted and the leg it leads, or
+its newest mentor row; `!mentor offer <player>` opens a test character's offer again at its next login. Rows:
+`mentor.pending|offered|accepted|declined|graduated|ended`, `mentor.tip`, `mentor.muted`, `mentor.pick`;
+`apprentice.adopted|pick|build|graduated`.
 
 ### The in-game quest log
 
@@ -436,7 +507,8 @@ have sub-directories last: its directory offsets assume that order.
 `wake <town|persona>` / `sleep <town>`, `arc <persona> <chapter>`, `flag set|clear <flag>`,
 `bond <player> <persona> <points>`, `rumor play <id>`, `phrases [approve|reject <text>]`,
 `teach <canonical> <phrase...>`, `haul <player>`, `events <player>`. `!standing <bot> [player]` (GM 5) shows a
-player's standing with a Resident, citizen or hire and the numbers behind it (Standing, above).
+player's standing with a Resident, citizen or hire and the numbers behind it (Standing, above). `!mentor <player>`
+and `!mentor offer <player>` (GM 5): a newcomer's mentorship (Mentor and apprentice, above).
 
 `tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors; a home town is any TownLife
 profile in `agents/town-life/index.json`, and every routine and rumor spot must name a venue, hotspot or rest spot of
@@ -612,6 +684,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 | client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `tools/wz-patcher/residents.py`, `MapleEdit/app/living_world_quests.py` |
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
+| mentors and apprentices | `server.living.mentor.*` (`Mentorship`, `MentorLead`, `MentorRoute`, `MentorTips`, `FirstLogin`, `Apprentices`), roles `server.living.roster.CompanionRoles`, `!mentor` (`gm5.MentorCommand`) |
 | tell audit | `server.living.audit.*`, Agent seam `AgentTellProbe`, `AdminTellsReader` (`/runtime/tells`), `tools\tells-report.ps1` |
 | imperfections | `server.living.imperfections.*`, Agent seam `AgentImperfections` (+ `AgentImperfectionPolicy`, `AgentFumbles`, `AgentLateDrinkRuntime`, `AgentRezWaitRuntime`), `AdminImperfectionsReader` (`/runtime/imperfections`), field AFK `population.FieldPause` |
 

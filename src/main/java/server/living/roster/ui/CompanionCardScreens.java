@@ -232,6 +232,10 @@ final class CompanionCardScreens {
         if (CompanionSettings.habitsOn()) {
             options.add(new Option("Learned from you...", () -> learned(owner, persona, "")));
         }
+        server.living.mentor.Apprentices apprentices = world.apprentices();
+        if (apprentices != null && apprentices.pickOpen(persona.id())) { // F4.5: its next job, its owner's pick
+            options.add(new Option("Choose " + persona.name() + "'s path...", () -> apprentices.askOwner(persona.id())));
+        }
         options.add(new Option("The whole crew...", () -> menus.crews().show(owner, persona)));
         options.add(new Option("Your haul...", () -> haul(owner, persona)));
         options.add(new Option("Your wages...", () -> wages(owner, persona)));

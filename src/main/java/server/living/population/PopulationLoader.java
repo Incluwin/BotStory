@@ -70,7 +70,9 @@ public final class PopulationLoader {
             // leaving the crew, asking the player along, answering the player's whispered replies
             "rival.banter", "rival.beat", "rival.beat.whisper", "rival.congrats", "rival.join", "rival.leave.behind",
             "rival.leave.ahead", "rival.leave.behind.whisper", "rival.leave.ahead.whisper", "rival.help", "rival.reply",
-            "rival.reply.yes", "rival.reply.no");
+            "rival.reply.yes", "rival.reply.no",
+            // a beginner citizen asking for a mentor as it posts its request (F4.5, NeedLedger.mentor)
+            "need.mentor");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

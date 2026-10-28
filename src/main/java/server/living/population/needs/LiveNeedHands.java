@@ -199,7 +199,7 @@ final class LiveNeedHands implements NeedLedger.Hands {
                     AgentPotionService.setupAutopotForBot(citizen);
                     yield null;
                 }
-                case PARTY -> null;
+                case PARTY, MENTOR -> null;
             };
         } catch (RuntimeException failure) {
             log.warn("citizen {} could not use its {}", citizen.getName(), need.itemId(), failure);

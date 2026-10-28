@@ -57,6 +57,9 @@ public final class AgentBuildRuntime {
 
     public static AgentChatJobAdvancementFlow.JobAdvancementCallbacks jobAdvancementCallbacks(AgentRuntimeEntry entry) {
         return advJob -> {
+            if (AgentJobPath.holdsChatJobChange(AgentRuntimeIdentityRuntime.botId(entry), advJob)) {
+                return; // its host takes the word its own way (an apprentice goes to its instructor)
+            }
             String reply = AgentChatJobAdvancementFlow.jobChangeReply(advJob);
             AgentDialogueTransportRuntime.replyNow(entry, reply);
             AgentSchedulerRuntime.afterRandomDelay(entry, 900, 1100,

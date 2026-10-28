@@ -134,6 +134,85 @@ class NeedLedgerTest {
         when(presence.session(CITIZEN)).thenReturn(session);
     }
 
+    // ---- F4.5: a beginner looking for a mentor (living_world.APPRENTICE_ENABLED) -----------------
+
+    private config.LivingWorldConfig apprentices() {
+        config.LivingWorldConfig living = new config.LivingWorldConfig();
+        living.APPRENTICE_ENABLED = true;
+        living.APPRENTICE_NEED_CHANCE = 1.0d;
+        server.living.LivingWorld world = mock(server.living.LivingWorld.class);
+        when(world.config()).thenReturn(living);
+        when(population.world()).thenReturn(world);
+        when(citizenChr.isBeginnerJob()).thenReturn(true);
+        when(citizenChr.getLevel()).thenReturn(5);
+        return living;
+    }
+
+    @Test
+    void aBeginnerAsksForAMentorOnceAndAnAdoptionMeetsIt() {
+        apprentices();
+        ledger.derive(session, citizenChr, NOW);
+        Need wanted = ledger.mentorWanted(CITIZEN);
+        assertNotNull(wanted);
+        assertEquals(NeedKind.MENTOR, wanted.kind());
+        assertFalse(wanted.kind().item(), "nothing to hand over: it is answered by adopting it");
+        assertEquals("someone to show them around", ledger.what(wanted));
+        assertEquals("a mentor", ledger.forWords(wanted));
+        verify(chatter).compose(any());
+        ledger.derive(session, citizenChr, NOW + HOUR);
+        assertEquals(1, ledger.open().stream().filter(need -> need.kind() == NeedKind.MENTOR).count(), "one at a time");
+
+        ledger.mentorFound(CITIZEN, ANN, NOW + 2 * HOUR);
+        assertNull(ledger.mentorWanted(CITIZEN));
+        List<Need> rows = store.rows.values().stream().filter(need -> need.kind() == NeedKind.MENTOR).toList();
+        assertEquals(1, rows.size());
+        assertEquals(Need.State.MET, rows.get(0).state());
+        assertEquals(ANN, rows.get(0).fulfilledBy(), "met by the player who adopted it");
+    }
+
+    @Test
+    void aMentorRequestEndsWhenItGrowsPastItTakesAJobOrTheSwitchGoesOff() {
+        config.LivingWorldConfig living = apprentices();
+        ledger.derive(session, citizenChr, NOW);
+        assertNotNull(ledger.mentorWanted(CITIZEN));
+        when(citizenChr.getLevel()).thenReturn(11);
+        ledger.derive(session, citizenChr, NOW + HOUR);
+        assertNull(ledger.mentorWanted(CITIZEN), "past APPRENTICE_ADOPT_MAX_LEVEL: it stops asking");
+
+        when(citizenChr.getLevel()).thenReturn(5);
+        ledger.derive(session, citizenChr, NOW + 2 * HOUR);
+        assertNotNull(ledger.mentorWanted(CITIZEN));
+        living.APPRENTICE_ENABLED = false;
+        ledger.derive(session, citizenChr, NOW + 3 * HOUR);
+        assertNull(ledger.mentorWanted(CITIZEN));
+        ledger.derive(session, citizenChr, NOW + 4 * HOUR);
+        assertNull(ledger.mentorWanted(CITIZEN), "off: none asked");
+    }
+
+    @Test
+    void mentorRequestsAreCappedWorldWide() {
+        config.LivingWorldConfig living = apprentices();
+        living.APPRENTICE_NEEDS_MAX = 1;
+        ledger.derive(session, citizenChr, NOW);
+        CitizenSession other = CitizenSessions.loaded(citizen(OTHER_CITIZEN, "Lu"), 0L, 10 * HOUR);
+        other.entry = mock(AgentRuntimeEntry.class);
+        other.mapId = HENESYS;
+        ledger.derive(other, citizenChr, NOW);
+        assertNull(ledger.mentorWanted(OTHER_CITIZEN), "APPRENTICE_NEEDS_MAX open at once");
+        living.APPRENTICE_NEED_CHANCE = 0.0d;
+        living.APPRENTICE_NEEDS_MAX = 5;
+        ledger.derive(other, citizenChr, NOW);
+        assertNull(ledger.mentorWanted(OTHER_CITIZEN), "and only by its chance");
+    }
+
+    @Test
+    void withoutTheLivingWorldNoMentorIsAskedFor() {
+        when(citizenChr.isBeginnerJob()).thenReturn(true);
+        when(citizenChr.getLevel()).thenReturn(5);
+        ledger.derive(session, citizenChr, NOW);
+        assertNull(ledger.mentorWanted(CITIZEN));
+    }
+
     @Test
     void aCitizenAsksForAtMostTwoThingsAndItsPartyIsApart() {
         assertNotNull(post(NeedKind.SUPPLY, WHITE, 100, 345, NOW));

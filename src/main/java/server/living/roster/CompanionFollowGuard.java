@@ -55,6 +55,10 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
         if (loans != null && loans.any() && loans.waitingOutside(agentCharacterId)) {
             return true; // on loan: its friend went into a run without it, and it waits outside (D2 b)
         }
+        server.living.mentor.Mentorship mentors = world.mentors();
+        if (mentors != null && mentors.leading(agentCharacterId)) {
+            return true; // F4.3: a mentor walking ahead of its newcomer, or waiting for them beyond a portal
+        }
         if (!roster.keepsAnyOffFollow()) {
             return false;
         }

@@ -167,3 +167,18 @@ intents:
       - "nooo it failed"
       - "rip scroll"
       - "of course it failed"
+  # F4.5: a beginner says once that it is looking for a mentor, as it posts its request (living_world.APPRENTICE_ENABLED)
+  - id: needs.mentor
+    trigger: need.mentor
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "anyone wanna show me around? kinda new lol"
+      - "is there a guild or someone that helps new ppl?"
+      - "first char, no idea what im doing. anyone have time to help?"
+      - "looking for someone to teach me the game :)"
+    styles:
+      quiet-practical-v1:
+        - "new here. could use a mentor"

@@ -72,6 +72,7 @@ public final class MultiChatHandler extends AbstractPacketHandler {
             server.agents.capabilities.partyquest.rjpq.AgentRjpqSessionRegistry.answerLetterInChat(player.getId(),
                     chattext);
             AgentInteractionRuntime.handleLeaderChat(player, chattext, AgentReplyChannel.PARTY);
+            server.living.LivingWorldHooks.partyChat(player, chattext); // a newcomer's word to its mentor (F4)
         } else if (type == 2 && player.getGuildId() > 0) {
             Server.getInstance().guildChat(player.getGuildId(), player.getName(), player.getId(), chattext);
             ChatLogger.log(c, "Guild", chattext);

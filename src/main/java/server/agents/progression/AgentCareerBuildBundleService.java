@@ -65,6 +65,30 @@ public final class AgentCareerBuildBundleService {
                 AgentCareerBuildBundleRepository.defaultRepository(), STORE);
     }
 
+    /**
+     * The bundles a host may offer for {@code jobId} (a first or second job, not a beginner job): those whose first job
+     * is its line's and that cover it (a Thief: claw and dagger; an Assassin: claw only). Empty for a beginner job or an
+     * unknown one.
+     */
+    public static List<AgentCareerBuildBundle> choicesFor(int jobId) {
+        if (jobId <= 0 || jobId % 1_000 == 0 || Job.getById(jobId) == null) {
+            return List.of();
+        }
+        return AgentCareerBuildBundleRepository.defaultRepository().all().stream()
+                .filter(bundle -> bundle.firstJobId() == jobId / 100 * 100 && covers(bundle, jobId))
+                .toList();
+    }
+
+    /**
+     * A host's chosen bundle for its Agent (the living world's apprentice, whose owner picks its build), saved as a
+     * restored assignment: the same write as {@link #assignForTest(AgentRuntimeEntry, String, long)}. A later job change
+     * that it no longer covers re-picks as for any Agent ({@link #followJobChange}).
+     */
+    public static AgentCareerBuildBundle assignChosen(AgentRuntimeEntry entry, String bundleId, long nowMs)
+            throws IOException {
+        return assignForTest(entry, bundleId, nowMs);
+    }
+
     /** Explicit beginner-only selection used by the World Director before first-job work starts. */
     public static AgentCareerBuildBundle assignExplicit(
             AgentRuntimeEntry entry, String bundleId, long nowMs) throws IOException {

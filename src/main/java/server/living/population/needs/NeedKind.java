@@ -9,11 +9,13 @@ public enum NeedKind {
     /** A gear upgrade it wants instead of being handed it (decision D4). */
     GEAR,
     /** Its forming party is short; no item, and no hold on it. */
-    PARTY;
+    PARTY,
+    /** A beginner looking for someone to show it around (F4.5): answered by adopting it as an apprentice. */
+    MENTOR;
 
-    /** Whether a player hands something over for it (everything but PARTY). */
+    /** Whether a player hands something over for it (everything but PARTY and MENTOR). */
     public boolean item() {
-        return this != PARTY;
+        return this != PARTY && this != MENTOR;
     }
 
     static NeedKind parse(String name) {

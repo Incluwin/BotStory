@@ -104,7 +104,8 @@ public final class AgentLithHarborArrivalRouteRuntime {
         return advanceToTown(entry, agent, gateway) != TravelProgress.ARRIVED;
     }
 
-    static Integer nextPortalId(Character agent) {
+    /** The hidden portal off the ship deck toward town from where {@code agent} stands; null in town or elsewhere. */
+    public static Integer nextPortalId(Character agent) {
         if (agent == null || agent.getMapId() != LITH_HARBOR_MAP_ID) {
             return null;
         }

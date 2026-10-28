@@ -724,6 +724,90 @@ public final class LivingStore {
     }
 
     /**
+     * A hired companion's role (docs/BOT_CONCEPT_PLAN.md F4, changeset 54): {@code role} MENTOR or APPRENTICE, and
+     * {@code target} the job an apprentice's owner picked for its next advancement (null: none picked).
+     */
+    public record RosterRole(int characterId, String personaId, String role, String target) { }
+
+    /** Every roster row that has a role (the roles' cache at boot); empty when there is none or the read failed. */
+    public List<RosterRole> rosterRoles() {
+        List<RosterRole> out = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT character_id, persona_id, role, role_target FROM living_roster WHERE role IS NOT NULL")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new RosterRole(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4)));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_roster role scan failed", failure);
+        }
+        return out;
+    }
+
+    /**
+     * Saves one row's role and target (null clears them): an UPDATE that never touches its state or anything else (a
+     * row that is gone stays gone). True when its row took it.
+     */
+    public boolean saveRosterRole(int characterId, String personaId, String role, String target) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE living_roster SET role = ?, role_target = ? WHERE character_id = ? AND persona_id = ?")) {
+            ps.setString(1, role);
+            ps.setString(2, target);
+            ps.setInt(3, characterId);
+            ps.setString(4, personaId);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException failure) {
+            log.warn("living_roster role write failed for {}/{}", characterId, personaId, failure);
+            return false;
+        }
+    }
+
+    /**
+     * True when the character has never logged out: its lastLogoutTime still holds the column's default (2015-01-01,
+     * 002-character.sql; Character.logOff sets it), compared in SQL so no time zone shifts it. False when it has, and
+     * null when it has no row or the read failed.
+     */
+    public Boolean neverLoggedOut(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT lastLogoutTime < '2016-01-01' FROM characters WHERE id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getBoolean(1) : null;
+            }
+        } catch (SQLException failure) {
+            log.warn("last logout read failed for {}", characterId, failure);
+            return null;
+        }
+    }
+
+    /**
+     * The character's newest event of one of these {@code kinds}, whatever persona it names (the mentor's offer gate):
+     * empty when there is none, null when the read fails. Reads through the character index.
+     */
+    public java.util.Optional<EventRow> latestCharacterEvent(int characterId, List<String> kinds) {
+        if (kinds.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        String sql = "SELECT kind, detail FROM living_event_log WHERE character_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ") ORDER BY id DESC LIMIT 1";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setInt(at++, characterId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? java.util.Optional.of(new EventRow(rs.getString(1), rs.getString(2)))
+                        : java.util.Optional.empty();
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log latest read failed for {} {}", characterId, kinds, failure);
+            return null;
+        }
+    }
+
+    /**
      * Adds {@code meso} to the purse of a character nothing has loaded (a benched companion's), as its next load reads
      * it, on {@code con}: the economy transaction that takes the meso from its giver
      * (EconomyTransactionContext.enlist), so both purses commit together or not at all. A loaded character saves its
