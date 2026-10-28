@@ -335,8 +335,8 @@ public final class NeedScreens {
                     + ". They can't do it without you. Meet them at #b" + mapName(where(need)) + "#k.";
         }
         if (need.kind() == NeedKind.PARTY) {
-            return who + " is forming a party at #b" + mapName(where(need)) + "#k and wants " + ledger.what(need)
-                    + ". Go there; the leader invites people whose level fits.";
+            boolean whispers = population.config().CITIZEN_WHISPERS_ENABLED && citizen != null; // F5c: whispers reach it
+            return partyPage(who, mapName(where(need)), ledger.what(need), whispers ? citizen.name() : null);
         }
         String left = need.deadlineMs() <= 0L ? "" : "\r\nUp for " + duration(need.deadlineMs() - nowMs) + " more.";
         return who + " needs #i" + need.itemId() + "# " + amount(need) + " for " + ledger.forWords(need) + ".\r\n"
@@ -345,6 +345,13 @@ public final class NeedScreens {
                 + "\r\n" + (about ? "Now at #b" + mapName(session.mapId) + "#k: hand it over in person (double-click them)."
                 : "Away right now: leave it here and they pick it up when they're back.")
                 + (need.kind() == NeedKind.GEAR ? "\r\nA plain one is fine; better is welcome." : "");
+    }
+
+    /** A PARTY request's page; {@code whisperTo} (null while whispers do not reach citizens) is the leader to whisper. */
+    static String partyPage(String who, String where, String what, String whisperTo) {
+        return who + " is forming a party at #b" + where + "#k and wants " + what
+                + (whisperTo != null ? ". Go there, or whisper #e" + whisperTo + "#n for an invite;" : ". Go there;")
+                + " the leader invites people whose level fits.";
     }
 
     private static String amount(Need need) {

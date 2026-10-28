@@ -1335,6 +1335,45 @@ population:
     CHATTER_CITIZEN_COOLDOWN_MS: 45000
     CHATTER_SMEGA_PER_HOUR: 4
     CHATTER_RECENT_MEMORY: 12
+    # Party megaphones and players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). LF_SMEGA: a citizen PQ party
+    # still short LF_SMEGA_AFTER_MS after it formed has its leader send LF_SMEGA_PER_PARTY megaphones ("LF1M KPQ 21-30
+    # ch2, whisper Ann"); each uses up a real Super Megaphone and one slot of CHATTER_SMEGA_PER_HOUR. Citizens a citizen-run
+    # lobby fits buy LF_SMEGA_STOCK (at most 2) at a load with chance LF_SMEGA_RESTOCK_CHANCE when they carry none. The
+    # line says "whisper me", so it goes out only with CITIZEN_WHISPERS_ENABLED too. CITIZEN_WHISPERS: a player's whisper
+    # to a loaded citizen is answered: "me"/"inv"/"can i join" to a short party's leader gets its invite (the lobby
+    # invite's rules; the party waits WHISPER_JOIN_COMING_MS past its patience while they walk over), a whisper back
+    # within WHISPER_THREAD_MS of the citizen's own whisper answers that, anything else a short templated reply at most
+    # once per WHISPER_REPLY_GAP_MS a player (nothing while it is AFK). false = the kill switches: whispers ignored, no
+    # megaphone.
+    # Technical: PartyMegaphones rides CitizenPartyQuests.callOver on its 10 s tick and calls ChatterEngine.megaphone (shared hour counter and 10-min gap); CitizenWhispers is reached from LivingWorldHooks.whisper after ResidentDialogue declines, lines in chatter/whispers.yaml.
+    LF_SMEGA_ENABLED: false
+    LF_SMEGA_AFTER_MS: 240000
+    LF_SMEGA_PER_PARTY: 1
+    LF_SMEGA_STOCK: 2
+    LF_SMEGA_RESTOCK_CHANCE: 0.3
+    CITIZEN_WHISPERS_ENABLED: false
+    WHISPER_REPLY_GAP_MS: 120000
+    WHISPER_THREAD_MS: 900000
+    WHISPER_JOIN_COMING_MS: 300000
+    # Jump quests (docs/BOT_CONCEPT_PLAN.md F5b, decision D11). Victoria citizens with the cohort weight JQ climb
+    # Pet-Walking Road (any level, for fun: Frod pays only pet owners) and the Forest of Patience (Shane's 5000-meso
+    # gate; fop_a lv25-49 with quest 2050; the pile gives a prize and Sabitrama's quest item, the quest starts and ends
+    # with Sabitrama in Sleepywood). JQ_COURSES leaves out fop_b (lv50+, quest 2051): its first map's rope zig-zag is not
+    # climbed offline yet (JumpQuestRoutesTest). Each citizen clears a stretch of seven jumps with a chance between
+    # JQ_STAGE_SUCCESS_MIN and MAX, a little better (JQ_PRACTICE_STEP) for every stage it clears without a fall; a miss
+    # is a real drop to a lower platform, never one that hurts. It gives up after JQ_FALLS_MAX falls or JQ_ATTEMPT_MAX_MS and leaves the stock
+    # way; no JQ plan for JQ_COOLDOWN_MS after one; it pays Shane only with JQ_FEE_RESERVE mesos left over. Breath of
+    # Lava stays out (its fire hurts only on the client). false = the kill switch: no JQ plan, every jump exact.
+    # Technical: CitizenJumpQuests ticks on the party quests' 10 s lane; it installs AgentJumpNoise (launch x drawn from N(0, sigma) per stage, sigma solved by JumpWindows from the probe's landing windows, every off-window draw probed to land on a foothold that still reaches the target). Noisy misses skip edge reliability and F8's rope fumble; a fall below the map in view of a player logs the citizen off instead of the recovery teleport (counted in /runtime/citizens).
+    JQ_ENABLED: false
+    JQ_COURSES: pwr,fop_a
+    JQ_FEE_RESERVE: 20000
+    JQ_STAGE_SUCCESS_MIN: 0.3
+    JQ_STAGE_SUCCESS_MAX: 0.7
+    JQ_PRACTICE_STEP: 0.03
+    JQ_FALLS_MAX: 8
+    JQ_ATTEMPT_MAX_MS: 1200000
+    JQ_COOLDOWN_MS: 21600000
     CONVERSATION_ENABLED: true
     CONVERSATION_PER_PLAYER_PER_DAY: 40
     CONVERSATION_CITIZEN_COOLDOWN_MS: 8000

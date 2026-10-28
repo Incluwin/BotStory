@@ -14,7 +14,7 @@ public final class CitizenSession {
      * JOB: on its way to its instructor for its next job (CitizenJobErrands); never rolled by a cohort's weights. PLAY:
      * omok or match cards in a town that allows minigames (CitizenMiniGames).
      */
-    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK, JOB, PLAY }
+    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK, JOB, PLAY, JQ }
 
     public final int characterId;
     public volatile Citizen citizen;

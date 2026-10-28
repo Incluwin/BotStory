@@ -1,0 +1,88 @@
+# Jump quests (docs/BOT_CONCEPT_PLAN.md F5b, CitizenJumpQuests; JQ_ENABLED). Said on the map by the citizen climbing:
+# jq.start as it sets off up a course, jq.fall now and then after a missed jump drops it, jq.clear at the top of the
+# course, jq.giveup when it has fallen too often (or taken too long) and heads out. Short, as typed mid-jump.
+intents:
+  - id: jq.start.map
+    trigger: jq.start
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 600000
+    lines:
+      - "ok lets do this"
+      - "here we go"
+      - "jq time"
+      - "wish me luck"
+      - "this time for sure"
+      - "ok focus"
+    styles:
+      quiet-practical-v1:
+        - "ok"
+        - "going up"
+      playful-social-v1:
+        - "jq time!! cheer for me"
+        - "ok ok i got this :D"
+  - id: jq.fall.map
+    trigger: jq.fall
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 45000
+    lines:
+      - "rip"
+      - "ugh"
+      - "noooo"
+      - "fml"
+      - "that jump tho"
+      - "lag"
+      - "again..."
+      - "so close"
+      - "why"
+    styles:
+      quiet-practical-v1:
+        - "ugh"
+        - "missed"
+      playful-social-v1:
+        - "NOOOO"
+        - "the floor missed me ;("
+  - id: jq.clear.map
+    trigger: jq.clear
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 600000
+    lines:
+      - "finally!!"
+      - "made it"
+      - "yesss"
+      - "done :)"
+      - "ez (not)"
+      - "first try (not really)"
+      - "top!"
+    styles:
+      quiet-practical-v1:
+        - "done"
+        - "made it"
+      playful-social-v1:
+        - "I DID IT!!"
+        - "top of the world :D"
+  - id: jq.giveup.map
+    trigger: jq.giveup
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 600000
+    lines:
+      - "screw this jq"
+      - "im done lol"
+      - "ok next time"
+      - "nope. bye"
+      - "my fingers hurt"
+      - "maybe tomorrow"
+    styles:
+      quiet-practical-v1:
+        - "enough for today"
+        - "later"
+      playful-social-v1:
+        - "this jq hates me ;-;"
+        - "ok i give up for now lol"

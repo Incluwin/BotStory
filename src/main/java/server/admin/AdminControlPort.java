@@ -614,6 +614,7 @@ public final class AdminControlPort {
                 .str("conversation", population.conversation().report())
                 .str("market", population.market().report())
                 .str("partyQuests", population.partyQuests().status())
+                .str("jumpQuests", population.jumpQuests().status())
                 .raw("partyQuestRuns", recentRuns.toString())
                 .raw("online", online.toString())
                 .raw("cohorts", cohorts.toString())

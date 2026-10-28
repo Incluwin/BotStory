@@ -16,6 +16,7 @@ import server.agents.capabilities.expedition.boss.AgentBossCitizenRuns;
 import server.integration.AgentPresence;
 import server.living.population.Citizen;
 import server.living.population.CitizenSession;
+import server.living.population.CitizenWhispers;
 import server.living.population.ChatterEngine;
 import server.living.population.Market;
 import server.living.population.PersonMemory;
@@ -1071,7 +1072,7 @@ public final class NeedLedger {
             String line = population.chatter().compose(event);
             if (line != null) {
                 whisperedAt.put(human.getId(), nowMs);
-                population.chatter().whisper(session, human, line);
+                population.chatter().whisper(session, human, line, CitizenWhispers.NEED); // their answer comes back here
                 log.info("citizen {} whispered {} its need for {}", session.name(), human.getName(), itemName(need.itemId()));
             }
             return;

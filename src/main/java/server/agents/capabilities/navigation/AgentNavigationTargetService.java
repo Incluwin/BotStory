@@ -1,5 +1,6 @@
 package server.agents.capabilities.navigation;
 
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import client.Character;
 import server.agents.catalog.decision.AgentDecisionCatalogRuntime;
 import server.agents.capabilities.movement.AgentMovementKinematicsService;
@@ -157,7 +158,7 @@ public final class AgentNavigationTargetService {
                 if (edge != null && ((!AgentNavigationRouteOverlayPolicy.allows(graph, targetRegionId, edge))
                         || AgentNavigationEdgeReliabilityRuntime.suppressed(
                                 entry, bot.getMapId(), edge, nowMs)
-                        || progressState.blocks(edge, nowMs)
+                        || progressState.blocks(edge, nowMs) && !AgentJumpNoise.active(entry) // a jump quest's falls are no loop (F5b)
                         || AgentVerticalTraversalService.blocksRecentInverseEntry(
                                 graph, entry, edge, nowMs))) {
                     AgentNavigationDebugStateRuntime.clearActiveNavigationEdge(entry);
@@ -411,7 +412,7 @@ public final class AgentNavigationTargetService {
         Predicate<AgentNavigationGraph.Edge> edgeFilter = edge ->
                 reliabilityFilter.test(edge)
                         && !AgentNavigationFieldLimitPolicy.forbids(bot, edge)
-                        && !progressState.blocks(edge, nowMs)
+                        && (!progressState.blocks(edge, nowMs) || AgentJumpNoise.active(entry)) // a jump quest's falls (F5b)
                         && !AgentVerticalTraversalService.blocksRecentInverseEntry(
                                 graph, entry, edge, nowMs)
                         && (!sameRegion
@@ -659,6 +660,10 @@ public final class AgentNavigationTargetService {
                                                                      MapleMap map,
                                                                      Point botPos,
                                                                      AgentNavigationGraph.Edge edge) {
+        Boolean noisy = AgentJumpNoise.readyAtDraw(entry, edge, botPos); // a jump quest's mistimed press (F5b)
+        if (noisy != null) {
+            return noisy;
+        }
         if (!AgentNavigationEdgeReadinessService.canExecuteJumpFromCurrentPosition(graph, botPos, edge)) {
             return false;
         }

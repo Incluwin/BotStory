@@ -1,5 +1,6 @@
 package server.agents.capabilities.movement;
 
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import server.agents.physics.AgentWallCollisionPolicy;
 import client.Character;
 import org.slf4j.Logger;
@@ -114,6 +115,10 @@ public final class AgentAirbornePhysicsService {
         }
         if (server.agents.progression.AgentMushroomKingdomMovementRecovery.blockWithoutTeleport(
                 entry, agent, "fell below the map's reachable footholds")) {
+            return AgentAirborneStepResult.CONTINUE;
+        }
+        if (AgentJumpNoise.belowMap(entry, agent)) { // a jump quest in front of a player: it logs off instead (F5b)
+            AgentMovementStateRuntime.setInAir(entry, false);
             return AgentAirborneStepResult.CONTINUE;
         }
         log.warn("Recovered Agent '{}' below map bounds map={} from={} to={}",
@@ -236,6 +241,7 @@ public final class AgentAirbornePhysicsService {
 
         AgentCombatDamageRuntime.applyFallDamage(entry, agent, (float) fallDistance, AgentCombatConfig.cfg);
         AgentMovementPhysicsStateRuntime.resetFallPeakPhysicsY(entry);
+        AgentJumpNoise.landed(entry, position);
     }
 
     private static void applyAirSteering(AgentRuntimeEntry entry, int steerDirection) {

@@ -72,6 +72,7 @@ public final class ProgressionLedger {
             if (agent.getMeso() < expectedMeso / 2) {
                 agent.gainMeso((int) Math.min(Integer.MAX_VALUE / 2, expectedMeso - agent.getMeso()), false);
             }
+            PartyMegaphones.stock(population, agent, citizen); // a few megaphones for its PQ parties (F5c)
         } catch (RuntimeException failure) {
             log.warn("catch-up shaping for {} failed", citizen.name(), failure);
         }

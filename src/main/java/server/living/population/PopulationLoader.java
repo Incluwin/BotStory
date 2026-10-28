@@ -72,7 +72,13 @@ public final class PopulationLoader {
             "rival.leave.ahead", "rival.leave.behind.whisper", "rival.leave.ahead.whisper", "rival.help", "rival.reply",
             "rival.reply.yes", "rival.reply.no",
             // a beginner citizen asking for a mentor as it posts its request (F4.5, NeedLedger.mentor)
-            "need.mentor");
+            "need.mentor",
+            // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)
+            "pq.smega", "pq.where", "whisper.join.invited", "whisper.join.where", "whisper.join.full",
+            "whisper.join.level", "whisper.join.party", "whisper.join.wait", "whisper.join.leader", "whisper.ack",
+            "whisper.ack.thanks", "whisper.ack.no", "whisper.ack.question", "whisper.need.yes", "whisper.hi",
+            "whisper.busy", "whisper.training", "whisper.pq", "whisper.shop",
+            "jq.start", "jq.fall", "jq.clear", "jq.giveup");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

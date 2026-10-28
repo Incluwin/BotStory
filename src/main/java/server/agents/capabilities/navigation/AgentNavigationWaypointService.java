@@ -1,5 +1,6 @@
 package server.agents.capabilities.navigation;
 
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import server.agents.capabilities.movement.AgentMovementKinematicsService;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.movement.AgentJumpProbeService;
@@ -174,8 +175,8 @@ public final class AgentNavigationWaypointService {
         }
         int cachedLaunchX = AgentNavigationDebugStateRuntime.navJumpLaunchX(entry);
         if (AgentNavigationDebugStateRuntime.matchesNavJumpLaunchEdge(entry, edge)
-                && cachedLaunchX >= edge.launchMinX
-                && cachedLaunchX <= edge.launchMaxX) {
+                && (cachedLaunchX >= edge.launchMinX && cachedLaunchX <= edge.launchMaxX
+                || AgentJumpNoise.drawn(entry, edge, cachedLaunchX))) {
             return cachedLaunchX;
         }
 
@@ -200,6 +201,7 @@ public final class AgentNavigationWaypointService {
         int selectedX = randomMinX >= randomMaxX
                 ? randomMinX
                 : ThreadLocalRandom.current().nextInt(randomMinX, randomMaxX + 1);
+        selectedX = AgentJumpNoise.launchX(entry, graph, edge, selectedX); // a jump quest's press, early or late (F5b)
         AgentNavigationDebugStateRuntime.rememberNavJumpLaunch(entry, edge, selectedX);
         return selectedX;
     }

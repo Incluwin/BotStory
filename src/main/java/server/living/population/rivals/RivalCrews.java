@@ -830,7 +830,7 @@ public final class RivalCrews implements ClearLog.Listener {
         if (line == null) {
             return false;
         }
-        population.chatter().whisper(self, to, line);
+        population.chatter().whisper(self, to, line, "rival");
         return true;
     }
 

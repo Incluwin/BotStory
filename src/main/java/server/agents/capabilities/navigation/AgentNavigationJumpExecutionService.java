@@ -1,5 +1,6 @@
 package server.agents.capabilities.navigation;
 
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import client.Character;
 import server.agents.capabilities.movement.AgentJumpActionService;
 import server.agents.capabilities.movement.AgentMovementKinematicsService;
@@ -44,6 +45,7 @@ public final class AgentNavigationJumpExecutionService {
         AgentNavigationDebugStateRuntime.clearLastEdgeBlockReason(entry);
         AgentNavigationEdgeExecutionStateService.setEdgeExecutionTarget(entry, edge);
         AgentJumpActionService.initiateJump(entry, agent, edge.launchStepX);
+        AgentJumpNoise.launched(entry, edge, agentPos);
         if (entry.navigationDebugState().tracingAir()) {
             entry.navigationDebugState().noteAirSource("jump edge " + edge.fromRegionId + "->" + edge.toRegionId
                     + " from (" + edge.startPoint.x + "," + edge.startPoint.y + ") to (" + edge.endPoint.x + ","
@@ -60,6 +62,10 @@ public final class AgentNavigationJumpExecutionService {
                                                                      Character agent,
                                                                      Point agentPos,
                                                                      AgentNavigationGraph.Edge edge) {
+        Boolean noisy = AgentJumpNoise.readyAtDraw(entry, edge, agentPos);
+        if (noisy != null) {
+            return noisy;
+        }
         if (!AgentNavigationEdgeReadinessService.canExecuteJumpFromCurrentPosition(graph, agentPos, edge)) {
             return false;
         }

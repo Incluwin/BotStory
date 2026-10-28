@@ -1,5 +1,6 @@
 package server.agents.capabilities.navigation;
 
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import client.Character;
 import server.agents.capabilities.movement.AgentClimbStateRuntime;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
@@ -80,9 +81,11 @@ public final class AgentNavigationEdgeValidationService {
         }
 
         boolean ready = switch (edge.type) {
-            case JUMP, FLASH_JUMP ->
-                    AgentNavigationEdgeReadinessService.canExecuteJumpFromCurrentPosition(
-                            graph, position, edge);
+            case JUMP, FLASH_JUMP -> {
+                Boolean noisy = AgentJumpNoise.readyAtDraw(entry, edge, position); // a jump quest's mistimed press
+                yield noisy != null ? noisy
+                        : AgentNavigationEdgeReadinessService.canExecuteJumpFromCurrentPosition(graph, position, edge);
+            }
             case DROP -> AgentNavigationEdgeReadinessService.canExecuteDropFromCurrentPosition(
                     graph, position, edge);
             case CLIMB -> climbReady(graph, agent, climbing, position, edge);

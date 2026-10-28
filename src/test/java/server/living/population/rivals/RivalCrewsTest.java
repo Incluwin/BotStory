@@ -338,7 +338,7 @@ class RivalCrewsTest {
         ArgumentCaptor<CitizenSession> from = ArgumentCaptor.forClass(CitizenSession.class);
         verify(chatter, times(1)).megaphone(from.capture(), eq("a line"), eq(false)); // no megaphone stock in v1
         assertEquals(5001, from.getValue().characterId, "a member who was in the run");
-        verify(chatter, never()).whisper(any(), any(), anyString());
+        verify(chatter, never()).whisper(any(), any(), anyString(), anyString());
         verify(livingStore, never()).event(anyInt(), any(), anyString(), anyString());
     }
 
@@ -356,7 +356,7 @@ class RivalCrewsTest {
         verify(chatter, times(2)).compose(line.capture());
         assertEquals(List.of("rival.beat", "rival.beat.whisper"),
                 line.getAllValues().stream().map(ChatterEngine.Event::trigger).toList());
-        verify(chatter).whisper(any(), eq(ann), eq("a line"));
+        verify(chatter).whisper(any(), eq(ann), eq("a line"), eq("rival"));
     }
 
     @Test
@@ -399,7 +399,7 @@ class RivalCrewsTest {
 
         crews.cleared(clear(0, 13 * MINUTE, ANN), 0L, Map.of(ANN, 15 * MINUTE));
 
-        verify(chatter, never()).whisper(any(), any(), anyString()); // nobody of the crew is on yet
+        verify(chatter, never()).whisper(any(), any(), anyString(), anyString()); // nobody of the crew is on yet
 
         load(5002, 33, 0);
         crews.tick(NOW + MINUTE);
@@ -408,10 +408,10 @@ class RivalCrewsTest {
         verify(chatter, atLeastOnce()).compose(line.capture());
         assertTrue(line.getAllValues().stream().anyMatch(event -> event.trigger().equals("rival.congrats")
                 && "13:00".equals(event.slots().get("time")) && "14:00".equals(event.slots().get("theirs"))));
-        verify(chatter, times(1)).whisper(any(), eq(ann), eq("a line"));
+        verify(chatter, times(1)).whisper(any(), eq(ann), eq("a line"), eq("rival"));
 
         crews.tick(NOW + 2 * MINUTE);
-        verify(chatter, times(1)).whisper(any(), eq(ann), eq("a line")); // said once
+        verify(chatter, times(1)).whisper(any(), eq(ann), eq("a line"), eq("rival")); // said once
     }
 
     @Test
@@ -423,7 +423,7 @@ class RivalCrewsTest {
 
         crews.cleared(clear(0, 13 * MINUTE + 30_000L, ANN), 0L, Map.of(ANN, 12 * MINUTE)); // she did 12 before
 
-        verify(chatter, never()).whisper(any(), any(), anyString());
+        verify(chatter, never()).whisper(any(), any(), anyString(), anyString());
     }
 
     // ---- being in touch -------------------------------------------------------------------------------
@@ -492,7 +492,7 @@ class RivalCrewsTest {
         crews.tick(NOW + MINUTE);
 
         verify(needs, never()).helpWanted(any(), anyString(), anyInt(), anyInt(), anyLong(), anyLong());
-        verify(chatter, never()).whisper(any(), any(), anyString());
+        verify(chatter, never()).whisper(any(), any(), anyString(), anyString());
     }
 
     @Test
