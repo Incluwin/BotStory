@@ -158,6 +158,21 @@ Six rules everything below follows.
 - **Talk about real listings.** "S>"/"B>" chatter quotes live stalls and needs; the needs board (`population.NEEDS_ENABLED`, off)
   becomes the citizens' buy list.
 
+**List or vendor, built (10-28, branch `feat/economy-e3`).** Measured first (journal, last day): 99.6 % of citizen NPC
+sales by value are equips (912 M of 914 M), 95 % of that equips that sell for 50 k or more, each item from 15-28
+different citizens (plain loot at 3x drops). Merchants (273 of 730 active citizens) made 31 % of it.
+- Agents ask an installed `AgentStallHolds` rule before selling trash equips; the population's rule keeps, for a merchant,
+  the best `MARKET_HOLD_MERCHANT` (8) equips the index values at `MARKET_HOLD_OVER_NPC` (1.5x) their shop price or more,
+  ranked by how much more; better loot pushes out worse and the rest is vendored. Others keep `MARKET_HOLD_OTHERS` (0).
+  Kill switch `population.MARKET_HOLD_FOR_STALL`.
+- A stall lists its most valuable stacks first (index price x quantity), so held equips lead, not bag order.
+- An unsold line at close pulls the index toward 0.9x min(ask, index). Before, it pulled toward 0.97x the ask, and
+  asks average 1.05x the index, so unsold goods pushed their own price up; now gear nobody buys drifts back under
+  1.5x its shop price (about 60 unsold closes) and is vendored again.
+- **What it does not do alone:** held equips only leave a bag by selling. With few humans buying, the steady-state
+  vendoring rate returns once holds fill; the lasting cut needs buyers, which are the next two bullets above (citizens
+  buying their gear from stalls) and D6 (citizens buying from citizens).
+
 ### E4. The controller
 - Daily: CPI drift and supply growth versus targets set the next day's bot vendor propensity, spending propensity and
   market buy budgets, clamped to bounds in config, with every adjustment logged and charted.

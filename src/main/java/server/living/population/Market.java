@@ -1,10 +1,10 @@
 package server.living.population;
 
 import client.Character;
-import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
+import config.PopulationConfig;
 import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +38,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.IntToLongFunction;
 
 /**
  * An economy players can join (plan 7): a price index seeded from the market basket and drifted
@@ -57,6 +59,8 @@ public final class Market {
     static final int RECENT_SALES = 7;
     /** ...kept within this factor of the index, so one odd sale moves it a step, never a leap. */
     static final double SALE_BAND = 3.0d;
+    /** A line still unsold when its stall closes pulls the index toward this share of min(ask, index). */
+    static final double UNSOLD_STEP_DOWN = 0.9d;
     private static final int INTERACTION_RANGE_PX = 900;
     /** A merchant on its stall spot: a precise move stops within a few pixels of it. */
     static final int STALL_ARRIVAL_PX = 24;
@@ -74,6 +78,7 @@ public final class Market {
     record Sale(int sellerId, int itemId, long unitPrice) { }
 
     private final Population population;
+    private final IntToLongFunction shopPrice;
     private final Random random;
     private final Map<Integer, long[]> index = new ConcurrentHashMap<>();
     private final Map<Integer, long[]> buyBudget = new ConcurrentHashMap<>();
@@ -90,7 +95,13 @@ public final class Market {
     private volatile long purchasesFromHumans;
 
     Market(Population population) {
+        this(population, itemId -> ItemInformationProvider.getInstance().getWholePrice(itemId));
+    }
+
+    /** {@code shopPrice}: what a shop pays for one of an equip (the WZ price). */
+    Market(Population population, IntToLongFunction shopPrice) {
         this.population = population;
+        this.shopPrice = shopPrice;
         this.random = new Random(population.config().SEED ^ 0x3a44e7L);
         this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX, population::isCitizen);
         for (int[] row : population.store().prices()) {
@@ -113,6 +124,49 @@ public final class Market {
         index.put(itemId, new long[]{seed, 0});
         population.store().savePrice(itemId, seed, 0);
         return seed;
+    }
+
+    /** The index price without seeding a row or writing the DB, so any thread may ask (an Agent's shop visit). */
+    long quote(int itemId) {
+        long[] row = index.get(itemId);
+        return row != null ? row[0] : seed(itemId);
+    }
+
+    /**
+     * List or vendor (docs/ECONOMY_PLAN.md E3), installed as the Agents' AgentStallHolds rule: of the equips a citizen's
+     * shop visit would sell, the ones it keeps for its stall. Worth listing is an index price of at least
+     * MARKET_HOLD_OVER_NPC x the shop's; it keeps the best of them by how much more the market pays, up to its hold
+     * (a merchant's stall, else MARKET_HOLD_OTHERS), so better loot pushes out worse and the rest is vendored. An item
+     * that never sells is listed, nudges its index down at each close, and in time goes back to the shop.
+     */
+    Set<Item> keepForStall(Character agent, List<Item> candidates) {
+        PopulationConfig config = population.config();
+        Citizen citizen = population.citizen(agent.getId());
+        if (!config.MARKET_ENABLED || !config.MARKET_HOLD_FOR_STALL || citizen == null || citizen.hired()) {
+            return Set.of();
+        }
+        int room = citizen.has(Citizen.FLAG_MERCHANT) ? config.MARKET_HOLD_MERCHANT : config.MARKET_HOLD_OTHERS;
+        if (room <= 0) {
+            return Set.of();
+        }
+        return worthListing(candidates, room, config.MARKET_HOLD_OVER_NPC, shopPrice, this::quote);
+    }
+
+    /** The best {@code room} of {@code candidates} the market values at {@code overShop} x their shop price or more. */
+    static Set<Item> worthListing(List<Item> candidates, int room, double overShop, IntToLongFunction shopPrice,
+                                  IntToLongFunction marketPrice) {
+        List<Item> worth = new ArrayList<>();
+        Map<Item, Long> margin = new HashMap<>();
+        for (Item item : candidates) {
+            long shop = shopPrice.applyAsLong(item.getItemId());
+            long market = marketPrice.applyAsLong(item.getItemId());
+            if (shop > 0L && market >= shop * overShop) {
+                worth.add(item);
+                margin.put(item, market - shop);
+            }
+        }
+        worth.sort(Comparator.comparingLong((Item item) -> margin.get(item)).reversed());
+        return Set.copyOf(worth.subList(0, Math.min(room, worth.size())));
     }
 
     /** A row's starting price: the basket's, else the player price tables' (PriceSeeds), else the NPC price multiple. */
@@ -245,6 +299,14 @@ public final class Market {
     /** Observed sale: nudge the index toward the price (exponential moving average). */
     public void observe(int itemId, long unitPrice) {
         nudge(itemId, unitPrice, true);
+    }
+
+    /**
+     * A line nobody bought by its stall's close: the index moves down, toward under both the ask and itself (the asks
+     * average a little over the index, so a pull toward the ask alone used to push unsold goods up). Not a sale.
+     */
+    void unsold(int itemId, long unitAsk) {
+        nudge(itemId, Math.round(Math.min(unitAsk, price(itemId)) * UNSOLD_STEP_DOWN), false);
     }
 
     /** {@code sale}: an executed sale, counted as an observation; else an ask nobody took, a weaker signal. */
@@ -458,6 +520,24 @@ public final class Market {
     }
 
     /** What a citizen's stall would list: the shop rows, and the names and index prices behind them. */
+    /**
+     * What a stall lists: the bag's tradeable stacks (no potions), the most valuable first by {@code unitPrice} x
+     * quantity, up to STALL_MAX_LISTINGS, so the equips it held back for the stall (E3) lead.
+     */
+    static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice) {
+        List<Item> stacks = new ArrayList<>();
+        for (InventoryType type : new InventoryType[]{InventoryType.ETC, InventoryType.USE, InventoryType.EQUIP}) {
+            for (Item item : agent.getInventory(type).list()) {
+                if (item.getQuantity() > 0 && (type != InventoryType.USE || isTradeGood(item.getItemId()))) {
+                    stacks.add(item);
+                }
+            }
+        }
+        stacks.sort(Comparator.comparingLong((Item item) -> unitPrice.applyAsLong(item.getItemId()) * item.getQuantity())
+                .reversed());
+        return stacks.subList(0, Math.min(STALL_MAX_LISTINGS, stacks.size()));
+    }
+
     private record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings) {
         boolean isEmpty() {
             return shopListings.isEmpty();
@@ -467,23 +547,15 @@ public final class Market {
     private Stock stock(Character agent) {
         List<Listing> listings = new ArrayList<>();
         List<AgentFreeMarketStallService.Listing> shopListings = new ArrayList<>();
-        for (InventoryType type : new InventoryType[]{InventoryType.ETC, InventoryType.USE, InventoryType.EQUIP}) {
-            Inventory inventory = agent.getInventory(type);
-            for (Item item : inventory.list()) {
-                if (shopListings.size() >= STALL_MAX_LISTINGS || item.getQuantity() <= 0) {
-                    break;
-                }
-                if (type == InventoryType.USE && !isTradeGood(item.getItemId())) {
-                    continue; // keep potions
-                }
-                long unit = price(item.getItemId());
-                short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
-                short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
-                long bundlePrice = Math.max(1L, Math.round(unit * perBundle * (0.9d + random.nextDouble() * 0.3d)));
-                shopListings.add(new AgentFreeMarketStallService.Listing(type, item.getPosition(), perBundle, bundles,
-                        (int) Math.min(Integer.MAX_VALUE, bundlePrice)));
-                listings.add(new Listing(item.getItemId(), itemName(item.getItemId()), unit));
-            }
+        for (Item item : stallStacks(agent, this::price)) {
+            InventoryType type = item.getInventoryType();
+            long unit = price(item.getItemId());
+            short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
+            short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
+            long bundlePrice = Math.max(1L, Math.round(unit * perBundle * (0.9d + random.nextDouble() * 0.3d)));
+            shopListings.add(new AgentFreeMarketStallService.Listing(type, item.getPosition(), perBundle, bundles,
+                    (int) Math.min(Integer.MAX_VALUE, bundlePrice)));
+            listings.add(new Listing(item.getItemId(), itemName(item.getItemId()), unit));
         }
         return new Stock(listings, shopListings);
     }
@@ -513,7 +585,7 @@ public final class Market {
                 rememberSales(session, shop);
                 for (PlayerShop.ListingView view : shop.listingSnapshot()) {
                     if (view.bundles() > 0) { // unsold at close: asked too much (its sales were learned as they happened)
-                        nudge(view.itemId(), Math.round(view.bundlePrice() / (double) Math.max(1, view.perBundle()) * 0.97d), false);
+                        unsold(view.itemId(), Math.round(view.bundlePrice() / (double) Math.max(1, view.perBundle())));
                     }
                 }
                 agent.closePlayerShop(reason);

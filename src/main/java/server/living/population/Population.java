@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
+import server.agents.capabilities.inventory.AgentStallHolds;
 import server.agents.economy.market.MarketPricePrior;
 import server.economy.ledger.MesoFlows;
 import server.economy.ledger.MesoHolder;
@@ -167,6 +168,7 @@ public final class Population {
             ContentAnswers.PriceQuote quote = current == null ? null : current.market().known(itemId);
             return quote == null ? 0L : quote.price();
         });
+        AgentStallHolds.install(population.market::keepForStall); // list or vendor (docs/ECONOMY_PLAN.md E3)
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
@@ -214,6 +216,7 @@ public final class Population {
         instance = null;
         MesoFlows.installClassifier(null);
         MarketPricePrior.install(null);
+        AgentStallHolds.install(null);
         AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
             timer.cancel(false);

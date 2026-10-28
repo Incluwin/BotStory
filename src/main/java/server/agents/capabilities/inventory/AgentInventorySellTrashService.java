@@ -21,7 +21,14 @@ public final class AgentInventorySellTrashService {
 
     public static List<Item> collectSellTrashEquips(AgentRuntimeEntry entry, Character agent, InventoryGateway inventory) {
         List<Item> normalTradeEquips = collectNormalTradeEquips(entry, agent, inventory);
-        return collectSellTrashEquips(normalTradeEquips, inventory);
+        List<Item> trash = collectSellTrashEquips(normalTradeEquips, inventory);
+        Set<Item> forStall = AgentStallHolds.keep(agent, trash); // list or vendor (docs/ECONOMY_PLAN.md E3)
+        if (forStall.isEmpty()) {
+            return trash;
+        }
+        List<Item> sold = new ArrayList<>(trash);
+        sold.removeAll(forStall);
+        return sold;
     }
 
     static List<Item> collectSellTrashEquips(List<Item> normalTradeEquips, InventoryGateway inventory) {

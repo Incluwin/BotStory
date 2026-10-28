@@ -1259,6 +1259,12 @@ population:
     MARKET_ENABLED: true
     MARKET_STALLS_MAX: 30
     MARKET_BUY_BUDGET_PER_DAY: 200000
+    # List or vendor (docs/ECONOMY_PLAN.md E3): merchant citizens keep the equips the price index values at least
+    # MARKET_HOLD_OVER_NPC x their shop price for their stall, the best MARKET_HOLD_MERCHANT of them, and vendor the rest.
+    MARKET_HOLD_FOR_STALL: true
+    MARKET_HOLD_OVER_NPC: 1.5
+    MARKET_HOLD_MERCHANT: 8
+    MARKET_HOLD_OTHERS: 0
     # A citizen that died beside a field boss whose group COMPANION_BOSS_ENABLED_TYPES lists (2026-10-19) trains
     # elsewhere while that boss stands on the map, at most FIELD_BOSS_AVOID_MS from its death. Citizens never attack a
     # listed boss but take its hits while a player fights it, so they used to walk straight back to die again.

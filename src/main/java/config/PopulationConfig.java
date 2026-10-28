@@ -198,6 +198,17 @@ public class PopulationConfig {
     public int MARKET_STALLS_MAX = 6;
     /** Meso a citizen may spend per day buying from human shops. */
     public long MARKET_BUY_BUDGET_PER_DAY = 200000L;
+    /**
+     * List or vendor (docs/ECONOMY_PLAN.md E3): a citizen keeps the equips its stall would sell for well over the
+     * shop's price instead of vendoring them. False: every citizen vendors as before.
+     */
+    public boolean MARKET_HOLD_FOR_STALL = true;
+    /** An equip is worth listing when the price index values it at least this many times its shop price. */
+    public double MARKET_HOLD_OVER_NPC = 1.5d;
+    /** Equips a merchant citizen keeps for its stall at most (the best by index price over shop price). */
+    public int MARKET_HOLD_MERCHANT = 8;
+    /** The same for a citizen that never opens a stall: 0 vendors everything, as before. */
+    public int MARKET_HOLD_OTHERS = 0;
 
     /**
      * A citizen that died beside a field boss whose group is on trains elsewhere while that boss stands there, at most
