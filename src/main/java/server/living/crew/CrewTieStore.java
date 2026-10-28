@@ -1,6 +1,8 @@
 package server.living.crew;
 
 import server.living.crew.CrewTies.SharedClear;
+import server.living.population.records.Clear;
+import server.living.population.records.ClearStore;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -9,52 +11,30 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * Read-only JDBC for crew ties and rival banter (docs/BOT_CONCEPT_PLAN.md F6.4): an owner's shared clears from
- * living_clear / living_clear_member, and two companions' newest companion_performance rows. Nothing is written. A
- * failed read throws, so the caller tells "no data" from "could not read".
+ * Read-only reads for crew ties and rival banter (docs/BOT_CONCEPT_PLAN.md F6.4): an owner's shared clears (through
+ * ClearStore, living_clear's own store) and two companions' newest companion_performance rows (a failed read throws,
+ * so the caller tells "no data" from "could not read"). Nothing is written.
  */
 public class CrewTieStore {
+    private final ClearStore clears = new ClearStore();
+
     /** One companion_performance row: one companion's PQ or boss run (damage share null when not measured). */
     public record RunRow(int companionId, String activity, String outcome, int durationS, int deaths, Double damageShare,
                          long recordedAtMs) { }
 
-    /** Every living_clear the owner was in as a player, with the companions (P) in it, oldest first. */
+    /**
+     * Every living_clear the owner was in as a player, with the companions (P) in it, oldest first: read by the table's
+     * own store (ClearStore, which alone talks to living_clear), empty when the read failed (it logs).
+     */
     public List<SharedClear> clearsWith(int ownerId) {
-        String sql = "SELECT c.id, c.quest, c.duration_ms, m.character_id FROM living_clear_member o"
-                + " JOIN living_clear c ON c.id = o.clear_id"
-                + " JOIN living_clear_member m ON m.clear_id = o.clear_id AND m.kind = 'P'"
-                + " WHERE o.character_id = ? AND o.kind = 'H' ORDER BY c.id";
-        Map<Integer, Object[]> clears = new LinkedHashMap<>();
-        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, ownerId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    int id = rs.getInt(1);
-                    Object[] clear = clears.computeIfAbsent(id, key -> new Object[3]);
-                    if (clear[2] == null) {
-                        clear[0] = rs.getString(2);
-                        clear[1] = rs.getLong(3);
-                        clear[2] = new ArrayList<Integer>();
-                    }
-                    @SuppressWarnings("unchecked")
-                    List<Integer> members = (List<Integer>) clear[2];
-                    members.add(rs.getInt(4));
-                }
-            }
-        } catch (SQLException failure) {
-            throw new IllegalStateException("living_clear read for " + ownerId + " failed", failure);
-        }
         List<SharedClear> out = new ArrayList<>();
-        for (Map.Entry<Integer, Object[]> clear : clears.entrySet()) {
-            @SuppressWarnings("unchecked")
-            List<Integer> members = (List<Integer>) clear.getValue()[2];
-            out.add(new SharedClear(clear.getKey(), ownerId, (String) clear.getValue()[0], (Long) clear.getValue()[1],
-                    members));
+        for (Clear clear : clears.companionClearsOf(ownerId)) {
+            List<Integer> companions = new ArrayList<>();
+            clear.members().forEach(member -> companions.add(member.id()));
+            out.add(new SharedClear(clear.id(), ownerId, clear.quest(), clear.durationMs(), companions));
         }
         return out;
     }
