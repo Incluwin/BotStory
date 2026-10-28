@@ -30,12 +30,16 @@ import server.maps.reservation.FreeMarketCharacterSpaceCatalog;
 import server.maps.reservation.FreeMarketStorePlacementService;
 
 import java.awt.Point;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * An economy players can join (plan 7): a price index seeded from the market basket and drifted
@@ -49,6 +53,10 @@ public final class Market {
     private static final int STALL_MAX_LISTINGS = 8;
     private static final double BUY_BELOW_INDEX = 0.9d;
     private static final double INDEX_STEP = 0.08d;
+    /** The index learns from the median of an item's last few sale prices (docs/ECONOMY_PLAN.md E2, rule 5)... */
+    static final int RECENT_SALES = 7;
+    /** ...kept within this factor of the index, so one odd sale moves it a step, never a leap. */
+    static final double SALE_BAND = 3.0d;
     private static final int INTERACTION_RANGE_PX = 900;
     /** A merchant on its stall spot: a precise move stops within a few pixels of it. */
     static final int STALL_ARRIVAL_PX = 24;
@@ -62,10 +70,17 @@ public final class Market {
 
     public record Listing(int itemId, String name, long price) { }
 
+    /** A sale at a player shop or hired merchant: who sold, what, and the price of one unit. */
+    record Sale(int sellerId, int itemId, long unitPrice) { }
+
     private final Population population;
     private final Random random;
     private final Map<Integer, long[]> index = new ConcurrentHashMap<>();
     private final Map<Integer, long[]> buyBudget = new ConcurrentHashMap<>();
+    /** Shop sales queued from the buyer's thread (PopulationHooks.shopSale); tick() learns them on the market's own. */
+    private final Queue<Sale> sales = new ConcurrentLinkedQueue<>();
+    /** An item's last RECENT_SALES unit sale prices, oldest first. */
+    private final Map<Integer, ArrayDeque<Long>> recentSales = new HashMap<>();
     private final AgentFreeMarketStallService stalls = new AgentFreeMarketStallService();
     private final AgentFreeMarketBuyerService buyers;
     private volatile int stallsOpen;
@@ -94,20 +109,47 @@ public final class Market {
         if (row != null) {
             return row[0];
         }
-        long seed = 0L;
-        for (Good good : population.content().basket()) {
-            if (good.itemId() == itemId) {
-                seed = good.price();
-            }
-        }
-        if (seed <= 0L) {
-            ItemInformationProvider ii = ItemInformationProvider.getInstance();
-            double base = ItemConstants.isEquipment(itemId) ? ii.getWholePrice(itemId) : ii.getUnitPrice(itemId);
-            seed = Math.max(10L, Math.round(base * (ItemConstants.isEquipment(itemId) ? 2.5d : 4.0d)));
-        }
+        long seed = seed(itemId);
         index.put(itemId, new long[]{seed, 0});
         population.store().savePrice(itemId, seed, 0);
         return seed;
+    }
+
+    /** A row's starting price: the basket's, else the player price tables' (PriceSeeds), else the NPC price multiple. */
+    private long seed(int itemId) {
+        for (Good good : population.content().basket()) {
+            if (good.itemId() == itemId && good.price() > 0L) {
+                return good.price();
+            }
+        }
+        long table = PriceSeeds.of(itemId);
+        if (table > 0L) {
+            return table;
+        }
+        ItemInformationProvider ii = ItemInformationProvider.getInstance();
+        double base = ItemConstants.isEquipment(itemId) ? ii.getWholePrice(itemId) : ii.getUnitPrice(itemId);
+        return Math.max(10L, Math.round(base * (ItemConstants.isEquipment(itemId) ? 2.5d : 4.0d)));
+    }
+
+    /**
+     * At start: a row no sale ever moved is only a seed, so it takes today's seed (the player price tables came in with
+     * docs/ECONOMY_PLAN.md E2). Writes only the rows whose seed changed; the number of them.
+     */
+    int reseedUnmoved() {
+        int changed = 0;
+        for (Map.Entry<Integer, long[]> entry : index.entrySet()) {
+            long[] row = entry.getValue();
+            if (row[1] != 0) {
+                continue;
+            }
+            long seed = seed(entry.getKey());
+            if (seed != row[0]) {
+                row[0] = seed;
+                population.store().savePrice(entry.getKey(), seed, 0);
+                changed++;
+            }
+        }
+        return changed;
     }
 
     /**
@@ -164,8 +206,49 @@ public final class Market {
         return basket > 0L ? new ContentAnswers.PriceQuote(basket, 0, true) : null;
     }
 
+    /**
+     * Any shop sale on the server, human or bot, from the buyer's thread: queued only (no DB, no lock), and learned by
+     * the next {@link #tick()}.
+     */
+    void sold(int sellerId, int itemId, long unitPrice) {
+        if (unitPrice > 0L && population.config().MARKET_ENABLED) {
+            sales.add(new Sale(sellerId, itemId, unitPrice));
+        }
+    }
+
+    /**
+     * The queued sales move the index (docs/ECONOMY_PLAN.md E2, rule 5), except a companion's bench stall's
+     * (BenchStallForm): it prices from the index itself, a little under it, so its sales would only pull the index
+     * after its own price, lower each time.
+     */
+    void learnSales() {
+        for (Sale sale = sales.poll(); sale != null; sale = sales.poll()) {
+            if (!LivingWorldHooks.benchCompanion(sale.sellerId())) {
+                observe(sale.itemId(), saleEstimate(sale.itemId(), sale.unitPrice()));
+            }
+        }
+    }
+
+    /** The median of the item's recent sale prices (this one included), within SALE_BAND of the index. */
+    private long saleEstimate(int itemId, long unitPrice) {
+        ArrayDeque<Long> recent = recentSales.computeIfAbsent(itemId, id -> new ArrayDeque<>());
+        recent.addLast(unitPrice);
+        if (recent.size() > RECENT_SALES) {
+            recent.removeFirst();
+        }
+        long[] sorted = recent.stream().mapToLong(Long::longValue).sorted().toArray();
+        long current = price(itemId);
+        long median = sorted[sorted.length / 2];
+        return Math.max(Math.round(current / SALE_BAND), Math.min(Math.round(current * SALE_BAND), median));
+    }
+
     /** Observed sale: nudge the index toward the price (exponential moving average). */
     public void observe(int itemId, long unitPrice) {
+        nudge(itemId, unitPrice, true);
+    }
+
+    /** {@code sale}: an executed sale, counted as an observation; else an ask nobody took, a weaker signal. */
+    private void nudge(int itemId, long unitPrice, boolean sale) {
         if (unitPrice <= 0) {
             return;
         }
@@ -173,7 +256,9 @@ public final class Market {
         long[] row = index.get(itemId);
         long next = Math.max(1L, Math.round(current + (unitPrice - current) * INDEX_STEP));
         row[0] = next;
-        row[1] = row[1] + 1;
+        if (sale) {
+            row[1] = row[1] + 1;
+        }
         population.store().savePrice(itemId, next, (int) row[1]);
     }
 
@@ -427,10 +512,8 @@ public final class Market {
             if (shop != null && shop.isOwner(agent)) {
                 rememberSales(session, shop);
                 for (PlayerShop.ListingView view : shop.listingSnapshot()) {
-                    if (view.bundles() <= 0) {
-                        observe(view.itemId(), Math.round(view.bundlePrice() / (double) Math.max(1, view.perBundle()) * 1.05d));
-                    } else {
-                        observe(view.itemId(), Math.round(view.bundlePrice() / (double) Math.max(1, view.perBundle()) * 0.97d));
+                    if (view.bundles() > 0) { // unsold at close: asked too much (its sales were learned as they happened)
+                        nudge(view.itemId(), Math.round(view.bundlePrice() / (double) Math.max(1, view.perBundle()) * 0.97d), false);
                     }
                 }
                 agent.closePlayerShop(reason);
@@ -453,6 +536,7 @@ public final class Market {
         if (!population.config().MARKET_ENABLED) {
             return;
         }
+        learnSales();
         long now = System.currentTimeMillis();
         for (CitizenSession session : population.presence().sessions()) {
             Character agent = session.agent();
@@ -483,18 +567,6 @@ public final class Market {
         return owner != null && owner.hired();
     }
 
-    /**
-     * A citizen bought {@code itemId} at {@code unit} a unit at this character's stall: the index moves toward the price,
-     * unless it was a companion's bench stall (BenchStallForm), which prices from the index itself, so its sales would
-     * only pull the index after its own price, lower each time.
-     */
-    void bought(int ownerCharacterId, int itemId, long unit) {
-        purchasesFromHumans++;
-        if (!LivingWorldHooks.benchCompanion(ownerCharacterId)) {
-            observe(itemId, unit);
-        }
-    }
-
     private void shop(CitizenSession session, Character agent, long now) {
         for (ObservedStall stall : buyers.observeNearby(agent)) {
             if (!buysFrom(stall.ownerCharacterId())) {
@@ -521,7 +593,7 @@ public final class Market {
                 }
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
                 if (result.success()) {
-                    bought(stall.ownerCharacterId(), view.itemId(), unit);
+                    purchasesFromHumans++; // the sale itself reaches the index through sold()
                     if (wanted > 0L) {
                         population.needs().boughtAtMarket(session, agent, view.itemId(), stall.ownerCharacterId(), now);
                     }

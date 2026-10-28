@@ -60,11 +60,13 @@ class MarketBenchStallTest {
     @Test
     void aBenchStallsSalesNeverPullTheIndexDown() {
         for (int sale = 0; sale < 20; sale++) {
-            market.bought(BENCH_COMPANION, SHELL, 85); // SELL: 0.85 x the index, sale after sale
+            market.sold(BENCH_COMPANION, SHELL, 85); // SELL: 0.85 x the index, sale after sale
         }
+        market.learnSales();
         assertEquals(100L, market.price(SHELL), "the index its SELL price comes from stays where the others put it");
 
-        market.bought(HUMAN, SHELL, 85);
+        market.sold(HUMAN, SHELL, 85);
+        market.learnSales();
         assertTrue(market.price(SHELL) < 100L, "a human's sale under the index still moves it");
     }
 

@@ -169,6 +169,19 @@ public final class PopulationHooks {
         }
     }
 
+    /**
+     * A sale at a player shop or hired merchant, any seller and buyer: the price index learns its unit price
+     * (docs/ECONOMY_PLAN.md E2), unless seller and buyer share an account (no learning from a player's alts). This runs
+     * on the buyer's thread under the shop's lock, so it only queues the sale.
+     */
+    public static void shopSale(int sellerId, int sellerAccountId, Character buyer, int itemId, long grossPrice, int units) {
+        Population population = Population.get();
+        if (population == null || buyer == null || units <= 0 || buyer.getAccountID() == sellerAccountId) {
+            return;
+        }
+        population.market().sold(sellerId, itemId, Math.round(grossPrice / (double) units));
+    }
+
     /** A player famed ({@code delta} 1) or defamed (-1) someone: a citizen remembers it of them. */
     public static void famed(Character giver, Character target, int delta) {
         Population population = Population.get();

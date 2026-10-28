@@ -161,6 +161,15 @@ public final class LivingWorldHooks {
         }
     }
 
+    /** A player shop or hired merchant sold {@code units} of {@code itemId} for {@code grossPrice}: the price index learns it. */
+    public static void shopSale(int sellerId, int sellerAccountId, Character buyer, int itemId, long grossPrice, int units) {
+        try {
+            server.living.population.PopulationHooks.shopSale(sellerId, sellerAccountId, buyer, itemId, grossPrice, units);
+        } catch (RuntimeException failure) {
+            log.warn("living world shopSale hook failed", failure);
+        }
+    }
+
     public static void itemGained(Character chr, int itemId, int quantity) {
         LivingWorld world = LivingWorld.get();
         if (world == null || chr == null || quantity <= 0) {

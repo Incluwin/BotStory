@@ -37,6 +37,7 @@ import server.economy.EconomyItemEvidence;
 import server.economy.EconomyTaxOverride;
 import server.economy.ledger.MesoAccount;
 import server.economy.ledger.MesoFlows;
+import server.living.LivingWorldHooks;
 import tools.PacketCreator;
 import tools.Pair;
 
@@ -354,6 +355,8 @@ public class PlayerShop extends AbstractMapObject {
                             synchronized (sold) {
                                 sold.add(soldItem);
                             }
+                            LivingWorldHooks.shopSale(owner.getId(), owner.getAccountID(), c.getPlayer(),
+                                    newItem.getItemId(), grossPrice, newItem.getQuantity()); // the price index (ECONOMY_PLAN E2)
 
                             if (pItem.getBundles() < 1) {
                                 if (++boughtnumber == items.size()) {
@@ -787,7 +790,9 @@ public class PlayerShop extends AbstractMapObject {
                 }
 
                 price -= Trade.getFee(price);  // thanks BHB for pointing out trade fees not applying here
-                owner.gainMeso(price, true);
+                try (var ignored = MesoFlows.as(MesoAccount.SOLO_MAPLING)) { // the FM bot pays nothing: meso created
+                    owner.gainMeso(price, true);
+                }
 
                 SoldItem soldItem = new SoldItem(fakechar.getName(), pItem.getItem().getItemId(), quantity, price);
                 owner.sendPacket(PacketCreator.getPlayerShopOwnerUpdate(soldItem, itemPosition));

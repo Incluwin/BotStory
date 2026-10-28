@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
+import server.agents.economy.market.MarketPricePrior;
 import server.economy.ledger.MesoFlows;
 import server.economy.ledger.MesoHolder;
 import server.knowledge.ContentAnswers;
@@ -144,6 +145,10 @@ public final class Population {
         }
         population.markJobBacklogOnce();
         CitizenPurseReset.runOnce(); // decision D1, before the first sweep can load a citizen (economy.CITIZEN_PURSE_RESET)
+        int reseeded = population.market.reseedUnmoved();
+        if (reseeded > 0) {
+            log.info("price index: {} unmoved rows take the player price tables' seed (docs/ECONOMY_PLAN.md E2)", reseeded);
+        }
         population.social.installSeams();
         population.conversation.installSeams();
         // the boss runs of the expeditions citizens lead report to the population (docs/CITIZEN_EXPEDITIONS_PLAN.md)
@@ -157,6 +162,11 @@ public final class Population {
             return current != null && current.isCitizen(characterId);
         });
         MesoFlows.installClassifier(Population::mesoHolder); // the economy ledger tells citizens from players
+        MarketPricePrior.install(itemId -> { // the agent engine's valuations start from the index (ECONOMY_PLAN E2)
+            Population current = instance;
+            ContentAnswers.PriceQuote quote = current == null ? null : current.market().known(itemId);
+            return quote == null ? 0L : quote.price();
+        });
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
@@ -203,6 +213,7 @@ public final class Population {
         }
         instance = null;
         MesoFlows.installClassifier(null);
+        MarketPricePrior.install(null);
         AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
             timer.cancel(false);

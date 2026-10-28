@@ -2,6 +2,7 @@ package server.agents.economy.persistence;
 
 import server.agents.economy.catalog.EconomyCatalog;
 import server.agents.economy.market.AgentItemValuationService;
+import server.agents.economy.market.MarketPricePrior;
 import server.agents.economy.scenario.EconomyEngineConfig;
 
 import javax.sql.DataSource;
@@ -17,7 +18,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Values items from only the requesting agent's durable observations, then catalog/override anchors. */
+/**
+ * Values items from only the requesting agent's durable observations, then catalog/override anchors. The catalog
+ * anchor is the server's market price where it has one (MarketPricePrior, docs/ECONOMY_PLAN.md E2), else the NPC
+ * price with the configured markup.
+ */
 public final class JdbcAgentItemValuationService implements AgentItemValuationService {
     private final UUID runId;
     private final DataSource dataSource;
@@ -44,7 +49,9 @@ public final class JdbcAgentItemValuationService implements AgentItemValuationSe
             throw new IllegalArgumentException("valuation query is invalid");
         ArrayList<Long> observations = observations(agentId, itemId, logicalAt);
         long median = median(observations);
-        long catalogAnchor = catalog.item(itemId).map(fact -> anchor(fact.npcUnitSalePrice())).orElse(0L);
+        long marketPrice = MarketPricePrior.of(itemId);
+        long catalogAnchor = marketPrice > 0L ? marketPrice
+                : catalog.item(itemId).map(fact -> anchor(fact.npcUnitSalePrice())).orElse(0L);
         ValueOverride override = overrides.get(itemId);
         Valuation result;
         if (override != null) result = new Valuation(override.unitValueMesos,

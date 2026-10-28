@@ -33,6 +33,8 @@ public enum MesoAccount {
     RESET(true),
     TAX(true),
     FREDRICK_FEE(true),
+    /** A SoloMapling FM bot's botBuy: the seller is paid and nobody is charged (off with ENABLE_SOLO_MAPLING). */
+    SOLO_MAPLING(true),
     /** A purse change no source claimed: counted as external so the day still balances, and listed so it gets a name. */
     UNATTRIBUTED(true),
     // transfers

@@ -39,6 +39,8 @@ import server.ItemInformationProvider;
 import server.Trade;
 import server.economy.ledger.MesoAccount;
 import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
+import server.living.LivingWorldHooks;
 import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
@@ -333,6 +335,8 @@ public class HiredMerchant extends AbstractMapObject {
                     }
 
                     Character owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterByName(ownerName);
+                    LivingWorldHooks.shopSale(ownerId, owner == null ? -1 : owner.getAccountID(), c.getPlayer(),
+                            newItem.getItemId(), price, newItem.getQuantity()); // the price index (ECONOMY_PLAN E2)
                     if (owner != null) {
                         owner.addMerchantMesos(proceeds);
                     } else {
@@ -895,6 +899,8 @@ public class HiredMerchant extends AbstractMapObject {
             }
 
             Character owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterByName(ownerName);
+            // the FM bot pays nothing, so this sale creates meso: the ledger names it (docs/ECONOMY_PLAN.md E2)
+            MesoFlows.record(MesoAccount.SOLO_MAPLING, owner == null ? MesoHolder.HUMAN : MesoFlows.holder(owner), price);
             if (owner != null && !isBot(owner)) {
                 owner.addMerchantMesos(price);
             } else {

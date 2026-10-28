@@ -127,6 +127,25 @@ Six rules everything below follows.
   to theirs since f0452f9d0; the citizen path can move onto the same capability.
 - SoloMapling stays off; its price YAMLs seed the index; its `botBuy` faucet gets a guard or a comment where it lives.
 
+**Built (10-28, branch `feat/economy-e2`):**
+- D5: `server/bot/**`, its five timers, `!boteconomy`, `BotEconomyConfig`, the `bot_economy` block, the `bot-*.yml`
+  seeds and `scripts/bot-economy` are gone; changeset 56 drops the 19 tables (3 default rows, dumped first to
+  `FriendServer/exports/bot-economy/db/bot-economy-tables-2026-10-28.sql`). `bot_flag` columns stay.
+- Every player-shop and hired-merchant sale (any seller, any buyer) reaches `Market` through
+  `LivingWorldHooks.shopSale`: queued on the buyer's thread, learned on the market tick as the median of the item's
+  last 7 sale prices, held within 3x of the index, then the 8 % moving-average step. Sales between one account's
+  characters teach nothing. A citizen closing its stall no longer counts as a sale: sold-out lines were learned as they
+  sold, and an unsold line still nudges the price down without counting as an observation.
+- **Kept, unlike the bullet above:** bench-stall sales stay excluded. The reason was never minting: a bench stall prices
+  at 0.85x the index, so its sales would pull the index down every time, and a median does not stop that.
+- `MarketPricePrior` (installed by the population) is the agent engine's catalog anchor where the index knows a price.
+- Seeds: basket, then the SoloMapling tables at v83 (`PriceSeeds`), then the NPC multiple; an index row no sale ever
+  moved takes the new seed at start.
+- `botBuy` books what it creates to a `SOLO_MAPLING` ledger account.
+- **Not done:** moving the citizen stall onto `AgentFreeMarketStallCapability`. Citizens already use the same stall
+  service and placement service and walk to their spot; the move is churn on code fixed this morning, for no change in
+  behaviour. D6's buyer rule (citizens buying from citizens) is E3.
+
 ### E3. A market that looks alive (features)
 - **List or vendor.** Citizens vendor junk and list what is worth more in the market than at the NPC (index vs NPC
   price, stall room, personality). This cuts the biggest faucet and fills the FM with real goods.
