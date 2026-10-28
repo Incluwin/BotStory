@@ -56,7 +56,8 @@ public final class LivingWorldHooks {
                 Set<Integer> attackers = Set.copyOf(attackerIds);
                 world.killLane().execute(() -> credit(world, mobId, attackers, map));
             }
-            boolean scene = server.living.story.StoryScenes.onStage(map); // a story scene's foe pays no boss friendship (F6)
+            // a story scene's foe pays no boss friendship (F6); only a boss's map is looked at on the killing thread
+            boolean scene = monster.isBoss() && server.living.story.StoryScenes.onStage(map);
             if (monster.isBoss() && !scene && !inCompanionBossRun(map)) {
                 java.util.Set<Integer> attackers = new java.util.HashSet<>(attackerIds);
                 world.executor().submit("friendship.boss " + monster.getId(),
