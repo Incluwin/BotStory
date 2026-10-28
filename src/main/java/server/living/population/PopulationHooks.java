@@ -225,6 +225,19 @@ public final class PopulationHooks {
         }
     }
 
+    /** A cleared event instance, for the clear records (F7.1, records.ClearLog); memory only on this thread. */
+    public static void eventCleared(List<Character> players, String scriptName, String eventName, long startedAtMs) {
+        Population population = Population.get();
+        if (population == null || population.clears() == null) {
+            return;
+        }
+        try {
+            population.clears().cleared(players, scriptName, eventName, startedAtMs, System.currentTimeMillis());
+        } catch (RuntimeException failure) {
+            log.debug("population eventCleared hook failed", failure);
+        }
+    }
+
     /** What players call a party quest's event script: KerningPQ is "kpq"; one not listed by its name. */
     static String questName(String scriptName) {
         if (scriptName == null || scriptName.isBlank()) {

@@ -246,6 +246,9 @@ the first ones share one crew letter, written by the first of them. One pink lin
   most once per `LETTERS_ASK_GAP_HOURS` for you); your next login's pink line says who asked.
 - **Voice.** `letters.yaml` in the content directory: per part of a letter, its lines and each dialogue style's own (the
   style a persona's personality resolves to). Templated: no Jev calls.
+- **Your rival crew** (F7, population `RIVALS_ENABLED`; docs/POPULATION_GUIDE.md "Rival crew and records"). Its clears
+  while you were away (`rival.news` rows on your main) come as one note signed by its leader, counted in
+  `LETTERS_MAX_NOTES`, and the pink line names the writer.
 
 Always on, as the fix of two tells: "send it" mails an equip with drop-like random stats (a piece a package), and meso
 alone in a package with no item, as a player's meso-only Duey package; you get Duey's live notice.

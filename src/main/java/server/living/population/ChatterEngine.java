@@ -1,6 +1,8 @@
 package server.living.population;
 
 import client.Character;
+import client.inventory.InventoryType;
+import client.inventory.manipulator.InventoryManipulator;
 import net.server.Server;
 import net.server.guild.Guild;
 import net.server.world.World;
@@ -52,6 +54,8 @@ public final class ChatterEngine {
     private static final String NEED_INTENT = "need.";
     /** The random-basket "B>" talk the needs board replaces while it is on. */
     private static final Set<String> RANDOM_BUY_INTENTS = Set.of("fm.buy", "town.buy");
+    /** The cash item a smega line stands for (serverNotice 3, a world notice with the channel): Super Megaphone. */
+    public static final int SUPER_MEGAPHONE = 5072000;
 
     /** Something that may make nearby citizens talk. */
     public static final class Event {
@@ -128,6 +132,15 @@ public final class ChatterEngine {
                 this.slots.put(key, value);
             }
             return this;
+        }
+
+        public String trigger() {
+            return trigger;
+        }
+
+        /** The slots this event fills itself, read only. */
+        public Map<String, String> slots() {
+            return java.util.Collections.unmodifiableMap(slots);
         }
     }
 
@@ -631,6 +644,43 @@ public final class ChatterEngine {
             smegasThisHour = 0;
         }
         return smegasThisHour < population.config().CHATTER_SMEGA_PER_HOUR && now - lastSmegaMs > 600_000L;
+    }
+
+    /**
+     * The one way to send a megaphone outside the cadence (the rival crew's "we beat your time", F7; LF party megaphones,
+     * F5c): {@code from} says {@code text} as a megaphone (notice type 3, the ear button on). It takes one slot of the
+     * CHATTER_SMEGA_PER_HOUR cap and keeps the same 10-minute gap as the cadence (one shared counter). With
+     * {@code consumeItem} the citizen must carry a Super Megaphone ({@link #SUPER_MEGAPHONE}) and uses one up. False, and
+     * nothing sent or counted, when it is blocked.
+     */
+    public boolean megaphone(CitizenSession from, String text, boolean consumeItem) {
+        if (!population.config().CHATTER_ENABLED || from == null || from.virtual || text == null || text.isBlank()) {
+            return false;
+        }
+        Character agent = from.agent();
+        if (agent == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        try {
+            synchronized (this) {
+                if (!smegaAllowed(now) || consumeItem && agent.getItemQuantity(SUPER_MEGAPHONE, false) < 1) {
+                    return false;
+                }
+                if (consumeItem) {
+                    InventoryManipulator.removeById(agent.getClient(), InventoryType.CASH, SUPER_MEGAPHONE, 1, false, false);
+                }
+                smegasThisHour++;
+                lastSmegaMs = now;
+            }
+            Server.getInstance().broadcastMessage(population.world().config().WORLD, PacketCreator.serverNotice(3,
+                    from.channel, agent.getName() + " : " + AgentChatTextSanitizer.sanitize(text), true));
+            linesSpoken.incrementAndGet();
+            return true;
+        } catch (RuntimeException failure) {
+            log.debug("megaphone from {} failed", from.name(), failure);
+            return false;
+        }
     }
 
     private void smegaCadence(long now) {

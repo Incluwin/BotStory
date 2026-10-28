@@ -1,0 +1,36 @@
+# Clear records and the rival crew (docs/BOT_CONCEPT_PLAN.md F7, server.living.population.records / .rivals).
+# quests: the event scripts (scripts/event file names without .js) whose clears are recorded in living_clear and shown
+# on the records page (a Bulletin Board's "Records", @records). A clear of a script not listed here (a job quest's
+# instance, a wedding, a boat) is not a record and is not stored. label: how the page names it; aliases: what a player
+# may type after @records ("@records balrog"); kind: pq or boss. RivalsContentTest checks that every
+# living_world.BOSS_EVENT_SCRIPTS entry and every quest citizens run themselves (KerningPQ, HenesysPQ) is listed.
+quests:
+  - { script: HenesysPQ, label: "Henesys PQ", kind: pq, aliases: [hpq, henesys] }
+  - { script: KerningPQ, label: "Kerning PQ", kind: pq, aliases: [kpq, kerning] }
+  - { script: LudiPQ, label: "Ludibrium PQ", kind: pq, aliases: [lpq, ludi] }
+  - { script: EllinPQ, label: "Ellin Forest PQ", kind: pq, aliases: [epq, ellin] }
+  - { script: PiratePQ, label: "Pirate PQ", kind: pq, aliases: [ppq, pirate] }
+  - { script: OrbisPQ, label: "Orbis PQ", kind: pq, aliases: [opq, orbis] }
+  - { script: LudiMazePQ, label: "Ludi Maze PQ", kind: pq, aliases: [lmpq, maze] }
+  - { script: AmoriaPQ, label: "Amoria PQ", kind: pq, aliases: [apq, amoria] }
+  - { script: MagatiaPQ_A, label: "Magatia PQ (Alcadno)", kind: pq, aliases: [mpq, magatia, alcadno] }
+  - { script: MagatiaPQ_Z, label: "Magatia PQ (Zenumist)", kind: pq, aliases: [zenumist] }
+  - { script: GuildQuest, label: "Guild PQ", kind: pq, aliases: [gpq, guild] }
+  - { script: CWKPQ, label: "Crimsonwood Keep PQ", kind: pq, aliases: [cwkpq, cwk] }
+  - { script: BossRushPQ, label: "Boss Rush PQ", kind: pq, aliases: [bossrush, brpq] }
+  - { script: ZakumPQ, label: "Zakum prequest", kind: pq, aliases: [zpq] }
+  - { script: HorntailPQ, label: "Horntail prequest", kind: pq, aliases: [htpq] }
+  - { script: BalrogBattle_Easy, label: "Easy Balrog", kind: boss, aliases: [balrog, ebalrog, easybalrog] }
+  - { script: BalrogBattle, label: "Normal Balrog", kind: boss, aliases: [nbalrog, normalbalrog] }
+  - { script: ZakumBattle, label: "Zakum", kind: boss, aliases: [zakum, zak] }
+  - { script: PapulatusBattle, label: "Papulatus", kind: boss, aliases: [papulatus, pap] }
+  - { script: LatanicaBattle, label: "Latanica", kind: boss, aliases: [latanica] }
+  - { script: ScargaBattle, label: "Scarga", kind: boss, aliases: [scarga, scar] }
+  - { script: TD_Battle1, label: "Bergamot", kind: boss, aliases: [bergamot] }
+  - { script: TD_Battle2, label: "Dunas", kind: boss, aliases: [dunas] }
+  - { script: TD_Battle3, label: "Aufheben", kind: boss, aliases: [aufheben] }
+  - { script: TD_Battle4, label: "Oberon", kind: boss, aliases: [oberon] }
+  - { script: TD_Battle5, label: "Nibelung", kind: boss, aliases: [nibelung] }
+  - { script: HorntailBattle, label: "Horntail", kind: boss, aliases: [horntail, ht] }
+  - { script: ShowaBattle, label: "Showa Boss", kind: boss, aliases: [showa] }
+  - { script: PinkBeanBattle, label: "Pink Bean", kind: boss, aliases: [pinkbean, pb] }

@@ -14,6 +14,8 @@ import server.knowledge.ContentChat;
 import server.living.LivingWorld;
 import server.living.config.ContentException;
 import server.living.population.needs.NeedLedger;
+import server.living.population.records.ClearLog;
+import server.living.population.rivals.RivalCrews;
 import server.maps.MapleMap;
 
 import java.nio.file.Path;
@@ -56,6 +58,8 @@ public final class Population {
     private final CitizenMiniGames miniGames;
     private final PersonMemories memories;
     private final NeedLedger needs;
+    private final ClearLog clears;
+    private final RivalCrews rivals;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -88,6 +92,9 @@ public final class Population {
         this.miniGames = new CitizenMiniGames(this);
         this.memories = new PersonMemories(this);
         this.needs = new NeedLedger(this);
+        this.clears = new ClearLog(this);
+        this.rivals = new RivalCrews(this);
+        this.clears.listen(rivals); // a booked clear may be a crew's, or beat one (F7)
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
     }
@@ -156,6 +163,7 @@ public final class Population {
             population.social.tick();
             server.living.audit.TellAudit.tick(System.currentTimeMillis());
             population.needs.tick(); // the needs board's minute (docs/BOT_CONCEPT_PLAN.md F1)
+            population.rivals.tick(); // the rival crews' minute (F7)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -192,6 +200,7 @@ public final class Population {
                 fresh.names().middle(), fresh.names().end());
         voices.reload();
         chatter.reload();
+        clears.reload(); // rivals.yaml's quest labels
         return fresh.warnings();
     }
 
@@ -284,6 +293,16 @@ public final class Population {
     /** What citizens ask for on the needs board (docs/BOT_CONCEPT_PLAN.md F1). */
     public NeedLedger needs() {
         return needs;
+    }
+
+    /** Every party quest and boss clear, and the records page's firsts and fastest (docs/BOT_CONCEPT_PLAN.md F7.1). */
+    public ClearLog clears() {
+        return clears;
+    }
+
+    /** Each player's rival crew (docs/BOT_CONCEPT_PLAN.md F7.2-F7.4). */
+    public RivalCrews rivals() {
+        return rivals;
     }
 
     /** What citizens remember of the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md). */

@@ -285,6 +285,32 @@ public class PopulationConfig {
     /** The leader waits this long for a human of its party to sign up with the entry NPC before it starts without. */
     public int BOSS_SIGNUP_WAIT_MS = 120000;
 
+    // Clear records and the rival crew (docs/BOT_CONCEPT_PLAN.md F7)
+    /** Every party quest or boss clear rivals.yaml lists is booked in living_clear (measuring only; on by default). */
+    public boolean CLEAR_RECORDS_ENABLED = true;
+    /** Kill switch (off until its live checks): rival crews, the records page, @records, their lines and requests. */
+    public boolean RIVALS_ENABLED = false;
+    /** A player's main this level or more gets a rival crew. */
+    public int RIVALS_MIN_LEVEL = 20;
+    /** A crew forms with at least this many citizens in band (and takes 4-5). */
+    public int RIVALS_CREW_MIN = 3;
+    /** At most this many in a crew. */
+    public int RIVALS_CREW_MAX = 5;
+    /** Citizens join a crew within this many levels of its main (decision D12: 5). */
+    public int RIVALS_JOIN_BAND = 5;
+    /** A member more than this many levels from the main leaves (wider than the join band: no churn at the edge). */
+    public int RIVALS_LEAVE_BAND = 7;
+    /** While its player is online a crew is checked this often (levels, members, its guild). */
+    public int RIVALS_REFRESH_MINUTES = 30;
+    /** A crew member on the main's map says something to them at most this often. */
+    public int RIVALS_BANTER_GAP_MINUTES = 45;
+    /** Help requests (F7.4a): off until the citizen Zakum run (F7.4b) exists, so no invitation leads nowhere. */
+    public boolean RIVAL_HELP_REQUESTS_ENABLED = false;
+    /** A crew asks its main along for Zakum at most this often. */
+    public int RIVALS_HELP_GAP_HOURS = 12;
+    /** Its help request stays on the needs board this long. */
+    public int RIVALS_HELP_OPEN_MINUTES = 30;
+
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
         if (!BOSS_RUNS_ENABLED || BOSS_RUN_BOSSES == null) {
@@ -374,6 +400,13 @@ public class PopulationConfig {
                     + " NEEDS_REFRESH_MINUTES and NEEDS_GEAR_DEADLINE_HOURS must be >= 1, NEEDS_EXPIRE_MIN_HOURS..MAX_HOURS a"
                     + " range from 1, NEEDS_GEAR_WANT_SHARE and NEEDS_SCROLL_CHANCE 0..1, NEEDS_SUPPLY_PREMIUM >= 1,"
                     + " NEEDS_WHISPER_GAP_MINUTES and NEEDS_REPOST_HOURS >= 0");
+        }
+        if (RIVALS_MIN_LEVEL < 1 || RIVALS_CREW_MIN < 2 || RIVALS_CREW_MAX < RIVALS_CREW_MIN || RIVALS_CREW_MAX > 6
+                || RIVALS_JOIN_BAND < 0 || RIVALS_LEAVE_BAND < RIVALS_JOIN_BAND || RIVALS_REFRESH_MINUTES < 1
+                || RIVALS_BANTER_GAP_MINUTES < 0 || RIVALS_HELP_GAP_HOURS < 0 || RIVALS_HELP_OPEN_MINUTES < 1) {
+            throw new IllegalArgumentException("population.RIVALS_MIN_LEVEL, RIVALS_REFRESH_MINUTES and"
+                    + " RIVALS_HELP_OPEN_MINUTES must be >= 1, RIVALS_CREW_MIN..MAX a range within 2..6, RIVALS_JOIN_BAND >= 0"
+                    + " with RIVALS_LEAVE_BAND at least it, RIVALS_BANTER_GAP_MINUTES and RIVALS_HELP_GAP_HOURS >= 0");
         }
     }
 }

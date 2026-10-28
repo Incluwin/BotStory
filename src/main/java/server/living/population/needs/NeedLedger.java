@@ -334,7 +334,7 @@ public final class NeedLedger {
             case GEAR -> "an upgrade";
             case PARTY -> {
                 String[] parts = need.detail().split("\\|", 2);
-                yield parts.length > 1 && !parts[1].isEmpty() ? parts[1] : parts[0];
+                yield parts.length > 1 && !parts[1].isEmpty() && guestOf(need) == 0 ? parts[1] : parts[0];
             }
         };
     }
@@ -343,6 +343,9 @@ public final class NeedLedger {
     String what(Need need) {
         if (need.kind() == NeedKind.PARTY) {
             String role = forWords(need);
+            if (guestOf(need) > 0) {
+                return "you along for " + role;
+            }
             return need.remaining() > 1 ? need.remaining() + " more" : "1 more " + role;
         }
         String name = spoken(need.itemId());
@@ -626,6 +629,44 @@ public final class NeedLedger {
                 replace(new Need(need.id(), need.citizenId(), need.kind(), 0, more, 0, 0L, detail, mapId, need.state(), 0,
                         0L, 0, true, need.createdAtMs(), need.deadlineMs(), 0L));
             }
+        }
+    }
+
+    /** A PARTY request's role naming the one player it invites (a rival crew's help request, F7.4): "guest:<id>". */
+    public static final String GUEST = "guest:";
+
+    /**
+     * A rival crew asks its player along for a boss it cannot fight alone (docs/BOT_CONCEPT_PLAN.md F7.4): one PARTY
+     * request by its leader for {@code label}, inviting player {@code guestId}, open until {@code deadlineMs}. Null while
+     * the board is off or the leader has a party request open already.
+     */
+    public Need helpWanted(CitizenSession leader, String label, int mapId, int guestId, long deadlineMs, long nowMs) {
+        if (!on() || leader == null || guestId <= 0) {
+            return null;
+        }
+        start(nowMs);
+        synchronized (lock(leader.characterId)) {
+            if (!openOf(leader.characterId, NeedKind.PARTY).isEmpty()) {
+                return null;
+            }
+            return post(leader.characterId, leader, mapId,
+                    new NeedDerivation.Proposal(NeedKind.PARTY, 0, 1, 0L, label + "|" + GUEST + guestId), deadlineMs, nowMs);
+        }
+    }
+
+    /** The player a PARTY request invites as a guest, or 0 for a party open to anyone. */
+    public static int guestOf(Need need) {
+        if (need.kind() != NeedKind.PARTY) {
+            return 0;
+        }
+        String[] parts = need.detail().split("\\|", 2);
+        if (parts.length < 2 || !parts[1].startsWith(GUEST)) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(parts[1].substring(GUEST.length()));
+        } catch (NumberFormatException ignored) {
+            return 0;
         }
     }
 

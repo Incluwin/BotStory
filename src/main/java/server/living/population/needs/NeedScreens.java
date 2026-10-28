@@ -7,6 +7,7 @@ import server.living.population.CitizenSession;
 import server.living.population.Market;
 import server.living.population.PersonMemory;
 import server.living.population.Population;
+import server.living.population.records.RecordsView;
 import server.living.resident.LivingTalk;
 
 import java.util.ArrayList;
@@ -46,6 +47,11 @@ public final class NeedScreens {
                 () -> browse(player, boardMapId)));
         options.add(new LivingTalk.Option("#bYour requests#k (" + ledger.claimedBy(player.getId(), nowMs).size() + " held)",
                 () -> mine(player, boardMapId)));
+        if (population.rivals() != null && population.rivals().on()) { // the clear records (F7.1, decision D13)
+            options.add(new LivingTalk.Option("#bRecords#k",
+                    () -> new RecordsView(population.clears()).board(player, NeedBoards.BOARD_NPC,
+                            () -> board(player, boardMapId))));
+        }
         LivingTalk.open(player, NeedBoards.BOARD_NPC)
                 .menu("Townsfolk pin what they need here. Bring it to them, or leave it here if they are away; they pay"
                         + " on the spot.", options)
@@ -239,6 +245,10 @@ public final class NeedScreens {
     List<Need> listed(Character player, int boardMapId, long nowMs) {
         List<Need> out = new ArrayList<>();
         for (Need need : ledger.open()) {
+            int guest = NeedLedger.guestOf(need);
+            if (guest > 0 && guest != player.getId()) {
+                continue; // a rival crew's invitation is for its own player only (F7.4)
+            }
             if (need.kind().item() ? need.remaining() > 0 : need.quantity() > 0) {
                 out.add(need);
             }
@@ -289,6 +299,11 @@ public final class NeedScreens {
         boolean about = session != null && !session.virtual && session.agent() != null;
         String who = (citizen == null ? "Someone" : "#e" + citizen.name() + "#n")
                 + (about ? ", Lv" + session.agent().getLevel() + " " + job(session) : "");
+        if (need.kind() == NeedKind.PARTY && NeedLedger.guestOf(need) > 0) {
+            var crew = population.rivals() == null ? null : population.rivals().crewOf(need.citizenId());
+            return who + (crew == null ? "" : " and the #e" + crew.name() + "#n") + " want " + ledger.what(need)
+                    + ". They can't do it without you. Meet them at #b" + mapName(where(need)) + "#k.";
+        }
         if (need.kind() == NeedKind.PARTY) {
             return who + " is forming a party at #b" + mapName(where(need)) + "#k and wants " + ledger.what(need)
                     + ". Go there; the leader invites people whose level fits.";
