@@ -3,6 +3,7 @@ package server.economy.ledger;
 import client.Character;
 import net.server.Server;
 import net.server.world.World;
+import server.living.store.LivingStore;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -98,12 +99,7 @@ public final class MesoSupply {
                     snapshot.add(Pool.DUEY, holder(rs.getBoolean(4), rs.getString(3), rs.getBoolean(2)), rs.getLong(1));
                 }
             }
-            try (PreparedStatement ps = con.prepareStatement("SELECT COALESCE(SUM(haul_meso), 0) FROM living_roster");
-                 ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    snapshot.add(Pool.HAUL, MesoHolder.BOT, rs.getLong(1));
-                }
-            }
+            snapshot.add(Pool.HAUL, MesoHolder.BOT, LivingStore.totalHaulMeso(con));
         }
         return snapshot;
     }
