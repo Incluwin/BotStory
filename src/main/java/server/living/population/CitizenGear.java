@@ -132,6 +132,32 @@ final class CitizenGear {
         return pick != 0 && k.item(pick).map(ItemFact::reqLevel).orElse(0) > wornLevel ? pick : 0;
     }
 
+    /** The equipped position of {@code slot} (cap, top, pants, ...); 0 for none. */
+    static short position(String slot) {
+        for (Slot known : SLOTS) {
+            if (known.name().equals(slot)) {
+                return (short) known.position();
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * A piece it bought at a stall for {@code slot} (docs/ECONOMY_PLAN.md E3): worn in place of the old one, which goes
+     * as a granted upgrade's would (economy.CITIZEN_DISPLACED_GEAR_REMOVED). False when it could not wear it.
+     */
+    static boolean wearBought(Character agent, int itemId, String slot) {
+        short position = position(slot);
+        Item worn = position == 0 ? null : agent.getInventory(InventoryType.EQUIPPED).getItem(position);
+        if (position == 0 || !AgentEquipmentService.equipInSlot(agent, itemId, position)) {
+            return false;
+        }
+        if (worn != null && worn.getItemId() != itemId && config.YamlConfig.config.economy.CITIZEN_DISPLACED_GEAR_REMOVED) {
+            removeOne(agent, worn.getItemId());
+        }
+        return true;
+    }
+
     private static void removeOne(Character agent, int itemId) {
         for (Item item : agent.getInventory(InventoryType.EQUIP).list()) {
             if (item.getItemId() == itemId) {

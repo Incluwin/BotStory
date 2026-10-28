@@ -173,6 +173,18 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   vendoring rate returns once holds fill; the lasting cut needs buyers, which are the next two bullets above (citizens
   buying their gear from stalls) and D6 (citizens buying from citizens).
 
+**Buyers, built (10-28, branch `feat/economy-e3-demand`).**
+- D6: browsing citizens buy at other citizens' stalls too, players' stalls first (`MARKET_BUY_FROM_CITIZENS`). The
+  ordinary browse rule (under 0.9x the index) rarely fires there, since citizen stalls ask 0.9-1.2x; gear errands are what
+  buy from them. Every such sale is the real `PlayerShop.buy`: journaled, taxed from 100 k, learned by the index.
+- Buy, don't receive, gear (`GearErrands`, `MARKET_BUY_GEAR`): when `CitizenGear` would hand a citizen a band upgrade,
+  the slot becomes an errand instead; in the Free Market it buys any listing that fits the slot, band, job, gender and
+  stats (`GearPicks.fitsSlot`) and beats what it wears, at up to `MARKET_GEAR_OVER_INDEX` (1.3x) the index, and wears it
+  (the displaced piece goes as before). An errand pulls the citizen to the market (the needs-board weight bump) and from
+  the entrance to the room selling a fit. After `MARKET_GEAR_ERRAND_HOURS` (24) with no buy, or when it cannot pay the
+  pick's index price, the piece is handed over as before and the gap is counted (`gearErrands: ... handedOver=`) and
+  logged. With the needs board on, its GEAR wants keep this role instead.
+
 ### E4. The controller
 - Daily: CPI drift and supply growth versus targets set the next day's bot vendor propensity, spending propensity and
   market buy budgets, clamped to bounds in config, with every adjustment logged and charted.

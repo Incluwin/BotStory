@@ -80,9 +80,11 @@ public final class ProgressionLedger {
                 ResidentShaper.repair(agent, loadout); // a level bumped in SQL, a first job left unspent
             }
             ResidentShaper.wearMissingEquips(agent, loadout, false); // a band edited after shaping (citizens are never dressed)
-            // every load: a level bumped in SQL skipped the shaping above; a want on the needs board holds its pick back
-            CitizenGear.upgrade(agent, job, loadout, population.needs() == null ? CitizenGear.Wants.NONE
-                    : (who, slot, pick) -> population.needs().gearWant(who, slot, pick, System.currentTimeMillis()));
+            // every load: a level bumped in SQL skipped the shaping above; a want on the needs board, or else a gear
+            // errand (docs/ECONOMY_PLAN.md E3: it buys the piece at a stall), holds its pick back
+            CitizenGear.upgrade(agent, job, loadout, population.needs() != null && population.needs().on()
+                    ? (who, slot, pick) -> population.needs().gearWant(who, slot, pick, System.currentTimeMillis())
+                    : population.market().gearErrands());
             long pocketMoney = pocketMoney(citizen, agent.getMeso(), agent.getLevel(),
                     config.YamlConfig.config.economy.CITIZEN_POCKET_MONEY_ONCE);
             if (pocketMoney > 0L) {

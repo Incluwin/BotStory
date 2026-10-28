@@ -1265,6 +1265,13 @@ population:
     MARKET_HOLD_OVER_NPC: 1.5
     MARKET_HOLD_MERCHANT: 8
     MARKET_HOLD_OTHERS: 0
+    # D6: browsing citizens buy at other citizens' stalls too (players' first), journaled and taxed.
+    MARKET_BUY_FROM_CITIZENS: true
+    # Buy, don't receive, gear (E3): a level-band upgrade is an errand to buy a fitting piece at a stall within
+    # MARKET_GEAR_ERRAND_HOURS, paying up to MARKET_GEAR_OVER_INDEX x the index; only then is it handed over as before.
+    MARKET_BUY_GEAR: true
+    MARKET_GEAR_ERRAND_HOURS: 24
+    MARKET_GEAR_OVER_INDEX: 1.3
     # A citizen that died beside a field boss whose group COMPANION_BOSS_ENABLED_TYPES lists (2026-10-19) trains
     # elsewhere while that boss stands on the map, at most FIELD_BOSS_AVOID_MS from its death. Citizens never attack a
     # listed boss but take its hits while a player fights it, so they used to walk straight back to die again.

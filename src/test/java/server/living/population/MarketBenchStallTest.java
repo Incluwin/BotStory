@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
  * The population market and the living bench (docs/BOT_MANAGEMENT_PLAN.md P5 "Living bench", decision 12 a): a
  * companion's bench stall prices from the price index (SELL a little under it), so its sales never move the index,
  * which would otherwise fall a little with every sale and every stall price with it; and browsing citizens buy from a
- * hired hand's stall (a player's companion now, though still a citizen), never from another citizen's.
+ * hired hand's stall (a player's companion now, though still a citizen), and another citizen's (decision D6).
  */
 class MarketBenchStallTest {
     private static final int SHELL = 4000019;
@@ -32,6 +32,7 @@ class MarketBenchStallTest {
     private static final int HIRED = 5002;
 
     private final Population population = mock(Population.class);
+    private final PopulationConfig config = new PopulationConfig();
     private final CitizenStore store = mock(CitizenStore.class);
     private final LivingWorld world = mock(LivingWorld.class);
     private final BenchDutyDispatcher bench = mock(BenchDutyDispatcher.class);
@@ -39,7 +40,7 @@ class MarketBenchStallTest {
     private final Market market;
 
     MarketBenchStallTest() {
-        when(population.config()).thenReturn(new PopulationConfig());
+        when(population.config()).thenReturn(config);
         when(population.store()).thenReturn(store);
         when(store.prices()).thenReturn(List.<int[]>of(new int[] {SHELL, 100, 5}));
         living.when(LivingWorld::get).thenReturn(world);
@@ -71,11 +72,14 @@ class MarketBenchStallTest {
     }
 
     @Test
-    void citizensBuyFromHumansAndHiredHandsButNotFromOtherCitizens() {
+    void citizensBuyFromHumansHiredHandsAndOtherCitizensWithD6() {
         assertTrue(market.buysFrom(HUMAN));
         assertTrue(market.buysFrom(BENCH_COMPANION), "a companion is no citizen");
         assertTrue(market.buysFrom(HIRED), "a hired hand is a player's companion now");
+        assertTrue(market.buysFrom(CITIZEN), "decision D6: citizens buy from citizens too");
+        config.MARKET_BUY_FROM_CITIZENS = false;
         assertFalse(market.buysFrom(CITIZEN));
+        assertTrue(market.buysFrom(HIRED));
     }
 
     private static Citizen citizen(int characterId, Set<String> flags) {

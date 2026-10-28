@@ -92,7 +92,8 @@ public final class Market {
     /** {median index price, when it was worked out} for atOrUnderMedian. */
     private volatile long[] medianCache;
     private static final long MEDIAN_REFRESH_MS = 60_000L;
-    private volatile long purchasesFromHumans;
+    private volatile long purchases;
+    private final GearErrands gearErrands;
 
     Market(Population population) {
         this(population, itemId -> ItemInformationProvider.getInstance().getWholePrice(itemId));
@@ -102,6 +103,7 @@ public final class Market {
     Market(Population population, IntToLongFunction shopPrice) {
         this.population = population;
         this.shopPrice = shopPrice;
+        this.gearErrands = new GearErrands(population, this);
         this.random = new Random(population.config().SEED ^ 0x3a44e7L);
         this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX, population::isCitizen);
         for (int[] row : population.store().prices()) {
@@ -110,7 +112,7 @@ public final class Market {
     }
 
     public String report() {
-        return "market: index=" + index.size() + " stalls=" + stallsOpen + " boughtFromHumans=" + purchasesFromHumans;
+        return "market: index=" + index.size() + " stalls=" + stallsOpen + " bought=" + purchases + " " + gearErrands.report();
     }
 
     // ---- price index ---------------------------------------------------------------------
@@ -180,9 +182,10 @@ public final class Market {
         if (table > 0L) {
             return table;
         }
-        ItemInformationProvider ii = ItemInformationProvider.getInstance();
-        double base = ItemConstants.isEquipment(itemId) ? ii.getWholePrice(itemId) : ii.getUnitPrice(itemId);
-        return Math.max(10L, Math.round(base * (ItemConstants.isEquipment(itemId) ? 2.5d : 4.0d)));
+        if (ItemConstants.isEquipment(itemId)) {
+            return Math.max(10L, Math.round(shopPrice.applyAsLong(itemId) * 2.5d));
+        }
+        return Math.max(10L, Math.round(ItemInformationProvider.getInstance().getUnitPrice(itemId) * 4.0d));
     }
 
     /**
@@ -628,21 +631,23 @@ public final class Market {
     }
 
     /**
-     * Whether browsing citizens buy at this character's stall: a human's, or a hired hand's (a player's companion now,
-     * though still in the citizen registry); never another citizen's.
+     * Whether browsing citizens buy at this character's stall: a human's, a hired hand's (a player's companion now,
+     * though still in the citizen registry), and another citizen's with MARKET_BUY_FROM_CITIZENS (decision D6).
      */
     boolean buysFrom(int ownerCharacterId) {
         if (!population.isCitizen(ownerCharacterId)) {
             return true;
         }
         Citizen owner = population.citizen(ownerCharacterId);
-        return owner != null && owner.hired();
+        return owner != null && (owner.hired() || population.config().MARKET_BUY_FROM_CITIZENS);
     }
 
     private void shop(CitizenSession session, Character agent, long now) {
-        for (ObservedStall stall : buyers.observeNearby(agent)) {
+        List<ObservedStall> stalls = new ArrayList<>(buyers.observeNearby(agent));
+        stalls.sort(Comparator.comparing(stall -> population.isCitizen(stall.ownerCharacterId()))); // players' first (D6)
+        for (ObservedStall stall : stalls) {
             if (!buysFrom(stall.ownerCharacterId())) {
-                continue; // humans' shops only (and a hired hand's)
+                continue;
             }
             for (PlayerShop.ListingView view : stall.listings()) {
                 if (view.bundles() <= 0 || view.perBundle() <= 0) {
@@ -650,7 +655,7 @@ public final class Market {
                 }
                 long unit = Math.round(view.bundlePrice() / (double) view.perBundle());
                 long wanted = wanted(session, view, now);
-                if (wanted > 0L) { // what it asked for on the needs board: up to its offer, outside the browse budget
+                if (wanted > 0L) { // a needs-board want or a gear errand: up to its offer, outside the browse budget
                     if (unit > wanted || view.bundlePrice() > agent.getMeso()) {
                         continue;
                     }
@@ -665,9 +670,12 @@ public final class Market {
                 }
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
                 if (result.success()) {
-                    purchasesFromHumans++; // the sale itself reaches the index through sold()
+                    purchases++; // the sale itself reaches the index through sold()
                     if (wanted > 0L) {
-                        population.needs().boughtAtMarket(session, agent, view.itemId(), stall.ownerCharacterId(), now);
+                        if (population.needs() != null) {
+                            population.needs().boughtAtMarket(session, agent, view.itemId(), stall.ownerCharacterId(), now);
+                        }
+                        gearErrands.bought(agent, view.itemId());
                     }
                     if (!population.isCitizen(stall.ownerCharacterId())) { // a player's shop, not a companion's bench stall
                         remember(session, stall.ownerCharacterId(), PersonMemory.Kind.BOUGHT, agent.getMapId(), view.itemId());
@@ -686,20 +694,32 @@ public final class Market {
      * its open GEAR or SCROLL want asks for, an equip base or better - else 0.
      */
     private long wanted(CitizenSession session, PlayerShop.ListingView view, long now) {
+        if (view.perBundle() != 1) {
+            return 0L;
+        }
         NeedLedger needs = population.needs();
-        return needs == null || view.perBundle() != 1 ? 0L
-                : needs.marketOffer(session.characterId, view.itemId(), view.attributes(), now);
+        long asked = needs == null ? 0L : needs.marketOffer(session.characterId, view.itemId(), view.attributes(), now);
+        return asked > 0L ? asked : gearErrands.offer(session.agent(), view.itemId());
     }
 
     /**
      * The needs board: the Free Market room whose player shop sells what the citizen wants at its offer or less, the
      * room it goes to from the entrance (the Owl of Minerva a player would use); 0 for none or a room nobody loaded.
      */
-    private int wantedRoom(CitizenSession session, long now) {
+    /** Whether the citizen goes to the market for something: a needs-board want or an open gear errand (E3). */
+    boolean wantsFromMarket(int citizenId) {
         NeedLedger needs = population.needs();
+        return needs != null && needs.wantsFromMarket(citizenId) || gearErrands.any(citizenId);
+    }
+
+    GearErrands gearErrands() {
+        return gearErrands;
+    }
+
+    private int wantedRoom(CitizenSession session, long now) {
         net.server.world.World world = population.gameWorld();
         net.server.channel.Channel channel = world == null ? null : world.getChannel(session.channel);
-        if (needs == null || channel == null || !needs.wantsFromMarket(session.characterId)) {
+        if (channel == null || !wantsFromMarket(session.characterId)) {
             return 0;
         }
         for (int room = FieldCatalog.FM_ENTRANCE + 1; room <= FieldCatalog.FM_ENTRANCE + FM_ROOMS; room++) {

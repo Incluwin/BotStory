@@ -69,6 +69,15 @@ public final class GearPicks {
         return group;
     }
 
+    /**
+     * Whether {@code item} is a piece {@link #pick} could choose for these arguments, obtainable or not: what a citizen
+     * shopping for that slot accepts from a stall (docs/ECONOMY_PLAN.md E3).
+     */
+    public static boolean fitsSlot(ItemFact item, String category, int bandLevel, int jobMask, int gender, int weaponType,
+                                   int[] stats) {
+        return fits(item, category, bandLevel, jobMask, gender, weaponType, stats);
+    }
+
     private static boolean fits(ItemFact item, String category, int bandLevel, int jobMask, int gender, int weaponType,
                                 int[] stats) {
         if (!item.equip() || !category.equals(item.category()) || item.cash() || item.unnamed() || item.name().isEmpty()

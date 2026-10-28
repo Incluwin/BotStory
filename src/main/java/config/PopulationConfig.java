@@ -209,6 +209,19 @@ public class PopulationConfig {
     public int MARKET_HOLD_MERCHANT = 8;
     /** The same for a citizen that never opens a stall: 0 vendors everything, as before. */
     public int MARKET_HOLD_OTHERS = 0;
+    /**
+     * Decision D6 (docs/ECONOMY_PLAN.md section 7): browsing citizens buy at other citizens' stalls too (players' first),
+     * through the real shop purchase, so the sale is journaled, taxed and teaches the price index.
+     */
+    public boolean MARKET_BUY_FROM_CITIZENS = true;
+    /**
+     * Buy, don't receive, gear (E3): a citizen's level-band upgrade becomes an errand to buy a fitting piece at a stall;
+     * only when none turns up within MARKET_GEAR_ERRAND_HOURS (or it cannot pay) is the piece handed to it as before.
+     */
+    public boolean MARKET_BUY_GEAR = true;
+    public int MARKET_GEAR_ERRAND_HOURS = 24;
+    /** The most a citizen on a gear errand pays: this many times the index price of what it buys. */
+    public double MARKET_GEAR_OVER_INDEX = 1.3d;
 
     /**
      * A citizen that died beside a field boss whose group is on trains elsewhere while that boss stands there, at most
