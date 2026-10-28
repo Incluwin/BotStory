@@ -16,7 +16,7 @@ problem) in mind.
   closings, not from buyers.
 
 So the job is less "fight player inflation" than "give the bot population a closed, governed money supply, then let
-humans trade into a market whose prices stay put". Human-side rates come last and are the user's call (section 7).
+humans trade into a market whose prices stay put". The user's decisions on the open questions are in section 7.
 
 ## 1. What exists
 
@@ -106,7 +106,7 @@ Six rules everything below follows.
 - Prune the journal and outbox (keep 90 days); fix the outbox head-of-line block.
 - **Done when** a day's close balances: opening supply + faucets - sinks = closing supply, within autosave lag.
 
-### E1. Stop the printers (bot side; humans feel nothing)
+### E1. Stop the printers (bot side, plus the decided D2/D3 meso changes that players feel)
 - Citizen top-up: one-time pocket money at a citizen's first load only, then nothing.
 - Bench offline STALL: no sale without a buyer. Offline it sells at the NPC price like SELL (or holds the stock for its
   next live slice); the 1.8x markup only applies to real sales.
@@ -114,7 +114,9 @@ Six rules everything below follows.
   to what `BenchYieldModel` measures live.
 - Citizen guilds pay the 1.5 M founding fee like players.
 - Free gear: a displaced loadout piece is not sellable (it goes back to the wardrobe pool, not the bag).
-- **Decision D1**: what to do with the 22 B already in citizen purses (section 7).
+- D1: one-time reset of every citizen purse to a level-shaped spread (section 7).
+- D2: the meso drop chance stops being multiplied by `drop_rate` (`MapleMap.java:733`, meso rows only).
+- D3: drop coupons stop setting `mesoCoupon` (`Character.java:7948`).
 
 ### E2. Consolidate (one market, one index, one ledger)
 - Retire `server/bot/**` (timers in `Server.java:1237-1249`, `!boteconomy`, its tables after an export).
@@ -142,7 +144,9 @@ Six rules everything below follows.
   market buy budgets, clamped to bounds in config, with every adjustment logged and charted.
 - Kill switch, and a shadow mode that only logs what it would set.
 
-### E5. Human-side tuning (after the user's decisions in section 7)
+### E5. Human-side tuning
+D2 and D3 were decided on 10-28 and moved into E1; D4 is no. What is left here is anything the E0 numbers show after
+E1-E4 run for a while (rate-aware sinks, meso-priced services players want).
 
 ## 6. How we will know it works
 - Daily net supply growth (faucets - sinks) at or below population growth; bot share of supply falling towards a target.
@@ -150,14 +154,20 @@ Six rules everything below follows.
 - Sell-through: share of stall listings that sell within a day; citizens buying from humans every day.
 - Each phase ships behind a switch, with the full split suite green and a live check like today's FM check.
 
-## 7. Decisions for the user
-- **D1, existing bot wealth (22 B).** (a) one-time reset of citizen purses to a level-shaped spread (lognormal around
-  2-5x `expectedMeso`); (b) leave it and let E3/E4 spending drain it over weeks; (c) leave it untouched. Recommended: (a);
-  nobody sees a citizen's purse, only what it does with it, and (b) would pour 22 B into whatever humans sell.
-- **D2, meso drop chance.** Stop multiplying the meso row's chance by `drop_rate` (meso_rate 3 stays the one meso
-  multiplier): about -60 % mob mesos for everyone, bots included. Recommended.
-- **D3, drop coupons.** Stop them doubling mesos (`mesoCoupon = maxDropRate`). Recommended.
-- **D4, small-trade tax.** Tax trades and shop sales of 10 k-100 k at 0.8 % (today 0 %). Optional.
-- **D5, retire `server/bot/**` code outright** rather than leaving it off. Recommended.
-- **D6, bot-to-bot trades.** Allow citizens to buy from other citizens' stalls (journaled and taxed) so prices have
-  real discovery while humans are few. Recommended.
+## 7. Decisions (user, 2026-10-28)
+
+Measured before deciding (10-minute live window, 12:14-12:24, 231 online bots, no humans): bot wallets grew 7.9 M,
+about **1.1 B/day**: 0.55 B/day NPC shop net, 0.58 B/day everything else (mostly mob mesos). Against 22.4 B that is
+~5 %/day. Wealth rises steeply with level (Lv 80-99 average 60.6 M, 37x `expectedMeso`); 417 active citizens are above
+10x. Cap options priced on active citizens (20.0 B): 5x = 3.7 B, 10x = 6.8 B, 20x = 11.2 B, level-spread reset ~2.4 B.
+
+- **D1, existing bot wealth: RESET to a level spread.** Every citizen (active and retired) gets a fresh level-shaped
+  purse, lognormal around 3x `expectedMeso` (active total ~2.4 B from 20.0 B). One-time, logged per citizen, with the
+  before/after totals booked to the ledger as a RESET account. Lands in E1.
+- **D2, meso drop chance: YES, for everyone.** The meso row's chance is no longer multiplied by `drop_rate`; meso_rate
+  stays the one meso multiplier (~-60 % mob mesos a kill). Moved into E1 now that it is decided.
+- **D3, drop coupons: YES.** A drop coupon no longer sets `mesoCoupon`. Moved into E1.
+- **D4, small-trade tax: NO.** Keep 0 % under 100 k (classic v83).
+- **D5, `server/bot/**`: DELETE.** Export its tables to a SQL dump, drop them, remove the code, timers and `!boteconomy`. E2.
+- **D6, bot-to-bot trades: YES, journaled and taxed.** Citizens shop at any stall, human first, through the real
+  `PlayerShop.buy`; the index learns from those sales. E3 (the buyer rule) and E2 (the index learning from trades).
