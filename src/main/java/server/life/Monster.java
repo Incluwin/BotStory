@@ -567,10 +567,9 @@ public class Monster extends AbstractLoadedLife {
         return takenDamage.containsKey(chr.getId());
     }
 
-    /** The damage {@code characterId} dealt this monster, 0 for none. Read only (a companion run's damage share). */
-    public long damageFrom(int characterId) {
-        AtomicLong dealt = takenDamage.get(characterId);
-        return dealt == null ? 0L : dealt.get();
+    public long damageBy(int characterId) {
+        AtomicLong d = takenDamage.get(characterId);
+        return d == null ? 0L : d.get();
     }
 
     private static boolean isWhiteExpGain(Character chr, Map<Integer, Float> personalRatio, double sdevRatio) {

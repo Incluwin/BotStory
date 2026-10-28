@@ -58,7 +58,7 @@ public final class RunDamage {
             Tally tally = byMember.get(id);
             AtomicLong own = tally == null ? null : tally.dealt.get(id);
             if (own != null) {
-                own.addAndGet(monster.damageFrom(id));
+                own.addAndGet(monster.damageBy(id));
             }
         }
     }

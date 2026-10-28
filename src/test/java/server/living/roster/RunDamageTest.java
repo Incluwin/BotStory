@@ -30,7 +30,7 @@ class RunDamageTest {
 
     private static Monster mob(Map<Integer, Long> dealt) {
         Monster monster = mock(Monster.class);
-        dealt.forEach((id, amount) -> when(monster.damageFrom(id)).thenReturn(amount));
+        dealt.forEach((id, amount) -> when(monster.damageBy(id)).thenReturn(amount));
         return monster;
     }
 

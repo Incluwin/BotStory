@@ -1962,7 +1962,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         }
         String key = damageKey(session.sessionId());
         for (int attackerId : attackerIds) {
-            damage.add(key, attackerId, boss.damageFrom(attackerId));
+            damage.add(key, attackerId, boss.damageBy(attackerId));
         }
     }
 
