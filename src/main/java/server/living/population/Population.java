@@ -54,6 +54,7 @@ public final class Population {
     private final Market market;
     private final CitizenPartyQuests partyQuests;
     private final CitizenMiniGames miniGames;
+    private final CitizenJumpQuests jumpQuests;
     private final PersonMemories memories;
     private final NeedLedger needs;
     private final CitizenWhispers whispers;
@@ -87,6 +88,7 @@ public final class Population {
         this.market = new Market(this);
         this.partyQuests = new CitizenPartyQuests(this);
         this.miniGames = new CitizenMiniGames(this);
+        this.jumpQuests = new CitizenJumpQuests(this);
         this.memories = new PersonMemories(this);
         this.needs = new NeedLedger(this);
         this.whispers = new CitizenWhispers(this);
@@ -161,8 +163,10 @@ public final class Population {
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
-        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.partyQuests::tick,
-                CitizenPartyQuests.TICK_MS, CitizenPartyQuests.TICK_MS));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            population.partyQuests.tick();
+            population.jumpQuests.tick(); // jump quests ride the party quests' lane (docs/BOT_CONCEPT_PLAN.md F5b)
+        }, CitizenPartyQuests.TICK_MS, CitizenPartyQuests.TICK_MS));
         instance = population;
         log.info("Population started: {} citizens ({}), {} target, {} online max, channels {}", population.registry.size(),
                 content.census(), config.TARGET_CITIZENS, config.ONLINE_MAX, population.channels);
@@ -281,6 +285,11 @@ public final class Population {
     /** Omok and match cards citizens play in towns (docs/BOT_CONCEPT_PLAN.md F5a). */
     public CitizenMiniGames miniGames() {
         return miniGames;
+    }
+
+    /** Pet-Walking Road and the Forest of Patience, climbed by citizens (docs/BOT_CONCEPT_PLAN.md F5b). */
+    public CitizenJumpQuests jumpQuests() {
+        return jumpQuests;
     }
 
     /** What citizens ask for on the needs board (docs/BOT_CONCEPT_PLAN.md F1). */

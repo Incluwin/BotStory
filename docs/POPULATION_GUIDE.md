@@ -33,6 +33,10 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `NEEDS_EXPIRE_MIN_HOURS`/`MAX_HOURS`, `NEEDS_REPOST_HOURS`, `NEEDS_SCROLL_CHANCE`, `NEEDS_SUPPLY_PREMIUM` | a potion or scroll request ends after; the same one is not asked again for; chance a derivation asks for a scroll; a potion's offer over its shop price |
 | `NEEDS_GEAR_WANT_SHARE`, `NEEDS_GEAR_DEADLINE_HOURS` | decision D4: share of free gear upgrades held back as a want, and how long until it gets the piece anyway |
 | `NEEDS_CLAIMS_PER_PLAYER`, `NEEDS_CLAIM_MINUTES`, `NEEDS_WHISPER_GAP_MINUTES` | requests a player holds at once and for how long; one request whisper per player this often |
+| `LF_SMEGA_ENABLED`, `LF_SMEGA_AFTER_MS`, `LF_SMEGA_PER_PARTY`, `LF_SMEGA_STOCK`, `LF_SMEGA_RESTOCK_CHANCE` | party megaphones ("Jump quests and party megaphones" below; kill switch, off by default, needs the whispers on): a short party megaphones after; megaphones a party sends; Super Megaphones a citizen buys at a load (at most 2) and the chance it does |
+| `CITIZEN_WHISPERS_ENABLED`, `WHISPER_REPLY_GAP_MS`, `WHISPER_THREAD_MS`, `WHISPER_JOIN_COMING_MS` | players' whispers reach citizens (kill switch, off by default); one out-of-the-blue reply per player this often; a whisper back this soon answers the citizen's own whisper; a party waits this long for a player who whispered in |
+| `JQ_ENABLED`, `JQ_COURSES`, `JQ_FEE_RESERVE` | citizens climb jump quests (kill switch, off by default); `pwr,fop_a` (`fop_b` held, below); mesos kept on top of Shane's fee |
+| `JQ_STAGE_SUCCESS_MIN`/`MAX`, `JQ_PRACTICE_STEP`, `JQ_FALLS_MAX`, `JQ_ATTEMPT_MAX_MS`, `JQ_COOLDOWN_MS` | a citizen's chance to clear seven jumps (a shorter stage is easier in step); its rise per clean stage; falls and time before it gives up; no JQ plan after one for |
 
 Tables come from Liquibase changeset `30-population` (`living_citizen`, `living_circle`,
 `living_guild`, `living_price_index`, `living_acquaintance`). Changeset `49-citizen-person-memory` adds the memory columns to
@@ -238,8 +242,9 @@ its real state, at most `NEEDS_PER_CITIZEN` item requests each:
 Potion and scroll requests end after `NEEDS_EXPIRE_MIN_HOURS`..`MAX_HOURS`, the same request is not asked again for
 `NEEDS_REPOST_HOURS`, and a hired citizen's requests end. While the switch is on the random "B> {item}" lines are gone: a
 citizen with an open request names it (item, count, price, what for) in FM and town chat and some megaphones, and
-whispers it to a player it likes (`WARM` or more) on its map, once a player per `NEEDS_WHISPER_GAP_MINUTES`; it never
-says "whisper me" (citizens ignore player whispers until F5c). The market follows needs: a citizen with an open GEAR or
+whispers it to a player it likes (`WARM` or more) on its map, once a player per `NEEDS_WHISPER_GAP_MINUTES`; a "yes i
+have it" back is answered while `CITIZEN_WHISPERS_ENABLED` is on, and a PARTY request's page then names the leader to
+whisper (otherwise it never says "whisper me"). The market follows needs: a citizen with an open GEAR or
 SCROLL want goes to the FM three times as often, walks to the room whose player shop sells that item at its offer or
 less, and buys it up to its offer (above the 90%-of-index rule, outside the browse budget; single pieces; equips base or
 better: weapon and magic attack at least the base's, weighted stats at least the base's). The request is then met.
@@ -260,6 +265,69 @@ per citizen; it greets you with it later. Logs: `citizen <id> needs SUPPLY white
 (easy_balrog)`, `citizen <id> need ... ended: EXPIRED`, `needs board: N requests live`; the journal says `asked for 100
 white potion (345 ea)`.
 
+**Jump quests and party megaphones (2026-10-27, docs/BOT_CONCEPT_PLAN.md F5b-c; `JQ_ENABLED`, `LF_SMEGA_ENABLED`,
+`CITIZEN_WHISPERS_ENABLED`, all off by default).**
+
+*Party megaphones.* A citizen-led PQ party still short `LF_SMEGA_AFTER_MS` (4 min) after it formed has its leader send
+one megaphone (`LF_SMEGA_PER_PARTY`): "LF1M KPQ 21-30 ch2, whisper Ann" and variants (`pq.smega` in
+`chatter/whispers.yaml`). It is a real Super Megaphone (5072000): one is used up per line, and with none in its cash tab
+it sends nothing. It is notice type 3 with the whisper button on, through `ChatterEngine.megaphone`, the one megaphone
+entry point (rival crews use it too), so it takes one `CHATTER_SMEGA_PER_HOUR` slot and keeps the 10-minute gap of the
+merchant and recruiter megaphones. Megaphones are cash items no NPC sells, so a citizen whose level fits a citizen-run
+lobby of its region and carries none buys `LF_SMEGA_STOCK` (never more than 2) at a load, with chance
+`LF_SMEGA_RESTOCK_CHANCE`. The line says "whisper me", so it goes out only while `CITIZEN_WHISPERS_ENABLED` is on too.
+
+*Whispers.* With `CITIZEN_WHISPERS_ENABLED` a player's whisper to a loaded citizen is answered (`CitizenWhispers`,
+reached from `LivingWorldHooks.whisper` after the Residents and the roster declined it; no model call):
+- "me", "inv", "can i join", "kpq?" and the like to a short party's leader get its invite by the lobby invite's rules
+  (party-less, level fits, a seat free counting held ones, one invite out at a time; the 10-minute lobby-invite gap does
+  not apply, they asked). The player may be anywhere in the world: the leader whispers where to come, tells them again
+  in party chat once they join, and the party waits `WHISPER_JOIN_COMING_MS` past its patience while they walk over.
+- A refusal says why: full, level ("kpq is 21-30 sry"), already in a party, an invite already out. Join words to a
+  member who is not the leader point to the leader.
+- A whisper back within `WHISPER_THREAD_MS` of something the citizen whispered first (its needs-board request, a fame,
+  a rival's words) goes to whoever opened that thread (a topic handler; the needs board's answers a "yes i have it"),
+  else gets an acknowledgement ("np", "ty"). Senders tag their whispers with a topic through `ChatterEngine.whisper`.
+- Anything else gets a short reply that fits what it is doing ("in pq rn", "training atm", its stall's room, "hi"),
+  at most once per `WHISPER_REPLY_GAP_MS` a player, nothing while it is AFK, and sometimes nothing (its voice's ignore
+  rate).
+- The needs board's PARTY page names the leader to whisper.
+
+*Jump quests* (decision D11). A cohort weight `JQ` sends a Victoria citizen up Pet-Walking Road (100000202, any level)
+or, from Lv25 with Shane's 5000 mesos and `JQ_FEE_RESERVE` left over, into the Forest of Patience: course A
+(101000100-101, Lv25-49). Course B (101000102-104, Lv50+, quest 2051) is built but left out of `JQ_COURSES`: its
+first map is a zig-zag of ropes with a jump off each rope's top, and offline the bot loses that line after the first
+rope (`JumpQuestRoutesTest` proves B's other five legs). Breath of Lava stays out: its fire hurts only on the client,
+so a bot would walk through it unharmed. Shumi's jump quest (103000900-909) comes later.
+- Rewards come from the stock NPCs. Frod at the road's top pays only someone with a pet out (pet closeness), which no
+  bot has, so citizens climb the road for fun and leave by its own portal. The Forest's pile (1043000, 1043001) gives
+  a random prize, plus Sabitrama's item while quest 2050 (2051) runs, and warps to Ellinia. A citizen whose 2050 (2051)
+  can start walks up to Sabitrama in Sleepywood (1061005) first, then on to Shane; after a clear with the item it goes
+  straight back to Sabitrama to turn it in (stock rewards).
+- A course is cut into stages along the navigation path (`JumpQuestCourses`): seven jumps, or fewer up to a rope's top
+  (it stops on the small platform up there, as players do). The citizen climbs from checkpoint to checkpoint with its
+  jumps' noise on (`AgentJumpNoise`): the launch x of each jump moves by a draw from N(0, sigma), sigma solved per stage
+  (`JumpWindows`) from the jump probe's real landing windows (a window that reaches the platform's end is open there: a
+  press past the end launches from it). The skill is its chance on seven jumps, stable per citizen within
+  `JQ_STAGE_SUCCESS_MIN`..`MAX` (30-70%), scaled to a shorter stage, plus `JQ_PRACTICE_STEP` for every stage it clears
+  without a fall, this session. A narrow jump fails more often than a wide one.
+- A miss is a real drop: every drawn launch off the edge's window is probed first, over the whole band the citizen may
+  take off from, and kept only if it lands on a foothold that can still reach the checkpoint and no farther down than a
+  fall that hurts (else it draws again, then jumps exactly). Presses stay 4 px inside a platform's ends, so walking to
+  one never steps off. A miss costs a climb, never HP. It lands lower, says "rip" or
+  "ugh" now and then (`jq.fall`), and climbs again. Noisy misses do not count against the edge's reliability, and the
+  imperfections' town rope fumble (F8) stays off during an attempt, so falls are not counted twice.
+- After `JQ_FALLS_MAX` falls or `JQ_ATTEMPT_MAX_MS` it gives up (`jq.giveup`): on the road it walks off with its next
+  plan; in the Forest it walks down to Shane (1032004, at every map's foot) and back to Ellinia. It never stands still
+  two minutes in a jump quest; an exit NPC that fails three times logs it off. At the top it stands a few seconds,
+  says `jq.clear` and leaves; no JQ plan for `JQ_COOLDOWN_MS` (6 h).
+- The below-map recovery teleport must never happen in front of a player. A fall below the map during an attempt with
+  a player on the map logs the citizen off (a disconnect, a normal sight); with nobody there the recovery runs unseen.
+  Both are counted in `!citizens jq` and `/runtime/citizens` (`jumpQuests`) and logged WARN. `JumpQuestRoutesTest`
+  proves none happen on the shipped courses.
+- Logs: `citizen <name> starts forest of patience (GATE)`, `citizen <name> cleared pet walking road with 3 falls in 412
+  s`, `citizen <name> gives up on ... after 8 falls`; the journal says `cleared forest of patience after 3 falls`.
+
 ## Ops
 
 `!citizens` (GM 5): `status`, `online`, `cohorts`, `who <name>` (card, targets, journal),
@@ -269,7 +337,24 @@ white potion (345 ea)`.
 lowers), `login <name>` (load that citizen now, replacing a ledger-only session), `pq` (citizen runs now and since boot,
 `memory` (the memory cache and table counts), `memory <name>` (who that citizen remembers, warmth, what happened).
 the last ten), `pq send <name> [lobby]` (a loaded citizen goes to the lobby its level fits, out for a party quest; a
-lobby id such as `balrog` picks one of several that fit).
+lobby id such as `balrog` picks one of several that fit), `jq` (attempts on, per course tries/clears/give-ups/falls and
+clean stages, below-map log-offs and unseen teleports, the last ten attempts), `jq send <name> [pwr|fop_a]` (a
+loaded citizen goes for that course now, or one that fits; Sabitrama first when its quest can start).
+
+**Testing jump quests live** (`JQ_ENABLED: true`).
+1. Type `!warp 100000202` and `!citizens jq send <name> pwr` for a loaded Victoria citizen. It comes to the road and
+   climbs it stage by stage, falls now and then, and either clears it ("finally!!") or gives up after 8 falls.
+2. Type `!citizens jq`: the road's tries, clears, falls and clean stages; below map `0 logged off, 0 teleported`.
+3. For the Forest: `!citizens level <name> 30` (offline), `!citizens login <name>`, `!warp 105040300`, then
+   `!citizens jq send <name> fop_a`. It walks to Sabitrama, takes quest 2050, goes to Ellinia, pays Shane, climbs both
+   maps, clicks the pile (a prize and 4031020) and comes back to Sabitrama to turn it in.
+
+**Testing party megaphones and whispers live** (`LF_SMEGA_ENABLED` and `CITIZEN_WHISPERS_ENABLED` true).
+1. Stand at Lakelis (103000000) with a Lv21-30 character, party-less, and wait for a citizen party to form short.
+2. About 4 minutes after it formed its leader sends "LF1M KPQ 21-30 ch1, whisper <name>"; `!citizens who <leader>`
+   shows one Super Megaphone fewer.
+3. Whisper the leader "inv": the invite comes; from another map it also whispers where to come.
+4. Whisper any citizen "hi": a short reply (or none: its ignore rate), and at most one per 2 minutes.
 
 `!needs` (GM 5): the board's counts; `!needs <citizen>` every request of one citizen with its state, hold and deadline;
 `!needs map` the open requests of the citizens on your map. `@requests` (everyone): the requests you hold and the nearest
@@ -332,7 +417,7 @@ capacity, so the estimate and the Victoria capacity catalog only seed new maps).
 | `market.yaml` | permit item and the market basket with seed prices |
 | `needs.yaml` | where the needs board's Bulletin Boards stand (map, x, y above the ground); `NeedBoardsPlacementTest` checks each against the map's WZ footholds and stock NPCs |
 | `chatter/needs.yaml` | the needs board's lines: `dwell` and `smega` intents named `need.<kind>.*` (only that kind's request fills them), and the triggers `need.whisper`, `need.thanks`, `need.got`, `need.scroll.pass`, `need.scroll.fail`; slots `{item} {what} {count} {price} {total} {for}` |
-| `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag, and the party-quest ones in `chatter/pq.yaml`: pq.lf, pq.join, pq.go, pq.clear, pq.fail, pq.down, pq.giveup, pq.call, pq.call.answer, pq.thanks, pq.wait; the minigame ones in `chatter/minigames.yaml`: game.lf, game.title.omok, game.title.cards, game.hi, game.nice, game.win, game.loss, game.tie, game.bye), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega, room = a minigame room's chat), `weight`, `cooldownMs`, `lines`, optional per-style `styles`; `{need}` is how many more a PQ party wants. Party-quest lines repeat as players repeat them: no recent-intent memory, only each intent's own `cooldownMs` |
+| `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag, and the party-quest ones in `chatter/pq.yaml`: pq.lf, pq.join, pq.go, pq.clear, pq.fail, pq.down, pq.giveup, pq.call, pq.call.answer, pq.thanks, pq.wait; the minigame ones in `chatter/minigames.yaml`: game.lf, game.title.omok, game.title.cards, game.hi, game.nice, game.win, game.loss, game.tie, game.bye; the megaphone and whisper ones in `chatter/whispers.yaml`: pq.smega (slots `{need} {pq} {levels} {ch} {me}`), pq.where, whisper.join.*, whisper.ack.*, whisper.need.yes, whisper.hi, whisper.busy, whisper.training, whisper.pq, whisper.shop; the jump-quest ones in `chatter/jq.yaml`: jq.start, jq.fall, jq.clear, jq.giveup), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega, room = a minigame room's chat), `weight`, `cooldownMs`, `lines`, optional per-style `styles`; `{need}` is how many more a PQ party wants. Party-quest lines repeat as players repeat them: no recent-intent memory, only each intent's own `cooldownMs` |
 
 Lines are ASCII; `{slots}` that cannot be filled drop the line. The lint refuses unknown
 triggers, channels and jobs, loadouts that do not exist, and non-ASCII.
@@ -363,7 +448,8 @@ Citizen parties run KPQ and HPQ (LPQ waits, the user's call 2026-10-25: LudiPQ h
 OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ lobbies they still only gather and
 invite you); expeditions are Easy and Normal Balrog only (docs/CITIZEN_EXPEDITIONS_PLAN.md); travel on foot ends on
 the first map nobody watches (no citizen walks a whole multi-map trip unseen) and rides no real ship; citizens remember
-players (each other only through circles, guilds and gossip) but answer no whispers, and the weekly life summary of
+players (each other only through circles, guilds and gossip), and the weekly life summary of
 plan 6.4 is never written. The needs board asks for no quest items (decision D4b), its board menu has
-no Records entry yet (F7), and it sorts by warmth until Standing (C1) lands; a whisper to a citizen about its request
-goes unanswered (F5c).
+no Records entry yet (F7), and it sorts by warmth until Standing (C1) lands. Whispers get templated answers only (no
+model call); the merchant and recruiter megaphones still use up no item. Jump quests are Pet-Walking Road and the
+Forest of Patience; Shumi's (103000900-909, F5.6) and bot-hosted events come later, and Breath of Lava stays out.

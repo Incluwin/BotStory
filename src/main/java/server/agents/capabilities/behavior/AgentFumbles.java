@@ -73,7 +73,8 @@ public final class AgentFumbles {
      * catch a rope), once; on landing the entry runs again and grabs.
      */
     public static boolean missesRope(AgentRuntimeEntry entry, Character agent, Rope rope, long nowMs) {
-        if (!AgentImperfections.on() || entry == null || agent == null || rope == null || !calmTown(agent)) {
+        if (!AgentImperfections.on() || entry == null || agent == null || rope == null || !calmTown(agent)
+                || AgentJumpNoise.active(entry)) { // a jump quest's falls come from its own noise (F5b)
             return false;
         }
         State state = entry.capabilityStates().require(State.STATE_KEY);

@@ -1,5 +1,6 @@
 package server.agents.capabilities.navigation;
 
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import server.agents.runtime.AgentRuntimeEntry;
 
 import java.awt.Point;
@@ -44,7 +45,8 @@ public final class AgentNavigationEdgeReliabilityRuntime {
 
     public static void failed(AgentRuntimeEntry entry, int mapId,
                               AgentNavigationGraph.Edge edge, long nowMs) {
-        if (entry == null || !AgentNavigationReliabilityConfig.tracksReliability()) {
+        if (entry == null || !AgentNavigationReliabilityConfig.tracksReliability()
+                || AgentJumpNoise.active(entry)) { // a jump quest's misses are its own (F5b), not the edge's
             return;
         }
         state(entry).recordFailure(mapId, edge, nowMs,

@@ -126,6 +126,24 @@ public class PopulationConfig {
     public int WHISPER_THREAD_MS = 900000;
     /** A party waits this long past its patience for a player who whispered in, took the invite and walks over. */
     public int WHISPER_JOIN_COMING_MS = 300000;
+    // Jump quests (docs/BOT_CONCEPT_PLAN.md F5b)
+    /** Kill switch: Victoria citizens climb Pet-Walking Road and the Forest of Patience (cohort weight JQ). */
+    public boolean JQ_ENABLED = false;
+    /** The courses citizens run (JumpQuestCourses keys). */
+    public String JQ_COURSES = "pwr,fop_a";
+    /** Mesos a citizen keeps on top of Shane's fee before it pays it. */
+    public int JQ_FEE_RESERVE = 20000;
+    /** A citizen's chance to clear one stage (about seven jumps), stable per citizen within this range. */
+    public double JQ_STAGE_SUCCESS_MIN = 0.3d;
+    public double JQ_STAGE_SUCCESS_MAX = 0.7d;
+    /** Its chance rises this much for each stage it clears without a fall (this session). */
+    public double JQ_PRACTICE_STEP = 0.03d;
+    /** Falls before it gives up. */
+    public int JQ_FALLS_MAX = 8;
+    /** An attempt gives up after this long. */
+    public int JQ_ATTEMPT_MAX_MS = 1200000;
+    /** No JQ plan for this long after one. */
+    public int JQ_COOLDOWN_MS = 21600000;
 
     // Conversation (plan 6)
     public boolean CONVERSATION_ENABLED = true;
@@ -351,6 +369,13 @@ public class PopulationConfig {
                 || WHISPER_THREAD_MS < 0 || WHISPER_JOIN_COMING_MS < 0) {
             throw new IllegalArgumentException("population.LF_SMEGA_AFTER_MS, LF_SMEGA_PER_PARTY and the WHISPER_* times must"
                     + " be >= 0, LF_SMEGA_STOCK 0..2 and LF_SMEGA_RESTOCK_CHANCE 0..1");
+        }
+        if (JQ_STAGE_SUCCESS_MIN < 0.05 || JQ_STAGE_SUCCESS_MAX > 0.95 || JQ_STAGE_SUCCESS_MIN > JQ_STAGE_SUCCESS_MAX
+                || JQ_PRACTICE_STEP < 0 || JQ_PRACTICE_STEP > 0.2 || JQ_FALLS_MAX < 1 || JQ_ATTEMPT_MAX_MS < 60000
+                || JQ_COOLDOWN_MS < 0 || JQ_FEE_RESERVE < 0) {
+            throw new IllegalArgumentException("population.JQ_STAGE_SUCCESS_MIN..MAX must lie in 0.05..0.95 (MIN <= MAX),"
+                    + " JQ_PRACTICE_STEP 0..0.2, JQ_FALLS_MAX >= 1, JQ_ATTEMPT_MAX_MS >= 60000, JQ_COOLDOWN_MS and"
+                    + " JQ_FEE_RESERVE >= 0");
         }
         if (CHANNELS == null || CHANNELS.isBlank()) {
             throw new IllegalArgumentException("population.CHANNELS must name at least one channel");

@@ -735,6 +735,9 @@ public final class PresenceScheduler {
             if (activity == Activity.PLAY && (miniGames() == null || !miniGames().plays(citizen, now))) {
                 weight = 0;
             }
+            if (activity == Activity.JQ && (session.virtual || jumpQuests() == null || !jumpQuests().plays(session, level, now))) {
+                weight = 0;
+            }
             if (weight > 0) {
                 options.add(activity);
                 option.add(weight);
@@ -779,6 +782,10 @@ public final class PresenceScheduler {
                 int town = miniGames() == null ? 0 : miniGames().townFor(citizen);
                 return town > 0 ? town : population.fields().homeTown(citizen, random);
             }
+            case JQ -> {
+                int start = jumpQuests() == null ? 0 : jumpQuests().mapFor(session, level);
+                return start > 0 ? start : population.fields().homeTown(citizen, random);
+            }
             default -> {
                 return population.fields().homeTown(citizen, random);
             }
@@ -800,6 +807,12 @@ public final class PresenceScheduler {
             case PQ -> waitAtLobby(session, map, now);
             case PLAY -> {
                 if (miniGames() == null || !miniGames().arrive(session, map, now)) { // no minigames here: a town visit
+                    session.activity = Activity.TOWN;
+                    stroll(session, map, now);
+                }
+            }
+            case JQ -> {
+                if (jumpQuests() == null || !jumpQuests().arrive(session, map, now)) { // nothing to climb here: a visit
                     session.activity = Activity.TOWN;
                     stroll(session, map, now);
                 }
@@ -860,6 +873,11 @@ public final class PresenceScheduler {
         return population.miniGames();
     }
 
+    /** The population's jump quests; null in tests that leave them out. */
+    private CitizenJumpQuests jumpQuests() {
+        return population.jumpQuests();
+    }
+
     /** True while the citizen is in a party quest of its party, or on its way back from one. */
     private boolean inPartyQuest(CitizenSession session) {
         CitizenPartyQuests partyQuests = partyQuests();
@@ -918,6 +936,9 @@ public final class PresenceScheduler {
         }
         if (miniGames() != null && miniGames().holds(session)) {
             return; // its PLAY session plans its next activity when its games are done (CitizenMiniGames)
+        }
+        if (jumpQuests() != null && jumpQuests().holds(session)) {
+            return; // its jump quest plans its next activity when it clears or gives up (CitizenJumpQuests)
         }
         if (onSupplyTrip(session)) {
             // no AFK, stroll or re-plan while its own shop trip runs: a re-plan that is due stays due for the next sweep
