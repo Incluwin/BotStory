@@ -7,6 +7,9 @@ import server.living.config.Content.Persona;
 import server.living.config.Content.Phrase;
 import server.living.config.Content.Quest;
 import server.living.config.Content.Rumor;
+import server.living.config.Content.Scene;
+import server.living.config.Content.Story;
+import server.living.config.Content.StoryChapter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +46,12 @@ public final class LivingContent {
     private final Map<String, Integer> portraitNpcIds;
     /** persona id -> its {@code knows:} names (plan 7.7), in file order; personas without one are absent. */
     private final Map<String, List<String>> personaKnows;
+    /** Personal story arcs (F6) by id, and the scenes their SCENE steps stage. */
+    private final Map<String, Story> stories;
+    private final Map<String, Scene> scenes;
+    /** A story chapter's quest id -> its story, and -> the client quest-log id it keeps until the client patch. */
+    private final Map<String, Story> storyByQuest;
+    private final Map<String, Integer> storyLogIds;
     private final List<String> warnings;
 
     LivingContent(Map<String, Persona> personas,
@@ -69,6 +78,23 @@ public final class LivingContent {
                   Map<String, Integer> portraitNpcIds,
                   Map<String, List<String>> personaKnows,
                   List<String> warnings) {
+        this(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, portraitNpcIds, personaKnows,
+                Map.of(), Map.of(), warnings);
+    }
+
+    LivingContent(Map<String, Persona> personas,
+                  Map<String, Quest> quests,
+                  Map<String, Contract> contracts,
+                  Map<String, Arc> arcs,
+                  Map<String, Rumor> rumors,
+                  Map<String, Loadout> loadouts,
+                  List<Phrase> phrases,
+                  Map<String, Integer> questLogIds,
+                  Map<String, Integer> portraitNpcIds,
+                  Map<String, List<String>> personaKnows,
+                  Map<String, Story> stories,
+                  Map<String, Scene> scenes,
+                  List<String> warnings) {
         this.personas = Collections.unmodifiableMap(new LinkedHashMap<>(personas));
         Map<String, Persona> byName = new LinkedHashMap<>();
         for (Persona persona : personas.values()) {
@@ -86,6 +112,22 @@ public final class LivingContent {
         Map<String, List<String>> knows = new LinkedHashMap<>();
         personaKnows.forEach((id, names) -> knows.put(id, List.copyOf(names)));
         this.personaKnows = Collections.unmodifiableMap(knows);
+        this.stories = Collections.unmodifiableMap(new LinkedHashMap<>(stories));
+        this.scenes = Collections.unmodifiableMap(new LinkedHashMap<>(scenes));
+        Map<String, Story> byQuest = new LinkedHashMap<>();
+        Map<String, Integer> logIds = new LinkedHashMap<>();
+        for (Story story : stories.values()) {
+            for (StoryChapter chapter : story.chapters()) {
+                byQuest.put(chapter.quest(), story);
+                logIds.put(chapter.quest(), chapter.logId());
+            }
+            if (story.rival() != null) {
+                byQuest.put(story.rival().quest(), story);
+                logIds.put(story.rival().quest(), story.rival().logId());
+            }
+        }
+        this.storyByQuest = Collections.unmodifiableMap(byQuest);
+        this.storyLogIds = Collections.unmodifiableMap(logIds);
         this.warnings = List.copyOf(warnings);
     }
 
@@ -210,6 +252,46 @@ public final class LivingContent {
 
     public List<Phrase> phrases() {
         return phrases;
+    }
+
+    public Map<String, Story> stories() {
+        return stories;
+    }
+
+    public Story story(String id) {
+        return id == null ? null : stories.get(id);
+    }
+
+    /** The persona's personal story arc (F6), or null; a hire has none. */
+    public Story storyOf(String personaId) {
+        if (personaId == null || isHire(personaId)) {
+            return null;
+        }
+        for (Story story : stories.values()) {
+            if (story.persona().equals(personaId)) {
+                return story;
+            }
+        }
+        return null;
+    }
+
+    /** The story whose chapter (or race chapter) this quest is, or null for any other quest. */
+    public Story storyOfQuest(String questId) {
+        return questId == null ? null : storyByQuest.get(questId);
+    }
+
+    /** The client quest-log id a story chapter keeps for the client patch (not mirrored before it ships), or 0. */
+    public int storyLogId(String questId) {
+        Integer id = questId == null ? null : storyLogIds.get(questId);
+        return id == null ? 0 : id;
+    }
+
+    public Map<String, Scene> scenes() {
+        return scenes;
+    }
+
+    public Scene scene(String id) {
+        return id == null ? null : scenes.get(id);
     }
 
     public List<String> warnings() {

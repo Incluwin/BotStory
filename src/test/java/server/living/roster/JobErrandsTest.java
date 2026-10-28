@@ -155,6 +155,27 @@ class JobErrandsTest {
     }
 
     @Test
+    void anAttendedErrandSendsItNowhereAndAnUnattendedOneGoesAsBefore() {
+        server.living.story.StoryArcs stories = mock(server.living.story.StoryArcs.class);
+        server.living.story.ErrandAttend attend = mock(server.living.story.ErrandAttend.class);
+        when(game.world.stories()).thenReturn(stories);
+        when(stories.errands()).thenReturn(attend);
+        when(attend.offer(any(), any(), any(), any(), any())).thenReturn(true);
+
+        Character bot = game.bot(casse);
+        errands.due(CASSE, Job.IL_WIZARD);
+        verify(attend).offer(eq(game.ann), eq(casse), eq(bot), eq(Job.IL_WIZARD), any());
+        assertEquals(RosterState.ACTIVE, game.row(casse).state(), "F6.3: it asked to be attended and stays");
+        assertFalse(game.calls.contains("leave Casse"));
+        assertNull(errands.errand("casse"));
+
+        when(attend.offer(any(), any(), any(), any(), any())).thenReturn(false);
+        errands.due(CASSE, Job.IL_WIZARD);
+        assertEquals(RosterState.AWAY, game.row(casse).state(), "no: today's errand");
+        assertTrue(game.calls.contains("leave Casse"));
+    }
+
+    @Test
     void anErrandIsUnderwayAndNamesItsInstructorUntilItHasAdvanced() {
         assertFalse(errands.underway("casse"));
         assertNull(errands.visiting("casse"));

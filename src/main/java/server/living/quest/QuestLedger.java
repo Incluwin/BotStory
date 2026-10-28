@@ -232,6 +232,16 @@ public final class QuestLedger {
             quest = quests.get(0);
         }
         offers.remove(key(chr, persona));
+        begin(chr, persona, quest);
+        return true;
+    }
+
+    /**
+     * Starts {@code quest} with no offer window: the accept path once the player said yes, and a personal story's
+     * chapter, whose conversation was the offer (server.living.story.StoryTalk). A TALK first step is that conversation
+     * and is done at once, so a TALK-only chapter completes here, with its closing window.
+     */
+    public void begin(Character chr, Persona persona, Quest quest) {
         long now = System.currentTimeMillis();
         QuestState previous = world.store().questState(chr.getId(), quest.id());
         QuestState state = new QuestState(chr.getId(), quest.id(), 0, 0, QuestStatus.ACTIVE, now, 0L,
@@ -252,7 +262,26 @@ public final class QuestLedger {
         } else {
             describeStep(chr, quest, state);
         }
+    }
+
+    /**
+     * The quest's SCENE step was played through (server.living.story.StoryScenes): the step is done. False when the
+     * player is not on that quest's SCENE step (an aborted or stale scene).
+     */
+    public boolean sceneDone(Character chr, String questId) {
+        QuestState state = world.store().questState(chr.getId(), questId);
+        Quest quest = world.content().quest(questId);
+        Step step = quest == null || state == null || state.status() != QuestStatus.ACTIVE ? null : quest.step(state.stepIndex());
+        if (step == null || step.type() != StepType.SCENE) {
+            return false;
+        }
+        advance(chr, world.content().persona(quest.persona()), quest, state);
         return true;
+    }
+
+    /** True when the persona could offer the player this quest now (its requirements, as {@link #available} reads them). */
+    public boolean offerable(Character chr, Persona persona, Quest quest) {
+        return eligible(chr, persona, quest, world.store().worldFlags());
     }
 
     /** The player says they are done / hands something over to this persona. */
@@ -673,6 +702,9 @@ public final class QuestLedger {
         // the closing line of the chapter the quest was completed in: a chapter this completion opens (its world flag, or
         // onComplete) overrides it for the players who come after, not for the one who opened it
         List<String> closingLines = giver == null ? List.of() : world.arcs().lines(giver, "questComplete." + quest.id());
+        if (closingLines.isEmpty() && world.content().storyOfQuest(quest.id()) != null) {
+            closingLines = quest.steps().get(quest.steps().size() - 1).say(); // a story chapter closes with its last step's
+        }
         if (quest.onComplete() != null && giver != null) {
             world.arcs().advance(giver, quest.onComplete().to(), "quest " + quest.id() + " by " + chr.getName(), false);
         }
@@ -840,6 +872,7 @@ public final class QuestLedger {
             case REACH_LEVEL: return "reach level " + step.level();
             case WAIT: return "come back in " + step.hours() + " hour(s)";
             case PARTY_QUEST_CLEAR: return "clear a party quest" + (step.to() == null ? "" : " (" + step.to() + ")");
+            case SCENE: return "go with them when they are ready (double-click them)";
             default: return step.id();
         }
     }

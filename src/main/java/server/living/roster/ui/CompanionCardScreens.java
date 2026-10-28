@@ -233,6 +233,9 @@ final class CompanionCardScreens {
             options.add(new Option(CompanionQuestScreens.LABEL,
                     () -> CompanionQuestScreens.show(world, owner, persona, () -> reopen(owner, persona, ""))));
         }
+        if (here && world.stories() != null) { // its personal story (F6): a chapter to tell, a scene to go to, a race
+            options.addAll(world.stories().cardOptions(owner, persona));
+        }
         if (CompanionSettings.habitsOn()) {
             options.add(new Option("Learned from you...", () -> learned(owner, persona, "")));
         }

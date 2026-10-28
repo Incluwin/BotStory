@@ -59,6 +59,10 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
         if (mentors != null && mentors.leading(agentCharacterId)) {
             return true; // F4.3: a mentor walking ahead of its newcomer, or waiting for them beyond a portal
         }
+        server.living.story.StoryArcs stories = world.stories();
+        if (stories != null && stories.errands().leading(agentCharacterId)) {
+            return true; // F6.3: leading its owner the last stretch to its instructor
+        }
         if (!roster.keepsAnyOffFollow()) {
             return false;
         }

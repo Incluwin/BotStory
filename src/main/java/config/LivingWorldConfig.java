@@ -377,6 +377,29 @@ public class LivingWorldConfig {
     /** "Looking for a mentor" requests open at once, world-wide, and the chance a fitting citizen posts one. */
     public int APPRENTICE_NEEDS_MAX = 2;
     public double APPRENTICE_NEED_CHANCE = 0.1;
+    /**
+     * Personal story arcs (docs/BOT_CONCEPT_PLAN.md F6.1, F6.2, F6.6): a companion's chapters for its owner, its scenes
+     * in a private copy of a map and the race with an authored rival. False: no chapter is offered, no scene starts.
+     */
+    public boolean PERSONAL_ARCS_ENABLED = false;
+    /** A calm moment for a chapter's nudge: no monster within this many pixels of the owner or the companion. */
+    public int STORY_CALM_RANGE_PX = 400;
+    /** A scene line's least time on screen; typing time (per character) comes on top, up to 6 s in all. */
+    public long STORY_LINE_MIN_MS = 1800L;
+    /** A scene longer than this ends (its step waits for another try). */
+    public int STORY_SCENE_MAX_MINUTES = 15;
+    /** A race whose damage shares are this many points apart or closer is even. */
+    public int STORY_RACE_EVEN_PERCENT = 10;
+    /**
+     * Attendable job errands (F6.3): before its 3rd or 4th job a companion asks its owner to come along, leads them
+     * through the instructor's town and advances in front of them. False: it goes alone, as before.
+     */
+    public boolean JOB_ERRAND_ATTEND_ENABLED = false;
+    /** An attended errand the owner has not reached the instructor's town for in this many minutes: it goes alone. */
+    public int JOB_ERRAND_ATTEND_MAX_MINUTES = 60;
+    /** How often the "come with me?" window is tried while another window is open, and how far apart. */
+    public int JOB_ERRAND_ATTEND_ASK_TRIES = 6;
+    public long JOB_ERRAND_ATTEND_ASK_RETRY_MS = 5000L;
     /** Decision 18: Residents one friend may keep on their roster at once (0 = none). */
     public int RESIDENT_CAP_PER_OWNER = 5;
     /** Decision 18: a friend away this many days releases their Residents to go home (0 = never). */
@@ -976,6 +999,15 @@ public class LivingWorldConfig {
                 || APPRENTICE_NEEDS_MAX < 0 || !share(APPRENTICE_NEED_CHANCE)) {
             throw new IllegalArgumentException("living_world.APPRENTICE_ADOPT_MAX_LEVEL must be within 1..30,"
                     + " APPRENTICE_ADOPT_MIN_OWNER_LEVEL >= 1, APPRENTICE_NEEDS_MAX >= 0, APPRENTICE_NEED_CHANCE 0..1");
+        }
+        if (STORY_CALM_RANGE_PX < 0 || STORY_LINE_MIN_MS < 500 || STORY_SCENE_MAX_MINUTES < 1 || STORY_SCENE_MAX_MINUTES > 60
+                || STORY_RACE_EVEN_PERCENT < 0 || STORY_RACE_EVEN_PERCENT > 50) {
+            throw new IllegalArgumentException("living_world.STORY_*: CALM_RANGE_PX >= 0, LINE_MIN_MS >= 500,"
+                    + " SCENE_MAX_MINUTES 1..60, RACE_EVEN_PERCENT 0..50");
+        }
+        if (JOB_ERRAND_ATTEND_MAX_MINUTES < 5 || JOB_ERRAND_ATTEND_ASK_TRIES < 1 || JOB_ERRAND_ATTEND_ASK_RETRY_MS < 1000) {
+            throw new IllegalArgumentException("living_world.JOB_ERRAND_ATTEND_*: MAX_MINUTES >= 5, ASK_TRIES >= 1,"
+                    + " ASK_RETRY_MS >= 1000");
         }
         if (RESIDENT_CAP_PER_OWNER < 0 || RESIDENT_CAP_PER_OWNER > ROSTER_MAX) {
             throw new IllegalArgumentException("living_world.RESIDENT_CAP_PER_OWNER must be within 0..ROSTER_MAX");

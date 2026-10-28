@@ -567,6 +567,11 @@ public class Monster extends AbstractLoadedLife {
         return takenDamage.containsKey(chr.getId());
     }
 
+    public long damageBy(int characterId) {
+        AtomicLong d = takenDamage.get(characterId);
+        return d == null ? 0L : d.get();
+    }
+
     private static boolean isWhiteExpGain(Character chr, Map<Integer, Float> personalRatio, double sdevRatio) {
         Float pr = personalRatio.get(chr.getId());
         if (pr == null) {
