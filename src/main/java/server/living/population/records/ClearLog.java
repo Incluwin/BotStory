@@ -52,6 +52,8 @@ public final class ClearLog {
     private final Ports ports;
     private volatile QuestLabels labels;
     private volatile Listener listener;
+    /** Who else hears of each booked clear, after the crews (F6.4 crew ties). */
+    private final List<java.util.function.Consumer<Clear>> booked = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final Map<String, Clear> firsts = new HashMap<>();
     private final Map<String, Clear> fastest = new HashMap<>();
     private final Map<Integer, Map<String, Long>> playerBests = new HashMap<>();
@@ -76,6 +78,11 @@ public final class ClearLog {
 
     public void listen(Listener crews) {
         this.listener = crews;
+    }
+
+    /** {@code listener} hears of every booked clear after the crews, on the living executor (crew ties, F6.4). */
+    public void onBooked(java.util.function.Consumer<Clear> listener) {
+        booked.add(listener);
     }
 
     public QuestLabels labels() {
@@ -156,6 +163,13 @@ public final class ClearLog {
                     clear.timed() ? time(clear.durationMs()) : "-", crewId, names(clear, 8));
             if (crews != null) {
                 crews.cleared(clear, crewBefore, playersBefore);
+            }
+            for (java.util.function.Consumer<Clear> listener : booked) {
+                try {
+                    listener.accept(clear);
+                } catch (RuntimeException failure) {
+                    log.warn("a listener of the clear of {} failed", clear.quest(), failure);
+                }
             }
         } catch (RuntimeException failure) {
             log.warn("clear of {} could not be booked", unbooked.quest(), failure);

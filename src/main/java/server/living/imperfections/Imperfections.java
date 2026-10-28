@@ -379,6 +379,12 @@ public final class Imperfections implements AgentImperfections.Rule {
         return new Point(companion.getPosition());
     }
 
+    /** True while this companion stands AFK (crew banter leaves it out); reads only, any thread. */
+    public boolean companionAway(int companionId) {
+        CompanionAfk afk = afks.get(companionId);
+        return afk != null && clock.getAsLong() < afk.untilMs;
+    }
+
     private record CompanionAfk(int mapId, Point spot, Point ownerAt, long untilMs, boolean said) {
     }
 

@@ -172,6 +172,22 @@ class ClearLogTest {
     }
 
     @Test
+    void theCrewsAndEveryOtherListenerHearOfABookedClearAndAFailingOneStopsNoOne() {
+        List<Clear> heard = new ArrayList<>();
+        log.onBooked(clear -> {
+            throw new IllegalStateException("a broken listener");
+        });
+        log.onBooked(heard::add);
+
+        log.cleared(List.of(member(10, "Ann", Clear.AS_PLAYER), member(900, "Casse", Clear.AS_COMPANION)), KPQ, "k1",
+                NOW - 12 * MINUTE, NOW);
+
+        assertEquals(1, crews.crewBefore.size(), "the rival crews hear of it as before");
+        assertEquals(1, heard.size(), "and so does the crew-ties listener (F6.4)");
+        assertEquals(store.rows.getFirst().id(), heard.getFirst().id());
+    }
+
+    @Test
     void timesReadAsPlayersWriteThem() {
         assertEquals("14:20", ClearLog.time(14 * MINUTE + 20_000L));
         assertEquals("0:09", ClearLog.time(9_400L));

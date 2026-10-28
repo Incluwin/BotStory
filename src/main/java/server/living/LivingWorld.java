@@ -108,6 +108,7 @@ public final class LivingWorld {
     private final server.living.roster.CompanionRoles roles;
     private final server.living.mentor.Mentorship mentors;
     private final server.living.mentor.Apprentices apprentices;
+    private final server.living.crew.Crew crew;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -170,6 +171,7 @@ public final class LivingWorld {
         this.roles = new server.living.roster.CompanionRoles(this); // F4: mentors and apprentices among the hires
         this.mentors = new server.living.mentor.Mentorship(this);
         this.apprentices = new server.living.mentor.Apprentices(this);
+        this.crew = new server.living.crew.Crew(this); // F6.4: crew ties (a view) and banter
     }
 
     public static LivingWorld get() {
@@ -335,6 +337,12 @@ public final class LivingWorld {
                 world.executor.submit("mentor.sweep", world.mentors::tick);
             }
         }, server.living.mentor.Mentorship.SWEEP_MS, server.living.mentor.Mentorship.SWEEP_MS));
+        // crew banter (F6.4): each online owner's crew, every CREW_BANTER_TICK_MS; nothing is handed over while it is off
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            if (world.config.CREW_BANTER_ENABLED) {
+                world.executor.submit("crew.banter", world.crew.banter()::tick);
+            }
+        }, config.CREW_BANTER_TICK_MS, config.CREW_BANTER_TICK_MS));
         // loans of companions to friends end on time, with their friend or owner gone, or with the switch off
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             if (world.loans.any()) {
@@ -383,6 +391,11 @@ public final class LivingWorld {
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
         server.living.population.Population.start(world);
+        // F6.4: each booked clear adds to the crew ties of the owners in it, and may give their crews an after-clear moment
+        server.living.population.Population booted = server.living.population.Population.get();
+        if (booted != null && booted.clears() != null) {
+            booted.clears().onBooked(world.crew::booked);
+        }
         server.knowledge.PersonalKnowledge.shared().start(); // bots' known worlds: recorded from here, written behind (plan 7.4)
         // the roster's hire rows are the truth for the citizens' hired flags: checked once the population is up (P4)
         world.executor.submit("hire.reconcile", world.hiredHands::reconcileFlags);
@@ -443,6 +456,7 @@ public final class LivingWorld {
         this.content = reloaded;
         phrases.reload();
         arcs.loadState();
+        crew.reload();
         residents.contentChanged();
         return reloaded.warnings();
     }
@@ -660,6 +674,11 @@ public final class LivingWorld {
     /** F4.5: the apprentices players adopt. */
     public server.living.mentor.Apprentices apprentices() {
         return apprentices;
+    }
+
+    /** F6.4: crew ties and banter. */
+    public server.living.crew.Crew crew() {
+        return crew;
     }
 
     /** Companions earning their own Crimsonwood Keystone (2026-10-19): the errands out. */

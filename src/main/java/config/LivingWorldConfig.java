@@ -635,6 +635,29 @@ public class LivingWorldConfig {
      */
     public int COMPANION_WHISPER_REFUSAL_GAP_MS = 5000;
 
+    // Crew ties and banter (2026-10-28, docs/BOT_CONCEPT_PLAN.md F6.4; server.living.crew)
+    /**
+     * Kill switch: two of an owner's companions trade a call and an answer in party chat at calm moments. False: nothing
+     * is said or kept for banter (the ties themselves are a view read at each owner's login either way).
+     */
+    public boolean CREW_BANTER_ENABLED = false;
+    /** How often the banter looks at each online owner's crew (the tick hands nothing over while switched off). */
+    public long CREW_BANTER_TICK_MS = 20_000L;
+    /** At most one exchange per this many minutes of party time (two or more companions along, the owner moving). */
+    public int CREW_BANTER_GAP_MINUTES = 10;
+    /** Chance a calm town or walk tick past the gap starts an exchange (a clear's moment always does). */
+    public double CREW_BANTER_CHANCE = 0.25d;
+    /** A clear's moment waits this long for a calm spot off the instance, then lapses. */
+    public long CREW_BANTER_AFTER_CLEAR_WINDOW_MS = 300_000L;
+    /** Party time stops while the owner has not moved for this long (an AFK owner gets no crew chatting on a clock). */
+    public long CREW_BANTER_OWNER_IDLE_MS = 300_000L;
+    /** No exchange while a hostile mob is this close to the owner or a speaker. */
+    public int CREW_BANTER_CALM_RANGE_PX = 400;
+    /** Affinity two companions gain per clear they shared with their owner (living_clear). */
+    public int CREW_TIE_CLEAR_POINTS = 3;
+    /** A pair with nothing authored between them is FRIEND, not CREWMATE, from this affinity. */
+    public int CREW_TIE_FRIEND_AFFINITY = 40;
+
     /** True when CREW_WINDOW_NATIVE lets a character use the native Crew window: "all", or "gm" for a GM (any case). */
     public boolean crewWindowNative(boolean gm) {
         String mode = CREW_WINDOW_NATIVE == null ? "" : CREW_WINDOW_NATIVE.trim();
@@ -1102,6 +1125,14 @@ public class LivingWorldConfig {
         }
         if (COMPANION_WHISPER_REFUSAL_GAP_MS < 0) {
             throw new IllegalArgumentException("living_world.COMPANION_WHISPER_REFUSAL_GAP_MS must be >= 0");
+        }
+        if (CREW_BANTER_TICK_MS < 5000 || CREW_BANTER_GAP_MINUTES < 1 || !share(CREW_BANTER_CHANCE)
+                || CREW_BANTER_AFTER_CLEAR_WINDOW_MS < 0 || CREW_BANTER_OWNER_IDLE_MS < 60000
+                || CREW_BANTER_CALM_RANGE_PX < 100 || CREW_TIE_CLEAR_POINTS < 0 || CREW_TIE_CLEAR_POINTS > 100
+                || CREW_TIE_FRIEND_AFFINITY < 1 || CREW_TIE_FRIEND_AFFINITY > 100) {
+            throw new IllegalArgumentException("living_world.CREW_BANTER_*: TICK_MS >= 5000, GAP_MINUTES >= 1, CHANCE"
+                    + " within 0..1, AFTER_CLEAR_WINDOW_MS >= 0, OWNER_IDLE_MS >= 60000, CALM_RANGE_PX >= 100;"
+                    + " CREW_TIE_CLEAR_POINTS within 0..100 and CREW_TIE_FRIEND_AFFINITY within 1..100");
         }
     }
 

@@ -415,6 +415,79 @@ its newest mentor row; `!mentor offer <player>` opens a test character's offer a
 `mentor.pending|offered|accepted|declined|graduated|ended`, `mentor.tip`, `mentor.muted`, `mentor.pick`;
 `apprentice.adopted|pick|build|graduated`.
 
+### Crew ties and banter
+
+Two of your companions talk to each other now and then, in party chat (docs/BOT_CONCEPT_PLAN.md F6.4,
+`server.living.crew`). The banter is off until its live checks pass (`living_world.CREW_BANTER_ENABLED`); the ties
+under it are always kept.
+
+**Ties** (`CrewTies`): what two companions on one owner's roster are to each other, and how close.
+
+- **Kinds.** They come from content. `TieKind.of` reads each persona's `relationships` (free-text kinds) as RIVAL
+  (RIVAL, RIVALS, RIVAL_OF, SPARS_WITH, TEASES, ARGUES_WITH, OUTSHOOTS and the rest of `TieKind.RIVAL_KINDS`), OWES
+  (OWES...) or OWED (IS_OWED..., SAVED), BLAMES (BLAMES..., RESENTS) or BLAMED, no tie (NEVER_MET, HAS_NOT_MET, HEARD_OF)
+  or FRIEND (everything else). The other side's kinds count too, mirrored: Dorran OWES Ilse, so Ilse is OWED.
+- **Spouses.** A lore couple's `spouse` is SPOUSE while the two are still married: once both are loaded, their stock
+  partner ids must name each other, so a lore spouse who wed its owner at the chapel has parted. Ties are sets, so a
+  married pair of rivals (Vesna and Ansel) is both.
+- **Crewmates.** A pair with nothing authored, hires among them, is CREWMATE, and FRIEND from `CREW_TIE_FRIEND_AFFINITY`.
+  A hire is never a rival or a spouse in v1.
+- **Affinity** (0-100). The best seed of the pair's kinds (`banter.yaml` `ties.seeds`: spouse 60, friend 40, rival,
+  debts and grudges 30, crewmate 0), plus `CREW_TIE_CLEAR_POINTS` for each `living_clear` the owner and both companions
+  were in.
+- **Storage.** Nothing new is stored. An owner's shared clears are read back from `living_clear_member` at its login
+  (on companion-ops; a failed read leaves the seeds), and each booked clear adds to them (`ClearLog.onBooked`).
+- **Read API** (any thread, for the story arcs' rival chapters): `TieKind.of(kind)`, `CrewTies.tie(ownerId, a, b)`
+  (never null) and `CrewTies.rivals(ownerId)`.
+
+**Banter** (`CrewBanter`, lines in `scripts/config/living-world/banter.yaml`). Every `CREW_BANTER_TICK_MS`, each owner
+online with two or more of its companions free on its map (in its party, alive, not AFK, not held by a run, not a mentor
+leading its newcomer) may hear one exchange: a call from one companion, then an answer from the other after a read and
+a type.
+
+- **Calm moments only:**
+  - in town;
+  - just onto a new field (the walk between maps);
+  - after a clear (two or more of the owner's companions in it): the exchange waits for the first calm moment off the
+    instance, at most `CREW_BANTER_AFTER_CLEAR_WINDOW_MS`, and quotes the clear's real time.
+- **Never:** on an event-instance map (party quest stages, boss maps), with a hostile mob within
+  `CREW_BANTER_CALM_RANGE_PX` of the owner or a speaker, with a boss alive on the map, or while a run holds the owner.
+- **The cap.** At most one exchange per `CREW_BANTER_GAP_MINUTES` (10) of party time, per owner and per party (two
+  owners sharing a party do not double it). Party time runs only while two or more companions are along and the owner
+  moved within `CREW_BANTER_OWNER_IDLE_MS`. A town or walk moment past the gap rolls `CREW_BANTER_CHANCE`, and the call
+  comes 0-15 s after the tick, so the gaps are irregular.
+- **What they say** depends on the tie, from the caller's side: crewmates getting to know each other, plans and the
+  road, friends, after-clear times, spouses, a debt, a grudge, and rivals. Fenna and Dorran (the pilot rivals) also have
+  exchanges in their own voices (`pair:`); those are preferred. The pair heard last is left out while another fits, and
+  so are lines heard lately.
+- **Rivals use real numbers only** (`RivalFacts`). The one ahead calls. Each stat exchange is said only when its fact
+  exists:
+  - `level`: their levels now;
+  - `record`: clears out of runs in one PQ or boss, both with 3 or more runs;
+  - `deaths` and `damage`: the newest companion run both were in, within 3 h (`companion_performance`);
+  - `best_time`: each one's fastest clear of a quest with this owner.
+  The catalog lint makes a digit in any line an error, so a number can only come from a slot.
+- **Voices.** Residents say the catalog's lines as written. A hire (or a mentor or an apprentice) takes its citizen
+  voice's style variant where the exchange has one, through its voice pack: abbreviations, case, emoticons, and no
+  typos on a line with a number.
+- **Mute.** The owner's whole map or party chat line "quiet", "no chatter", "stop talking", "zip it", "shh" (with
+  "guys", "all", "please"...) mutes the crew; "talk more", "chatter on", "you can talk" unmutes it. It is kept as
+  `living_event_log` `banter.muted` rows (`on`/`off`), read at login. One companion answers a change in party chat,
+  unless a phrase pack already answered the line (the PLANNED `quiet` and `talk more` packs). The mentor's own tips
+  mute separately ("quiet please" mutes both).
+- **The tell audit** hears every banter line as party chat (`TellAudit.chatLine`), so a too-regular rhythm or a
+  repeated line shows up in `/runtime/tells`.
+
+**Damage share.** Every companion party quest or boss run now writes `companion_performance.damage_share`: each
+member's share of the damage the run's members dealt (party quests: every kill while the run goes; boss runs: the boss
+parts). It is measuring only and not behind the switch, as `CLEAR_RECORDS_ENABLED` measures clears.
+`server.living.roster.RunDamage` reads the monster's own damage record at each kill, and a kill with no companion party
+quest running costs one empty-map check.
+
+`!banter <player>` (GM 5) shows the switch, the mute, the party time toward the cap, a clear waiting for its moment, the
+map, and each pair of free companions with its kinds, affinity and shared clears. `!banter now <player>` starts one
+exchange at once, whatever the cap and the roll (not over a fight, an instance or a mute), for live checks and clips.
+
 ### The in-game quest log
 
 Living quests can appear in the client's quest log next to the stock quests (In Progress and
@@ -686,6 +759,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
 | mentors and apprentices | `server.living.mentor.*` (`Mentorship`, `MentorLead`, `MentorRoute`, `MentorTips`, `FirstLogin`, `Apprentices`), roles `server.living.roster.CompanionRoles`, `!mentor` (`gm5.MentorCommand`) |
 | tell audit | `server.living.audit.*`, Agent seam `AgentTellProbe`, `AdminTellsReader` (`/runtime/tells`), `tools\tells-report.ps1` |
+| crew ties and banter | `server.living.crew.*` (`Crew`, `CrewTies`, `TieKind`, `CrewBanter`, `RivalFacts`, `BanterCatalog`), `banter.yaml`, damage shares `server.living.roster.RunDamage`, `!banter` (`gm5.BanterCommand`) |
 | imperfections | `server.living.imperfections.*`, Agent seam `AgentImperfections` (+ `AgentImperfectionPolicy`, `AgentFumbles`, `AgentLateDrinkRuntime`, `AgentRezWaitRuntime`), `AdminImperfectionsReader` (`/runtime/imperfections`), field AFK `population.FieldPause` |
 
 ## Not done yet (from the plan)

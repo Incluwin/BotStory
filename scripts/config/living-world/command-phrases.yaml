@@ -329,8 +329,15 @@ commands:
     status: PLANNED
     reply: "i'll keep it short."
     aliases: [quiet, "be quiet", "shut up", "less talking", "talk less", "stop talking", "zip it", "hush", "silence",
-              "no chatter", "less chatter", "talk more", "say more", "chat more", "speak up", "be chatty", "tell me things",
-              "keep me company", "talk to me"]
+              "no chatter", "less chatter"]
+    tails: [please, now, "ok", "for a bit", "a bit"]
+  # the other way round (it used to share the quiet pack and answered "i'll keep it short."); with
+  # living_world.CREW_BANTER_ENABLED the crew's banter mute itself follows both packs (server.living.crew.CrewBanter)
+  - canonical: talk more
+    status: PLANNED
+    reply: "sure, i can talk more."
+    aliases: ["talk more", "say more", "chat more", "speak up", "be chatty", "tell me things", "keep me company",
+              "talk to me"]
     tails: [please, now, "ok", "for a bit", "a bit"]
   - canonical: what are you doing
     status: PLANNED

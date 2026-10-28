@@ -220,6 +220,7 @@ import client.command.commands.gm5.CitizensCommand;
 import client.command.commands.gm5.StandingCommand;
 import client.command.commands.gm5.NeedsCommand;
 import client.command.commands.gm5.RivalsCommand;
+import client.command.commands.gm5.BanterCommand;
 import client.command.commands.gm5.MentorCommand;
 import client.command.commands.gm5.KnowledgeCommand;
 import client.command.commands.gm5.ShowMoveLifeCommand;
@@ -671,6 +672,7 @@ public class CommandsExecutor {
         addCommand("needs", 5, NeedsCommand.class);
         addCommand("rivals", 5, RivalsCommand.class);
         addCommand("mentor", 5, MentorCommand.class);
+        addCommand("banter", 5, BanterCommand.class);
         addCommand("knowledge", 5, KnowledgeCommand.class);
         addCommand("heapdump", 5, HeapDumpCommand.class);
         addCommand("spawnallpnpcs", 5, SpawnAllPNpcsCommand.class);
