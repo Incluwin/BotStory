@@ -581,6 +581,10 @@ public final class ResidentDialogue {
             case CompanionDirectory.Relation.Citizen citizen -> {
                 CompanionSlots.Reservation seat = world.slots().reservation(CompanionSlots.characterKey(citizen.characterId()));
                 if (seat == null || seat.kind() != CompanionSlots.Kind.GUEST || seat.ownerId() != clicker.getId()) {
+                    if (world.apprentices() != null && world.apprentices().mayAdopt(clicker, citizen.characterId(), false)) {
+                        world.apprentices().offer(clicker, citizen.characterId()); // F4.5: take a beginner on
+                        return true;
+                    }
                     // you carry what its request asks for: its hand-over window (the needs board); else the stock char info
                     server.living.population.Population population = server.living.population.Population.get();
                     return population != null && population.needs() != null

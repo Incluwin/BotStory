@@ -788,7 +788,7 @@ public class Monster extends AbstractLoadedLife {
 
     private void giveExpToCharacter(Character attacker, Float personalExp, Float partyExp, boolean white,
                                     boolean hasPartySharers, int questCreditAgentId) {
-        if (attacker.isAlive()) {
+        if (attacker.isAlive() && !server.living.LivingWorldHooks.withholdsKillExp(attacker)) { // a mentor earns none (F4)
             if (personalExp != null) {
                 personalExp *= getStatusExpMultiplier(attacker, hasPartySharers);
                 personalExp *= attacker.getExpRate();

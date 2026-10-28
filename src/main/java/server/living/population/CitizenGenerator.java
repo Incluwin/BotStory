@@ -123,6 +123,31 @@ public final class CitizenGenerator {
         return birth(cohort, plan.career(), plan.backdateDays(), plan, name, female);
     }
 
+    /**
+     * A new character's mentor (docs/BOT_CONCEPT_PLAN.md F4.1): an Explorer (never a Knight or an Aran, who cannot be on
+     * Maple Island) homed in Victoria, so it has somewhere to live once it goes home, at a level within
+     * {@code minLevel..maxLevel}, its join date set so its life curve sits there as a seed's does. Null when Victoria is
+     * missing, no Explorer career lands in the band, or creation failed.
+     */
+    public Citizen birthMentor(int minLevel, int maxLevel) {
+        PopulationContent content = population.content();
+        Region victoria = content.region("victoria");
+        Cohort cohort = victoria == null ? null : pickCohort();
+        if (cohort == null) {
+            log.warn("mentor not born: no victoria region or no cohort");
+            return null;
+        }
+        Region band = new Region(victoria.id(), Math.max(1, minLevel), Math.max(minLevel, maxLevel), victoria.towns(),
+                victoria.townWeights(), victoria.lobbies(), victoria.fm(), victoria.weight(), victoria.line());
+        SeedPlan plan = planSeed(band, CitizenLines.drawable(content.careers().values(), false),
+                population.config().SEED_BACKDATE_DAYS, population.config().LIFE_PACE, random);
+        if (plan == null) {
+            log.warn("mentor not born: no Explorer career lands in lv{}-{}", minLevel, maxLevel);
+            return null;
+        }
+        return birth(cohort, plan.career(), plan.backdateDays(), plan);
+    }
+
     /** {@code plan} null draws the pace and picks the region by level; otherwise both come from the plan. */
     private Citizen birth(Cohort cohort, Career career, int backdateDays, SeedPlan plan) {
         return birth(cohort, career, backdateDays, plan, null, null);

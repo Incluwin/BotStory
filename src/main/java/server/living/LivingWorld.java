@@ -105,6 +105,9 @@ public final class LivingWorld {
     private final server.living.roster.TicketErrands ticketErrands;
     private final server.living.roster.CompanionBossRuns bossRuns;
     private final server.living.roster.ui.NativeCrewWindow crewWindow;
+    private final server.living.roster.CompanionRoles roles;
+    private final server.living.mentor.Mentorship mentors;
+    private final server.living.mentor.Apprentices apprentices;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -164,6 +167,9 @@ public final class LivingWorld {
         this.ticketErrands = new server.living.roster.TicketErrands(this); // and their Amorian Challenge tickets (2026-10-25)
         this.bossRuns = new server.living.roster.CompanionBossRuns(this); // P7: boss runs with companions
         this.crewWindow = new server.living.roster.ui.NativeCrewWindow(this); // P10: the native Crew window
+        this.roles = new server.living.roster.CompanionRoles(this); // F4: mentors and apprentices among the hires
+        this.mentors = new server.living.mentor.Mentorship(this);
+        this.apprentices = new server.living.mentor.Apprentices(this);
     }
 
     public static LivingWorld get() {
@@ -246,6 +252,12 @@ public final class LivingWorld {
         // then each release a crash or a hard kill cut short is finished, before anyone can recruit or grant its
         // persona: one nobody employs loses the !bossgear kit and the GM level hold its unload never took off
         world.executor.submit("roster.release_cleanup", world.roster::finishReleaseCleanupAtStart);
+        // the roster rows' mentor and apprentice roles, then the mentorships a restart cut into (F4); before any
+        // login's restore, whose mentor recall reads them
+        world.executor.submit("companion.roles", () -> {
+            world.roles.load();
+            world.mentors.load();
+        });
         // companions go to their instructor for their next job by themselves; after the boot reconciliation, so the
         // errands a restart cut short are carried on over reconciled rows (2026-10-05)
         world.jobErrands.install();
@@ -317,6 +329,12 @@ public final class LivingWorld {
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.audit", world.auditor::run),
                 CompanionAuditor.INTERVAL_MS, CompanionAuditor.INTERVAL_MS));
+        // mentors (F4): their levels, tips, leads and goodbyes, once a second; nothing is handed over while none is out
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            if (world.mentors.any()) {
+                world.executor.submit("mentor.sweep", world.mentors::tick);
+            }
+        }, server.living.mentor.Mentorship.SWEEP_MS, server.living.mentor.Mentorship.SWEEP_MS));
         // loans of companions to friends end on time, with their friend or owner gone, or with the switch off
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             if (world.loans.any()) {
@@ -627,6 +645,21 @@ public final class LivingWorld {
     /** Companions going for their next job by themselves (2026-10-05): the errands out. */
     public server.living.roster.JobErrands jobErrands() {
         return jobErrands;
+    }
+
+    /** F4: which hires are mentors or apprentices (living_roster.role). */
+    public server.living.roster.CompanionRoles roles() {
+        return roles;
+    }
+
+    /** F4.1-F4.4: new characters' mentors. */
+    public server.living.mentor.Mentorship mentors() {
+        return mentors;
+    }
+
+    /** F4.5: the apprentices players adopt. */
+    public server.living.mentor.Apprentices apprentices() {
+        return apprentices;
     }
 
     /** Companions earning their own Crimsonwood Keystone (2026-10-19): the errands out. */

@@ -93,6 +93,10 @@ public final class NeedScreens {
             LivingTalk.open(player, NeedBoards.BOARD_NPC).back(back).ok("That one was taken down.").show();
             return;
         }
+        if (need.kind() == NeedKind.MENTOR) {
+            mentorDetails(player, need, back);
+            return;
+        }
         List<LivingTalk.Option> options = new ArrayList<>();
         int holder = need.holder(nowMs);
         int carried = need.kind().item() ? ledger.carried(player, need) : 0;
@@ -280,7 +284,33 @@ public final class NeedScreens {
         if (need.kind() == NeedKind.PARTY) {
             return name + knows + ": party at " + mapName(where(need)) + " wants " + ledger.what(need);
         }
+        if (need.kind() == NeedKind.MENTOR) {
+            return name + knows + ": looking for a mentor, at " + mapName(where(need));
+        }
         return name + knows + ": " + amount(need) + " @ " + Market.formatPrice(need.offer()) + held;
+    }
+
+    /**
+     * A beginner's "looking for a mentor" (F4.5): who and where, and taking them on as an apprentice here (the same
+     * window a double-click on them opens); with apprentices off or no room for one, only where they are.
+     */
+    private void mentorDetails(Character player, Need need, Runnable back) {
+        Citizen citizen = population.citizen(need.citizenId());
+        CitizenSession session = population.presence().session(need.citizenId());
+        boolean about = session != null && !session.virtual && session.agent() != null;
+        String text = (citizen == null ? "Someone" : "#e" + citizen.name() + "#n")
+                + (about ? ", Lv" + session.agent().getLevel() + " " + job(session) : "")
+                + " is new and looking for someone to show them around: an apprentice whose job you pick at each"
+                + " advancement.\r\n" + (about ? "Now at #b" + mapName(session.mapId) + "#k." : "Away right now.");
+        server.living.LivingWorld world = server.living.LivingWorld.get();
+        server.living.mentor.Apprentices apprentices = world == null ? null : world.apprentices();
+        if (apprentices == null || !apprentices.mayAdopt(player, need.citizenId(), true)) {
+            LivingTalk.open(player, NeedBoards.BOARD_NPC).back(back).ok(text).show();
+            return;
+        }
+        LivingTalk.open(player, NeedBoards.BOARD_NPC).back(back).menu(text, List.of(
+                new LivingTalk.Option("Take them on as your apprentice", () -> apprentices.offer(player, need.citizenId()))))
+                .show();
     }
 
     private String describe(Character player, Need need, long nowMs) {

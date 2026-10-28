@@ -965,6 +965,47 @@ living_world:
     HIRE_FRIENDSHIP_ENABLED: false
     HIRE_FRIEND_FEE_DISCOUNT_PERCENT: 25
     HIRE_CLOSE_WAGE_DISCOUNT_PERCENT: 25
+    # Mentor (docs/BOT_CONCEPT_PLAN.md F4.1-F4.4, decisions D8 and D9): a new character's first login (never logged
+    # out, Lv 1 Beginner on Maple Island) offers, once, OFFER_DELAY_MS later, a traveller to show it around; it retries
+    # every OFFER_RETRY_MS while another window is open, OFFER_TRIES times, then waits for the next login (an offer that
+    # never showed is no decline). Accepted, a citizen is born for it (an Explorer homed in Victoria) LEAD_MIN..LEAD_MAX
+    # levels above it, joins its party, leads it from Mushroom Town to Lith Harbor and its first-job instructor, says
+    # MENTOR_TIPS_PER_HOUR milestone tips at most ("quiet please" mutes them), stays that far ahead one level at a
+    # time (LEVEL_DELAY_*), and at its second job says goodbye, drops MENTOR_GIFT_ITEMS for it and goes home as a
+    # friend. LEAD_WAIT_MS / LEAD_TRIES: how long it waits beyond a portal and how often it comes back; OUTGROWN_LEVELS:
+    # when a map is too easy; ABANDON_DAYS: a newcomer away that long lets it go. MENTOR_ENABLED is the kill switch.
+    # Technical: the mentor is a hire:<characterId> row with living_roster.role MENTOR (changeset 54): no roster slot,
+    # no fee, REST duty, no kill EXP of its own; the lead is server.living.mentor.MentorLead on a 1 s companion-ops
+    # sweep, and the offer is gated by living_event_log mentor.* rows (see !mentor).
+    MENTOR_ENABLED: false
+    MENTOR_OFFER_DELAY_MS: 8000
+    MENTOR_OFFER_RETRY_MS: 4000
+    MENTOR_OFFER_TRIES: 8
+    MENTOR_LEAD_MIN: 3
+    MENTOR_LEAD_MAX: 5
+    MENTOR_LEVEL_DELAY_MIN_MS: 30000
+    MENTOR_LEVEL_DELAY_MAX_MS: 300000
+    MENTOR_TIPS_PER_HOUR: 4
+    MENTOR_LOW_HP_PERCENT: 35
+    MENTOR_LEAD_WAIT_MS: 20000
+    MENTOR_LEAD_TRIES: 2
+    MENTOR_OUTGROWN_LEVELS: 2
+    MENTOR_GIFT_ITEMS: "2000002:50,2000006:50"
+    MENTOR_ABANDON_DAYS: 14
+    # Apprentice (docs/BOT_CONCEPT_PLAN.md F4.5; not the APPRENTICE_BONUS_* catch-up EXP above): a player of
+    # ADOPT_MIN_OWNER_LEVEL+ adopts a Beginner citizen of up to ADOPT_MAX_LEVEL (double-click it at REGULAR standing,
+    # warmth 15+, or answer its "looking for a mentor" request on a board); it is a hire with no fee. At each
+    # advancement its owner picks the branch and the build in a window, and it takes the job at its instructor; at
+    # its second job it graduates into a plain companion and keeps its friendship. NEEDS_MAX / NEED_CHANCE: how many
+    # requests are open at once and how often a fitting beginner posts one. APPRENTICE_ENABLED is the kill switch
+    # (false: no adoption, apprentices are plain hires).
+    # Technical: living_roster.role APPRENTICE and role_target (the picked Job), read by JobErrands' path; the chat job
+    # word is held only for apprentices (AgentJobPath.Rule.holdsChatJobChange); requests are living_need kind MENTOR.
+    APPRENTICE_ENABLED: false
+    APPRENTICE_ADOPT_MAX_LEVEL: 10
+    APPRENTICE_ADOPT_MIN_OWNER_LEVEL: 30
+    APPRENTICE_NEEDS_MAX: 2
+    APPRENTICE_NEED_CHANCE: 0.1
     # Decision 18: Residents one friend may keep at once (0 = none), and the days a friend may stay away before
     # their Residents go home (0 = never).
     RESIDENT_CAP_PER_OWNER: 5

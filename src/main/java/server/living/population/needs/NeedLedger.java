@@ -4,6 +4,7 @@ import client.Character;
 import client.inventory.Equip;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import config.LivingWorldConfig;
 import config.PopulationConfig;
 import net.server.world.World;
 import org.slf4j.Logger;
@@ -336,11 +337,15 @@ public final class NeedLedger {
                 String[] parts = need.detail().split("\\|", 2);
                 yield parts.length > 1 && !parts[1].isEmpty() ? parts[1] : parts[0];
             }
+            case MENTOR -> "a mentor";
         };
     }
 
     /** "120 white potion", "claw att 60%", "1 more cleric". */
     String what(Need need) {
+        if (need.kind() == NeedKind.MENTOR) {
+            return "someone to show them around";
+        }
         if (need.kind() == NeedKind.PARTY) {
             String role = forWords(need);
             return need.remaining() > 1 ? need.remaining() + " more" : "1 more " + role;
@@ -395,6 +400,65 @@ public final class NeedLedger {
         synchronized (lock(session.characterId)) {
             supply(session, agent, nowMs);
             scroll(session, agent, nowMs);
+            mentor(session, agent, nowMs);
+        }
+    }
+
+    /**
+     * F4.5 (living_world.APPRENTICE_ENABLED): a Beginner of up to APPRENTICE_ADOPT_MAX_LEVEL now and then asks for a
+     * mentor (APPRENTICE_NEED_CHANCE a derivation, at most APPRENTICE_NEEDS_MAX open world-wide), saying so on its map;
+     * a player answers by adopting it (Apprentices). One that has grown past it, or took a job, stops asking.
+     */
+    private void mentor(CitizenSession session, Character agent, long nowMs) {
+        LivingWorldConfig living = population.world() == null ? null : population.world().config();
+        List<Need> open = openOf(session.characterId, NeedKind.MENTOR);
+        boolean fits = living != null && living.APPRENTICE_ENABLED && agent.isBeginnerJob()
+                && agent.getLevel() <= living.APPRENTICE_ADOPT_MAX_LEVEL;
+        if (!fits) {
+            for (Need need : open) {
+                close(need, Need.State.GONE, nowMs);
+            }
+            return;
+        }
+        if (!open.isEmpty() || openMentorNeeds() >= living.APPRENTICE_NEEDS_MAX
+                || random.nextDouble() >= living.APPRENTICE_NEED_CHANCE) {
+            return;
+        }
+        Need need = post(session.characterId, session, agent.getMapId(),
+                new NeedDerivation.Proposal(NeedKind.MENTOR, 0, 1, 0L, "mentor"), deadline(NeedKind.MENTOR, nowMs), nowMs);
+        if (need != null) {
+            String line = population.chatter().compose(ChatterEngine.Event.of("need.mentor", session.mapId, session.channel)
+                    .self(session));
+            if (line != null) {
+                population.chatter().say(session, line);
+            }
+        }
+    }
+
+    private int openMentorNeeds() {
+        int open = 0;
+        for (Need need : live.values()) {
+            open += need.isOpen() && need.kind() == NeedKind.MENTOR ? 1 : 0;
+        }
+        return open;
+    }
+
+    /** The citizen's open "looking for a mentor" request, or null (Apprentices: no standing gate when it asked). */
+    public Need mentorWanted(int citizenId) {
+        List<Need> open = openOf(citizenId, NeedKind.MENTOR);
+        return open.isEmpty() ? null : open.get(0);
+    }
+
+    /** It was adopted by {@code playerId}: its request is met. */
+    public void mentorFound(int citizenId, int playerId, long nowMs) {
+        synchronized (lock(citizenId)) {
+            for (Need need : openOf(citizenId, NeedKind.MENTOR)) {
+                Need met = new Need(need.id(), need.citizenId(), need.kind(), 0, need.quantity(), need.quantity(), 0L,
+                        need.detail(), need.mapId(), need.state(), 0, 0L, playerId, true, need.createdAtMs(),
+                        need.deadlineMs(), 0L);
+                replace(met);
+                close(met, Need.State.MET, nowMs);
+            }
         }
     }
 

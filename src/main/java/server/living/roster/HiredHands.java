@@ -198,11 +198,11 @@ public final class HiredHands {
                 Math.round(wage));
     }
 
-    /** Hired hands on the owner's roster. */
+    /** Hired hands on the owner's roster (a mentor is none: F4, it holds no roster slot). */
     public int hiresOf(Character owner) {
         int hires = 0;
         for (RosterEntry entry : world.roster().roster(owner)) {
-            hires += LivingContent.isHire(entry.personaId()) ? 1 : 0;
+            hires += LivingContent.isHire(entry.personaId()) && CompanionRoles.takesRosterSlot(world, entry.personaId()) ? 1 : 0;
         }
         return hires;
     }
@@ -223,19 +223,35 @@ public final class HiredHands {
      * the fee goes back.
      */
     public Outcome hire(Character owner, int citizenCharacterId, Terms terms) {
+        return hireAs(owner, citizenCharacterId, terms, null, 0, "deal. let's go.");
+    }
+
+    /**
+     * A hire with a role (docs/BOT_CONCEPT_PLAN.md F4), on companion-ops: no fee and no terms to agree, otherwise
+     * {@link #hire}'s checks and path. A {@link CompanionRoles.Role#MENTOR} holds a party seat but counts toward neither
+     * ROSTER_MAX nor HIRE_MAX_PER_OWNER; it camps at {@code campMapId} (its newcomer's map, so it walks in at once) and
+     * whispers {@code deal}. An {@link CompanionRoles.Role#APPRENTICE} counts like any hire.
+     */
+    public Outcome hireAs(Character owner, int citizenCharacterId, CompanionRoles.Role role, int campMapId, String deal) {
+        return hireAs(owner, citizenCharacterId, null, role, campMapId, deal);
+    }
+
+    private Outcome hireAs(Character owner, int citizenCharacterId, Terms terms, CompanionRoles.Role role, int campMapId,
+                           String deal) {
         Integer racing = hiring.putIfAbsent(citizenCharacterId, owner.getId());
         if (racing != null) {
             return racing == owner.getId() ? refused(Result.BUSY, citizenCharacterId, "one sec, still sorting that out.")
                     : refused(Result.TAKEN, citizenCharacterId, "sorry, someone else is hiring me right now.");
         }
         try {
-            return hireNow(owner, citizenCharacterId, terms);
+            return hireNow(owner, citizenCharacterId, terms, role, campMapId, deal);
         } finally {
             hiring.remove(citizenCharacterId, owner.getId());
         }
     }
 
-    private Outcome hireNow(Character owner, int characterId, Terms shown) {
+    private Outcome hireNow(Character owner, int characterId, Terms shown, CompanionRoles.Role role, int campMapId,
+                            String deal) {
         String hireId = hireId(characterId);
         Population population = Population.get();
         Citizen citizen = population == null ? null : population.citizen(characterId);
@@ -255,17 +271,20 @@ public final class HiredHands {
                 || loaded != null && loaded.getEventInstance() != null) {
             return refused(Result.BUSY, characterId, RosterService.AFTER_THE_RUN_LINE);
         }
-        if (world.roster().roster(owner).size() >= world.config().ROSTER_MAX) {
+        boolean mentor = role == CompanionRoles.Role.MENTOR; // a party seat but no roster slot (F4)
+        if (!mentor && CompanionRoles.rosterSlots(world, world.roster().roster(owner)) >= world.config().ROSTER_MAX) {
             return refused(Result.ROSTER_FULL, characterId, "you've got enough people following you around.");
         }
-        if (hiresOf(owner) >= world.config().HIRE_MAX_PER_OWNER) {
+        if (!mentor && hiresOf(owner) >= world.config().HIRE_MAX_PER_OWNER) {
             return refused(Result.HIRE_CAP, characterId, "you've got plenty of hired hands already.");
         }
         Terms terms = terms(owner, characterId);
         if (terms == null) {
             return new Outcome(Result.GONE, "", citizen.name() + " is not around any more.");
         }
-        if (shown == null || shown.fee() != terms.fee()) {
+        if (role != null) {
+            terms = new Terms(terms.level(), terms.job(), 0L, terms.hourlyWage()); // a mentor or an apprentice: no fee
+        } else if (shown == null || shown.fee() != terms.fee()) {
             return new Outcome(Result.CHANGED, "", citizen.name() + "'s terms changed. Ask again.");
         }
         int fee = (int) Math.min(terms.fee(), Integer.MAX_VALUE);
@@ -297,19 +316,28 @@ public final class HiredHands {
         // how it feels about them before its population life ends: the friendship it starts with (C1.2)
         int warmth = HireStanding.on(world) ? HireStanding.warmth(characterId, owner.getId()) : 0;
         boolean hired = false;
+        CompanionRoles roles = world.roles();
+        if (role != null && roles != null) {
+            roles.pending(owner.getId(), hireId, role); // known to the roster's own checks while it enrolls
+        }
         try {
-            world.residents().whisper(persona, owner, voice(characterId, "deal. let's go.")); // before the roster's lines
+            world.residents().whisper(persona, owner, voice(characterId, deal)); // before the roster's lines
             boolean adopt = inOwnersParty || joinable && new CompanionPartyRouter(world).seatGuest(owner, loaded);
             boolean walkOut = !adopt && onOwnersChannel && loaded.getMap() != null && loaded.getMap() == owner.getMap();
             Character inPlace = adopt || walkOut ? loaded : null;
-            int camp = camp(population, citizen, loaded != null ? loaded.getMapId() : rowMap(characterId));
+            int camp = campMapId > 0 ? campMapId : camp(population, citizen, loaded != null ? loaded.getMapId() : rowMap(characterId));
             RosterResult result = world.roster().recruitHire(owner, persona, camp, inPlace, adopt,
                     () -> population.presence().handOver(characterId, inPlace != null, "hired by " + owner.getName()));
             if (world.roster().entry(owner.getId(), hireId) == null) {
                 return refused(Result.BUSY, characterId, "i can't right now. ask me again in a bit.");
             }
             hired = true;
+            if (role != null && roles != null && !roles.set(owner.getId(), hireId, role, null)) {
+                log.warn("the {} role of {} for {} was not written: it stays in memory until a restart", role, hireId,
+                        owner.getName());
+            }
             world.store().event(owner.getId(), hireId, EVENT_ACCEPT, "fee " + terms.fee() + ", lv" + terms.level()
+                    + (role == null ? "" : ", " + role)
                     + (adopt ? ", adopted where it stood" : walkOut ? ", walked out to camp" : ", called from map " + camp));
             log.info("{} hired {} ({}) for {} meso", owner.getName(), citizen.name(), hireId, terms.fee());
             try {
@@ -320,8 +348,13 @@ public final class HiredHands {
             return new Outcome(Result.HIRED, "", adopt ? "" : RosterVoice.line(persona, result));
         } finally {
             if (!hired && world.roster().entry(owner.getId(), hireId) == null) {
-                owner.gainMeso(fee, true); // nothing was hired, even on a failure: exactly the fee goes back
+                if (fee > 0) {
+                    owner.gainMeso(fee, true); // nothing was hired, even on a failure: exactly the fee goes back
+                }
                 giveBack(characterId);
+                if (roles != null && role != null) {
+                    roles.forget(hireId);
+                }
             }
         }
     }
@@ -388,6 +421,14 @@ public final class HiredHands {
      */
     public void onReleased(int ownerId, String personaId, String reason) {
         personas.remove(personaId);
+        CompanionRoles roles = world.roles();
+        CompanionRoles.Held held = roles == null ? null : roles.of(personaId);
+        if (held != null) {
+            roles.forget(personaId); // its row and the role on it are gone (F4)
+            if (world.mentors() != null) {
+                world.mentors().released(ownerId, held, reason);
+            }
+        }
         HireStanding.released(world, ownerId, personaId);
         giveBack(LivingContent.hireCharacterId(personaId));
         log.info("hired hand {} of {} let go: {}", personaId, ownerId, reason);

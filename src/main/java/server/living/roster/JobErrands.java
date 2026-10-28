@@ -138,7 +138,49 @@ public final class JobErrands implements AgentJobPath.Rule {
         if (persona == null || world.roster().cachedOwnerOf(persona.id()) == 0) {
             return null; // a Resident nobody employs: not a companion
         }
-        return pathFor(current, personaJob(persona));
+        Job path = pathFor(current, jobOf(persona));
+        if (path == null && CompanionRoles.apprentice(world, persona.id())) {
+            return current; // F4.5: its owner picks in a window (Apprentices), so nobody asks in chat
+        }
+        return path;
+    }
+
+    /**
+     * F4.5: a job named in chat for an apprentice opens its owner's pick instead of the instant change; any other
+     * companion changes at once, as before.
+     */
+    @Override
+    public boolean holdsChatJobChange(int agentCharacterId, Job asked) {
+        Persona persona = world.residents().personaOfCharacterId(agentCharacterId);
+        if (persona != null && CompanionRoles.mentor(world, persona.id())) {
+            return true; // its newcomer's branch word is their pick, not the mentor's: its own job comes by errand
+        }
+        if (persona == null || !CompanionRoles.apprentice(world, persona.id()) || world.apprentices() == null) {
+            return false;
+        }
+        world.executor().submit("apprentice.chat-job " + persona.id(), () -> world.apprentices().askOwner(persona.id()));
+        return true;
+    }
+
+    /**
+     * The job a companion is set on: an apprentice's, the one its owner picked for its next step (none picked: none);
+     * a mentor's, its own career's (F4); anyone else's, its persona's.
+     */
+    Job jobOf(Persona persona) {
+        if (persona != null && CompanionRoles.apprentice(world, persona.id())) {
+            CompanionRoles.Held held = world.roles().of(persona.id());
+            return held == null || held.target() == null ? null : ResidentShaper.job(held.target());
+        }
+        if (persona != null && CompanionRoles.mentor(world, persona.id()) && world.mentors() != null) {
+            return world.mentors().careerJob(persona.id());
+        }
+        return personaJob(persona);
+    }
+
+    /** F4: a mentor goes for its own job only on Victoria, never mid-lead, and its first only after its newcomer's. */
+    private boolean mentorMayGo(Persona persona, int mapId) {
+        return !CompanionRoles.mentor(world, persona.id()) || world.mentors() == null
+                || world.mentors().mayLeaveForJob(persona.id(), mapId);
     }
 
     @Override
@@ -194,10 +236,11 @@ public final class JobErrands implements AgentJobPath.Rule {
         Character owner = world.roster().onlineCharacter(at.ownerId());
         RosterEntry row = world.store().rosterEntry(at.ownerId(), at.personaId());
         Character bot = row == null ? null : world.roster().companion(row);
-        if (persona == null || owner == null || bot == null || row.state() != RosterState.ACTIVE || !free(owner, bot, persona)) {
+        if (persona == null || owner == null || bot == null || row.state() != RosterState.ACTIVE || !free(owner, bot, persona)
+                || !mentorMayGo(persona, bot.getMapId())) {
             return;
         }
-        Job step = AgentJobPath.next(bot.getJob(), pathFor(bot.getJob(), personaJob(persona)), bot.getLevel());
+        Job step = AgentJobPath.next(bot.getJob(), pathFor(bot.getJob(), jobOf(persona)), bot.getLevel());
         JobInstructors.Instructor instructor = JobInstructors.of(step);
         if (step == null || instructor == null) {
             return;
@@ -252,12 +295,12 @@ public final class JobErrands implements AgentJobPath.Rule {
         }
         int[] levelAndJob = world.store().characterLevelAndJob(characterId);
         Job current = Job.getById(levelAndJob[1]);
-        Job step = AgentJobPath.next(current, pathFor(current, personaJob(persona)), levelAndJob[0]);
+        Job step = AgentJobPath.next(current, pathFor(current, jobOf(persona)), levelAndJob[0]);
         JobInstructors.Instructor instructor = JobInstructors.of(step);
-        if (step == null || instructor == null || held(characterId, persona.id())) {
+        int camp = entry.campMapId() != 0 ? entry.campMapId() : ResidentSpots.townMapId(persona.homeTown());
+        if (step == null || instructor == null || held(characterId, persona.id()) || !mentorMayGo(persona, camp)) {
             return null;
         }
-        int camp = entry.campMapId() != 0 ? entry.campMapId() : ResidentSpots.townMapId(persona.homeTown());
         long etaMs = RecallTravel.etaMs(camp, instructor.mapId(), world.config().RECALL_MAX_ETA_MS);
         errands.put(persona.id(), new Errand(persona.id(), entry.characterId(), false, step, instructor, clock.getAsLong() + etaMs));
         world.store().event(entry.characterId(), persona.id(), "job.errand",
@@ -287,7 +330,7 @@ public final class JobErrands implements AgentJobPath.Rule {
                 return false;
             }
             Job step = AgentJobPath.next(agent.getJob(),
-                    pathFor(agent.getJob(), personaJob(world.content().persona(slice.personaId()))), agent.getLevel());
+                    pathFor(agent.getJob(), jobOf(world.content().persona(slice.personaId()))), agent.getLevel());
             if (step != errand.target) {
                 // advanced meanwhile (its owner's word in chat, a GM set) or not due after all: back to its duty, or
                 // called back to its owner by the sweep (never from here: this slice is still starting)
@@ -484,7 +527,7 @@ public final class JobErrands implements AgentJobPath.Rule {
             }
             int[] levelAndJob = world.store().characterLevelAndJob(characterId);
             Job current = Job.getById(levelAndJob[1]);
-            Job step = AgentJobPath.next(current, pathFor(current, personaJob(persona)), levelAndJob[0]);
+            Job step = AgentJobPath.next(current, pathFor(current, jobOf(persona)), levelAndJob[0]);
             Job job = step != null ? step : current;
             JobInstructors.Instructor instructor = JobInstructors.of(job);
             if (instructor == null) {

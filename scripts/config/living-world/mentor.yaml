@@ -1,0 +1,134 @@
+# Mentors (docs/BOT_CONCEPT_PLAN.md F4, Mentorship): what a citizen born to show a new character around says, from the
+# offer at its first login to the goodbye at its second job. `lines` holds every key's default; `styles` are the
+# authored mentor voices (one is drawn per newcomer, by its id), each overriding the keys it words its own way. A list
+# is picked from by seed; `goodbye` is said in order. Templated lines only, no model call. Placeholders:
+#   {name}   the newcomer          {me}      the mentor
+#   {fact}   a ContentAnswers reply (where to train, how to get a job), only in the keys that say so; each such key
+#            has a .plain twin for when there is no answer
+#   {branch} the job they picked   {town}    its town          {npc}   its instructor   {level}  a level
+# The offer is the window the newcomer sees (its speaker is the Bulletin Board, as for every hired citizen); every
+# other line is party chat or a whisper in the mentor's own lower-case typing.
+
+lines:
+  offer:
+    - "Someone waves at you from the edge of town. \"hey! first day? i made this char a little while ago and i know the way to Victoria Island. want me to show you around?\""
+  accept:
+    - "omw! give me a sec"
+    - "cool, coming over"
+  arrive:
+    - "hey {name}! i'm {me}. stick with me, i'll show you the way"
+    - "hi {name}, {me} here. follow me, it's not far"
+  lead.start:
+    - "this way"
+    - "next map's over here"
+    - "come on, it's this way"
+  lead.come:
+    - "you coming? it's this way"
+    - "over here {name}"
+  lead.nudge:
+    - "just walk into the portal here"
+    - "it's right here, press up on the portal"
+  lead.oneway:
+    - "this portal only goes one way, so go ahead, i'm right behind you"
+    - "you go first, we can't come back this way"
+  lead.shanks:
+    - "talk to shanks here. 150 mesos and his boat takes us to victoria. i'll come with"
+  lead.shanks.level:
+    - "shanks only takes you from lv{level}. let's train a bit first"
+  lead.shanks.fare:
+    - "you need 150 mesos for the boat. kill a few more things and pick up the coins"
+  lead.deck:
+    - "we're still on the boat. walk off the left edge, there's a way down"
+  lead.taxi:
+    - "talk to the cab guy and pick {town}. it's like 100 mesos for beginners"
+  lead.walk:
+    - "let's walk to {town}, it's not that far"
+  lead.instructor:
+    - "{npc} is right here. talk to them and pick {branch}"
+    - "go talk to {npc}, that's who makes you a {branch}"
+  tip.low_hp:
+    - "your hp's low! drink a red potion, they're in your use tab. drag a few onto a key so you can spam it"
+  tip.first_death:
+    - "rip. happens to everyone, you just lose a bit of exp. {fact}"
+  tip.first_death.plain:
+    - "rip. happens to everyone, you just lose a bit of exp. take it slower and pot earlier"
+  tip.lv8:
+    - "lv8! you could be a magician already, the others need lv10. warrior, magician, bowman, thief or pirate. what sounds fun?"
+  tip.lv10:
+    - "lv10, you can pick your job now. {fact}"
+  tip.lv10.plain:
+    - "lv10, you can pick your job now. we just need to get to your instructor"
+  tip.lv10.island:
+    - "lv10! the job instructors are on victoria, so let's get off the island first"
+  tip.victoria:
+    - "welcome to victoria! {fact}"
+  tip.victoria.plain:
+    - "welcome to victoria! this is where the real game starts"
+  job.window:
+    - "{me} asks you: \"so what do you wanna be? you can change your mind until you talk to the instructor.\""
+  job.picked:
+    - "{branch}! nice, good pick"
+    - "{branch}, cool. i'll take you to the right town"
+  job.unsure:
+    - "no rush, think about it"
+  mute.ok:
+    - "ok ok, i'll keep it down"
+    - "got it, no more tips"
+  unmute.ok:
+    - "alright, i'll give you pointers again"
+  goodbye:
+    - "{branch} already, look at you"
+    - "i think you've got this now. i'm gonna head home"
+  goodbye.gift:
+    - "here, take these. you'll need them"
+  goodbye.last:
+    - "see you around {name}! say hi if you see me"
+
+styles:
+  sunny:
+    arrive:
+      - "hiii {name}! i'm {me}! this is gonna be fun, follow me"
+    lead.start:
+      - "this way this way!"
+      - "ooh next map, come on!"
+    goodbye:
+      - "omg {branch}!! you grow up so fast"
+      - "ok i'm gonna go home before i get emotional"
+    goodbye.last:
+      - "byeee {name}! whisper me anytime :)"
+  easygoing:
+    arrive:
+      - "yo {name}, {me}. no rush, just follow me when you're ready"
+    lead.come:
+      - "no rush but it's this way"
+    lead.nudge:
+      - "portal's right here whenever you're ready"
+    goodbye:
+      - "{branch}, nice. you don't need me anymore"
+      - "i'm heading back home"
+    goodbye.last:
+      - "take it easy {name}"
+  brief:
+    arrive:
+      - "hi. {me}. follow me"
+    lead.start:
+      - "here"
+      - "this way"
+    lead.come:
+      - "here"
+    goodbye:
+      - "{branch}. good"
+      - "you're set. going home"
+    goodbye.last:
+      - "cya {name}"
+  talker:
+    arrive:
+      - "hey {name}! i'm {me}, i remember my first day, i walked into the wrong portal like five times. stick with me"
+    lead.start:
+      - "next map's this way, the snails get a bit tougher but you'll be fine"
+      - "come on, this way, i'll show you the good spot"
+    goodbye:
+      - "{branch}! man, i remember when you couldn't find the first portal"
+      - "you're way past needing a tour guide. i'm gonna head home"
+    goodbye.last:
+      - "see you around {name}, don't be a stranger"

@@ -335,6 +335,48 @@ public class LivingWorldConfig {
     public int HIRE_FRIEND_FEE_DISCOUNT_PERCENT = 25;
     /** Percent off a hire's wages once its friendship with you reaches Lv 7 (Close friend); at most 90. */
     public int HIRE_CLOSE_WAGE_DISCOUNT_PERCENT = 25;
+    /**
+     * Mentor (docs/BOT_CONCEPT_PLAN.md F4.1-F4.4): a new character's first login offers a citizen born for it, who shows
+     * it around until its second job. False: no offer, and a mentor out goes home at its newcomer's next login.
+     */
+    public boolean MENTOR_ENABLED = false;
+    /** How long after the first login the offer window opens, and how often it tries again while a window is open. */
+    public long MENTOR_OFFER_DELAY_MS = 8_000L;
+    public long MENTOR_OFFER_RETRY_MS = 4_000L;
+    /** Tries per session before the offer waits for the next login (it never showed, so it is no decline). */
+    public int MENTOR_OFFER_TRIES = 8;
+    /** The mentor stays this many levels above its newcomer: one lead drawn per mentorship within these. */
+    public int MENTOR_LEAD_MIN = 3;
+    public int MENTOR_LEAD_MAX = 5;
+    /** A mentor's level-up comes one level at a time, this long after its newcomer's. */
+    public long MENTOR_LEVEL_DELAY_MIN_MS = 30_000L;
+    public long MENTOR_LEVEL_DELAY_MAX_MS = 300_000L;
+    /** Milestone tips a mentor says at most in an hour (each milestone once). */
+    public int MENTOR_TIPS_PER_HOUR = 4;
+    /** The newcomer's HP percent under which the mentor's potion tip comes (once). */
+    public int MENTOR_LOW_HP_PERCENT = 35;
+    /** On a two-way leg the mentor waits this long on the far side before it comes back for its newcomer. */
+    public long MENTOR_LEAD_WAIT_MS = 20_000L;
+    /** Come-backs on one leg before it stops leading until the next reason to. */
+    public int MENTOR_LEAD_TRIES = 2;
+    /** The newcomer has outgrown a map at the map's top monster level plus this many. */
+    public int MENTOR_OUTGROWN_LEVELS = 2;
+    /** The mentor's goodbye gift at its newcomer's second job: "itemId:count,..." dropped for them. */
+    public String MENTOR_GIFT_ITEMS = "2000002:50,2000006:50";
+    /** A newcomer away this many days lets its mentor go home (0 = never). */
+    public int MENTOR_ABANDON_DAYS = 14;
+    /**
+     * Apprentice (docs/BOT_CONCEPT_PLAN.md F4.5): a player adopts a beginner citizen, picks its branch and build at each
+     * advancement, and it takes them at its instructor. False: no adoption, and an apprentice is a plain hire.
+     */
+    public boolean APPRENTICE_ENABLED = false;
+    /** A citizen can be adopted up to this level, as a Beginner. */
+    public int APPRENTICE_ADOPT_MAX_LEVEL = 10;
+    /** The adopting player's level at least. */
+    public int APPRENTICE_ADOPT_MIN_OWNER_LEVEL = 30;
+    /** "Looking for a mentor" requests open at once, world-wide, and the chance a fitting citizen posts one. */
+    public int APPRENTICE_NEEDS_MAX = 2;
+    public double APPRENTICE_NEED_CHANCE = 0.1;
     /** Decision 18: Residents one friend may keep on their roster at once (0 = none). */
     public int RESIDENT_CAP_PER_OWNER = 5;
     /** Decision 18: a friend away this many days releases their Residents to go home (0 = never). */
@@ -733,6 +775,29 @@ public class LivingWorldConfig {
         return java.util.Collections.unmodifiableSet(ids);
     }
 
+    /** {@link #MENTOR_GIFT_ITEMS} as {itemId, count} pairs, in order; empty for none. */
+    public java.util.List<int[]> mentorGiftItems() {
+        java.util.List<int[]> out = new java.util.ArrayList<>();
+        for (String entry : MENTOR_GIFT_ITEMS == null ? new String[0] : MENTOR_GIFT_ITEMS.split(",")) {
+            if (entry.isBlank()) {
+                continue;
+            }
+            String[] parts = entry.trim().split(":");
+            try {
+                int item = Integer.parseInt(parts[0].trim());
+                int count = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 1;
+                if (parts.length > 2 || item <= 0 || count < 1 || count > Short.MAX_VALUE) {
+                    throw new NumberFormatException(entry);
+                }
+                out.add(new int[] {item, count});
+            } catch (NumberFormatException bad) {
+                throw new IllegalArgumentException("living_world.MENTOR_GIFT_ITEMS must list itemId:count pairs, not \""
+                        + entry.trim() + "\"");
+            }
+        }
+        return out;
+    }
+
     /** {@link #FRIENDSHIP_LEVEL_POINTS}: index 0 is level 1. */
     public int[] friendshipLevelPoints() {
         return tenInts("FRIENDSHIP_LEVEL_POINTS", FRIENDSHIP_LEVEL_POINTS);
@@ -895,6 +960,22 @@ public class LivingWorldConfig {
         }
         if (HIRE_CLOSE_WAGE_DISCOUNT_PERCENT < 0 || HIRE_CLOSE_WAGE_DISCOUNT_PERCENT > 90) {
             throw new IllegalArgumentException("living_world.HIRE_CLOSE_WAGE_DISCOUNT_PERCENT must be within 0..90");
+        }
+        if (MENTOR_OFFER_DELAY_MS < 0 || MENTOR_OFFER_RETRY_MS < 1000 || MENTOR_OFFER_TRIES < 1
+                || MENTOR_LEAD_MIN < 1 || MENTOR_LEAD_MAX < MENTOR_LEAD_MIN || MENTOR_LEAD_MAX > 10
+                || MENTOR_LEVEL_DELAY_MIN_MS < 0 || MENTOR_LEVEL_DELAY_MAX_MS < MENTOR_LEVEL_DELAY_MIN_MS
+                || MENTOR_TIPS_PER_HOUR < 0 || MENTOR_LOW_HP_PERCENT < 1 || MENTOR_LOW_HP_PERCENT > 90
+                || MENTOR_LEAD_WAIT_MS < 5000 || MENTOR_LEAD_TRIES < 0 || MENTOR_OUTGROWN_LEVELS < 0
+                || MENTOR_ABANDON_DAYS < 0) {
+            throw new IllegalArgumentException("living_world.MENTOR_*: OFFER_DELAY_MS >= 0, OFFER_RETRY_MS >= 1000,"
+                    + " OFFER_TRIES >= 1, 1 <= LEAD_MIN <= LEAD_MAX <= 10, LEVEL_DELAY_MIN_MS <= LEVEL_DELAY_MAX_MS,"
+                    + " LOW_HP_PERCENT 1..90, LEAD_WAIT_MS >= 5000, the rest >= 0");
+        }
+        mentorGiftItems(); // throws on a bad entry
+        if (APPRENTICE_ADOPT_MAX_LEVEL < 1 || APPRENTICE_ADOPT_MAX_LEVEL > 30 || APPRENTICE_ADOPT_MIN_OWNER_LEVEL < 1
+                || APPRENTICE_NEEDS_MAX < 0 || !share(APPRENTICE_NEED_CHANCE)) {
+            throw new IllegalArgumentException("living_world.APPRENTICE_ADOPT_MAX_LEVEL must be within 1..30,"
+                    + " APPRENTICE_ADOPT_MIN_OWNER_LEVEL >= 1, APPRENTICE_NEEDS_MAX >= 0, APPRENTICE_NEED_CHANCE 0..1");
         }
         if (RESIDENT_CAP_PER_OWNER < 0 || RESIDENT_CAP_PER_OWNER > ROSTER_MAX) {
             throw new IllegalArgumentException("living_world.RESIDENT_CAP_PER_OWNER must be within 0..ROSTER_MAX");

@@ -30,6 +30,21 @@ public final class AgentJobPath {
 
         /** The Agent may take {@code next} now. Runs on the Agent tick: hand the work over. */
         void due(int agentCharacterId, Job next);
+
+        /**
+         * True when a job named in chat ({@code asked}) must not change this Agent's job at once: the host takes the
+         * word its own way (the living world's apprentices go to their instructor). Runs on the Agent tick: hand any
+         * work over. False for every Agent by default: the instant chat change, as before.
+         */
+        default boolean holdsChatJobChange(int agentCharacterId, Job asked) {
+            return false;
+        }
+    }
+
+    /** {@link Rule#holdsChatJobChange} of the installed rule; false with none. */
+    public static boolean holdsChatJobChange(int agentCharacterId, Job asked) {
+        Rule current = rule;
+        return current != null && current.holdsChatJobChange(agentCharacterId, asked);
     }
 
     /** Installs the host's rule; null takes it out again (every job is its owner's pick, as before). */
