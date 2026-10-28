@@ -894,10 +894,11 @@ public final class PresenceScheduler {
      * Towns and Free Market rooms without an authored town-life profile used to leave citizens
      * standing on the arrival portal for the whole 25-45 minute session. Between re-plans, a
      * TOWN or MARKET citizen (not one minding a stall) strolls to a random spot on its own
-     * platform about every other sweep, so crowded maps read as people milling about.
+     * platform about every other sweep, so crowded maps read as people milling about. In a Free
+     * Market room it browses from stall to stall instead, on any platform (Market.browseSpot).
      */
     private void idleWander(CitizenSession session) {
-        if (session.entry == null || session.stallOpen
+        if (session.entry == null || session.stallOpen || session.stallSpot != null
                 || (session.activity != Activity.TOWN && session.activity != Activity.MARKET)) {
             return;
         }
@@ -907,6 +908,14 @@ public final class PresenceScheduler {
             return;
         }
         Point here = agent.getPosition();
+        Point browse = Market.browseSpot(map.getId(), here, random);
+        if (browse != null) {
+            Point ground = AgentGroundingService.findGroundPoint(map, new Point(browse.x, browse.y - 1));
+            if (ground != null && Math.abs(ground.y - browse.y) <= WANDER_MAX_DROP_PX) {
+                AgentMovementCommandRuntime.moveTo(session.entry, ground, false);
+            }
+            return;
+        }
         int dx = (WANDER_MIN_PX + random.nextInt(WANDER_MAX_PX - WANDER_MIN_PX)) * (random.nextBoolean() ? 1 : -1);
         Point ground = AgentGroundingService.findGroundPoint(map, new Point(here.x + dx, here.y - 1));
         if (ground == null || Math.abs(ground.y - here.y) > WANDER_MAX_DROP_PX) {

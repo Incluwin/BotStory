@@ -30,6 +30,8 @@ public final class CitizenSession {
     public volatile boolean fieldPause;
     public volatile long ledgerAtMs;
     public volatile boolean stallOpen;
+    /** The Free Market stall spot it holds while it walks there to open its stall (Market); null when none. */
+    volatile server.maps.reservation.CharacterSpaceReservation stallSpot;
     /** Sales of its open stall it has remembered the buyers of (Market.rememberSales); 0 when the stall opens. */
     volatile int stallSalesSeen;
     /** The job it is going to its instructor for (activity JOB); null otherwise. */

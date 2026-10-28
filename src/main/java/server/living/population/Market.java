@@ -9,6 +9,8 @@ import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.shop.AgentFreeMarketStallService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService.ObservedStall;
@@ -20,10 +22,16 @@ import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Good;
 import server.living.population.needs.NeedLedger;
 import server.maps.PlayerShop;
+import server.maps.reservation.CharacterSpace;
+import server.maps.reservation.CharacterSpaceOwner;
 import server.maps.reservation.CharacterSpaceReservation;
+import server.maps.reservation.CharacterSpaceReservationRuntime;
+import server.maps.reservation.FreeMarketCharacterSpaceCatalog;
 import server.maps.reservation.FreeMarketStorePlacementService;
 
+import java.awt.Point;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -42,6 +50,15 @@ public final class Market {
     private static final double BUY_BELOW_INDEX = 0.9d;
     private static final double INDEX_STEP = 0.08d;
     private static final int INTERACTION_RANGE_PX = 900;
+    /** A merchant on its stall spot: a precise move stops within a few pixels of it. */
+    static final int STALL_ARRIVAL_PX = 24;
+    private static final long STALL_WALK_POLL_MS = 1_000L;
+    static final long STALL_WALK_TIMEOUT_MS = 45_000L;
+    /** A browsing citizen walks to one of the nearest few stall spots it is not already at, and stands beside it. */
+    private static final int BROWSE_CHOICES = 4;
+    static final int BROWSE_MIN_STEP_PX = 60;
+    static final int BROWSE_BESIDE_MIN_PX = 25;
+    static final int BROWSE_BESIDE_MAX_PX = 50;
 
     public record Listing(int itemId, String name, long price) { }
 
@@ -201,10 +218,33 @@ public final class Market {
             population.presence().travel(session, Activity.MARKET, room, System.currentTimeMillis());
             return;
         }
-        if (session.citizen.has(Citizen.FLAG_MERCHANT) && !session.stallOpen && stallsOpen < population.config().MARKET_STALLS_MAX) {
-            server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> openStall(session), 3_000L);
+        if (session.citizen.has(Citizen.FLAG_MERCHANT) && !session.stallOpen && session.stallSpot == null
+                && stallsOpen < population.config().MARKET_STALLS_MAX) {
+            server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> walkToStall(session), 3_000L);
         }
         // otherwise the market tick browses the room's shops
+    }
+
+    /**
+     * Where a browsing citizen in a Free Market room strolls next: beside one of the few stall spots nearest it, on any
+     * of the room's platforms. The arrival ledge holds only two spots, so a stroll kept to its own platform left every
+     * citizen of the room standing there above the exit portal (live 10-28). Null outside the rooms.
+     */
+    static Point browseSpot(int mapId, Point here, Random random) {
+        if (here == null || !FreeMarketCharacterSpaceCatalog.isRoom(mapId)) {
+            return null;
+        }
+        List<CharacterSpace> near = FreeMarketCharacterSpaceCatalog.spaces(mapId).stream()
+                .filter(space -> space.position().distance(here) > BROWSE_MIN_STEP_PX)
+                .sorted(Comparator.comparingDouble(space -> space.position().distanceSq(here)))
+                .limit(BROWSE_CHOICES)
+                .toList();
+        if (near.isEmpty()) {
+            return null;
+        }
+        Point spot = near.get(random.nextInt(near.size())).position();
+        int beside = BROWSE_BESIDE_MIN_PX + random.nextInt(BROWSE_BESIDE_MAX_PX - BROWSE_BESIDE_MIN_PX);
+        return new Point(spot.x + (random.nextBoolean() ? beside : -beside), spot.y);
     }
 
     /**
@@ -230,62 +270,149 @@ public final class Market {
         }
     }
 
-    private void openStall(CitizenSession session) {
+    /** What a merchant does next on its way to its stall spot. */
+    enum StallWalk { OPEN, WAIT, WALK_AGAIN, GIVE_UP }
+
+    /**
+     * A merchant takes a free stall spot of the room and walks to it; its stall opens once it stands there. A shop's sign
+     * is drawn over its owner, so stalls opened where citizens came in were stacked on the arrival ledge above the exit
+     * portal, and only the top one could be clicked (live 10-28).
+     */
+    private void walkToStall(CitizenSession session) {
         Character agent = session.agent();
-        if (agent == null || !FieldCatalog.isFreeMarket(agent.getMapId()) || agent.getMapId() == FieldCatalog.FM_ENTRANCE
-                || session.stallOpen || stallsOpen >= population.config().MARKET_STALLS_MAX) {
+        if (!mayOpenStall(session, agent) || session.entry == null || session.stallSpot != null || stock(agent).isEmpty()) {
+            return; // nothing to sell: it browses instead
+        }
+        CharacterSpaceReservation spot = FreeMarketStorePlacementService.reserveNearestForWalking(agent).orElse(null);
+        if (spot == null) {
+            return; // every stall spot of the room is taken: it browses instead
+        }
+        session.stallSpot = spot;
+        AgentMovementCommandRuntime.moveTo(session.entry, spot.position(), true);
+        awaitStallSpot(session, spot, System.currentTimeMillis() + STALL_WALK_TIMEOUT_MS);
+    }
+
+    private void awaitStallSpot(CitizenSession session, CharacterSpaceReservation spot, long deadlineMs) {
+        server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            if (session.stallSpot != spot) {
+                return; // it moved on or logged off, which let the spot go
+            }
+            Character agent = session.agent();
+            StallWalk next = agent == null || agent.getMapId() != spot.scope().mapId() || session.activity != Activity.MARKET
+                    ? StallWalk.GIVE_UP
+                    : stallWalk(agent.getPosition(), spot.position(),
+                            session.entry != null && AgentMoveTargetStateRuntime.hasMoveTarget(session.entry),
+                            System.currentTimeMillis(), deadlineMs);
+            switch (next) {
+                case OPEN -> openStall(session, spot);
+                case WAIT -> awaitStallSpot(session, spot, deadlineMs);
+                case WALK_AGAIN -> {
+                    AgentMovementCommandRuntime.moveTo(session.entry, spot.position(), true);
+                    awaitStallSpot(session, spot, deadlineMs);
+                }
+                case GIVE_UP -> {
+                    releaseStallSpot(session);
+                    log.info("citizen {} did not reach stall spot #{} in room {}; it browses instead",
+                            session.name(), spot.centerSpace().spotNumber(), spot.scope().mapId());
+                }
+            }
+        }, STALL_WALK_POLL_MS);
+    }
+
+    /** It opens on the spot, walks on while its move runs, asks again when the move ended short, gives up at the deadline. */
+    static StallWalk stallWalk(Point at, Point spot, boolean moving, long nowMs, long deadlineMs) {
+        if (at != null && at.distance(spot) <= STALL_ARRIVAL_PX) {
+            return StallWalk.OPEN;
+        }
+        if (nowMs >= deadlineMs) {
+            return StallWalk.GIVE_UP;
+        }
+        return moving ? StallWalk.WAIT : StallWalk.WALK_AGAIN;
+    }
+
+    private boolean mayOpenStall(CitizenSession session, Character agent) {
+        return agent != null && FieldCatalog.isFreeMarket(agent.getMapId()) && agent.getMapId() != FieldCatalog.FM_ENTRANCE
+                && !session.stallOpen && stallsOpen < population.config().MARKET_STALLS_MAX;
+    }
+
+    private void openStall(CitizenSession session, CharacterSpaceReservation spot) {
+        Character agent = session.agent();
+        if (!mayOpenStall(session, agent)) {
+            releaseStallSpot(session);
             return;
         }
         try {
-            List<Listing> listings = new ArrayList<>();
-            List<AgentFreeMarketStallService.Listing> shopListings = new ArrayList<>();
-            for (InventoryType type : new InventoryType[]{InventoryType.ETC, InventoryType.USE, InventoryType.EQUIP}) {
-                Inventory inventory = agent.getInventory(type);
-                for (Item item : inventory.list()) {
-                    if (shopListings.size() >= STALL_MAX_LISTINGS || item.getQuantity() <= 0) {
-                        break;
-                    }
-                    if (type == InventoryType.USE && !isTradeGood(item.getItemId())) {
-                        continue; // keep potions
-                    }
-                    long unit = price(item.getItemId());
-                    short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
-                    short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
-                    long bundlePrice = Math.max(1L, Math.round(unit * perBundle * (0.9d + random.nextDouble() * 0.3d)));
-                    shopListings.add(new AgentFreeMarketStallService.Listing(type, item.getPosition(), perBundle, bundles,
-                            (int) Math.min(Integer.MAX_VALUE, bundlePrice)));
-                    listings.add(new Listing(item.getItemId(), itemName(item.getItemId()), unit));
-                }
-            }
-            if (shopListings.isEmpty()) {
-                return; // nothing to sell; browse instead
+            Stock stock = stock(agent);
+            if (stock.isEmpty()) {
+                releaseStallSpot(session);
+                return; // sold or used up on the way: it browses instead
             }
             int permit = population.content().permitItemId();
             if (agent.getInventory(InventoryType.CASH).countById(permit) == 0) {
                 InventoryManipulator.addById(agent.getClient(), permit, (short) 1);
             }
-            CharacterSpaceReservation reservation = FreeMarketStorePlacementService.reserveNearest(agent).orElse(null);
-            if (reservation == null) {
-                return;
-            }
+            List<Listing> listings = stock.listings();
             String description = listings.get(0).name() + (listings.size() > 1 ? " and more" : "") + ", fair prices";
-            AgentFreeMarketStallService.Result result = stalls.open(agent, description, permit, shopListings, reservation);
+            AgentFreeMarketStallService.Result result = stalls.open(agent, description, permit, stock.shopListings(), spot);
             if (result.success()) {
+                session.stallSpot = null; // the open stall holds the spot now; closeStall lets it go
                 session.stallOpen = true;
                 session.stallSalesSeen = 0;
                 stallsOpen++;
                 session.journal.add("market", "opened a shop selling " + listings.get(0).name());
-                log.info("citizen {} opened a stall in room {} with {} listings", session.name(), agent.getMapId(), shopListings.size());
+                log.info("citizen {} opened a stall in room {} at spot #{} with {} listings", session.name(), agent.getMapId(),
+                        spot.centerSpace().spotNumber(), stock.shopListings().size());
             } else {
-                FreeMarketStorePlacementService.release(agent);
+                releaseStallSpot(session);
                 log.debug("citizen {} stall failed: {}", session.name(), result.message());
             }
         } catch (RuntimeException failure) {
+            releaseStallSpot(session);
             log.debug("citizen {} stall opening failed", session.name(), failure);
         }
     }
 
+    /** What a citizen's stall would list: the shop rows, and the names and index prices behind them. */
+    private record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings) {
+        boolean isEmpty() {
+            return shopListings.isEmpty();
+        }
+    }
+
+    private Stock stock(Character agent) {
+        List<Listing> listings = new ArrayList<>();
+        List<AgentFreeMarketStallService.Listing> shopListings = new ArrayList<>();
+        for (InventoryType type : new InventoryType[]{InventoryType.ETC, InventoryType.USE, InventoryType.EQUIP}) {
+            Inventory inventory = agent.getInventory(type);
+            for (Item item : inventory.list()) {
+                if (shopListings.size() >= STALL_MAX_LISTINGS || item.getQuantity() <= 0) {
+                    break;
+                }
+                if (type == InventoryType.USE && !isTradeGood(item.getItemId())) {
+                    continue; // keep potions
+                }
+                long unit = price(item.getItemId());
+                short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
+                short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
+                long bundlePrice = Math.max(1L, Math.round(unit * perBundle * (0.9d + random.nextDouble() * 0.3d)));
+                shopListings.add(new AgentFreeMarketStallService.Listing(type, item.getPosition(), perBundle, bundles,
+                        (int) Math.min(Integer.MAX_VALUE, bundlePrice)));
+                listings.add(new Listing(item.getItemId(), itemName(item.getItemId()), unit));
+            }
+        }
+        return new Stock(listings, shopListings);
+    }
+
+    /** Lets go of the spot it was walking to (or opening on), by its character id: its character may be gone. */
+    private static void releaseStallSpot(CitizenSession session) {
+        session.stallSpot = null;
+        CharacterSpaceReservationRuntime.release(CharacterSpaceOwner.character(session.characterId));
+    }
+
     private void closeStall(CitizenSession session, String reason) {
+        if (session.stallSpot != null) {
+            releaseStallSpot(session); // still on its way to its stall spot
+        }
         if (!session.stallOpen) {
             return;
         }
