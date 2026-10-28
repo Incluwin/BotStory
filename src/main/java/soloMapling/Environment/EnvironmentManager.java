@@ -85,7 +85,7 @@ public class EnvironmentManager {
         // NOTE: SoloMapling's FM merchant spawns (populateFreeMarketRegion,
         // spawnFMEntranceBotsBatch -> FM_BOT, spawnMerchBotsBatch -> SELLING/BUYING/NX
         // merchants) are intentionally omitted from every wave. On this server the
-        // bot_economy system is the sole owner of the Free Market marketplace, so only
+        // citizen market (population) is the sole owner of the Free Market marketplace, so only
         // SoloMapling's social / town / minigame / quest bots spawn here.
         runWave(1, "Essentials", List.of(
                 () -> spawnCasinoNpcs(),

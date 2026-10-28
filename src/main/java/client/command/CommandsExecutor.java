@@ -171,7 +171,6 @@ import client.command.commands.gm3.TimerMapCommand;
 import client.command.commands.gm3.ToggleCouponCommand;
 import client.command.commands.gm3.UnBanCommand;
 import client.command.commands.gm4.BossDropRateCommand;
-import client.command.commands.gm4.BotEconomyCommand;
 // SoloMapling bot dev/admin commands.
 import client.command.commands.gm4.ArtificialPlayerCommand;
 import client.command.commands.gm4.OPQCommands;
@@ -603,7 +602,6 @@ public class CommandsExecutor {
         addCommand("itemvac", 4, ItemVacCommand.class);
         addCommand("resetboss", 4, ResetBossCommand.class);
         addCommand("checksets", 4, CheckSetsCommand.class);
-        addCommand("boteconomy", 4, BotEconomyCommand.class);
         // SoloMapling bot dev/admin commands (gm4). Operate on the social-bot layer;
         // the FM/merchant ones (betafmshop/fmbot/tradebot) drive keep-but-gate code.
         addCommand("bot", 4, ArtificialPlayerCommand.class);

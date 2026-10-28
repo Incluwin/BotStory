@@ -1232,24 +1232,6 @@ public class Server {
         timeLeft = getTimeLeftForNextDay();
         ExpeditionBossLog.resetBossLogTable();
         tMan.register(TimerManager.SchedulerLane.SAVE, new BossLogTask(), DAYS.toMillis(1), timeLeft);
-
-        // BOT_ECONOMY.md § Implementation order — task registration. Tasks always
-        // run; the bot_economy.ENABLED flag is checked inside each runner so the
-        // cron stays dormant until the master switch flips. This lets operators
-        // toggle the feature at runtime without bouncing the server.
-        tMan.register(new net.server.task.BotMerchantTask(),
-                MINUTES.toMillis(YamlConfig.config.bot_economy.BOT_MERCHANT_TICK_MINUTES),
-                MINUTES.toMillis(1));
-        tMan.register(new net.server.task.BotDropSimTask(),
-                MINUTES.toMillis(YamlConfig.config.bot_economy.BOT_DROP_SIM_INTERVAL_MINUTES),
-                MINUTES.toMillis(2));
-        tMan.register(new net.server.task.BotMetricsSampleTask(),
-                MINUTES.toMillis(YamlConfig.config.bot_economy.BOT_METRICS_SAMPLE_INTERVAL_MINUTES),
-                MINUTES.toMillis(3));
-        tMan.register(new net.server.task.BotReconciliationCronTask(),
-                DAYS.toMillis(1), timeLeft);
-        tMan.register(new net.server.task.BotSMTRecomputeTask(),
-                DAYS.toMillis(1), Math.max(MINUTES.toMillis(30), timeLeft - MINUTES.toMillis(30)));
     }
 
     private void logScaleHealth() {

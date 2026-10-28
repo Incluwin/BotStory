@@ -106,38 +106,6 @@ public class HiredMerchant extends AbstractMapObject {
         this.map = owner.getMap();
     }
 
-    /**
-     * BOT_ECONOMY.md § Ephemeral Character instantiation — alternate ctor that
-     * builds a merchant against an owner snapshot struct, without requiring a
-     * live {@link Character}. Used only by {@code BotMerchantManager} for
-     * bot-owned FM merchants; real-player merchants always go through the
-     * {@link #HiredMerchant(Character, String, int)} path.
-     *
-     * @param ownerId   bot character id (matches {@code characters.id})
-     * @param ownerName bot character name
-     * @param channel   target channel
-     * @param world     target world
-     * @param map       FM map the merchant attaches to
-     * @param itemId    shop permit (Mushroom/Robot/etc) — drives visual skin
-     * @param desc      short description string shown over the shop
-     */
-    public HiredMerchant(int ownerId, String ownerName, int channel, int world,
-                         MapleMap map, int itemId, String desc) {
-        this.start = System.currentTimeMillis();
-        this.ownerId = ownerId;
-        this.channel = channel;
-        this.world = world;
-        this.itemId = itemId;
-        this.ownerName = ownerName == null ? "" : ownerName;
-        this.description = desc == null ? "" : desc;
-        this.map = map;
-        if (map != null) {
-            // Centre of map is fine for bot shops — real-player merchants set
-            // position from the owner's current foothold.
-            this.setPosition(new java.awt.Point(0, 0));
-        }
-    }
-
     public void broadcastToVisitorsThreadsafe(Packet packet) {
         visitorLock.lock();
         try {

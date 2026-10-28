@@ -488,7 +488,7 @@ server:
 
     #SoloMapling ambient social-bot layer (town wanderers, minigames, social chat, jump/party quests).
     #Master gate - shipped OFF until live-tested. When false, no bots spawn and all SoloMapling
-    #runtime hooks short-circuit. The FM marketplace stays owned by the bot_economy system regardless.
+    #runtime hooks short-circuit. The FM marketplace stays owned by the citizen market (population) regardless.
     ENABLE_SOLO_MAPLING: false
 
     #Connection & packet throttle (net.security.ConnectionThrottle).
@@ -506,11 +506,6 @@ server:
     ANTICHEAT_MAX_MESO_PER_MIN: 5000000       #Hard ceiling on mesos/min gained (rate + drop).
     ANTICHEAT_MAX_MOVE_DELTA_PX: 1200         #Max position jump between move packets in pixels.
     ANTICHEAT_LOG_ONLY: true                  #Log flags but don't act. Set false to auto-kick/ban after N strikes.
-
-#Bot-driven FM merchant economy (Docs/BOT_ECONOMY.md).
-#All bot-economy code is gated behind ENABLED - shipped OFF until live-tested.
-#Structural-only values (persona rarity weights, per-SMT persona targets, per-item
-#prices) live in DB tables seeded from scripts/config/bot-*.yml at cold-start.
 
     # ===== cosmic_agents (Kiwiism) settings =====
     # Login Configuration
@@ -586,145 +581,6 @@ server:
     ALLOW_DROPS_ON_DROP_LIMIT_MAPS: false                   # Independent map-rule override; not coupled to item tradeability.
     USE_TYPESAFE_NAME_SCREEN: false                         # TypeSafe (Jev) second opinion on new character names: staff impersonation and disguised slurs. Needs TYPESAFE_API_KEY.
     USE_TYPESAFE_REPORT_TRIAGE: false                       # TypeSafe (Jev) severity/category triage of player reports, posted to GMs and recorded as a security event. Needs TYPESAFE_API_KEY.
-bot_economy:
-    #Master switches.
-    ENABLED: false
-    SHADOW_MODE: false
-    DRAIN: false
-    #Per-component kill switches (respected only when ENABLED: true).
-    DROP_SIM_ENABLED: true
-    LIFECYCLE_ENABLED: true
-    TREASURY_COLLECTION_ENABLED: true
-    BUY_ORDERS_ENABLED: false
-    #Population and spawning.
-    BOT_POOL_SIZE: 200
-    BOT_MERCHANT_TARGET_TOTAL: 175
-    BOT_FM_ROOM_BUDGET: 12
-    BOT_FM_ROOM_REAL_PLAYER_RESERVE: 5
-    BOT_MERCHANT_TICK_MINUTES: 5
-    BOT_MERCHANT_TTL_HOURS: 24
-    BOT_MERCHANT_SPAWN_PER_TICK: 10
-    BOT_MERCHANT_RESPAWN_COOLDOWN_MINUTES: 30
-    BOT_MERCHANT_SPAWN_JITTER_PCT: 0.30
-    BOT_MERCHANT_ITEMS_MIN: 3
-    BOT_MERCHANT_ITEMS_MAX: 8
-    #Drop simulation.
-    BOT_VIRTUAL_HUNTERS: 32
-    BOT_HUNTER_MONSTERS_PER_TICK: 50
-    BOT_DROP_SIM_INTERVAL_MINUTES: 15
-    BOT_DROP_RATE_MULTIPLIER: 0.35
-    #SMT.
-    BOT_SMT_SIGNAL_P75_WEIGHT: 0.60
-    BOT_SMT_SIGNAL_THRESHOLD_WEIGHT: 0.30
-    BOT_SMT_SIGNAL_ACTIVE_WEIGHT: 0.10
-    BOT_SMT_RECOMPUTE_CRON: "0 30 3 * * *"
-    BOT_SMT_PROMOTION_COOLDOWN_DAYS: 7
-    BOT_SMT_RATCHET_ONLY: true
-    #Saturation feedback (rarity-indexed).
-    BOT_SATURATION_AGE_HOURS: 48
-    BOT_SATURATION_THRESHOLDS:
-        R1: 50
-        R2: 20
-        R3: 8
-        R4: 3
-        R5: 1
-    BOT_SATURATION_MIN_MULTIPLIERS:
-        R1: 0.10
-        R2: 0.10
-        R3: 0.15
-        R4: 0.25
-        R5: 0.40
-    #Rarity derivation.
-    BOT_RARITY_DROP_RATE_BOUNDARIES:
-        R1_min_rate: 0.01
-        R2_min_rate: 0.001
-        R3_min_rate: 0.0001
-        R4_min_rate: 0.00002
-    BOT_RARITY_TARGET_DISTRIBUTION:
-        R1: 50
-        R2: 25
-        R3: 15
-        R4: 8
-        R5: 2
-        tolerance_pct: 3
-    BOT_RARITY_MAX_OVERRIDES: 100
-    #Pricing (rarity-indexed jitter).
-    BOT_PRICE_JITTER_BY_RARITY:
-        R1: 0.15
-        R2: 0.15
-        R3: 0.12
-        R4: 0.08
-        R5: 0.05
-    BOT_PRICE_FLOOR_NPC_MULT: 2.0
-    BOT_PRICE_CEILING_NPC_MULT: 200.0
-    BOT_PRICE_ABSOLUTE_FLOOR: 1000
-    #Stat-roll premium (player_equip class).
-    BOT_STAT_PREMIUM_PRIMARY: 0.25
-    BOT_STAT_PREMIUM_SECONDARY: 0.05
-    BOT_STAT_PREMIUM_UNIVERSAL: 0.15
-    BOT_STAT_MAX_MULT: 2.5
-    BOT_STAT_KEEP_AVG_PROB_BY_RARITY:
-        R1: 0.50
-        R2: 0.60
-        R3: 0.85
-        R4: 0.95
-        R5: 1.00
-    BOT_STAT_RESTOCK_REFILTER: true
-    #Scroll demand pricing.
-    BOT_DEMAND_WINDOW_DAYS: 7
-    BOT_DEMAND_MULT_CLAMP_MIN: 0.50
-    BOT_DEMAND_MULT_CLAMP_MAX: 2.00
-    BOT_DEMAND_CACHE_REFRESH_TICKS: 1
-    #NPC-stock path (NPCVendor).
-    BOT_NPC_STOCK_INTERVAL_MINUTES: 30
-    BOT_NPC_STOCK_DISCOUNT_MIN: 0.95
-    BOT_NPC_STOCK_DISCOUNT_MAX: 1.00
-    BOT_NPC_STOCK_QTY_MIN: 20
-    BOT_NPC_STOCK_QTY_MAX: 50
-    #Shop visual identity (blend | distinct | hybrid).
-    BOT_VISUAL_MODE: distinct
-    BOT_BLEND_PERMIT_ID: 5030000
-    BOT_DISTINCT_PERMIT_POOL: [5030004, 5030005, 5030012]
-    BOT_HYBRID_PERSONA_MAP:
-        NPCVendor: 5030004
-        BulkVendor: 5030010
-        default: 5030000
-    #Misprice mechanic.
-    BOT_MISPRICE:
-        enabled: true
-        chance_per_shop: 0.015
-        discount_range: [0.40, 0.50]
-        eligible_classes: [player_equip, scroll_demand, crafting_mat, rare_specialty]
-        buyer_limit_per_day: 3
-        buyer_limit_window_hours: 24
-    #Treasury / meso disposition.
-    BOT_MESO_SINK_PCT: 70
-    BOT_MESO_EVENT_POOL_PCT: 20
-    BOT_MESO_GM_RESERVE_PCT: 10
-    BOT_EVENT_POOL_CAP: 500000000
-    BOT_LOG_ALL_SALES: true
-    #Reconciliation and telemetry.
-    BOT_RECONCILIATION_CRON: "0 0 4 * * *"
-    BOT_RECONCILIATION_STRICT: false
-    BOT_METRICS_SAMPLE_INTERVAL_MINUTES: 5
-    BOT_METRICS_RETENTION_DAYS: 90
-    #Alerts.
-    alerts:
-        webhook_url: ""
-        severity_threshold: WARN
-        treasury_growth_anomaly: true
-        player_meso_surge: true
-        player_meso_drain: true
-        saturation_explosion: true
-        merchant_churn: true
-        sales_drought: true
-        gini_spike: true
-        pricing_clamp_flood: true
-        reconciliation_failure: true
-    #Test mode.
-    TEST_MODE: false
-    test:
-        RNG_SEED: 42
 
 # Living world: resident bots with quest lines, contracts, roster and bench (docs/LIVING_RPG_PLAN.md).
 # Content is read from living_world.CONTENT_DIR; hot reload with !world reload. ASCII only in this file.

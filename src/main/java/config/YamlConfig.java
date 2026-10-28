@@ -16,7 +16,6 @@ public class YamlConfig {
 
     public List<WorldConfig> worlds;
     public ServerConfig server;
-    public BotEconomyConfig bot_economy;
     public LivingWorldConfig living_world;
     public PopulationConfig population;
     public KnowledgeConfig knowledge;
@@ -29,12 +28,6 @@ public class YamlConfig {
             YamlConfig config = reader.read(YamlConfig.class);
             reader.close();
             config.server.applyAddressOverrides(System.getenv());
-            if (config.bot_economy == null) {
-                // Missing block in config.yaml: initialize with defaults. Feature stays
-                // OFF until ENABLED is explicitly flipped to true.
-                config.bot_economy = new BotEconomyConfig();
-            }
-            config.bot_economy.validate();
             if (config.living_world == null) {
                 config.living_world = new LivingWorldConfig();
             }
