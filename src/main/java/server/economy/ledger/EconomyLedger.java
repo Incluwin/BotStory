@@ -60,7 +60,10 @@ public final class EconomyLedger {
         this.config = config;
     }
 
-    /** At boot, after the DB migrations and before anything loads a character. */
+    /**
+     * At boot, after the DB migrations and before anything loads a character. It never touches the TimerManager,
+     * which is not running yet: {@link #scheduleTicks()} starts the minute tick once it is.
+     */
     public static synchronized void start() {
         EconomyConfig config = YamlConfig.config.economy;
         MesoFlows.setEnabled(config.LEDGER_ENABLED);
@@ -75,10 +78,18 @@ public final class EconomyLedger {
             log.warn("economy ledger: no boot supply (the since-boot balance stays empty)", failure);
         }
         ledger.openDay = today();
-        ledger.timer = TimerManager.getInstance().register(TimerManager.SchedulerLane.LOW_PRIORITY, ledger::tick,
-                TICK_MS, TICK_MS);
         instance = ledger;
         log.info("economy ledger started: supply at boot {} meso", ledger.bootSupply);
+    }
+
+    /** With the server's other timers, once the TimerManager runs: the minute flush and the daily close. */
+    public static synchronized void scheduleTicks() {
+        EconomyLedger ledger = instance;
+        if (ledger == null || ledger.timer != null) {
+            return;
+        }
+        ledger.timer = TimerManager.getInstance().register(TimerManager.SchedulerLane.LOW_PRIORITY, ledger::tick,
+                TICK_MS, TICK_MS);
     }
 
     /** At shutdown: the last minute's flows go in before the timers stop. */

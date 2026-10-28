@@ -1203,6 +1203,7 @@ public class Server {
     private void initializeTimelyTasks(ChannelDependencies channelDependencies) {
         TimerManager tMan = TimerManager.getInstance();
         tMan.start();
+        EconomyLedger.scheduleTicks(); // EconomyLedger.start() ran before the TimerManager did
         tMan.register(tMan.purge(), YamlConfig.config.server.PURGING_INTERVAL);//Purging ftw...
         disconnectIdlesOnLoginTask();
 
