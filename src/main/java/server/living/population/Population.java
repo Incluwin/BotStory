@@ -148,7 +148,8 @@ public final class Population {
         CitizenPurseReset.runOnce(); // decision D1, before the first sweep can load a citizen (economy.CITIZEN_PURSE_RESET)
         int reseeded = population.market.reseedUnmoved();
         if (reseeded > 0) {
-            log.info("price index: {} unmoved rows take the player price tables' seed (docs/ECONOMY_PLAN.md E2)", reseeded);
+            log.info("price index: {} rows take a fresh seed (unmoved, or under the NPC price; docs/ECONOMY_PLAN.md E2-E3)",
+                    reseeded);
         }
         population.social.installSeams();
         population.conversation.installSeams();

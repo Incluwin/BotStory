@@ -169,6 +169,11 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
 - An unsold line at close pulls the index toward 0.9x min(ask, index). Before, it pulled toward 0.97x the ask, and
   asks average 1.05x the index, so unsold goods pushed their own price up; now gear nobody buys drifts back under
   1.5x its shop price (about 60 unsold closes) and is vendored again.
+- No player price goes under what an NPC shop pays (`Market.npcPays`, mirroring Shop's sell): the index stops there,
+  and citizen and bench stall asks are floored at the shop's price for the bundle, so nobody can buy at a stall and
+  vendor at a profit. The non-equip seed was `getUnitPrice` x 4, which is a star's or bullet's unit price and 0 for
+  everything else, so 899 of 2,475 rows sat at the 10-meso minimum on 10-28 (345 of them with "sales" that were old
+  stall closes). It is now 4x the NPC price, and at start any row under its NPC price takes a fresh seed.
 - **What it does not do alone:** held equips only leave a bag by selling. With few humans buying, the steady-state
   vendoring rate returns once holds fill; the lasting cut needs buyers, which are the next two bullets above (citizens
   buying their gear from stalls) and D6 (citizens buying from citizens).

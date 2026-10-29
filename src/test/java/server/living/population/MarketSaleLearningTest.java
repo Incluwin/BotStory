@@ -49,7 +49,7 @@ class MarketSaleLearningTest {
         when(content.basket()).thenReturn(List.of());
         when(population.content()).thenReturn(content);
         living.when(LivingWorld::get).thenReturn(null); // no bench: every seller is a plain one
-        market = new Market(population);
+        market = new Market(population, itemId -> 1L); // a shop pays 1 a unit: far under these prices
     }
 
     @AfterEach

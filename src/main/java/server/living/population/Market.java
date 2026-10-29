@@ -99,7 +99,7 @@ public final class Market {
         this(population, itemId -> ItemInformationProvider.getInstance().getWholePrice(itemId));
     }
 
-    /** {@code shopPrice}: what a shop pays for one of an equip (the WZ price). */
+    /** {@code shopPrice}: what a shop pays for one of the item (the WZ price; -1 when it has none). */
     Market(Population population, IntToLongFunction shopPrice) {
         this.population = population;
         this.shopPrice = shopPrice;
@@ -178,8 +178,15 @@ public final class Market {
         return Set.copyOf(worth.subList(0, Math.min(room, worth.size())));
     }
 
-    /** A row's starting price: the basket's, else the player price tables' (PriceSeeds), else the NPC price multiple. */
+    /**
+     * A row's starting price: the basket's, else the player price tables' (PriceSeeds), else the NPC price multiple;
+     * never under what an NPC pays for one.
+     */
     private long seed(int itemId) {
+        return Math.max(npcUnit(itemId), rawSeed(itemId));
+    }
+
+    private long rawSeed(int itemId) {
         for (Good good : population.content().basket()) {
             if (good.itemId() == itemId && good.price() > 0L) {
                 return good.price();
@@ -192,24 +199,50 @@ public final class Market {
         if (ItemConstants.isEquipment(itemId)) {
             return Math.max(10L, Math.round(shopPrice.applyAsLong(itemId) * 2.5d));
         }
-        return Math.max(10L, Math.round(ItemInformationProvider.getInstance().getUnitPrice(itemId) * 4.0d));
+        return Math.max(10L, Math.round(npcUnit(itemId) * 4.0d));
+    }
+
+    /**
+     * What an NPC shop pays for {@code quantity} of the item, as Shop's sell works it out
+     * (ItemInformationProvider.getPrice); 0 when it has no price. No stall asks under it: buying there and selling to
+     * the shop would print mesos.
+     */
+    public long npcPays(int itemId, int quantity) {
+        long whole = shopPrice.applyAsLong(itemId);
+        if (whole < 0L) {
+            return 0L;
+        }
+        if (!ItemConstants.isRechargeable(itemId)) {
+            return whole * quantity;
+        }
+        return whole + (long) Math.ceil(quantity * ItemInformationProvider.getInstance().getUnitPrice(itemId));
+    }
+
+    /** The index's floor: what an NPC pays for one (a rechargeable's unit price; its base is paid once per bundle). */
+    private long npcUnit(int itemId) {
+        if (ItemConstants.isRechargeable(itemId)) {
+            return (long) Math.ceil(ItemInformationProvider.getInstance().getUnitPrice(itemId));
+        }
+        return npcPays(itemId, 1);
     }
 
     /**
      * At start: a row no sale ever moved is only a seed, so it takes today's seed (the player price tables came in with
-     * docs/ECONOMY_PLAN.md E2). Writes only the rows whose seed changed; the number of them.
+     * docs/ECONOMY_PLAN.md E2), and so does a row under what an NPC pays, which was never a market price (the old
+     * non-equip seed was 10, and stall closes used to count as sales at it). Writes only the rows that changed; the
+     * number of them.
      */
     int reseedUnmoved() {
         int changed = 0;
         for (Map.Entry<Integer, long[]> entry : index.entrySet()) {
             long[] row = entry.getValue();
-            if (row[1] != 0) {
+            if (row[1] != 0 && row[0] >= npcUnit(entry.getKey())) {
                 continue;
             }
             long seed = seed(entry.getKey());
             if (seed != row[0]) {
                 row[0] = seed;
-                population.store().savePrice(entry.getKey(), seed, 0);
+                population.store().savePrice(entry.getKey(), seed, (int) row[1]);
                 changed++;
             }
         }
@@ -319,14 +352,17 @@ public final class Market {
         nudge(itemId, Math.round(Math.min(unitAsk, price(itemId)) * UNSOLD_STEP_DOWN), false);
     }
 
-    /** {@code sale}: an executed sale, counted as an observation; else an ask nobody took, a weaker signal. */
+    /**
+     * {@code sale}: an executed sale, counted as an observation; else an ask nobody took, a weaker signal. Never under
+     * what an NPC pays for one: an item nobody buys settles at the shop's price, and goes back to the shop.
+     */
     private void nudge(int itemId, long unitPrice, boolean sale) {
         if (unitPrice <= 0) {
             return;
         }
         long current = price(itemId);
         long[] row = index.get(itemId);
-        long next = Math.max(1L, Math.round(current + (unitPrice - current) * INDEX_STEP));
+        long next = Math.max(Math.max(1L, npcUnit(itemId)), Math.round(current + (unitPrice - current) * INDEX_STEP));
         row[0] = next;
         if (sale) {
             row[1] = row[1] + 1;
@@ -562,7 +598,8 @@ public final class Market {
             long unit = price(item.getItemId());
             short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
             short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
-            long bundlePrice = Math.max(1L, Math.round(unit * perBundle * (0.9d + random.nextDouble() * 0.3d)));
+            long bundlePrice = Math.max(Math.max(1L, npcPays(item.getItemId(), perBundle)),
+                    Math.round(unit * perBundle * (0.9d + random.nextDouble() * 0.3d)));
             shopListings.add(new AgentFreeMarketStallService.Listing(type, item.getPosition(), perBundle, bundles,
                     (int) Math.min(Integer.MAX_VALUE, bundlePrice)));
             listings.add(new Listing(item.getItemId(), itemName(item.getItemId()), unit));

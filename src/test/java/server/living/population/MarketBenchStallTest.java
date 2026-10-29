@@ -50,7 +50,7 @@ class MarketBenchStallTest {
         when(population.isCitizen(HIRED)).thenReturn(true);
         when(population.citizen(CITIZEN)).thenReturn(citizen(CITIZEN, Set.of()));
         when(population.citizen(HIRED)).thenReturn(citizen(HIRED, Set.of(Citizen.FLAG_HIRED)));
-        market = new Market(population);
+        market = new Market(population, itemId -> 1L); // a shop pays 1 a unit: far under these prices
     }
 
     @AfterEach

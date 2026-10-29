@@ -428,7 +428,7 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
             InventoryType type = ItemConstants.getInventoryType(itemId);
             int per = type == InventoryType.EQUIP ? 1 : Math.min(stocked.getValue(), type == InventoryType.ETC ? 100 : 10);
             long unit = Math.max(1L, Math.round(population.market().price(itemId) * asks.getOrDefault(itemId, 1.0d)));
-            int price = (int) Math.min(Integer.MAX_VALUE, unit * per);
+            int price = (int) Math.min(Integer.MAX_VALUE, Math.max(population.market().npcPays(itemId, per), unit * per));
             int left = stocked.getValue();
             for (Item slot : agent.getInventory(type).listById(itemId)) {
                 int bundles = Math.min(left, slot.getQuantity()) / per;
