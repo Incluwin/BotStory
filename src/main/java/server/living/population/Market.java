@@ -41,6 +41,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.IntFunction;
 import java.util.function.IntToLongFunction;
 
 /**
@@ -61,6 +62,8 @@ public final class Market {
     static final double SALE_BAND = 3.0d;
     /** A line still unsold when its stall closes pulls the index toward this share of min(ask, index). */
     static final double UNSOLD_STEP_DOWN = 0.9d;
+    /** A seed never starts lower; a row still at it is a seed, whatever its sale count says (reseedUnmoved). */
+    private static final long MINIMUM_SEED = 10L;
     private static final int INTERACTION_RANGE_PX = 900;
     /** A merchant on its stall spot: a precise move stops within a few pixels of it. */
     static final int STALL_ARRIVAL_PX = 24;
@@ -79,6 +82,7 @@ public final class Market {
 
     private final Population population;
     private final IntToLongFunction shopPrice;
+    private final ScrollSeeds scrollSeeds;
     private final Random random;
     private final Map<Integer, long[]> index = new ConcurrentHashMap<>();
     private final Map<Integer, long[]> buyBudget = new ConcurrentHashMap<>();
@@ -96,13 +100,20 @@ public final class Market {
     private final GearErrands gearErrands;
 
     Market(Population population) {
-        this(population, itemId -> ItemInformationProvider.getInstance().getWholePrice(itemId));
+        this(population, itemId -> ItemInformationProvider.getInstance().getWholePrice(itemId),
+                itemId -> ItemInformationProvider.getInstance().getEquipStats(itemId));
     }
 
     /** {@code shopPrice}: what a shop pays for one of the item (the WZ price; -1 when it has none). */
     Market(Population population, IntToLongFunction shopPrice) {
+        this(population, shopPrice, itemId -> Map.of());
+    }
+
+    /** {@code scrollStats}: a scroll's WZ info (success, inc* bonuses) for the seeds of scrolls no table prices. */
+    Market(Population population, IntToLongFunction shopPrice, IntFunction<Map<String, Integer>> scrollStats) {
         this.population = population;
         this.shopPrice = shopPrice;
+        this.scrollSeeds = new ScrollSeeds(scrollStats, PriceSeeds::all);
         this.gearErrands = new GearErrands(population, this);
         this.random = new Random(population.config().SEED ^ 0x3a44e7L);
         this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX, population::isCitizen);
@@ -179,8 +190,8 @@ public final class Market {
     }
 
     /**
-     * A row's starting price: the basket's, else the player price tables' (PriceSeeds), else the NPC price multiple;
-     * never under what an NPC pays for one.
+     * A row's starting price: the basket's, else the player price tables' (PriceSeeds), else a scroll's priced against
+     * theirs (ScrollSeeds), else the NPC price multiple; never under what an NPC pays for one.
      */
     private long seed(int itemId) {
         return Math.max(npcUnit(itemId), rawSeed(itemId));
@@ -196,10 +207,14 @@ public final class Market {
         if (table > 0L) {
             return table;
         }
-        if (ItemConstants.isEquipment(itemId)) {
-            return Math.max(10L, Math.round(shopPrice.applyAsLong(itemId) * 2.5d));
+        long scroll = scrollSeeds.seed(itemId);
+        if (scroll > 0L) {
+            return scroll;
         }
-        return Math.max(10L, Math.round(npcUnit(itemId) * 4.0d));
+        if (ItemConstants.isEquipment(itemId)) {
+            return Math.max(MINIMUM_SEED, Math.round(shopPrice.applyAsLong(itemId) * 2.5d));
+        }
+        return Math.max(MINIMUM_SEED, Math.round(npcUnit(itemId) * 4.0d));
     }
 
     /**
@@ -228,15 +243,15 @@ public final class Market {
 
     /**
      * At start: a row no sale ever moved is only a seed, so it takes today's seed (the player price tables came in with
-     * docs/ECONOMY_PLAN.md E2), and so does a row under what an NPC pays, which was never a market price (the old
-     * non-equip seed was 10, and stall closes used to count as sales at it). Writes only the rows that changed; the
-     * number of them.
+     * docs/ECONOMY_PLAN.md E2), and so does a row under what an NPC pays or at the old 10-meso minimum, neither ever a
+     * market price (the old non-equip seed was 10, and stall closes used to count as sales at it, as did sales off
+     * listings priced from it). Writes only the rows that changed; the number of them.
      */
     int reseedUnmoved() {
         int changed = 0;
         for (Map.Entry<Integer, long[]> entry : index.entrySet()) {
             long[] row = entry.getValue();
-            if (row[1] != 0 && row[0] >= npcUnit(entry.getKey())) {
+            if (row[1] != 0 && row[0] > MINIMUM_SEED && row[0] >= npcUnit(entry.getKey())) {
                 continue;
             }
             long seed = seed(entry.getKey());

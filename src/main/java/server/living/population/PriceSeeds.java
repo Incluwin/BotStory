@@ -31,6 +31,11 @@ final class PriceSeeds {
 
     /** The seed for {@code itemId}, or 0 when the tables do not list it. */
     static long of(int itemId) {
+        return all().getOrDefault(itemId, 0L);
+    }
+
+    /** Every item the tables price (ScrollSeeds prices the scrolls they leave out against theirs). */
+    static Map<Integer, Long> all() {
         Map<Integer, Long> seeds = loaded;
         if (seeds == null) {
             synchronized (PriceSeeds.class) {
@@ -40,7 +45,7 @@ final class PriceSeeds {
                 seeds = loaded;
             }
         }
-        return seeds.getOrDefault(itemId, 0L);
+        return seeds;
     }
 
     /** Every item the tables in {@code dir} price; a file that is missing or not shaped like one is skipped. */

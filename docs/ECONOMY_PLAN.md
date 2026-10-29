@@ -174,6 +174,11 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   vendor at a profit. The non-equip seed was `getUnitPrice` x 4, which is a star's or bullet's unit price and 0 for
   everything else, so 899 of 2,475 rows sat at the 10-meso minimum on 10-28 (345 of them with "sales" that were old
   stall closes). It is now 4x the NPC price, and at start any row under its NPC price takes a fresh seed.
+- Scrolls the player price tables leave out (`ScrollSeeds`): shops pay 1 meso for most, so 190 kinds still sat at
+  10. A scroll now seeds at its expected gain (success rate x its WZ bonuses, weighting attack 1, main stats 0.6,
+  accuracy / avoid / speed / jump 0.2, DEF 0.05, HP / MP 0.005 a point) times the median mesos per expected point of
+  the scrolls the tables price, so it follows their level. At start a row still at the old 10-meso minimum takes a
+  fresh seed whatever its sale count says (those counts were stall closes and buys off 10-meso listings).
 - **What it does not do alone:** held equips only leave a bag by selling. With few humans buying, the steady-state
   vendoring rate returns once holds fill; the lasting cut needs buyers, which are the next two bullets above (citizens
   buying their gear from stalls) and D6 (citizens buying from citizens).
