@@ -291,6 +291,64 @@ public final class CitizenStore {
         return out;
     }
 
+    // ---- gear errands (docs/ECONOMY_PLAN.md E3) ---------------------------------------------
+
+    /** Every open gear errand: citizen id -> slot -> errand; empty when the read fails. */
+    Map<Integer, Map<String, GearErrands.Errand>> gearErrands() {
+        Map<Integer, Map<String, GearErrands.Errand>> out = new HashMap<>();
+        String sql = SqlTime.utc("SELECT character_id, slot, category, worn_level, weapon_type, until_at FROM living_gear_errand");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                GearErrands.Errand errand = new GearErrands.Errand(rs.getString(2), rs.getString(3), rs.getInt(4),
+                        rs.getInt(5), SqlTime.get(rs, 6));
+                out.computeIfAbsent(rs.getInt(1), id -> new HashMap<>()).put(errand.slot(), errand);
+            }
+        } catch (SQLException failure) {
+            log.warn("living_gear_errand scan failed", failure);
+        }
+        return out;
+    }
+
+    void saveGearErrand(int characterId, GearErrands.Errand errand) {
+        String sql = SqlTime.utc("INSERT INTO living_gear_errand (character_id, slot, category, worn_level, weapon_type, until_at)"
+                + " VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE category = VALUES(category),"
+                + " worn_level = VALUES(worn_level), weapon_type = VALUES(weapon_type), until_at = VALUES(until_at)");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            ps.setString(2, errand.slot());
+            ps.setString(3, errand.category());
+            ps.setInt(4, errand.wornLevel());
+            ps.setInt(5, errand.weaponType());
+            SqlTime.set(ps, 6, errand.untilMs());
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_gear_errand write failed for {}/{}", characterId, errand.slot(), failure);
+        }
+    }
+
+    void deleteGearErrand(int characterId, String slot) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("DELETE FROM living_gear_errand WHERE character_id = ? AND slot = ?")) {
+            ps.setInt(1, characterId);
+            ps.setString(2, slot);
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_gear_errand delete failed for {}/{}", characterId, slot, failure);
+        }
+    }
+
+    /** Errands whose deadline passed before {@code beforeMs}: a citizen that never loaded again (retired). */
+    void pruneGearErrands(long beforeMs) {
+        String sql = SqlTime.utc("DELETE FROM living_gear_errand WHERE until_at < ?");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            SqlTime.set(ps, 1, beforeMs);
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_gear_errand prune failed", failure);
+        }
+    }
+
     // ---- acquaintances -------------------------------------------------------------------
 
     public Acquaintance acquaintance(int characterId, int playerId) {

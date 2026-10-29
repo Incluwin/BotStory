@@ -183,7 +183,9 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   (the displaced piece goes as before). An errand pulls the citizen to the market (the needs-board weight bump) and from
   the entrance to the room selling a fit. After `MARKET_GEAR_ERRAND_HOURS` (24) with no buy, or when it cannot pay the
   pick's index price, the piece is handed over as before and the gap is counted (`gearErrands: ... handedOver=`) and
-  logged. With the needs board on, its GEAR wants keep this role instead.
+  logged. With the needs board on, its GEAR wants keep this role instead. Errands are kept in `living_gear_errand`
+  (changeset 57), so a restart keeps each deadline instead of reopening every errand with a fresh day; rows a week past
+  their deadline (citizens that never loaded again) are pruned at start.
 - `/runtime/stats/market` (and MapleEdit's stats page, "Citizen market") shows stalls open, purchases and the gear
   errands open / opened / bought / handed over since boot.
 

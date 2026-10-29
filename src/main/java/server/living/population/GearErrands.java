@@ -21,11 +21,14 @@ import java.util.concurrent.atomic.AtomicLong;
  * buy a piece for that slot at a stall, any seller's, players' first: one that fits the slot, its level band, job, gender
  * and stats and beats what it wears, at up to MARKET_GEAR_OVER_INDEX x the index. Only when none turns up within
  * MARKET_GEAR_ERRAND_HOURS, or it cannot pay the pick's index price, is the piece handed to it as before, and that gap
- * is logged. Errands live in memory: after a restart the next load opens them again.
+ * is logged. Errands are kept in living_gear_errand, so a restart keeps their deadlines (before, each restart reopened
+ * every one with a fresh deadline, and with daily restarts none ever ran out).
  */
 final class GearErrands implements CitizenGear.Wants {
     private static final Logger log = LoggerFactory.getLogger(GearErrands.class);
     private static final long HOUR_MS = 3_600_000L;
+    /** An errand this long past its deadline belongs to a citizen that never loaded again (retired): dropped at start. */
+    private static final long PRUNE_AFTER_MS = 7 * 24 * HOUR_MS;
     private static final String WEAPON = "weapon";
 
     /** Shopping for {@code slot}: an equip of {@code category} above {@code wornLevel}; a weapon keeps its type. */
@@ -41,6 +44,9 @@ final class GearErrands implements CitizenGear.Wants {
     GearErrands(Population population, Market market) {
         this.population = population;
         this.market = market;
+        CitizenStore store = population.store();
+        store.pruneGearErrands(System.currentTimeMillis() - PRUNE_AFTER_MS);
+        store.gearErrands().forEach((citizenId, errands) -> open.put(citizenId, new ConcurrentHashMap<>(errands)));
     }
 
     /** From CitizenGear at a load: true while the citizen shops for this slot, false to hand {@code pick} over. */
@@ -59,6 +65,7 @@ final class GearErrands implements CitizenGear.Wants {
                 return true;
             }
             errands.remove(slot);
+            population.store().deleteGearErrand(agent.getId(), slot);
             handedOver.incrementAndGet();
             log.info("citizen {} found no {} at a stall in {} h: handed over as before", agent.getName(), slot,
                     config.MARKET_GEAR_ERRAND_HOURS);
@@ -72,8 +79,10 @@ final class GearErrands implements CitizenGear.Wants {
         short position = CitizenGear.position(slot);
         Item worn = position == 0 ? null : agent.getInventory(InventoryType.EQUIPPED).getItem(position);
         int wornLevel = worn == null ? -1 : k.item(worn.getItemId()).map(ItemFact::reqLevel).orElse(0);
-        errands.put(slot, new Errand(slot, fact.get().category(), wornLevel, WEAPON.equals(slot) ? pick / 10_000 : 0,
-                now + config.MARKET_GEAR_ERRAND_HOURS * HOUR_MS));
+        Errand opening = new Errand(slot, fact.get().category(), wornLevel, WEAPON.equals(slot) ? pick / 10_000 : 0,
+                now + config.MARKET_GEAR_ERRAND_HOURS * HOUR_MS);
+        errands.put(slot, opening);
+        population.store().saveGearErrand(agent.getId(), opening);
         opened.incrementAndGet();
         return true;
     }
@@ -96,6 +105,7 @@ final class GearErrands implements CitizenGear.Wants {
             return;
         }
         open.getOrDefault(agent.getId(), Map.of()).remove(errand.slot());
+        population.store().deleteGearErrand(agent.getId(), errand.slot());
         bought.incrementAndGet();
         WorldKnowledge k = Decisions.active();
         log.info("citizen {} bought its {} at a stall: {}", agent.getName(), errand.slot(),

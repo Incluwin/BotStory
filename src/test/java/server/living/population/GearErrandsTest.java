@@ -15,6 +15,7 @@ import server.knowledge.WorldKnowledge;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,10 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -144,6 +148,58 @@ class GearErrandsTest {
             equipment.verify(() -> AgentEquipmentService.equipInSlot(agent, RED_KATANA, (short) -11));
             assertFalse(errands.any(CITIZEN));
             assertTrue(errands.report().contains("bought=1"), errands.report());
+        }
+    }
+
+    @Test
+    void anOpenedErrandIsSavedAndABoughtOneDeleted() throws Exception {
+        try (AutoCloseable seed = KnowledgeTestKit.publishSeed();
+             MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class);
+             MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class)) {
+            int pick = pick(WorldKnowledge.current());
+            GearErrands errands = errands(pick, RED_KATANA);
+            Character agent = fighter(1_000_000);
+            equipment.when(() -> AgentEquipmentService.equipInSlot(any(), anyInt(), anyShort())).thenReturn(true);
+
+            errands.holdBack(agent, "weapon", pick);
+            verify(store).saveGearErrand(eq(CITIZEN), argThat(errand -> errand.slot().equals("weapon")
+                    && errand.wornLevel() == 35 && errand.weaponType() == 130
+                    && errand.untilMs() > System.currentTimeMillis() + 23 * 3_600_000L));
+            verify(store).pruneGearErrands(longThat(before -> before < System.currentTimeMillis() - 6 * 24 * 3_600_000L));
+
+            errands.bought(agent, RED_KATANA);
+            verify(store).deleteGearErrand(CITIZEN, "weapon");
+        }
+    }
+
+    @Test
+    void aRestartKeepsTheErrandAndItsDeadline() throws Exception {
+        try (AutoCloseable seed = KnowledgeTestKit.publishSeed()) {
+            int pick = pick(WorldKnowledge.current());
+            long until = System.currentTimeMillis() + 3_600_000L;
+            when(store.gearErrands()).thenReturn(Map.of(CITIZEN,
+                    Map.of("weapon", new GearErrands.Errand("weapon", "weapon", 35, 130, until))));
+            GearErrands errands = errands(pick, RED_KATANA);
+            Character agent = fighter(1_000_000);
+
+            assertTrue(errands.any(CITIZEN), "loaded at start");
+            assertTrue(errands.holdBack(agent, "weapon", pick), "still shopping after the restart");
+            verify(store, never()).saveGearErrand(anyInt(), any());
+            assertTrue(errands.report().contains("opened=0"), "not opened again with a fresh deadline: " + errands.report());
+            assertEquals(130_000L, errands.offer(agent, RED_KATANA));
+        }
+    }
+
+    @Test
+    void aLoadedErrandPastItsDeadlineIsHandedOverAndDeleted() throws Exception {
+        try (AutoCloseable seed = KnowledgeTestKit.publishSeed()) {
+            int pick = pick(WorldKnowledge.current());
+            when(store.gearErrands()).thenReturn(Map.of(CITIZEN, Map.of("weapon",
+                    new GearErrands.Errand("weapon", "weapon", 35, 130, System.currentTimeMillis() - 1L))));
+            GearErrands errands = errands(pick);
+
+            assertFalse(errands.holdBack(fighter(1_000_000), "weapon", pick), "its day ran out while the server was down");
+            verify(store).deleteGearErrand(CITIZEN, "weapon");
         }
     }
 
