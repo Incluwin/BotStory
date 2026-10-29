@@ -97,6 +97,8 @@ public final class Market {
     private volatile long[] medianCache;
     private static final long MEDIAN_REFRESH_MS = 60_000L;
     private volatile long purchases;
+    /** The E4 controller's scale on MARKET_BUY_BUDGET_PER_DAY (EconomyController); 1 is the configured budget. */
+    private volatile double buyBudgetScale = 1.0d;
     private final GearErrands gearErrands;
 
     Market(Population population) {
@@ -827,6 +829,10 @@ public final class Market {
         }
     }
 
+    void setBuyBudgetScale(double scale) {
+        buyBudgetScale = scale;
+    }
+
     private boolean spend(int characterId, long meso, long now) {
         int day = (int) (now / 86_400_000L);
         long[] budget = buyBudget.computeIfAbsent(characterId, id -> new long[]{day, 0L});
@@ -835,7 +841,7 @@ public final class Market {
                 budget[0] = day;
                 budget[1] = 0L;
             }
-            if (budget[1] + meso > population.config().MARKET_BUY_BUDGET_PER_DAY) {
+            if (budget[1] + meso > Math.round(population.config().MARKET_BUY_BUDGET_PER_DAY * buyBudgetScale)) {
                 return false;
             }
             budget[1] += meso;

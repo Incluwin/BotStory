@@ -204,6 +204,23 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   market buy budgets, clamped to bounds in config, with every adjustment logged and charted.
 - Kill switch, and a shadow mode that only logs what it would set.
 
+Built (2026-10-28; levers chosen by the user: pickup selectivity, luxury spending, buy budgets; live, not shadow):
+- `EconomyController` hears each daily close (`EconomyLedger.onClose`): organic growth = the day's external net without
+  the purse reset (RESET), over the supply; target `economy.CONTROLLER_TARGET_GROWTH` (1 % a day). Each setting goes to
+  `economy_controller_daily` (changeset 58); a restart starts from the last applied one. `/runtime/stats/controller`.
+- **Pickup selectivity** (`AgentLootPolicy.Selectivity`): a citizen (not a hired hand) walks past a share of monster
+  equip drops, the same answer for the same drop, never inside an event instance or for a quest or cash equip. Its NPC
+  sales scale with the share, so the share that would have held the day to target is share x (target - everything but
+  those sales) / those sales; it moves toward that by at most `CONTROLLER_PICKUP_STEP`, never under `PICKUP_MIN` (0.3).
+- **Luxury spending**: a daily chance (up to `LUXURY_MAX`) that a citizen over `LUXURY_OVER` x the meso its level should
+  carry buys a luxury. It rises only while pickup cannot hold growth alone (the wanted share is under the least) and
+  eases off before pickup rises again. The lever is worked out and logged; what citizens buy with it (salon visits) is
+  E4b, not built yet.
+- **Buy budgets**: a scale on `population.MARKET_BUY_BUDGET_PER_DAY` moved against the basket index's day-on-day change
+  outside `CONTROLLER_CPI_BAND`, a step at most, within `BUDGET_MIN..MAX`. It only moves meso between holders.
+- The basket's first close (10-28) priced 8 of its 33 items at the old 10-meso seed, so the 10-29 close's index jump is
+  the price repair, not inflation; it moves budgets one step at most.
+
 ### E5. Human-side tuning
 D2 and D3 were decided on 10-28 and moved into E1; D4 is no. What is left here is anything the E0 numbers show after
 E1-E4 run for a while (rate-aware sinks, meso-priced services players want).

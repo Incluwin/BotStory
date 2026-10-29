@@ -175,6 +175,12 @@ final class AdminStatsReader {
         return population == null ? "{\"ok\":false,\"error\":\"population_off\"}" : population.market().statsJson();
     }
 
+    /** The E4 controller's levers in force and its last {@code days} daily settings (docs/ECONOMY_PLAN.md E4). */
+    static String controller(int days) {
+        Population population = Population.get();
+        return population == null ? "{\"ok\":false,\"error\":\"population_off\"}" : population.economyControllerJson(days);
+    }
+
     /** {@code days=N} from the query (1-365), else {@code fallback}. */
     static int days(String rawQuery, int fallback) {
         if (rawQuery != null) {

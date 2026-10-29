@@ -726,4 +726,12 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="58-economy-controller" author="ganre">
+        <!-- The E4 controller's daily settings (economy.CONTROLLER_*). See docs/ECONOMY_PLAN.md E4. -->
+        <sqlFile path="db/tables/049-economy-controller.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/049-economy-controller-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

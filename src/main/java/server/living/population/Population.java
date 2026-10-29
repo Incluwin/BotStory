@@ -11,7 +11,9 @@ import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.inventory.AgentStallHolds;
+import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.economy.market.MarketPricePrior;
+import server.economy.ledger.EconomyLedger;
 import server.economy.ledger.MesoFlows;
 import server.economy.ledger.MesoHolder;
 import server.knowledge.ContentAnswers;
@@ -59,6 +61,7 @@ public final class Population {
     private final SocialFabric social;
     private final Conversation conversation;
     private final Market market;
+    private final EconomyController controller;
     private final CitizenPartyQuests partyQuests;
     private final CitizenMiniGames miniGames;
     private final CitizenJumpQuests jumpQuests;
@@ -95,6 +98,7 @@ public final class Population {
         this.social = new SocialFabric(this);
         this.conversation = new Conversation(this);
         this.market = new Market(this);
+        this.controller = new EconomyController(this, YamlConfig.config.economy);
         this.partyQuests = new CitizenPartyQuests(this);
         this.miniGames = new CitizenMiniGames(this);
         this.jumpQuests = new CitizenJumpQuests(this);
@@ -170,6 +174,9 @@ public final class Population {
             return quote == null ? 0L : quote.price();
         });
         AgentStallHolds.install(population.market::keepForStall); // list or vendor (docs/ECONOMY_PLAN.md E3)
+        population.controller.start(); // the last applied E4 setting (docs/ECONOMY_PLAN.md E4)
+        AgentLootPolicy.installSelectivity(population.controller);
+        EconomyLedger.onClose(population.controller::onClose);
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
@@ -218,6 +225,8 @@ public final class Population {
         MesoFlows.installClassifier(null);
         MarketPricePrior.install(null);
         AgentStallHolds.install(null);
+        AgentLootPolicy.installSelectivity(null);
+        EconomyLedger.onClose(null);
         AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
             timer.cancel(false);
@@ -316,6 +325,11 @@ public final class Population {
 
     public Market market() {
         return market;
+    }
+
+    /** The E4 controller's levers and recent settings, for the admin port (docs/ECONOMY_PLAN.md E4). */
+    public String economyControllerJson(int days) {
+        return controller.statsJson(days);
     }
 
     /** Party quests citizen parties run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md). */

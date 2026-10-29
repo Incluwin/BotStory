@@ -39,6 +39,35 @@ public class EconomyConfig {
     public double PURSE_RESET_MEDIAN = 3.0d;
     public double PURSE_RESET_SIGMA = 0.6d;
 
+    /**
+     * E4: at each daily close the controller sets the next day's citizen levers from the day's numbers, within the
+     * bounds below, and logs each setting to economy_controller_daily. Off: the levers sit at neutral (every drop picked
+     * up, the configured buy budget). CONTROLLER_SHADOW works the settings out and logs them without applying them.
+     */
+    public boolean CONTROLLER_ENABLED = true;
+    public boolean CONTROLLER_SHADOW = false;
+    /** The organic daily supply growth it steers to: the day's external net without the purse reset, over the supply. */
+    public double CONTROLLER_TARGET_GROWTH = 0.01d;
+    /** Pickup selectivity: the least share of monster equip drops a citizen still picks up, and the most a day moves it. */
+    public double CONTROLLER_PICKUP_MIN = 0.3d;
+    public double CONTROLLER_PICKUP_STEP = 0.15d;
+    /**
+     * Luxury spending: the most a day's chance can be that a citizen holding over LUXURY_OVER x the meso its level
+     * should carry spends on a luxury (a salon restyle), and the most a day moves it. It rises only once pickup is at
+     * its least, and eases off before pickup rises again.
+     */
+    public double CONTROLLER_LUXURY_MAX = 0.5d;
+    public double CONTROLLER_LUXURY_STEP = 0.1d;
+    public double CONTROLLER_LUXURY_OVER = 3.0d;
+    /**
+     * Market buy budgets: the bounds of the scale on population.MARKET_BUY_BUDGET_PER_DAY and the most a day moves it;
+     * a basket index change within CONTROLLER_CPI_BAND of the day before leaves it.
+     */
+    public double CONTROLLER_BUDGET_MIN = 0.5d;
+    public double CONTROLLER_BUDGET_MAX = 2.0d;
+    public double CONTROLLER_BUDGET_STEP = 0.25d;
+    public double CONTROLLER_CPI_BAND = 0.02d;
+
     public void validate() {
         if (JOURNAL_RETENTION_DAYS < 0 || CPI_MIN_SALES < 1) {
             throw new IllegalArgumentException("economy.JOURNAL_RETENTION_DAYS must be >= 0 and CPI_MIN_SALES >= 1");
@@ -48,6 +77,14 @@ public class EconomyConfig {
         }
         if (PURSE_RESET_MEDIAN <= 0d || PURSE_RESET_SIGMA < 0d || PURSE_RESET_SIGMA > 2d) {
             throw new IllegalArgumentException("economy.PURSE_RESET_MEDIAN must be > 0 and PURSE_RESET_SIGMA in 0..2");
+        }
+        if (CONTROLLER_PICKUP_MIN <= 0d || CONTROLLER_PICKUP_MIN > 1d || CONTROLLER_PICKUP_STEP <= 0d
+                || CONTROLLER_BUDGET_MIN <= 0d || CONTROLLER_BUDGET_MAX < CONTROLLER_BUDGET_MIN
+                || CONTROLLER_BUDGET_STEP <= 0d || CONTROLLER_CPI_BAND < 0d
+                || CONTROLLER_LUXURY_MAX < 0d || CONTROLLER_LUXURY_MAX > 1d || CONTROLLER_LUXURY_STEP <= 0d
+                || CONTROLLER_LUXURY_OVER <= 0d) {
+            throw new IllegalArgumentException("economy.CONTROLLER_*: PICKUP_MIN in (0, 1], BUDGET_MIN > 0, "
+                    + "BUDGET_MAX >= BUDGET_MIN, LUXURY_MAX in 0..1, LUXURY_OVER > 0, steps > 0 and CPI_BAND >= 0");
         }
     }
 }

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ScheduledFuture;
+import java.util.function.Consumer;
 
 /**
  * The economy ledger's clock (docs/ECONOMY_PLAN.md E0). Every minute it drains {@link MesoFlows} into
@@ -48,6 +49,16 @@ public final class EconomyLedger {
     }
 
     private static volatile EconomyLedger instance;
+
+    /**
+     * A closed day as the E4 controller reads it (docs/ECONOMY_PLAN.md E4): the supply, the external net without the
+     * one-off purse reset (RESET), what citizens sold to NPC shops, and the basket index and the day before's (null
+     * when that day has no close).
+     */
+    public record Close(LocalDate day, long supply, long organicNet, long citizenNpcSale, Double cpi,
+                        Double previousCpi) { }
+
+    private static volatile Consumer<Close> closeListener;
 
     private final EconomyConfig config;
     private ScheduledFuture<?> timer;
@@ -107,6 +118,11 @@ public final class EconomyLedger {
 
     public static EconomyLedger get() {
         return instance;
+    }
+
+    /** Who hears each daily close after it is written (the E4 controller); null for no one. */
+    public static void onClose(Consumer<Close> listener) {
+        closeListener = listener;
     }
 
     synchronized void tick() {
@@ -180,9 +196,48 @@ public final class EconomyLedger {
                 }
                 log.info("economy close {}: supply {} meso, external net {}, residual {}, basket index {}",
                         day, supply.total(), externalNet, residual, cpi == null ? "-" : String.format("%.1f", cpi));
+                Consumer<Close> listener = closeListener;
+                if (listener != null) {
+                    listener.accept(new Close(day, supply.total(),
+                            externalNet - accountNet(con, day, MesoAccount.RESET),
+                            accountIn(con, day, MesoAccount.NPC_SALE, MesoHolder.CITIZEN), cpi, previousCpi(con, day)));
+                }
             }
-        } catch (SQLException failure) {
+        } catch (SQLException | RuntimeException failure) {
             log.warn("economy close for {} failed", day, failure);
+        }
+    }
+
+    private static long accountNet(Connection con, LocalDate day, MesoAccount account) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("SELECT COALESCE(SUM(meso_in - meso_out), 0)"
+                + " FROM economy_flow_daily WHERE day = ? AND account = ?")) {
+            ps.setDate(1, Date.valueOf(day));
+            ps.setString(2, account.name());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : 0L;
+            }
+        }
+    }
+
+    private static long accountIn(Connection con, LocalDate day, MesoAccount account, MesoHolder holder)
+            throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("SELECT COALESCE(SUM(meso_in), 0)"
+                + " FROM economy_flow_daily WHERE day = ? AND account = ? AND holder = ?")) {
+            ps.setDate(1, Date.valueOf(day));
+            ps.setString(2, account.name());
+            ps.setString(3, holder.name());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : 0L;
+            }
+        }
+    }
+
+    private static Double previousCpi(Connection con, LocalDate day) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("SELECT cpi FROM economy_close_daily WHERE day = ?")) {
+            ps.setDate(1, Date.valueOf(day.minusDays(1)));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? (Double) rs.getObject(1, Double.class) : null;
+            }
         }
     }
 

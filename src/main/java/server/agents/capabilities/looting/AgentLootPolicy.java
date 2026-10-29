@@ -78,7 +78,18 @@ public final class AgentLootPolicy {
         }
     }
 
+    /**
+     * The host's pickup selectivity (docs/ECONOMY_PLAN.md E4): true when this Agent walks past this monster equip drop,
+     * as players leave some loot. Asked only outside event instances, for an equip that is no quest or cash item; the
+     * host keeps its answer the same for the same drop.
+     */
+    @FunctionalInterface
+    public interface Selectivity {
+        boolean leaves(Character agent, MapItem drop);
+    }
+
     private static volatile Rule rule;
+    private static volatile Selectivity selectivity;
 
     private AgentLootPolicy() {
     }
@@ -87,9 +98,14 @@ public final class AgentLootPolicy {
         rule = installed;
     }
 
+    public static void installSelectivity(Selectivity installed) {
+        selectivity = installed;
+    }
+
     /**
      * True when this Agent's policy lets it pick up the drop: always with no rule installed or no policy for it, unless
-     * a loot slip leaves it ({@link #slipsPast}). Inside an event instance it is true too, except for a boss's drop the
+     * a loot slip ({@link #slipsPast}) or the host's pickup selectivity ({@link #leavesEquip}) leaves it. Inside an
+     * event instance it is true too, except for a boss's drop the
      * Agent leaves in a boss run ({@link #leftInRun}).
      */
     public static boolean permits(Character bot, MapItem drop) {
@@ -101,7 +117,16 @@ public final class AgentLootPolicy {
         if (bot.getEventInstance() != null) {
             return policy == null || !leftInRun(current, policy, bot, drop);
         }
-        return (policy == null || permits(policy, bot, drop)) && !slipsPast(bot, drop, policy, QUEST_OR_CASH);
+        return (policy == null || permits(policy, bot, drop)) && !slipsPast(bot, drop, policy, QUEST_OR_CASH)
+                && !leavesEquip(selectivity, bot, drop, QUEST_OR_CASH);
+    }
+
+    /** Pickup selectivity ({@link Selectivity}): a monster's equip drop, no quest or cash item, the host leaves. */
+    static boolean leavesEquip(Selectivity host, Character bot, MapItem drop,
+                               java.util.function.IntPredicate questOrCash) {
+        return host != null && drop.getMeso() <= 0 && drop.getDropper() instanceof Monster
+                && ItemConstants.isEquipment(drop.getItemId()) && host.leaves(bot, drop)
+                && !questOrCash.test(drop.getItemId());
     }
 
     /** A quest or cash item by its item data; read only when a slip is asked about the drop. */

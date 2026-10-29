@@ -1462,6 +1462,20 @@ economy:
     CITIZEN_PURSE_RESET: true
     PURSE_RESET_MEDIAN: 3.0
     PURSE_RESET_SIGMA: 0.6
+    # E4 controller: at each daily close it sets the next day's citizen levers toward the target growth, within these
+    # bounds, and logs each setting to economy_controller_daily (/runtime/stats/controller). Off: levers at neutral.
+    CONTROLLER_ENABLED: true
+    CONTROLLER_SHADOW: false                # true: work the levers out and log them, apply nothing
+    CONTROLLER_TARGET_GROWTH: 0.01          # organic supply growth a day (external net without the purse reset / supply)
+    CONTROLLER_PICKUP_MIN: 0.3              # least share of monster equip drops a citizen still picks up
+    CONTROLLER_PICKUP_STEP: 0.15
+    CONTROLLER_LUXURY_MAX: 0.5              # most daily chance a citizen over LUXURY_OVER x its level's meso buys a luxury
+    CONTROLLER_LUXURY_STEP: 0.1
+    CONTROLLER_LUXURY_OVER: 3.0
+    CONTROLLER_BUDGET_MIN: 0.5              # scale on population.MARKET_BUY_BUDGET_PER_DAY, moved against the basket index
+    CONTROLLER_BUDGET_MAX: 2.0
+    CONTROLLER_BUDGET_STEP: 0.25
+    CONTROLLER_CPI_BAND: 0.02
 
 # Server mods and the kaentake client's login feature handshake (docs/CLIENT_FEATURE_HANDSHAKE.md). ASCII only.
 mods:
