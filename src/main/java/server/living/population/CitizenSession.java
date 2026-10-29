@@ -38,6 +38,8 @@ public final class CitizenSession {
     public volatile client.Job errandJob;
     /** Its instructor refused it this session: no second try before its next session (CitizenJobErrands). */
     public volatile boolean errandFailed;
+    /** The stylist its TOWN visit is for (CitizenSalons, docs/ECONOMY_PLAN.md E4b); 0 otherwise. */
+    public volatile int salonNpc;
     public volatile int partyId;
     public final Journal journal = new Journal();
     /** channel -> last time this citizen spoke on it (chatter cooldowns). */

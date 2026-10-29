@@ -103,6 +103,7 @@ public final class PresenceScheduler {
     private final Map<Integer, CitizenSession> sessions = new ConcurrentHashMap<>();
     private final Random random;
     private final CitizenJobErrands jobs;
+    private final CitizenSalons salons;
     private final CitizenTravel onFoot;
     private final MapVisibleCap cap;
     private volatile long lastSweepMs;
@@ -120,6 +121,7 @@ public final class PresenceScheduler {
         this.population = population;
         this.random = random;
         this.jobs = new CitizenJobErrands(population, this);
+        this.salons = new CitizenSalons(population, this);
         this.onFoot = new CitizenTravel(population, this);
         this.cap = new MapVisibleCap(population::config, sessions::values, MapVisibleCap::standingMap);
     }
@@ -705,10 +707,16 @@ public final class PresenceScheduler {
 
     Activity plan(CitizenSession session, long now) {
         Citizen citizen = session.citizen;
+        session.salonNpc = 0;
         Job errand = jobs.planned(session);
         session.errandJob = errand;
         if (errand != null) {
             return Activity.JOB; // its life reached its next job: it goes to its instructor first
+        }
+        int salon = salons.planned(session, now);
+        session.salonNpc = salon;
+        if (salon != 0) {
+            return Activity.TOWN; // a luxury the economy controller allows (E4b): a visit to its region's hair salon
         }
         Cohort cohort = population.content().cohort(citizen.cohort());
         Map<String, Integer> weights = cohort == null ? Map.of("TRAIN", 60, "TOWN", 40) : cohort.activities();
@@ -787,7 +795,8 @@ public final class PresenceScheduler {
                 return start > 0 ? start : population.fields().homeTown(citizen, random);
             }
             default -> {
-                return population.fields().homeTown(citizen, random);
+                CitizenSalons.Salon salon = activity == Activity.TOWN ? CitizenSalons.salon(session.salonNpc) : null;
+                return salon != null ? salon.mapId() : population.fields().homeTown(citizen, random);
             }
         }
     }
@@ -822,6 +831,11 @@ public final class PresenceScheduler {
                     session.errandJob = null;
                     session.activity = Activity.TOWN;
                     session.lastPlanAtMs = 0L;
+                    stroll(session, map, now);
+                }
+            }
+            case TOWN -> {
+                if (session.salonNpc == 0 || !salons.begin(session, map)) { // no salon visit here after all: a stroll
                     stroll(session, map, now);
                 }
             }
@@ -898,7 +912,7 @@ public final class PresenceScheduler {
      * Market room it browses from stall to stall instead, on any platform (Market.browseSpot).
      */
     private void idleWander(CitizenSession session) {
-        if (session.entry == null || session.stallOpen || session.stallSpot != null
+        if (session.entry == null || session.stallOpen || session.stallSpot != null || session.salonNpc != 0
                 || (session.activity != Activity.TOWN && session.activity != Activity.MARKET)) {
             return;
         }
@@ -1027,6 +1041,25 @@ public final class PresenceScheduler {
             logout(existing, "loaded by a GM");
         }
         return login(population.citizen(citizen.characterId()), now, false);
+    }
+
+    /**
+     * Ops/test knob (!citizens salon): this loaded citizen goes to its hair salon now, whatever the luxury lever and its
+     * daily roll say (docs/ECONOMY_PLAN.md E4b). Null when it went, else why not.
+     */
+    public synchronized String sendToSalon(int characterId, long now) {
+        CitizenSession session = sessions.get(characterId);
+        if (session == null || !session.loaded() || !movable(session)) {
+            return "not loaded, or busy (a party quest, stall, errand or move)";
+        }
+        CitizenSalons.Salon salon = salons.salonFor(session);
+        if (salon == null) {
+            return "may not go: a hired hand or persona, no salon for its region, or short of the price over its level's meso";
+        }
+        session.salonNpc = salon.npcId();
+        session.lastPlanAtMs = now;
+        travel(session, Activity.TOWN, salon.mapId(), now);
+        return null;
     }
 
     /**

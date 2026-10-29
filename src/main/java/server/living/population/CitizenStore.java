@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -287,6 +288,21 @@ public final class CitizenStore {
             }
         } catch (SQLException failure) {
             log.warn("living_price_index scan failed", failure);
+        }
+        return out;
+    }
+
+    /** Characters that are a persona's (Residents, companions): their looks are drawn elsewhere (CitizenSalons). */
+    Set<Integer> personaCharacterIds() {
+        Set<Integer> out = new HashSet<>();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT character_id FROM living_persona_state");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.add(rs.getInt(1));
+            }
+        } catch (SQLException failure) {
+            log.warn("living_persona_state scan failed", failure);
         }
         return out;
     }

@@ -327,6 +327,11 @@ public final class Population {
         return market;
     }
 
+    /** The E4 controller (its levers: CitizenSalons reads the luxury one). */
+    EconomyController economyController() {
+        return controller;
+    }
+
     /** The E4 controller's levers and recent settings, for the admin port (docs/ECONOMY_PLAN.md E4). */
     public String economyControllerJson(int days) {
         return controller.statsJson(days);

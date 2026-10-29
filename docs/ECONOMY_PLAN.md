@@ -214,8 +214,14 @@ Built (2026-10-28; levers chosen by the user: pickup selectivity, luxury spendin
   those sales) / those sales; it moves toward that by at most `CONTROLLER_PICKUP_STEP`, never under `PICKUP_MIN` (0.3).
 - **Luxury spending**: a daily chance (up to `LUXURY_MAX`) that a citizen over `LUXURY_OVER` x the meso its level should
   carry buys a luxury. It rises only while pickup cannot hold growth alone (the wanted share is under the least) and
-  eases off before pickup rises again. The lever is worked out and logged; what citizens buy with it (salon visits) is
-  E4b, not built yet.
+  eases off before pickup rises again.
+- **E4b, salon visits** (`CitizenSalons`): once a UTC day, with the lever's chance, a loaded citizen (no hired hand, no
+  persona) from a region with a salon, holding 1 m over `LUXURY_OVER` x `Market.expectedMeso` for its level, makes a
+  TOWN visit to its usual VIP stylist (Henesys or Kerning City for Victoria; Orbis for Orbis and El Nath; Ludibrium, Mu
+  Lung, Showa, Amoria, New Leaf City). It walks up, takes a moment, pays 1 m (the salon script's coupon price, booked
+  SERVICE) and gets one of the salon's VIP styles in its own colour or its own style in another colour, which players
+  around it see; then it plans on. Moved on, logged out or short on the way: it pays nothing. `!citizens salon <name>`
+  sends a loaded citizen now, whatever the lever, to test it.
 - **Buy budgets**: a scale on `population.MARKET_BUY_BUDGET_PER_DAY` moved against the basket index's day-on-day change
   outside `CONTROLLER_CPI_BAND`, a step at most, within `BUDGET_MIN..MAX`. It only moves meso between holders.
 - The basket's first close (10-28) priced 8 of its 33 items at the old 10-meso seed, so the 10-29 close's index jump is
