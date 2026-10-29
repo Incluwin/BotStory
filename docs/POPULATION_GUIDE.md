@@ -398,11 +398,15 @@ so a bot would walk through it unharmed. Shumi's jump quest (103000900-909) come
   (it stops on the small platform up there, as players do). The citizen climbs from checkpoint to checkpoint with its
   jumps' noise on (`AgentJumpNoise`): the launch x of each jump moves by a draw from N(0, sigma), sigma solved per stage
   (`JumpWindows`) from the jump probe's real landing windows (a window that reaches the platform's end is open there: a
-  press past the end launches from it). The skill is its chance on seven jumps, stable per citizen within
+  press past the end launches from it). A drawn press is taken on its x (a pixel either way), or at rest within half a
+  walk step of it (a precise approach to a jump coasts to rest on its launch), so the takeoff is the draw, as the
+  calibration asks. Taken at the first position near it, it came early every time (navigation looks every 100 ms) and
+  a 70% citizen cleared about 30% of 101000100's stages. The skill is its chance on seven jumps, stable per citizen within
   `JQ_STAGE_SUCCESS_MIN`..`MAX` (30-70%), scaled to a shorter stage, plus `JQ_PRACTICE_STEP` for every stage it clears
   without a fall, this session. A narrow jump fails more often than a wide one.
-- A miss is a real drop: every drawn launch off the edge's window is probed first, over the whole band the citizen may
-  take off from, and kept only if it lands on a foothold that can still reach the checkpoint and no farther down than a
+- A miss is a real drop: every drawn launch off the edge's window is probed first, pixel by pixel over the whole band
+  the citizen may take off from (one pixel can be the one that misses a lip into a void, as 101000101's r60->r59 does
+  at its window's end), and kept only if it lands on a foothold that can still reach the checkpoint and no farther down than a
   fall that hurts (else it draws again, then jumps exactly). Presses stay 4 px inside a platform's ends, so walking to
   one never steps off. A miss costs a climb, never HP. It lands lower, says "rip" or
   "ugh" now and then (`jq.fall`), and climbs again. Noisy misses do not count against the edge's reliability, and the
@@ -413,6 +417,7 @@ so a bot would walk through it unharmed. Shumi's jump quest (103000900-909) come
   says `jq.clear` and leaves; no JQ plan for `JQ_COOLDOWN_MS` (6 h).
 - The below-map recovery teleport must never happen in front of a player. A fall below the map during an attempt with
   a player on the map logs the citizen off (a disconnect, a normal sight); with nobody there the recovery runs unseen.
+  The out-of-map distance recovery (which meets such a fall first, once it leaves the map's area) asks the same way.
   Both are counted in `!citizens jq` and `/runtime/citizens` (`jumpQuests`) and logged WARN. `JumpQuestRoutesTest`
   proves none happen on the shipped courses.
 - Logs: `citizen <name> starts forest of patience (GATE)`, `citizen <name> cleared pet walking road with 3 falls in 412
