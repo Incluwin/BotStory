@@ -206,7 +206,10 @@ unusable ammo, so looted scrolls were never used or sold; only merchants' stalls
   the scroll from its bag worth most to its job on a worn piece with upgrade slots left, about one each eight minutes
   (a 1-in-4 roll at each two-minute market tick), up to `SCROLLS_PER_DAY` (8). Worth is points of its attack: its
   attack 1, main stat 0.6, second stat 0.3, accuracy 0.2 (a mage's 0.05), avoid / speed / jump 0.05, DEF 0.03, HP / MP
-  0.005; a scroll is used at `SCROLL_MIN_VALUE` (0.25), so DEF-only scrolls stay in the bag.
+  0.005; a scroll is used at `SCROLL_MIN_VALUE` (0.25), so most defence-only scrolls stay in the bag (a 10 % one that
+  adds a lot of defence and HP gets over it).
+- Live 10-29 07:18 boot: 24 uses in the first four minutes (8 passed, 16 failed, many of them 10 % scrolls), 0 errors;
+  a passed one is saved (iHateCookie's Devil's Sunrise: upgrade level 1, 6 slots left).
 - Only scrolls that cannot destroy the piece: no dark (WZ `cursed` > 0), chaos, clean-slate or flag scrolls. The item
   sink is the scroll itself and the slot a fail spends; no citizen loses a worn piece to a boom.
 - A browsing citizen with no usable scroll of its own buys one at a stall (players' first) worth `SCROLL_BUY_MIN_VALUE`
