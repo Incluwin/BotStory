@@ -91,6 +91,63 @@ public final class EconomyLedger {
         ledger.openDay = today();
         instance = ledger;
         log.info("economy ledger started: supply at boot {} meso", ledger.bootSupply);
+        ledger.catchUp();
+    }
+
+    /**
+     * A day closes at the first tick after its midnight, so a server down across that midnight never closed it. At
+     * start, the latest day before today with flows and no close closes now: nothing moves meso while the server is down,
+     * so the supply now is the supply that day ended with. Only that one: an older unclosed day's end is gone.
+     */
+    private void catchUp() {
+        try (Connection con = DatabaseConnection.getConnection()) {
+            LocalDate missed = missed(lastDay(con, "economy_flow_daily", openDay), lastDay(con, "economy_close_daily", openDay));
+            if (missed != null) {
+                log.info("economy ledger: {} was never closed (the server was down at its midnight); closing it now", missed);
+                close(missed);
+            }
+        } catch (SQLException failure) {
+            log.warn("economy ledger: the missed-close check failed", failure);
+        }
+    }
+
+    /** The day to close at start: the latest day with flows, when it is after the latest close; else null. */
+    static LocalDate missed(LocalDate lastFlowDay, LocalDate lastCloseDay) {
+        return lastFlowDay != null && (lastCloseDay == null || lastFlowDay.isAfter(lastCloseDay)) ? lastFlowDay : null;
+    }
+
+    private static LocalDate lastDay(Connection con, String table, LocalDate before) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("SELECT MAX(day) FROM " + table + " WHERE day < ?")) {
+            ps.setDate(1, Date.valueOf(before));
+            try (ResultSet rs = ps.executeQuery()) {
+                Date day = rs.next() ? rs.getDate(1) : null;
+                return day == null ? null : day.toLocalDate();
+            }
+        }
+    }
+
+    /** The latest closed day, or null with none (the E4 controller's start: a close it never heard). */
+    public static LocalDate lastClosedDay() throws SQLException {
+        try (Connection con = DatabaseConnection.getConnection()) {
+            return lastDay(con, "economy_close_daily", today().plusDays(1));
+        }
+    }
+
+    /** A closed day as the controller reads it, from the tables; null when the day has no close. */
+    public static Close readClose(LocalDate day) throws SQLException {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT supply, external_net, cpi FROM economy_close_daily WHERE day = ?")) {
+            ps.setDate(1, Date.valueOf(day));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? record(con, day, rs.getLong(1), rs.getLong(2), (Double) rs.getObject(3, Double.class)) : null;
+            }
+        }
+    }
+
+    private static Close record(Connection con, LocalDate day, long supply, long externalNet, Double cpi)
+            throws SQLException {
+        return new Close(day, supply, externalNet - accountNet(con, day, MesoAccount.RESET),
+                accountIn(con, day, MesoAccount.NPC_SALE, MesoHolder.CITIZEN), cpi, previousCpi(con, day));
     }
 
     /** With the server's other timers, once the TimerManager runs: the minute flush and the daily close. */
@@ -198,9 +255,7 @@ public final class EconomyLedger {
                         day, supply.total(), externalNet, residual, cpi == null ? "-" : String.format("%.1f", cpi));
                 Consumer<Close> listener = closeListener;
                 if (listener != null) {
-                    listener.accept(new Close(day, supply.total(),
-                            externalNet - accountNet(con, day, MesoAccount.RESET),
-                            accountIn(con, day, MesoAccount.NPC_SALE, MesoHolder.CITIZEN), cpi, previousCpi(con, day)));
+                    listener.accept(record(con, day, supply.total(), externalNet, cpi));
                 }
             }
         } catch (SQLException | RuntimeException failure) {

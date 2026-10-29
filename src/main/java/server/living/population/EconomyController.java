@@ -15,6 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Locale;
 import java.util.StringJoiner;
 
@@ -56,9 +57,41 @@ final class EconomyController implements AgentLootPolicy.Selectivity {
         return levers;
     }
 
-    /** At start: the last applied setting, or neutral with the controller off. */
+    /**
+     * At start: the last applied setting, or neutral with the controller off; then the latest close, when it never heard
+     * it (the server stopped between the close and its setting, or the ledger closed a missed day at this start).
+     */
     void start() {
         apply(config.CONTROLLER_ENABLED ? lastApplied() : Levers.NEUTRAL);
+        if (!config.CONTROLLER_ENABLED) {
+            return;
+        }
+        try {
+            LocalDate closed = EconomyLedger.lastClosedDay();
+            if (unheard(closed, lastDecidedDay(), LocalDate.now(ZoneOffset.UTC))) {
+                EconomyLedger.Close close = EconomyLedger.readClose(closed);
+                if (close != null) {
+                    log.info("economy controller: the close of {} was never heard; setting from it now", closed);
+                    onClose(close);
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("economy controller: the unheard-close check failed", failure);
+        }
+    }
+
+    /** A close to set from at start: one after the last setting, and recent (yesterday's or the day before's). */
+    static boolean unheard(LocalDate closed, LocalDate decided, LocalDate today) {
+        return closed != null && (decided == null || closed.isAfter(decided)) && !closed.isBefore(today.minusDays(2));
+    }
+
+    private static LocalDate lastDecidedDay() throws SQLException {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT MAX(day) FROM economy_controller_daily");
+             ResultSet rs = ps.executeQuery()) {
+            Date day = rs.next() ? rs.getDate(1) : null;
+            return day == null ? null : day.toLocalDate();
+        }
     }
 
     /** From the ledger's daily close (EconomyLedger.onClose), on its timer thread. */
@@ -178,7 +211,7 @@ final class EconomyController implements AgentLootPolicy.Selectivity {
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT day, growth, cpi_change, pickup_share, luxury_rate,"
                      + " budget_scale, applied FROM economy_controller_daily WHERE day >= ? ORDER BY day")) {
-            ps.setDate(1, Date.valueOf(LocalDate.now(java.time.ZoneOffset.UTC).minusDays(days)));
+            ps.setDate(1, Date.valueOf(LocalDate.now(ZoneOffset.UTC).minusDays(days)));
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     rows.add("{\"day\":\"" + rs.getDate(1).toLocalDate() + "\",\"growth\":" + rs.getObject(2)

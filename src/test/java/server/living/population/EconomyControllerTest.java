@@ -117,6 +117,17 @@ class EconomyControllerTest {
     }
 
     @Test
+    void atStartItSetsFromARecentCloseItNeverHeard() {
+        LocalDate today = LocalDate.of(2026, 10, 30);
+        assertTrue(EconomyController.unheard(DAY, null, today), "no setting yet");
+        assertTrue(EconomyController.unheard(DAY, DAY.minusDays(1), today), "stopped between the close and its setting");
+        assertTrue(EconomyController.unheard(DAY.minusDays(1), null, today), "the day before yesterday is still recent");
+        assertFalse(EconomyController.unheard(DAY, DAY, today), "heard");
+        assertFalse(EconomyController.unheard(DAY.minusDays(2), null, today), "too old to set tomorrow from");
+        assertFalse(EconomyController.unheard(null, null, today), "no close at all");
+    }
+
+    @Test
     void unitIsSpreadEvenlyOverZeroToOne() {
         double sum = 0.0d;
         for (int objectId = 0; objectId < 10_000; objectId++) {

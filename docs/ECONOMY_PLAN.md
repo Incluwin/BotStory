@@ -226,6 +226,10 @@ Built (2026-10-28; levers chosen by the user: pickup selectivity, luxury spendin
   outside `CONTROLLER_CPI_BAND`, a step at most, within `BUDGET_MIN..MAX`. It only moves meso between holders.
 - The basket's first close (10-28) priced 8 of its 33 items at the old 10-meso seed, so the 10-29 close's index jump is
   the price repair, not inflation; it moves budgets one step at most.
+- A day closes at the first tick after its UTC midnight, so a server down across that midnight never closed it. At
+  start the ledger closes the latest day with flows and no close (`EconomyLedger.catchUp`; the supply at boot is the
+  one that day ended with, nothing moving meso while the server is down), and the controller sets from the latest
+  close it never heard, when that close is yesterday's or the day before's (`EconomyController.start`).
 
 ### E5. Human-side tuning
 D2 and D3 were decided on 10-28 and moved into E1; D4 is no. What is left here is anything the E0 numbers show after
