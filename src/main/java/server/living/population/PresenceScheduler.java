@@ -1325,12 +1325,23 @@ public final class PresenceScheduler {
 
     /**
      * Where a cheap move comes into {@code target}: portal 0 as always while nobody is there (or portal travel is off);
-     * with a player there, the portal its route enters by.
+     * with a player there, or into the shop it goes to sell at, the portal its route enters by.
      */
     private server.maps.Portal arrivalPortal(CitizenSession session, int fromMapId, MapleMap target, long now) {
-        server.maps.Portal entry = onFoot.enabled() && CitizenTravel.watched(target)
+        server.maps.Portal entry = entersByRoute(session, target.getId(), onFoot.enabled() && CitizenTravel.watched(target))
                 ? onFoot.entryPortal(session, fromMapId, target, now) : null;
         return entry != null ? entry : target.getPortal(0);
+    }
+
+    /**
+     * Whether a move into {@code mapId} comes in by the portal its route enters by: one a player watches, or the shop a
+     * sell trip goes to. A shop's portal 0 can be a spawn point on another floor than its counter: in Kerning City's
+     * potion shop (103000002) the counter is reached from the door, as supply trips come in, while sell trips put down
+     * on the floor below wandered its shelves until the sale gave up (7 of 11 such failures, 10-29).
+     */
+    static boolean entersByRoute(CitizenSession session, int mapId, boolean watchedWithPortalTravel) {
+        CitizenSellTrips.Trip sale = session.sellTrip;
+        return watchedWithPortalTravel || sale != null && sale.mapId() == mapId;
     }
 
     /**

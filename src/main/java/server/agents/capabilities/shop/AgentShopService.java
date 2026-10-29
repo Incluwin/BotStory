@@ -256,6 +256,18 @@ public final class AgentShopService {
         return true;
     }
 
+    /**
+     * Where the Agent would stand to trade with the shopkeeper at {@code npcPos} on its map: the visit's own pick, the
+     * foothold point near the shopkeeper its route reaches soonest. A shopkeeper can stand inside its counter's
+     * footholds, where nobody walks to; {@code npcPos} when the map has no footholds.
+     */
+    public static Point approachPoint(AgentRuntimeEntry entry, Character bot, Point npcPos) {
+        if (entry == null || bot == null || bot.getMap() == null || npcPos == null) {
+            return npcPos;
+        }
+        return pickShopApproach(npcPos, entry, bot).point();
+    }
+
     private static void startShopVisit(AgentRuntimeEntry entry, Character bot, NpcShopMatch match) {
         startShopVisit(entry, bot, match, 0);
     }

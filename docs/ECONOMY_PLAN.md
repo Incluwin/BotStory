@@ -229,7 +229,15 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   ~69 free slots; but 21 of 48 trips failed "never reached the shop NPC": asked from the arrival portal, the visit's
   approach (30 s + its route time) ran out at an unwatched Agent's background tick rate. A supply trip walks to the
   shopkeeper before its visit, so now a sell trip does too: it walks to the counter (as a salon visit does), asks
-  within 60 px, or wherever it stands after a minute.
+  within 60 px, or wherever it stands after a minute. Live 17:02 (`597247773`): 74 % of trips sold (54 % before),
+  39 errands filled in 50 minutes, full bags 231 -> 204.
+- **Kerning City's potion shop (10-29).** 7 of the 11 trips left that never reached a shopkeeper were into 103000002.
+  Its shopkeeper (1051002) stands inside the counter's footholds at (-297,-79); shoppers stand on the floor below it
+  (y -45), which the door (out00, (287,-67)) opens onto, while its portal 0 is a spawn point on the floor beneath the
+  stairs (y 181). Supply trips come in by the door; an unwatched sell trip was put down at portal 0 and walked toward
+  the shopkeeper's own spot, which led onto the shelves at that height (citizens left at (96,-88), (15,-152)). Now a
+  sell trip comes into its shop by the portal its route enters by, watched or not (`PresenceScheduler.entersByRoute`),
+  and walks to the shop visit's own place to stand (`AgentShopService.approachPoint`), worked out on its mailbox.
 
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and

@@ -38,7 +38,9 @@ class CitizenSellTripsTest {
 
     private final PopulationConfig config = new PopulationConfig();
     private final Population population = mock(Population.class);
-    private static final Point COUNTER = new Point(-297, -79);
+    /** Kerning City potion shop: the shopkeeper stands inside its counter; a shopper stands on the floor below. */
+    private static final Point SHOPKEEPER_SPOT = new Point(-297, -79);
+    private static final Point COUNTER = new Point(-318, -45);
 
     private final List<Integer> asked = new ArrayList<>();
     private final List<Point> walks = new ArrayList<>();
@@ -70,6 +72,8 @@ class CitizenSellTripsTest {
         trips.walk = (entry, point) -> walks.add(point);
         trips.clock = () -> clock[0];
         trips.later = (task, delayMs) -> queue.add(task);
+        trips.approach = (entry, who, shopkeeper) -> shopkeeper.equals(SHOPKEEPER_SPOT) ? COUNTER : null;
+        trips.onAgent = (entry, task) -> task.run();
         when(agent.getPosition()).thenAnswer(inv -> position[0]);
     }
 
@@ -129,10 +133,10 @@ class CitizenSellTripsTest {
         assertTrue(walks.isEmpty());
 
         arrive(10 * HOUR);
-        assertEquals(List.of(COUNTER), walks, "it walks to the shopkeeper");
+        assertEquals(List.of(COUNTER), walks, "it walks to where a shopper stands, not into the counter");
         runChecks(5);
         assertTrue(asked.isEmpty(), "still on its way");
-        position[0] = new Point(-280, -79);
+        position[0] = new Point(-300, -45);
         runChecks(1);
         assertEquals(List.of(SHOPKEEPER), asked, "at the counter it asks for the sale");
         assertTrue(queue.isEmpty());
@@ -162,6 +166,22 @@ class CitizenSellTripsTest {
     }
 
     @Test
+    void withNoPlaceToStandFoundItWalksToTheShopkeeper() {
+        trips.approach = (entry, who, shopkeeper) -> null;
+        arrive(10 * HOUR);
+        assertEquals(List.of(SHOPKEEPER_SPOT), walks);
+    }
+
+    @Test
+    void itComesIntoItsShopByTheDoorWhoeverWatches() {
+        assertFalse(PresenceScheduler.entersByRoute(session, SHOP_MAP, false), "no trip: portal 0 while nobody watches");
+        assertTrue(PresenceScheduler.entersByRoute(session, SHOP_MAP, true), "watched: by its route, as before");
+        session.sellTrip = trips.planned(session, 1_000L);
+        assertTrue(PresenceScheduler.entersByRoute(session, SHOP_MAP, false), "into the shop it sells at: by the door");
+        assertFalse(PresenceScheduler.entersByRoute(session, 100000000, false), "anywhere else on the way: as before");
+    }
+
+    @Test
     void aTripThatNeverBeganOrNeverEndsIsOver() {
         session.sellTrip = trips.planned(session, 1_000L);
         assertFalse(trips.finished(session, 1_000L + CitizenSellTrips.TRIP_TIMEOUT_MS - 1));
@@ -183,7 +203,7 @@ class CitizenSellTripsTest {
         MapleMap map = mock(MapleMap.class);
         when(map.getId()).thenReturn(id);
         NPC shopkeeper = mock(NPC.class);
-        when(shopkeeper.getPosition()).thenReturn(COUNTER);
+        when(shopkeeper.getPosition()).thenReturn(SHOPKEEPER_SPOT);
         when(map.getNPCById(SHOPKEEPER)).thenReturn(id == SHOP_MAP ? shopkeeper : null);
         return map;
     }

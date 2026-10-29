@@ -74,6 +74,17 @@ final class CitizenSellTrips {
     Predicate<AgentRuntimeEntry> visiting = AgentShopStateRuntime::shopVisitPending;
     /** Walks the Agent to a point (a test's own). */
     BiConsumer<AgentRuntimeEntry, Point> walk = (entry, point) -> AgentMovementCommandRuntime.moveTo(entry, point, false);
+    /**
+     * Where it stands to trade with the shopkeeper: the shop visit's own pick (a test's own). The shopkeeper's own spot
+     * can be inside its counter: walking there, sell trips into Kerning City's potion shop ended up on its shelves.
+     */
+    Approach approach = AgentShopService::approachPoint;
+    /** Runs a task on the Agent's own mailbox (a test's own). */
+    BiConsumer<AgentRuntimeEntry, Runnable> onAgent = (entry, task) -> AgentSchedulerRuntime.afterDelay(entry, 0L, task);
+
+    interface Approach {
+        Point at(AgentRuntimeEntry entry, Character agent, Point shopkeeper);
+    }
     LongSupplier clock = System::currentTimeMillis;
     /** Runs a task after a delay (ms); a test runs them by hand. */
     BiConsumer<Runnable, Long> later = (task, delayMs) ->
@@ -111,9 +122,10 @@ final class CitizenSellTrips {
     }
 
     /**
-     * It arrived on {@code map} for its trip: it walks up to the shopkeeper, as a supply trip does before its visit, and
-     * asks for the sale there. Asked from the arrival portal, the visit's own approach ran out of time at an unwatched
-     * Agent's tick rate (21 of 48 trips on 10-29). False when the shopkeeper is not here.
+     * It arrived on {@code map} for its trip (by the door: PresenceScheduler.entersByRoute): it walks up to the counter,
+     * as a supply trip does before its visit, and asks for the sale there. Asked from the arrival portal, the visit's own
+     * approach ran out of time at an unwatched Agent's tick rate (21 of 48 trips on 10-29). False when the shopkeeper is
+     * not here.
      */
     boolean begin(CitizenSession session, MapleMap map) {
         Trip trip = session.sellTrip;
@@ -122,10 +134,15 @@ final class CitizenSellTrips {
         if (npc == null || agent == null || session.entry == null) {
             return false;
         }
-        Point counter = npc.getPosition();
-        walk.accept(session.entry, counter);
-        long startedAt = clock.getAsLong();
-        later.accept(() -> step(session, trip, counter, startedAt), CHECK_MS);
+        Point shopkeeper = npc.getPosition();
+        AgentRuntimeEntry entry = session.entry;
+        onAgent.accept(entry, () -> { // the route probe reads the Agent's navigation state: on its own mailbox
+            Point counter = approach.at(entry, agent, shopkeeper);
+            Point stand = counter == null ? shopkeeper : counter;
+            walk.accept(entry, stand);
+            long startedAt = clock.getAsLong();
+            later.accept(() -> step(session, trip, stand, startedAt), CHECK_MS);
+        });
         return true;
     }
 
