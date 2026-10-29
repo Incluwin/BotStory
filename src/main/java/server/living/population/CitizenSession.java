@@ -42,6 +42,8 @@ public final class CitizenSession {
     public volatile boolean errandFailed;
     /** The stylist its TOWN visit is for (CitizenSalons, docs/ECONOMY_PLAN.md E4b); 0 otherwise. */
     public volatile int salonNpc;
+    /** The shop its TOWN visit is to sell its loot at (CitizenSellTrips); null otherwise. */
+    volatile CitizenSellTrips.Trip sellTrip;
     public volatile int partyId;
     public final Journal journal = new Journal();
     /** channel -> last time this citizen spoke on it (chatter cooldowns). */

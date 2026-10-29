@@ -104,6 +104,7 @@ public final class PresenceScheduler {
     private final Random random;
     private final CitizenJobErrands jobs;
     private final CitizenSalons salons;
+    private final CitizenSellTrips sellTrips;
     private final CitizenTravel onFoot;
     private final MapVisibleCap cap;
     private volatile long lastSweepMs;
@@ -122,6 +123,7 @@ public final class PresenceScheduler {
         this.random = random;
         this.jobs = new CitizenJobErrands(population, this);
         this.salons = new CitizenSalons(population, this);
+        this.sellTrips = new CitizenSellTrips(population);
         this.onFoot = new CitizenTravel(population, this);
         this.cap = new MapVisibleCap(population::config, sessions::values, MapVisibleCap::standingMap);
     }
@@ -705,13 +707,23 @@ public final class PresenceScheduler {
 
     // ---- planning ------------------------------------------------------------------------
 
+    CitizenSellTrips sellTrips() {
+        return sellTrips;
+    }
+
     Activity plan(CitizenSession session, long now) {
         Citizen citizen = session.citizen;
         session.salonNpc = 0;
+        session.sellTrip = null;
         Job errand = jobs.planned(session);
         session.errandJob = errand;
         if (errand != null) {
             return Activity.JOB; // its life reached its next job: it goes to its instructor first
+        }
+        CitizenSellTrips.Trip sale = sellTrips.planned(session, now);
+        session.sellTrip = sale;
+        if (sale != null) {
+            return Activity.TOWN; // its equip bag is nearly full: it goes to sell its loot (E3)
         }
         int salon = salons.planned(session, now);
         session.salonNpc = salon;
@@ -795,6 +807,10 @@ public final class PresenceScheduler {
                 return start > 0 ? start : population.fields().homeTown(citizen, random);
             }
             default -> {
+                CitizenSellTrips.Trip sale = activity == Activity.TOWN ? session.sellTrip : null;
+                if (sale != null) {
+                    return sale.mapId();
+                }
                 CitizenSalons.Salon salon = activity == Activity.TOWN ? CitizenSalons.salon(session.salonNpc) : null;
                 return salon != null ? salon.mapId() : population.fields().homeTown(citizen, random);
             }
@@ -835,6 +851,9 @@ public final class PresenceScheduler {
                 }
             }
             case TOWN -> {
+                if (session.sellTrip != null && sellTrips.begin(session, map)) {
+                    break; // it walks to the shopkeeper and sells; the sweep re-plans it when the sale is over
+                }
                 if (session.salonNpc == 0 || !salons.begin(session, map)) { // no salon visit here after all: a stroll
                     stroll(session, map, now);
                 }
@@ -988,6 +1007,13 @@ public final class PresenceScheduler {
             session.fieldPause = false;
             population.chatter().event(ChatterEngine.Event.of("back", session.mapId, session.channel).self(session));
             resume(session, now);
+            return;
+        }
+        if (session.sellTrip != null) {
+            if (sellTrips.finished(session, now)) {
+                session.sellTrip = null;
+                session.lastPlanAtMs = 0L; // its loot is sold: it goes on with its day at the next sweep
+            }
             return;
         }
         long since = now - session.lastPlanAtMs;

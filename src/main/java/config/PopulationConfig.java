@@ -237,6 +237,15 @@ public class PopulationConfig {
     public double SCROLL_BUY_OVER_INDEX = 1.3d;
     /** What it keeps back when buying a scroll: this many times the meso its level should carry. */
     public double SCROLL_BUY_RESERVE = 1.5d;
+    /**
+     * Citizens go to sell when their equip bag fills (CitizenSellTrips): a loaded citizen with SELL_TRIP_FREE_SLOTS free
+     * equip slots or fewer goes to the nearest potion shop it can walk to at its next plan and sells its trash equips and
+     * spare drops there, at most once each SELL_TRIP_EVERY_HOURS. Its only shop visits were supply trips, so one
+     * carrying a big potion stock never went and its bag filled (63 % of citizens on gear errands, 10-29).
+     */
+    public boolean SELL_TRIPS_ENABLED = true;
+    public int SELL_TRIP_FREE_SLOTS = 8;
+    public int SELL_TRIP_EVERY_HOURS = 6;
 
     /**
      * A citizen that died beside a field boss whose group is on trains elsewhere while that boss stands there, at most

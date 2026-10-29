@@ -238,6 +238,24 @@ public final class AgentShopService {
         startShopVisit(entry, bot, match);
     }
 
+    /**
+     * The sell-trash visit, asked by the Agent's host rather than its owner and so without its lines: to shop NPC
+     * {@code npcId} on its map, to sell its trash equips and spare drops (a citizen whose equip bag filled). False when
+     * none can start here: that shopkeeper is not on its map, or a visit is under way.
+     */
+    public static boolean requestSaleAt(AgentRuntimeEntry entry, Character bot, int npcId) {
+        if (entry == null || bot == null || bot.getMap() == null || AgentShopStateRuntime.shopVisitPending(entry)) {
+            return false;
+        }
+        NpcShopMatch match = findShopForNpc(bot, npcId);
+        if (match == null) {
+            return false;
+        }
+        AgentShopStateRuntime.setShopSellTrashPending(entry, true);
+        startShopVisit(entry, bot, match);
+        return true;
+    }
+
     private static void startShopVisit(AgentRuntimeEntry entry, Character bot, NpcShopMatch match) {
         startShopVisit(entry, bot, match, 0);
     }

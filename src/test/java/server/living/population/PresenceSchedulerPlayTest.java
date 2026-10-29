@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -93,6 +94,20 @@ class PresenceSchedulerPlayTest {
 
         when(miniGames.plays(citizen, 1_000L)).thenReturn(true);
         assertEquals(Activity.PLAY, scheduler.plan(session, 1_000L));
+    }
+
+    @Test
+    void aFullEquipBagSendsItToSellBeforeAnythingElse() {
+        when(population.miniGames()).thenReturn(miniGames);
+        when(miniGames.plays(eq(citizen), anyLong())).thenReturn(true);
+        PresenceScheduler scheduler = new PresenceScheduler(population, new Random(3L));
+        CitizenSession session = loaded(scheduler);
+        scheduler.sellTrips().freeEquipSlots = agent -> 0;
+        scheduler.sellTrips().shopFor = who -> new int[]{100000102, 1012003};
+
+        assertEquals(Activity.TOWN, scheduler.plan(session, 1_000L), "selling its loot outranks the cohort's PLAY");
+        assertEquals(100000102, scheduler.mapFor(session, Activity.TOWN));
+        assertEquals(Activity.PLAY, scheduler.plan(session, 2_000L), "once in a while: the next plan is its own again");
     }
 
     @Test

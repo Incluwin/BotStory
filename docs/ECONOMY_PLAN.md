@@ -213,6 +213,18 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   offer, its purse, a seller it buys from, its own room first): in another room it goes there, in its own it walks
   beside the stall and stops wandering, and the next market tick buys. A stall it has not reached in 3 ticks is given
   up for that visit. Log lines: "goes to X's stall in Free Market room N for ...", "walks to X's stall for ...".
+  Live 13:41: 10 errands filled in 40 minutes (5 with the stalls fix alone); all 19 give-ups were citizens with full
+  equip bags, and all 7 buyers had room.
+- **Citizens go to sell when their bag fills (10-29, branch `fix/citizen-sell-trips`).** 270 of 730 citizens had every
+  equip slot full (63 % of those on gear errands), 85 % of it loot a shop visit sells (15,344 of 26,208 pieces for
+  another job). They were online (267 of 270 in the last day) but had not sold for days (154 not in 7 days, 42 never):
+  a citizen's only shop visits were supply trips, which start when its potions run low, and these carried 1,112
+  potions on average (341 for the rest). Now a loaded citizen with `SELL_TRIP_FREE_SLOTS` (8) free equip slots or
+  fewer goes, at its next plan, to the nearest potion shop it can walk to (the supply trips' pick,
+  `AgentCareerShopCatalog.forSupply`) and asks the shopkeeper the sell-trash visit (`AgentShopService.requestSaleAt`,
+  the owner command's visit without its lines): the same sale of trash equips and spare drops a supply visit makes.
+  It is re-planned when the sale ends; at most one trip each `SELL_TRIP_EVERY_HOURS` (6). Kill switch
+  `population.SELL_TRIPS_ENABLED`. Log line: "goes to sell its loot at map M (N free equip slots)".
 
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and

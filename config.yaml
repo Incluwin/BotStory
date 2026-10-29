@@ -1283,6 +1283,12 @@ population:
     SCROLL_BUY_MIN_VALUE: 1.0
     SCROLL_BUY_OVER_INDEX: 1.3
     SCROLL_BUY_RESERVE: 1.5
+    # Citizens go to sell when their equip bag fills: a loaded citizen with SELL_TRIP_FREE_SLOTS free equip slots or
+    # fewer goes to the nearest potion shop at its next plan and sells its trash equips and spare drops, at most once
+    # each SELL_TRIP_EVERY_HOURS. Its only shop visits were supply trips, so one with a big potion stock never went.
+    SELL_TRIPS_ENABLED: true
+    SELL_TRIP_FREE_SLOTS: 8
+    SELL_TRIP_EVERY_HOURS: 6
     # A citizen that died beside a field boss whose group COMPANION_BOSS_ENABLED_TYPES lists (2026-10-19) trains
     # elsewhere while that boss stands on the map, at most FIELD_BOSS_AVOID_MS from its death. Citizens never attack a
     # listed boss but take its hits while a player fights it, so they used to walk straight back to die again.
