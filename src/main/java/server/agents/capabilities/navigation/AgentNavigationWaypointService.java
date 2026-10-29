@@ -17,7 +17,6 @@ import server.maps.MapleMap;
 import server.maps.Rope;
 
 import java.awt.Point;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Agent-owned waypoint selection for navigation edges that do not require live
@@ -200,7 +199,7 @@ public final class AgentNavigationWaypointService {
 
         int selectedX = randomMinX >= randomMaxX
                 ? randomMinX
-                : ThreadLocalRandom.current().nextInt(randomMinX, randomMaxX + 1);
+                : AgentJumpNoise.pickLaunchX(entry, randomMinX, randomMaxX); // seeded in a jump quest (F5b)
         selectedX = AgentJumpNoise.launchX(entry, graph, edge, selectedX); // a jump quest's press, early or late (F5b)
         AgentNavigationDebugStateRuntime.rememberNavJumpLaunch(entry, edge, selectedX);
         return selectedX;

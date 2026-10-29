@@ -24,7 +24,8 @@ import static org.mockito.Mockito.when;
 /**
  * The jump-quest noise seam (AgentJumpNoise, docs/BOT_CONCEPT_PLAN.md F5b) on its own: with no plan every jump is
  * today's; a drawn jump that comes down well below its launch is one miss, a landing on its target is none; the plan is
- * asked about a fall below the map only while it is installed. The draws on real maps are JumpQuestRoutesTest's.
+ * asked about a fall below the map only while it is installed; one seed picks the same launches. The draws on real maps
+ * are JumpQuestRoutesTest's.
  */
 class AgentJumpNoiseTest {
     private final AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
@@ -102,6 +103,24 @@ class AgentJumpNoiseTest {
         assertFalse(AgentJumpNoise.belowMap(entry, mock(Character.class)));
         assertEquals(1, belowMapAsked);
         assertEquals(104, AgentJumpNoise.launchX(entry, graph, edge, 104), "cleared: exact again");
+    }
+
+    @Test
+    void oneSeedPicksTheSameLaunchesSoAClimbReplays() {
+        AgentRuntimeEntry other = mock(AgentRuntimeEntry.class);
+        when(other.capabilityStates()).thenReturn(new AgentCapabilityStateRegistry());
+        AgentJumpNoise.install(entry, plan(5.0d), 43L);
+        AgentJumpNoise.install(other, plan(5.0d), 43L);
+        for (int i = 0; i < 50; i++) {
+            int pick = AgentJumpNoise.pickLaunchX(entry, 90, 110);
+            assertEquals(pick, AgentJumpNoise.pickLaunchX(other, 90, 110), "pick " + i);
+            assertTrue(pick >= 90 && pick <= 110);
+        }
+        AgentJumpNoise.clear(entry);
+        for (int i = 0; i < 50; i++) {
+            int pick = AgentJumpNoise.pickLaunchX(entry, 90, 110); // no plan: any x in the window, as always
+            assertTrue(pick >= 90 && pick <= 110);
+        }
     }
 
     @Test
