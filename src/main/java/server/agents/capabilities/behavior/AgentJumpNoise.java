@@ -16,6 +16,7 @@ import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Jump-quest execution noise (docs/BOT_CONCEPT_PLAN.md F5b). While a citizen climbs a jump quest its jump presses come
@@ -125,6 +126,20 @@ public final class AgentJumpNoise {
         synchronized (state) {
             return new Counts(state.jumps, state.misses, state.exact);
         }
+    }
+
+    /**
+     * Navigation's own pick of a jump's launch x in {@code [minX, maxX]}, before any draw: from the attempt's seeded
+     * random while a plan is on, so one seed replays one climb; otherwise any x in the window, as always.
+     */
+    public static int pickLaunchX(AgentRuntimeEntry entry, int minX, int maxX) {
+        State state = entry == null ? null : entry.capabilityStates().find(State.STATE_KEY).orElse(null);
+        if (state != null && state.plan != null) {
+            synchronized (state) {
+                return minX + state.random.nextInt(maxX - minX + 1);
+            }
+        }
+        return ThreadLocalRandom.current().nextInt(minX, maxX + 1);
     }
 
     /**
