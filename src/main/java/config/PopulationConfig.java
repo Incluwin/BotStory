@@ -222,6 +222,21 @@ public class PopulationConfig {
     public int MARKET_GEAR_ERRAND_HOURS = 24;
     /** The most a citizen on a gear errand pays: this many times the index price of what it buys. */
     public double MARKET_GEAR_OVER_INDEX = 1.3d;
+    /**
+     * Citizens scroll their own gear (E3, CitizenScrolling): out and about, one uses a scroll from its bag on a worn piece
+     * with slots left, about one each eight minutes, up to SCROLLS_PER_DAY; browsing, one with meso to spare buys a fitting scroll
+     * at a stall when its bag has none. Never a scroll that can destroy the piece.
+     */
+    public boolean MARKET_SCROLLING = true;
+    public int SCROLLS_PER_DAY = 8;
+    /** The least a scroll from its bag is worth to its job to be used (points of its attack; +2 main stat is 1.2). */
+    public double SCROLL_MIN_VALUE = 0.25d;
+    /** The least a scroll is worth to its job to be bought (+1 attack is 1). */
+    public double SCROLL_BUY_MIN_VALUE = 1.0d;
+    /** The most a citizen pays for a scroll: this many times its index price. */
+    public double SCROLL_BUY_OVER_INDEX = 1.3d;
+    /** What it keeps back when buying a scroll: this many times the meso its level should carry. */
+    public double SCROLL_BUY_RESERVE = 1.5d;
 
     /**
      * A citizen that died beside a field boss whose group is on trains elsewhere while that boss stands there, at most

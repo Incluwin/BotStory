@@ -43,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.IntFunction;
 import java.util.function.IntToLongFunction;
+import java.util.function.Predicate;
 
 /**
  * An economy players can join (plan 7): a price index seeded from the market basket and drifted
@@ -100,6 +101,7 @@ public final class Market {
     /** The E4 controller's scale on MARKET_BUY_BUDGET_PER_DAY (EconomyController); 1 is the configured budget. */
     private volatile double buyBudgetScale = 1.0d;
     private final GearErrands gearErrands;
+    private final CitizenScrolling scrolling;
 
     Market(Population population) {
         this(population, itemId -> ItemInformationProvider.getInstance().getWholePrice(itemId),
@@ -117,6 +119,7 @@ public final class Market {
         this.shopPrice = shopPrice;
         this.scrollSeeds = new ScrollSeeds(scrollStats, PriceSeeds::all);
         this.gearErrands = new GearErrands(population, this);
+        this.scrolling = new CitizenScrolling(population, this::quote);
         this.random = new Random(population.config().SEED ^ 0x3a44e7L);
         this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX, population::isCitizen);
         for (int[] row : population.store().prices()) {
@@ -125,14 +128,15 @@ public final class Market {
     }
 
     public String report() {
-        return "market: index=" + index.size() + " stalls=" + stallsOpen + " bought=" + purchases + " " + gearErrands.report();
+        return "market: index=" + index.size() + " stalls=" + stallsOpen + " bought=" + purchases + " " + gearErrands.report()
+                + " " + scrolling.report();
     }
 
     /** {@link #report()} as JSON for the admin port's /runtime/stats/market; counts since boot. */
     public String statsJson() {
         return "{\"ok\":true,\"index_items\":" + index.size() + ",\"stalls_open\":" + stallsOpen + ",\"stalls_max\":"
                 + population.config().MARKET_STALLS_MAX + ",\"purchases\":" + purchases + ",\"gear_errands\":"
-                + gearErrands.json() + "}";
+                + gearErrands.json() + ",\"scrolls\":" + scrolling.json() + "}";
     }
 
     // ---- price index ---------------------------------------------------------------------
@@ -588,10 +592,16 @@ public final class Market {
      * quantity, up to STALL_MAX_LISTINGS, so the equips it held back for the stall (E3) lead.
      */
     static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice) {
+        return stallStacks(agent, unitPrice, item -> false);
+    }
+
+    /** As above, leaving out what {@code keeps} holds back (the scrolls it would use on its own gear). */
+    static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice, Predicate<Item> keeps) {
         List<Item> stacks = new ArrayList<>();
         for (InventoryType type : new InventoryType[]{InventoryType.ETC, InventoryType.USE, InventoryType.EQUIP}) {
             for (Item item : agent.getInventory(type).list()) {
-                if (item.getQuantity() > 0 && (type != InventoryType.USE || isTradeGood(item.getItemId()))) {
+                if (item.getQuantity() > 0 && (type != InventoryType.USE || isTradeGood(item.getItemId()))
+                        && !keeps.test(item)) {
                     stacks.add(item);
                 }
             }
@@ -610,7 +620,7 @@ public final class Market {
     private Stock stock(Character agent) {
         List<Listing> listings = new ArrayList<>();
         List<AgentFreeMarketStallService.Listing> shopListings = new ArrayList<>();
-        for (Item item : stallStacks(agent, this::price)) {
+        for (Item item : stallStacks(agent, this::price, item -> scrolling.keeps(agent, item))) {
             InventoryType type = item.getInventoryType();
             long unit = price(item.getItemId());
             short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
@@ -667,7 +677,10 @@ public final class Market {
 
     // ---- buying --------------------------------------------------------------------------
 
-    /** Every two minutes: browsing citizens buy under-index items from human shops within their daily budget. */
+    /**
+     * Every two minutes: browsing citizens buy under-index items from human shops within their daily budget, and loaded
+     * citizens out and about use a scroll from their bags on their gear (CitizenScrolling).
+     */
     public void tick() {
         if (!population.config().MARKET_ENABLED) {
             return;
@@ -678,6 +691,13 @@ public final class Market {
             Character agent = session.agent();
             if (session.stallOpen && agent != null && agent.getPlayerShop() != null && agent.getPlayerShop().isOwner(agent)) {
                 rememberSales(session, agent.getPlayerShop());
+            }
+            if (!session.virtual && agent != null) {
+                try {
+                    scrolling.tick(session, agent, now);
+                } catch (RuntimeException failure) {
+                    log.debug("citizen {} scrolling failed", session.name(), failure);
+                }
             }
             if (session.virtual || agent == null || session.activity != Activity.MARKET || session.stallOpen
                     || !FieldCatalog.isFreeMarket(agent.getMapId())) {
@@ -716,7 +736,7 @@ public final class Market {
                 }
                 long unit = Math.round(view.bundlePrice() / (double) view.perBundle());
                 long wanted = wanted(session, view, now);
-                if (wanted > 0L) { // a needs-board want or a gear errand: up to its offer, outside the browse budget
+                if (wanted > 0L) { // a needs-board want, a gear errand or a scroll: up to its offer, outside the browse budget
                     if (unit > wanted || view.bundlePrice() > agent.getMeso()) {
                         continue;
                     }
@@ -737,6 +757,7 @@ public final class Market {
                             population.needs().boughtAtMarket(session, agent, view.itemId(), stall.ownerCharacterId(), now);
                         }
                         gearErrands.bought(agent, view.itemId());
+                        scrolling.bought(agent, view.itemId());
                     }
                     if (!population.isCitizen(stall.ownerCharacterId())) { // a player's shop, not a companion's bench stall
                         remember(session, stall.ownerCharacterId(), PersonMemory.Kind.BOUGHT, agent.getMapId(), view.itemId());
@@ -751,8 +772,9 @@ public final class Market {
     }
 
     /**
-     * The needs board (docs/BOT_CONCEPT_PLAN.md F1): the most it pays a unit for this listing - a single piece of what
-     * its open GEAR or SCROLL want asks for, an equip base or better - else 0.
+     * The most it pays a unit for this listing: the needs board's offer (docs/BOT_CONCEPT_PLAN.md F1) for a single piece
+     * of what its open GEAR or SCROLL want asks for, else a gear errand's (GearErrands), else a scroll for its own gear
+     * (CitizenScrolling); 0 for none.
      */
     private long wanted(CitizenSession session, PlayerShop.ListingView view, long now) {
         if (view.perBundle() != 1) {
@@ -760,7 +782,11 @@ public final class Market {
         }
         NeedLedger needs = population.needs();
         long asked = needs == null ? 0L : needs.marketOffer(session.characterId, view.itemId(), view.attributes(), now);
-        return asked > 0L ? asked : gearErrands.offer(session.agent(), view.itemId());
+        if (asked > 0L) {
+            return asked;
+        }
+        long gear = gearErrands.offer(session.agent(), view.itemId());
+        return gear > 0L ? gear : scrolling.offer(session.agent(), view.itemId()); // equips and scrolls never overlap
     }
 
     /**

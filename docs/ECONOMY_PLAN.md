@@ -199,6 +199,24 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
 - `/runtime/stats/market` (and MapleEdit's stats page, "Citizen market") shows stalls open, purchases and the gear
   errands open / opened / bought / handed over since boot.
 
+**Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
+bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and
+unusable ammo, so looted scrolls were never used or sold; only merchants' stalls listed some.
+- `CitizenScrolling`: a loaded citizen training, in town, browsing or AFK, its stall shut, no hired hand or persona, uses
+  the scroll from its bag worth most to its job on a worn piece with upgrade slots left, about one each eight minutes
+  (a 1-in-4 roll at each two-minute market tick), up to `SCROLLS_PER_DAY` (8). Worth is points of its attack: its
+  attack 1, main stat 0.6, second stat 0.3, accuracy 0.2 (a mage's 0.05), avoid / speed / jump 0.05, DEF 0.03, HP / MP
+  0.005; a scroll is used at `SCROLL_MIN_VALUE` (0.25), so DEF-only scrolls stay in the bag.
+- Only scrolls that cannot destroy the piece: no dark (WZ `cursed` > 0), chaos, clean-slate or flag scrolls. The item
+  sink is the scroll itself and the slot a fail spends; no citizen loses a worn piece to a boom.
+- A browsing citizen with no usable scroll of its own buys one at a stall (players' first) worth `SCROLL_BUY_MIN_VALUE`
+  (1, about one attack) to its job, for a worn piece with slots, up to `SCROLL_BUY_OVER_INDEX` (1.3x) the index and the
+  meso it holds over `SCROLL_BUY_RESERVE` (1.5x) what its level should carry, outside the browse budget like a gear
+  errand, and uses it at once. A merchant's stall leaves out the scrolls it would use itself.
+- Every use is the real `ScrollTransactionService.apply`: the scroll is used up, the map sees the effect, nearby Agents
+  react, the character is saved. `/runtime/stats/market` adds `scrolls` (used, bought, success, fail since boot), and
+  MapleEdit's "Citizen market" card a row for them. Kill switch `population.MARKET_SCROLLING`.
+
 ### E4. The controller
 - Daily: CPI drift and supply growth versus targets set the next day's bot vendor propensity, spending propensity and
   market buy budgets, clamped to bounds in config, with every adjustment logged and charted.

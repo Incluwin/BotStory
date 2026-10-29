@@ -211,7 +211,8 @@ class GearErrandsTest {
             errands.holdBack(fighter(1_000_000), "weapon", pick);
 
             assertEquals("{\"ok\":true,\"index_items\":1,\"stalls_open\":0,\"stalls_max\":6,\"purchases\":0,"
-                    + "\"gear_errands\":{\"open\":1,\"opened\":1,\"bought\":0,\"handed_over\":0}}",
+                    + "\"gear_errands\":{\"open\":1,\"opened\":1,\"bought\":0,\"handed_over\":0},"
+                    + "\"scrolls\":{\"used\":0,\"bought\":0,\"success\":0,\"fail\":0}}",
                     population.market().statsJson());
         }
     }
