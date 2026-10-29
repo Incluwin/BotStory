@@ -9,6 +9,7 @@ import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.shop.AgentFreeMarketStallService;
@@ -21,6 +22,7 @@ import server.living.LivingWorldHooks;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Good;
 import server.living.population.needs.NeedLedger;
+import server.maps.MapleMap;
 import server.maps.PlayerShop;
 import server.maps.reservation.CharacterSpace;
 import server.maps.reservation.CharacterSpaceOwner;
@@ -42,9 +44,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.IntFunction;
+import java.util.function.IntPredicate;
 import java.util.function.IntToLongFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
+import java.util.function.ToLongFunction;
 
 /**
  * An economy players can join (plan 7): a price index seeded from the market basket and drifted
@@ -76,6 +80,10 @@ public final class Market {
     static final int BROWSE_MIN_STEP_PX = 60;
     static final int BROWSE_BESIDE_MIN_PX = 25;
     static final int BROWSE_BESIDE_MAX_PX = 50;
+    /** Market ticks a citizen walks toward one stall for a gear errand before it gives up on that stall. */
+    static final int SHOP_WALK_TRIES = 3;
+    /** The most the ground beside a stall may sit below it for a buyer to stand there. */
+    private static final int BESIDE_STALL_MAX_DROP_PX = 40;
 
     public record Listing(int itemId, String name, long price) { }
 
@@ -436,6 +444,10 @@ public final class Market {
         if (session.citizen.has(Citizen.FLAG_MERCHANT) && !session.stallOpen && session.stallSpot == null
                 && stallsOpen < population.config().MARKET_STALLS_MAX) {
             server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> walkToStall(session), 3_000L);
+            return;
+        }
+        if (gearErrands.any(session.characterId)) {
+            seekErrandStall(session, agent, System.currentTimeMillis()); // straight to the stall it came for
         }
         // otherwise the market tick browses the room's shops
     }
@@ -472,6 +484,7 @@ public final class Market {
     }
 
     void onLeave(CitizenSession session) {
+        session.shopping = null;
         closeStall(session, "moving on");
     }
 
@@ -727,7 +740,9 @@ public final class Market {
                 continue;
             }
             try {
-                shop(session, agent, now);
+                if (!shop(session, agent, now)) {
+                    seekErrandStall(session, agent, now);
+                }
             } catch (RuntimeException failure) {
                 log.debug("citizen {} browsing failed", session.name(), failure);
             }
@@ -746,7 +761,8 @@ public final class Market {
         return owner != null && (owner.hired() || population.config().MARKET_BUY_FROM_CITIZENS);
     }
 
-    private void shop(CitizenSession session, Character agent, long now) {
+    /** It buys one thing at a stall within reach, if one sells something it wants or a bargain; true when it did. */
+    private boolean shop(CitizenSession session, Character agent, long now) {
         List<ObservedStall> stalls = new ArrayList<>(buyers.observeNearby(agent));
         stalls.sort(Comparator.comparing(stall -> population.isCitizen(stall.ownerCharacterId()))); // players' first (D6)
         for (ObservedStall stall : stalls) {
@@ -769,7 +785,7 @@ public final class Market {
                         continue;
                     }
                     if (!spend(session.characterId, view.bundlePrice(), now)) {
-                        return;
+                        return false;
                     }
                 }
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
@@ -788,10 +804,122 @@ public final class Market {
                     PersonalKnowledge.shared().gained(session.characterId, view.itemId());
                     session.journal.add("market", "bought " + itemName(view.itemId()) + " from " + stall.ownerName() + " for " + formatPrice(view.bundlePrice()));
                     log.info("citizen {} bought {} x{} from {} for {}", session.name(), itemName(view.itemId()), view.perBundle(), stall.ownerName(), view.bundlePrice());
-                    return; // one purchase per tick per citizen
+                    session.shopping = null;
+                    return true; // one purchase per tick per citizen
                 }
             }
         }
+        return false;
+    }
+
+    // ---- gear errands: going to the stall ------------------------------------------------
+
+    /** The stall a citizen walks to for a gear errand, how many market ticks it has tried, and whether it gave up. */
+    record ShoppingTrip(int mapId, int objectId, int tries, boolean abandoned) {
+    }
+
+    /** A stall selling {@code itemId}, which a gear errand of the citizen buys at its price, in room {@code mapId}. */
+    record ErrandStall(int mapId, int objectId, Point position, int itemId, String ownerName) {
+    }
+
+    /**
+     * A citizen on a gear errand that bought nothing within reach goes to a stall that sells a piece it can buy: in
+     * another Free Market room it goes there (its arrival comes back here), in its own it walks beside the stall, and
+     * the next market tick buys the piece. Before, it chose a room only at the entrance and then bought only within
+     * reach of where it stood, so 18 citizens on errands in the rooms, with 13 stalls listing what errands want, bought
+     * one piece in 24 minutes (live 10-29).
+     */
+    void seekErrandStall(CitizenSession session, Character agent, long now) {
+        ShoppingTrip previous = session.shopping;
+        if (session.entry == null || !gearErrands.any(session.characterId) || agent.getMapId() == FieldCatalog.FM_ENTRANCE
+                || !FieldCatalog.isFreeMarket(agent.getMapId())) {
+            session.shopping = null;
+            return;
+        }
+        ErrandStall stall = errandStall(agent.getMapId(), roomShops(session.channel), view -> errandOffer(agent, view),
+                agent.getMeso(), this::buysFrom, agent.getId(), previous);
+        if (stall == null) {
+            session.shopping = previous != null && previous.abandoned() ? previous : null;
+            return;
+        }
+        if (stall.mapId() != agent.getMapId()) {
+            log.info("citizen {} goes to {}'s stall in Free Market room {} for {}", session.name(), stall.ownerName(),
+                    stall.mapId() - FieldCatalog.FM_ENTRANCE, itemName(stall.itemId()));
+            population.presence().travel(session, Activity.MARKET, stall.mapId(), now); // which lets the old trip go
+            return;
+        }
+        ShoppingTrip trip = nextTrip(previous, stall);
+        session.shopping = trip;
+        if (trip.abandoned()) {
+            log.info("citizen {} could not reach {}'s stall in room {}; it browses on", session.name(), stall.ownerName(),
+                    stall.mapId() - FieldCatalog.FM_ENTRANCE);
+            return;
+        }
+        if (trip.tries() == 1) {
+            log.info("citizen {} walks to {}'s stall for {}", session.name(), stall.ownerName(), itemName(stall.itemId()));
+        }
+        AgentMovementCommandRuntime.moveTo(session.entry, besideStall(agent.getMap(), stall.position()), true);
+    }
+
+    /** The trip to {@code stall}: one more try at the same stall, a first at another, abandoned after SHOP_WALK_TRIES. */
+    static ShoppingTrip nextTrip(ShoppingTrip previous, ErrandStall stall) {
+        boolean same = previous != null && !previous.abandoned() && previous.mapId() == stall.mapId()
+                && previous.objectId() == stall.objectId();
+        int tries = same ? previous.tries() + 1 : 1;
+        return new ShoppingTrip(stall.mapId(), stall.objectId(), tries, tries > SHOP_WALK_TRIES);
+    }
+
+    /**
+     * Of the open stalls in {@code roomShops} (Free Market room -> its shops), one with a listing a gear errand buys
+     * ({@code offer} of it at least its price) that the citizen can pay, from a seller it buys from: its own room first,
+     * then the others in order. Never its own stall, nor the one it gave up on ({@code skip}).
+     */
+    static ErrandStall errandStall(int hereMapId, Map<Integer, List<PlayerShop>> roomShops,
+                                   ToLongFunction<PlayerShop.ListingView> offer, long meso,
+                                   IntPredicate buysFrom, int buyerId, ShoppingTrip skip) {
+        List<Integer> rooms = new ArrayList<>(roomShops.keySet());
+        rooms.sort(Comparator.comparing((Integer room) -> room != hereMapId).thenComparing(room -> room));
+        for (int room : rooms) {
+            for (PlayerShop shop : roomShops.get(room)) {
+                if (!shop.isOpen() || shop.getOwnerId() == buyerId || !buysFrom.test(shop.getOwnerId())
+                        || skip != null && skip.abandoned() && skip.mapId() == room && skip.objectId() == shop.getObjectId()) {
+                    continue;
+                }
+                for (PlayerShop.ListingView view : shop.listingSnapshot()) {
+                    if (view.bundles() > 0 && view.bundlePrice() <= meso && view.bundlePrice() <= offer.applyAsLong(view)) {
+                        return new ErrandStall(room, shop.getObjectId(), shop.getPosition(), view.itemId(),
+                                shop.getOwnerName());
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** What a gear errand of {@code agent} pays for one piece of this listing; 0 for a bundle or a piece no errand fits. */
+    private long errandOffer(Character agent, PlayerShop.ListingView view) {
+        return view.perBundle() == 1 ? gearErrands.offer(agent, view.itemId()) : 0L;
+    }
+
+    /** The open player shops of each loaded Free Market room of the channel. */
+    private Map<Integer, List<PlayerShop>> roomShops(int channelId) {
+        net.server.world.World world = population.gameWorld();
+        net.server.channel.Channel channel = world == null ? null : world.getChannel(channelId);
+        Map<Integer, List<PlayerShop>> shops = new HashMap<>();
+        for (int room = FieldCatalog.FM_ENTRANCE + 1; channel != null && room <= FieldCatalog.FM_ENTRANCE + FM_ROOMS; room++) {
+            if (channel.getMapFactory().isMapLoaded(room)) {
+                shops.put(room, channel.getMapFactory().getMap(room).getAllPlayerShops());
+            }
+        }
+        return shops;
+    }
+
+    /** Where a buyer stands at a stall: beside it on the same ground, or at it when the ground there drops away. */
+    private Point besideStall(MapleMap map, Point stall) {
+        int beside = BROWSE_BESIDE_MIN_PX + random.nextInt(BROWSE_BESIDE_MAX_PX - BROWSE_BESIDE_MIN_PX);
+        Point ground = map == null ? null : AgentGroundingService.findGroundPoint(map,
+                new Point(stall.x + (random.nextBoolean() ? beside : -beside), stall.y - 1));
+        return ground != null && Math.abs(ground.y - stall.y) <= BESIDE_STALL_MAX_DROP_PX ? ground : stall;
     }
 
     /**

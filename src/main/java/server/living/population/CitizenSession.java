@@ -34,6 +34,8 @@ public final class CitizenSession {
     volatile server.maps.reservation.CharacterSpaceReservation stallSpot;
     /** Sales of its open stall it has remembered the buyers of (Market.rememberSales); 0 when the stall opens. */
     volatile int stallSalesSeen;
+    /** The stall a gear errand sends it to in its Free Market room (Market.seekErrandStall); null when none. */
+    volatile Market.ShoppingTrip shopping;
     /** The job it is going to its instructor for (activity JOB); null otherwise. */
     public volatile client.Job errandJob;
     /** Its instructor refused it this session: no second try before its next session (CitizenJobErrands). */

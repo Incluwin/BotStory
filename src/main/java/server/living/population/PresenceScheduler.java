@@ -909,10 +909,13 @@ public final class PresenceScheduler {
      * standing on the arrival portal for the whole 25-45 minute session. Between re-plans, a
      * TOWN or MARKET citizen (not one minding a stall) strolls to a random spot on its own
      * platform about every other sweep, so crowded maps read as people milling about. In a Free
-     * Market room it browses from stall to stall instead, on any platform (Market.browseSpot).
+     * Market room it browses from stall to stall instead, on any platform (Market.browseSpot); not while a gear errand
+     * has it walking to a stall (Market.seekErrandStall).
      */
     private void idleWander(CitizenSession session) {
+        Market.ShoppingTrip shopping = session.shopping;
         if (session.entry == null || session.stallOpen || session.stallSpot != null || session.salonNpc != 0
+                || shopping != null && !shopping.abandoned()
                 || (session.activity != Activity.TOWN && session.activity != Activity.MARKET)) {
             return;
         }

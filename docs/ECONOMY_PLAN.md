@@ -206,6 +206,13 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   Now `GearErrands` notes what each citizen can wear when its gear is checked at a load, and a stall lists first the
   equips that fill the most open errands of loaded citizens (`GearErrands.demand`), then the rest by value: about
   30 % on the same bags. The stall-open log line counts the lines listed for errands.
+- **Buyers go to the stall (10-29, branch `feat/errand-seek-stall`).** 24 minutes after the stalls fix, 13 of 16 new
+  stalls listed 8 errand pieces, yet one errand was filled: a citizen chose its room only at the entrance, then bought
+  only within 900 px of where it wandered (18 of 104 online citizens with errands were in the rooms). Now a citizen
+  on a gear errand that bought nothing within reach looks over every room's stalls for a piece it can buy (its errand's
+  offer, its purse, a seller it buys from, its own room first): in another room it goes there, in its own it walks
+  beside the stall and stops wandering, and the next market tick buys. A stall it has not reached in 3 ticks is given
+  up for that visit. Log lines: "goes to X's stall in Free Market room N for ...", "walks to X's stall for ...".
 
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and
