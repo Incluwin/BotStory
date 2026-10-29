@@ -225,6 +225,11 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   the owner command's visit without its lines): the same sale of trash equips and spare drops a supply visit makes.
   It is re-planned when the sale ends; at most one trip each `SELL_TRIP_EVERY_HOURS` (6). Kill switch
   `population.SELL_TRIPS_ENABLED`. Log line: "goes to sell its loot at map M (N free equip slots)".
+  Live 15:55 (`55619552c`): 2,749 shop sales in 40 minutes (310 the hour before), full bags 280 -> 258, sellers now
+  ~69 free slots; but 21 of 48 trips failed "never reached the shop NPC": asked from the arrival portal, the visit's
+  approach (30 s + its route time) ran out at an unwatched Agent's background tick rate. A supply trip walks to the
+  shopkeeper before its visit, so now a sell trip does too: it walks to the counter (as a salon visit does), asks
+  within 60 px, or wherever it stands after a minute.
 
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and
