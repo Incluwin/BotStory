@@ -43,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.IntFunction;
 import java.util.function.IntToLongFunction;
+import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 
 /**
@@ -574,8 +575,9 @@ public final class Market {
                 session.stallSalesSeen = 0;
                 stallsOpen++;
                 session.journal.add("market", "opened a shop selling " + listings.get(0).name());
-                log.info("citizen {} opened a stall in room {} at spot #{} with {} listings", session.name(), agent.getMapId(),
-                        spot.centerSpace().spotNumber(), stock.shopListings().size());
+                log.info("citizen {} opened a stall in room {} at spot #{} with {} listings, {} for gear errands",
+                        session.name(), agent.getMapId(), spot.centerSpace().spotNumber(), stock.shopListings().size(),
+                        stock.forErrands());
             } else {
                 releaseStallSpot(session);
                 log.debug("citizen {} stall failed: {}", session.name(), result.message());
@@ -589,7 +591,7 @@ public final class Market {
     /** What a citizen's stall would list: the shop rows, and the names and index prices behind them. */
     /**
      * What a stall lists: the bag's tradeable stacks (no potions), the most valuable first by {@code unitPrice} x
-     * quantity, up to STALL_MAX_LISTINGS, so the equips it held back for the stall (E3) lead.
+     * quantity, up to STALL_MAX_LISTINGS.
      */
     static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice) {
         return stallStacks(agent, unitPrice, item -> false);
@@ -597,21 +599,36 @@ public final class Market {
 
     /** As above, leaving out what {@code keeps} holds back (the scrolls it would use on its own gear). */
     static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice, Predicate<Item> keeps) {
+        return stallStacks(agent, unitPrice, keeps, itemId -> 0);
+    }
+
+    /**
+     * As above, the equips open gear errands want first: the most errands one would fill ({@code wanted}) first, then
+     * the rest by value. Ranked by value alone a stall's lines were mostly scroll stacks (10-29).
+     */
+    static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice, Predicate<Item> keeps,
+                                  IntUnaryOperator wanted) {
         List<Item> stacks = new ArrayList<>();
+        Map<Integer, Integer> demand = new HashMap<>();
         for (InventoryType type : new InventoryType[]{InventoryType.ETC, InventoryType.USE, InventoryType.EQUIP}) {
             for (Item item : agent.getInventory(type).list()) {
                 if (item.getQuantity() > 0 && (type != InventoryType.USE || isTradeGood(item.getItemId()))
                         && !keeps.test(item)) {
                     stacks.add(item);
+                    if (type == InventoryType.EQUIP) {
+                        demand.computeIfAbsent(item.getItemId(), wanted::applyAsInt);
+                    }
                 }
             }
         }
-        stacks.sort(Comparator.comparingLong((Item item) -> unitPrice.applyAsLong(item.getItemId()) * item.getQuantity())
-                .reversed());
+        stacks.sort(Comparator.comparingInt((Item item) -> demand.getOrDefault(item.getItemId(), 0)).reversed()
+                .thenComparing(Comparator.comparingLong(
+                        (Item item) -> unitPrice.applyAsLong(item.getItemId()) * item.getQuantity()).reversed()));
         return stacks.subList(0, Math.min(STALL_MAX_LISTINGS, stacks.size()));
     }
 
-    private record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings) {
+    /** {@code forErrands}: the equips listed that an open gear errand would buy. */
+    private record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings, int forErrands) {
         boolean isEmpty() {
             return shopListings.isEmpty();
         }
@@ -620,8 +637,14 @@ public final class Market {
     private Stock stock(Character agent) {
         List<Listing> listings = new ArrayList<>();
         List<AgentFreeMarketStallService.Listing> shopListings = new ArrayList<>();
-        for (Item item : stallStacks(agent, this::price, item -> scrolling.keeps(agent, item))) {
+        Map<Integer, Integer> demand = new HashMap<>();
+        IntUnaryOperator wanted = itemId -> demand.computeIfAbsent(itemId, id -> gearErrands.demand(agent.getId(), id));
+        int forErrands = 0;
+        for (Item item : stallStacks(agent, this::price, item -> scrolling.keeps(agent, item), wanted)) {
             InventoryType type = item.getInventoryType();
+            if (type == InventoryType.EQUIP && wanted.applyAsInt(item.getItemId()) > 0) {
+                forErrands++;
+            }
             long unit = price(item.getItemId());
             short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
             short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
@@ -631,7 +654,7 @@ public final class Market {
                     (int) Math.min(Integer.MAX_VALUE, bundlePrice)));
             listings.add(new Listing(item.getItemId(), itemName(item.getItemId()), unit));
         }
-        return new Stock(listings, shopListings);
+        return new Stock(listings, shopListings, forErrands);
     }
 
     /** Lets go of the spot it was walking to (or opening on), by its character id: its character may be gone. */

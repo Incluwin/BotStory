@@ -34,9 +34,23 @@ final class GearErrands implements CitizenGear.Wants {
     /** Shopping for {@code slot}: an equip of {@code category} above {@code wornLevel}; a weapon keeps its type. */
     record Errand(String slot, String category, int wornLevel, int weaponType, long untilMs) { }
 
+    /** What a citizen can wear, as of its last gear check: its level band, job branch, gender and base stats. */
+    private record Shopper(int band, int jobMask, int gender, int[] stats) {
+        static Shopper of(Character agent) {
+            int branch = agent.getJob().getId() / 100 % 10;
+            return new Shopper(agent.getLevel() / 10 * 10, branch < 1 ? 0 : 1 << (branch - 1), agent.getGender(),
+                    new int[]{agent.getStr(), agent.getDex(), agent.getInt(), agent.getLuk()});
+        }
+    }
+
     private final Population population;
     private final Market market;
     private final Map<Integer, Map<String, Errand>> open = new ConcurrentHashMap<>();
+    /**
+     * The citizens whose gear was checked since boot (CitizenGear at a load), by id: the errands a stall can fill, as
+     * only a loaded citizen comes to the market to buy (errands loaded from living_gear_errand wait for their load).
+     */
+    private final Map<Integer, Shopper> shoppers = new ConcurrentHashMap<>();
     private final AtomicLong opened = new AtomicLong();
     private final AtomicLong bought = new AtomicLong();
     private final AtomicLong handedOver = new AtomicLong();
@@ -58,6 +72,7 @@ final class GearErrands implements CitizenGear.Wants {
             return false;
         }
         long now = System.currentTimeMillis();
+        shoppers.put(agent.getId(), Shopper.of(agent));
         Map<String, Errand> errands = open.computeIfAbsent(agent.getId(), id -> new ConcurrentHashMap<>());
         Errand errand = errands.get(slot);
         if (errand != null) {
@@ -127,20 +142,40 @@ final class GearErrands implements CitizenGear.Wants {
         return open.values().stream().mapToInt(Map::size).sum();
     }
 
+    /**
+     * How many open errands one {@code itemId} at {@code sellerId}'s stall would fill: those of the other citizens
+     * whose gear was checked since boot. A stall lists the equips most wanted first (E3), as a stall's eight lines
+     * ranked by value alone were mostly scrolls and 1.5 % of the time held a piece any of 1,020 errands could buy
+     * (live 10-29), though 997 of them fit a piece in some merchant's bag.
+     */
+    int demand(int sellerId, int itemId) {
+        WorldKnowledge k = open.isEmpty() ? null : Decisions.active();
+        Optional<ItemFact> fact = k == null ? Optional.empty() : k.item(itemId);
+        if (fact.isEmpty() || !fact.get().equip()) {
+            return 0;
+        }
+        int wanted = 0;
+        for (Map.Entry<Integer, Map<String, Errand>> errands : open.entrySet()) {
+            Shopper shopper = errands.getKey() == sellerId ? null : shoppers.get(errands.getKey());
+            if (shopper != null && fitting(shopper, errands.getValue(), fact.get()) != null) {
+                wanted++;
+            }
+        }
+        return wanted;
+    }
+
     private Errand errandFor(Character agent, int itemId) {
         Map<String, Errand> errands = agent == null ? null : open.get(agent.getId());
         WorldKnowledge k = errands == null || errands.isEmpty() ? null : Decisions.active();
         Optional<ItemFact> fact = k == null ? Optional.empty() : k.item(itemId);
-        if (fact.isEmpty()) {
-            return null;
-        }
-        int branch = agent.getJob().getId() / 100 % 10;
-        int jobMask = branch < 1 ? 0 : 1 << (branch - 1);
-        int[] stats = {agent.getStr(), agent.getDex(), agent.getInt(), agent.getLuk()};
-        int band = agent.getLevel() / 10 * 10;
+        return fact.isEmpty() ? null : fitting(Shopper.of(agent), errands, fact.get());
+    }
+
+    /** The errand of {@code errands} {@code item} fills for {@code shopper}: above what it wears and fit to wear; or null. */
+    private static Errand fitting(Shopper shopper, Map<String, Errand> errands, ItemFact item) {
         for (Errand errand : errands.values()) {
-            if (fact.get().reqLevel() > errand.wornLevel() && GearPicks.fitsSlot(fact.get(), errand.category(), band,
-                    jobMask, agent.getGender(), errand.weaponType(), stats)) {
+            if (item.reqLevel() > errand.wornLevel() && GearPicks.fitsSlot(item, errand.category(), shopper.band(),
+                    shopper.jobMask(), shopper.gender(), errand.weaponType(), shopper.stats())) {
                 return errand;
             }
         }

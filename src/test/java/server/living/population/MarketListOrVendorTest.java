@@ -124,6 +124,28 @@ class MarketListOrVendorTest {
     }
 
     @Test
+    void theEquipsOpenGearErrandsWantLeadTheStall() {
+        Character merchant = character(MERCHANT);
+        List<Item> equips = new ArrayList<>();
+        for (short slot = 1; slot <= 8; slot++) {
+            equips.add(new Item(HAT, slot, (short) 1));
+        }
+        equips.add(new Item(SHOES, (short) 9, (short) 1));
+        equips.add(new Item(GLOVES, (short) 10, (short) 1));
+        inventory(merchant, InventoryType.ETC, List.of(new Item(SHELL, (short) 1, (short) 100)));
+        inventory(merchant, InventoryType.USE, List.of());
+        inventory(merchant, InventoryType.EQUIP, equips);
+        Map<Integer, Integer> wanted = Map.of(GLOVES, 1, SHOES, 4);
+
+        List<Integer> listed = Market.stallStacks(merchant, market::price, item -> false,
+                itemId -> wanted.getOrDefault(itemId, 0)).stream().map(Item::getItemId).toList();
+
+        assertEquals(8, listed.size());
+        assertEquals(List.of(SHOES, GLOVES), listed.subList(0, 2), "four errands want the shoes, one the gloves");
+        assertTrue(listed.subList(2, 8).stream().allMatch(id -> id == HAT), "then the rest by value: " + listed);
+    }
+
+    @Test
     void aLineNobodyBoughtMovesTheIndexDownNotUp() {
         market.unsold(HAT, 330_000); // asked 1.1x the index
         assertEquals(297_600L, market.price(HAT), "300k + (270k - 300k) x 0.08");

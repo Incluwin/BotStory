@@ -198,6 +198,14 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   their deadline (citizens that never loaded again) are pruned at start.
 - `/runtime/stats/market` (and MapleEdit's stats page, "Citizen market") shows stalls open, purchases and the gear
   errands open / opened / bought / handed over since boot.
+- **Stalls list what errands want (10-29, branch `fix/errand-stall-stock`).** Live at 12:15: 1,020 errands open, 2
+  bought in five hours. Not a lack of goods: merchants held 17,297 equips, and 997 of the errands fit at least one of
+  them (71 pieces each on average). A stall's 8 lines were ranked by index price x quantity, so scroll stacks (seeded
+  at about 1 M each since `ScrollSeeds`) took 68 % of them: about 2 equips a stall, rarely a wanted one. With ~5 stalls
+  open at a time, the chance one held a piece for a given errand was 1.5 % (equips first by value would give 5 %).
+  Now `GearErrands` notes what each citizen can wear when its gear is checked at a load, and a stall lists first the
+  equips that fill the most open errands of loaded citizens (`GearErrands.demand`), then the rest by value: about
+  30 % on the same bags. The stall-open log line counts the lines listed for errands.
 
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and

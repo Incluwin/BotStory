@@ -191,6 +191,24 @@ class GearErrandsTest {
     }
 
     @Test
+    void aStallKnowsWhichEquipsTheLoadedCitizensErrandsWant() throws Exception {
+        try (AutoCloseable seed = KnowledgeTestKit.publishSeed()) {
+            int pick = pick(WorldKnowledge.current());
+            when(store.gearErrands()).thenReturn(Map.of(CITIZEN, Map.of("weapon",
+                    new GearErrands.Errand("weapon", "weapon", 35, 130, System.currentTimeMillis() + 3_600_000L))));
+            GearErrands errands = errands(pick, RED_KATANA);
+            int seller = CITIZEN + 1;
+
+            assertEquals(0, errands.demand(seller, RED_KATANA), "its citizen has not loaded since boot: it cannot come");
+            errands.holdBack(fighter(1_000_000), "weapon", pick);
+            assertEquals(1, errands.demand(seller, RED_KATANA));
+            assertEquals(0, errands.demand(CITIZEN, RED_KATANA), "nobody buys at its own stall");
+            assertEquals(0, errands.demand(seller, MAPLE_SWORD), "no better than the one it wears");
+            assertEquals(0, errands.demand(seller, 4000019), "no equip");
+        }
+    }
+
+    @Test
     void aLoadedErrandPastItsDeadlineIsHandedOverAndDeleted() throws Exception {
         try (AutoCloseable seed = KnowledgeTestKit.publishSeed()) {
             int pick = pick(WorldKnowledge.current());
