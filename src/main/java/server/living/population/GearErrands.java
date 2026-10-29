@@ -103,8 +103,18 @@ final class GearErrands implements CitizenGear.Wants {
     }
 
     String report() {
-        return "gearErrands: open=" + open.values().stream().mapToInt(Map::size).sum() + " opened=" + opened.get()
-                + " bought=" + bought.get() + " handedOver=" + handedOver.get();
+        return "gearErrands: open=" + openCount() + " opened=" + opened.get() + " bought=" + bought.get()
+                + " handedOver=" + handedOver.get();
+    }
+
+    /** The same counts for the admin port's /runtime/stats/market. */
+    String json() {
+        return "{\"open\":" + openCount() + ",\"opened\":" + opened.get() + ",\"bought\":" + bought.get()
+                + ",\"handed_over\":" + handedOver.get() + "}";
+    }
+
+    private int openCount() {
+        return open.values().stream().mapToInt(Map::size).sum();
     }
 
     private Errand errandFor(Character agent, int itemId) {

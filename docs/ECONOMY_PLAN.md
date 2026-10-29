@@ -184,6 +184,8 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   the entrance to the room selling a fit. After `MARKET_GEAR_ERRAND_HOURS` (24) with no buy, or when it cannot pay the
   pick's index price, the piece is handed over as before and the gap is counted (`gearErrands: ... handedOver=`) and
   logged. With the needs board on, its GEAR wants keep this role instead.
+- `/runtime/stats/market` (and MapleEdit's stats page, "Citizen market") shows stalls open, purchases and the gear
+  errands open / opened / bought / handed over since boot.
 
 ### E4. The controller
 - Daily: CPI drift and supply growth versus targets set the next day's bot vendor propensity, spending propensity and

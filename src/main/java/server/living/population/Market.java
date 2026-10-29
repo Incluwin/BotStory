@@ -115,6 +115,13 @@ public final class Market {
         return "market: index=" + index.size() + " stalls=" + stallsOpen + " bought=" + purchases + " " + gearErrands.report();
     }
 
+    /** {@link #report()} as JSON for the admin port's /runtime/stats/market; counts since boot. */
+    public String statsJson() {
+        return "{\"ok\":true,\"index_items\":" + index.size() + ",\"stalls_open\":" + stallsOpen + ",\"stalls_max\":"
+                + population.config().MARKET_STALLS_MAX + ",\"purchases\":" + purchases + ",\"gear_errands\":"
+                + gearErrands.json() + "}";
+    }
+
     // ---- price index ---------------------------------------------------------------------
 
     public long price(int itemId) {

@@ -3,6 +3,7 @@ package server.admin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.economy.ledger.EconomyLedger;
+import server.living.population.Population;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -166,6 +167,12 @@ final class AdminStatsReader {
             log.debug("closes failed", e);
             return sqlErr();
         }
+    }
+
+    /** The citizen market since boot: stalls, purchases, gear errands (docs/ECONOMY_PLAN.md E3). */
+    static String market() {
+        Population population = Population.get();
+        return population == null ? "{\"ok\":false,\"error\":\"population_off\"}" : population.market().statsJson();
     }
 
     /** {@code days=N} from the query (1-365), else {@code fallback}. */
