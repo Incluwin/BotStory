@@ -1146,6 +1146,13 @@ final class AgentOpqCoordinator {
         // 2026-10-18: a human leader drops the pieces Eak gave him in the centre; a companion puts them up (O5).
         if (AgentOpqConductor.conducts(session)
                 && AgentOpqConductor.collectLeaderPiece(session, entry, agent, member, nowMs)) return;
+        // 2026-10-25 live (runs 4-6): the centre's Flying Boogies hit the human leader waiting there, GM-hidden too, and
+        // killed him twice in run 4; a companion waiting in the centre fights them (they never come back).
+        if (AgentOpqConductor.conducts(session)
+                && ACTIONS.liveMonsterCount(agent, AgentOpqDefinition.CENTER_MOBS) > 0) {
+            ACTIONS.grind(entry, AgentOpqDefinition.CENTER_MOBS);
+            return;
+        }
         ACTIONS.stop(entry);
     }
 

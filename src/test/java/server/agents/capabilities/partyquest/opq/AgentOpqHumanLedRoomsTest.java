@@ -409,6 +409,21 @@ class AgentOpqHumanLedRoomsTest {
     }
 
     @Test
+    void aCompanionWaitingInTheCentreFightsItsFlyingBoogies() {
+        // 2026-10-24 live (run 4): the centre's Flying Boogies killed Ben twice while he waited there for the calls.
+        AgentOpqCoordinator.tickSession(session, 10_000L);
+        completeRooms(AgentOpqDefinition.Room.STORAGE);
+        AgentOpqCoordinator.tickSession(session, 11_000L);
+        assertEquals(AgentOpqMemberState.Role.IDLE, session.member(3).role());
+        when(run.actions.liveMonsterCount(kes, AgentOpqDefinition.CENTER_MOBS)).thenReturn(4);
+
+        AgentOpqCoordinator.tickMember(session, run.entries.get(3), kes, 12_000L);
+
+        verify(run.actions).grind(run.entries.get(3), AgentOpqDefinition.CENTER_MOBS);
+        verify(run.actions, never()).stop(run.entries.get(3));
+    }
+
+    @Test
     void theWholeStatueCallsHimToTheCentresEakEvenInTheCentre() {
         session.transition(AgentOpqSession.Phase.RESTORING_STATUE, 9_000L);
         Reactor scar = mock(Reactor.class);
