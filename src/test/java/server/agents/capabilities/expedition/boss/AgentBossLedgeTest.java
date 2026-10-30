@@ -10,8 +10,11 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
+import constants.skills.Archer;
+import constants.skills.Bowmaster;
 import constants.skills.Hero;
 import constants.skills.Paladin;
+import constants.skills.Ranger;
 import constants.skills.WhiteKnight;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -75,11 +78,14 @@ class AgentBossLedgeTest {
     private static final int MUNIN = 8_820_006;
     private static final int SWORD = 1_302_081;
     private static final int SPEAR = 1_432_038;
+    /** Item.wz 1452057, a Lv100 bow. */
+    private static final int BOW = 1_452_057;
     private static final Point HUGIN_LEDGE = new Point(-455, -99);
     private static final Point MUNIN_LEDGE = new Point(460, -102);
     private static final List<Integer> PALADIN = List.of(Paladin.BLAST, WhiteKnight.CHARGE_BLOW);
     private static final List<Integer> HERO = List.of(Hero.BRANDISH, Hero.RUSH, 1_111_008);
     private static final List<Integer> DARK_KNIGHT = List.of(1_311_001, 1_311_003, 1_311_006);
+    private static final List<Integer> BOWMASTER = List.of(Bowmaster.HURRICANE, Ranger.STRAFE);
 
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
     private final MapleMap battle = mock(MapleMap.class);
@@ -106,6 +112,7 @@ class AgentBossLedgeTest {
         when(items.getWeaponType(SWORD)).thenReturn(WeaponType.SWORD1H);
         when(items.getWeaponType(SPEAR)).thenReturn(WeaponType.SPEAR_STAB);
         when(items.isTwoHandedWeapon(SPEAR)).thenReturn(true);
+        when(items.getWeaponType(BOW)).thenReturn(WeaponType.BOW);
         inventory = mockStatic(AgentInventoryGatewayRuntime.class);
         inventory.when(AgentInventoryGatewayRuntime::inventory).thenReturn(items);
         when(battle.getId()).thenReturn(BATTLE);
@@ -228,6 +235,30 @@ class AgentBossLedgeTest {
         assertTrue(stand.y < -42, "off the floor: " + stand);
         assertTrue(AgentCombatReach.reachesFrom(characters.get(10), PALADIN, monsters.getFirst(), stand), "" + stand);
         verify(gateway, never()).grind(eq(orrin), anySet(), anySet());
+    }
+
+    /**
+     * P20 open item 5 (runs 15-16): a Bowmaster held outside Pink Bean's barrage landed 0-15 attacks a minute. Her
+     * keep-out edge lies 521 px from his origin (the barrage's 400 px, 1, and the 120 px mobile margin), and keepOut
+     * walks her STOP_DIST (30 px) inside it (e822bcc9d). From both, Hurricane with Eye of Amazon 8 (400 + 120 px)
+     * reaches his body.
+     */
+    @Test
+    void aBowmasterAtTheBarrageKeepOutEdgeReachesPinkBean() {
+        mobs(PINK_BEAN);
+        member(13, Job.BOWMASTER, BOW, BOWMASTER, false);
+        Map<Integer, Integer> levels = Map.of(Bowmaster.HURRICANE, 30, Ranger.STRAFE, 30, Archer.EYE_OF_AMAZON, 8);
+        when(characters.get(13).getSkillLevel(any(Skill.class))).thenAnswer(invocation ->
+                (byte) (int) levels.getOrDefault(((Skill) invocation.getArgument(0)).getId(), 0));
+        Monster pinkBean = monsters.getFirst();
+        int originX = pinkBean.getPosition().x;
+
+        for (int dx : new int[] {521, 491}) {
+            assertTrue(AgentCombatReach.reachesFrom(characters.get(13), BOWMASTER, pinkBean,
+                    new Point(originX - dx, -42)), "from " + dx + " px to his left");
+            assertTrue(AgentCombatReach.reachesFrom(characters.get(13), BOWMASTER, pinkBean,
+                    new Point(originX + dx, -42)), "from " + dx + " px to his right");
+        }
     }
 
     @Test
