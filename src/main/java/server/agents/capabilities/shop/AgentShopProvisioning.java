@@ -187,7 +187,7 @@ public final class AgentShopProvisioning {
         AgentShopService.buyReadinessAmmo(agent, shop, weapon, inventory, AgentSupplyReadiness.ammoTarget(activity),
                 minimumMesoReserve);
         AgentShopService.buyReadinessFloor(counter, shop, activity, minimumMesoReserve, bought, true);
-        AgentShopService.buyReadinessAmmo(agent, shop, weapon, inventory,
+        AgentShopService.buyReadinessAmmoHeadroom(agent, shop, weapon, inventory,
                 AgentShopService.readinessAmmoBuyTarget(activity), minimumMesoReserve);
         int[] potionsAfter = AgentPotionService.countPotions(agent);
         int ammoAfter = AgentCombatAmmoCounter.countCarried(agent, weapon);

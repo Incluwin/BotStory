@@ -1264,7 +1264,7 @@ public final class AgentShopService {
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessAmmoHeadroomStep(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, WeaponType wt,
             int buyTarget, int minimumMesoReserve) {
-        AgentShopBuyReport report = buyReadinessAmmo(bot, shop, wt, sequence.inventory(), buyTarget,
+        AgentShopBuyReport report = buyReadinessAmmoHeadroom(bot, shop, wt, sequence.inventory(), buyTarget,
                 minimumMesoReserve);
         if (report.quantity() > 0) {
             log.info("Agent '{}' readiness ammo headroom: {} x{} ({}), now {}", bot.getName(), report.itemId(),
@@ -1283,6 +1283,23 @@ public final class AgentShopService {
      */
     static AgentShopBuyReport buyReadinessAmmo(Character bot, Shop shop, WeaponType wt, InventoryGateway inventory,
                                                int target, int minimumMesoReserve) {
+        return buyReadinessAmmo(bot, shop, wt, inventory, target, minimumMesoReserve, false);
+    }
+
+    /**
+     * {@link #buyReadinessAmmo} toward a readiness trip's headroom ({@link #readinessAmmoBuyTarget}), which it never
+     * passes: a refill or a set only while the whole of it still fits under {@code target}. A set is a whole stack, so
+     * buying sets until the count reached the target took claws and guns from the standard's 2,100 to 4,000 for a
+     * 3,200 buy target (live 2026-10-08/09: Kestrel, Sorrel, Flint); arrows were bought to the count already.
+     */
+    static AgentShopBuyReport buyReadinessAmmoHeadroom(Character bot, Shop shop, WeaponType wt,
+                                                       InventoryGateway inventory, int target, int minimumMesoReserve) {
+        return buyReadinessAmmo(bot, shop, wt, inventory, target, minimumMesoReserve, true);
+    }
+
+    private static AgentShopBuyReport buyReadinessAmmo(Character bot, Shop shop, WeaponType wt,
+                                                       InventoryGateway inventory, int target, int minimumMesoReserve,
+                                                       boolean withinTarget) {
         AgentShopBuyReport none = new AgentShopBuyReport(0, 0, 0, AgentShopShortfallReason.NONE);
         if (bot == null || shop == null || wt == null || !AgentCombatAmmoCounter.isRangedAmmoWeapon(wt)
                 || bot.getInventory(InventoryType.USE) == null) {
@@ -1296,8 +1313,12 @@ public final class AgentShopService {
         AgentShopShortfallReason reason = AgentShopShortfallReason.NONE;
         if (isRechargeWeaponType(wt)) {
             for (Item stack : refillableStacks(bot, wt, inventory)) {
-                if (AgentCombatAmmoCounter.countCarried(bot, wt) >= target) {
+                int carried = AgentCombatAmmoCounter.countCarried(bot, wt);
+                if (carried >= target) {
                     break;
+                }
+                if (withinTarget && carried + inventory.getSlotMax(bot, stack.getItemId()) - stack.getQuantity() > target) {
+                    continue;
                 }
                 itemId = stack.getItemId();
                 Shop.TransactionResult result = AgentShopGatewayRuntime.shop().recharge(
@@ -1310,8 +1331,9 @@ public final class AgentShopService {
             ShopSlotItem set = reason == AgentShopShortfallReason.NONE ? findSeedRechargeAmmoItem(shop, wt) : null;
             if (set != null) {
                 itemId = set.shopItem.getItemId();
+                int perSet = inventory.getSlotMax(bot, itemId);
                 int count = AgentCombatAmmoCounter.countCarried(bot, wt);
-                while (count < target) {
+                while (count < target && !(withinTarget && count + perSet > target)) {
                     if (freeUseSlots(bot) <= 1) {
                         reason = AgentShopShortfallReason.NO_SPACE;
                         break;

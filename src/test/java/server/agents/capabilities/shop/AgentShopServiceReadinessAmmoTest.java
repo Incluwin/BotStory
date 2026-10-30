@@ -239,9 +239,9 @@ class AgentShopServiceReadinessAmmoTest {
         visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
 
         assertEquals(List.of("refill x " + ILBI, "set x " + SUBI, "set x " + SUBI,
-                "set x " + SUBI, "set x " + SUBI, "set x " + SUBI), transactions,
-                "the refill and two sets reach the standard; three more sets are its headroom");
-        assertEquals(3_300, stars());
+                "set x " + SUBI, "set x " + SUBI), transactions,
+                "the refill and two sets reach the standard; two more sets are its headroom, a third would pass 3,200");
+        assertEquals(2_800, stars());
     }
 
     @Test
@@ -372,9 +372,27 @@ class AgentShopServiceReadinessAmmoTest {
 
         AgentShopPurchaseSequence<AgentRuntimeEntry> visit = visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
 
-        assertEquals(3_500, stars(), "four sets to the standard, three more as headroom");
+        assertEquals(3_000, stars(), "four sets to the standard, two more as headroom up to its 3,200 buy target");
         assertEquals(List.of(), visit.bought(), "the spoken \"bought ...\" line never grows with it");
-        assertEquals(3_500, visit.unspokenUnits(), "but the visit knows it bought something");
+        assertEquals(3_000, visit.unspokenUnits(), "but the visit knows it bought something");
+    }
+
+    /**
+     * Live 2026-10-08/09 (Kestrel, Sorrel, Flint): the headroom bought whole sets until the count reached the buy target,
+     * so a claw or gun at the standard's 2,100 went on to 4,000 for a 3,200 buy target. It never passes it now; the
+     * standard itself is still reached whatever a set holds.
+     */
+    @Test
+    void theHeadroomNeverPassesItsBuyTarget() {
+        trip = EPQ;
+        carryPotions(350, 350);
+        use.addItem(Items.itemWithQuantity(SUBI, 100));
+
+        visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
+
+        assertTrue(stars() <= AgentShopService.readinessAmmoBuyTarget(EPQ), "stars " + stars() + ": " + transactions);
+        assertTrue(stars() > AgentShopService.readinessAmmoBuyTarget(EPQ) - 500, "within a set of it");
+        assertTrue(stars() >= AgentSupplyReadiness.ammoTarget(EPQ), "the standard");
     }
 
     @Test
