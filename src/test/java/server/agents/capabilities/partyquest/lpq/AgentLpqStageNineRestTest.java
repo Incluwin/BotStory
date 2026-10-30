@@ -12,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * LPQ base fix 6: a living stage-9 member out of potions backs off out of Alishar's reach and stands still, with the
- * generic out-of-potions stop's own thresholds (fewer than POT_STOP HP potions and HP under 40 %), until it is back to
- * 70 % HP or holds POT_STOP potions again. A re-registered member (50 HP, no potions) rests by the same rule. Its rest
+ * LPQ base fix 6 on the EPQ golem rest's rule (2026-10-29): a living stage-9 member under 40 % HP, with or without
+ * potions, or with fewer than POT_STOP HP potions at any HP, backs off out of Alishar's reach and stands still until it
+ * is back to 70 % HP and holds POT_STOP potions again. A re-registered member (50 HP, no potions) rests by the same rule. Its rest
  * point is kept while Alishar stays out of his reach (REACH_PX), and it crosses him only once he is within it.
  */
 class AgentLpqStageNineRestTest {
@@ -42,19 +42,20 @@ class AgentLpqStageNineRestTest {
 
     @Test
     void whoStartsResting() {
-        assertTrue(starts(9, 780), "9 potions, 39 %");
-        assertFalse(starts(9, 820), "9 potions, 41 %");
-        assertFalse(starts(10, 200), "10 potions, 10 %: still potting");
+        assertTrue(starts(10, 780), "10 potions, 39 %: it backs off while it still holds some");
+        assertFalse(starts(10, 820), "10 potions, 41 %");
+        assertTrue(starts(9, 2_000), "9 potions: it rests at full HP until someone shares");
         assertFalse(starts(-1, 200), "an unknown count never rests");
         assertTrue(starts(0, 50), "a re-registered member: 50 HP, no potions");
     }
 
     @Test
-    void aRestingMemberRestsUntilSeventyPercentOrPotions() {
-        assertTrue(keeps(9, 820), "41 %: still resting");
-        assertTrue(keeps(0, 1_399), "69.95 %");
-        assertFalse(keeps(0, 1_400), "70 %: back to the fight");
-        assertFalse(keeps(10, 200), "potions again");
+    void aRestingMemberRestsUntilSeventyPercentWithPotions() {
+        assertTrue(keeps(10, 820), "41 %: still resting");
+        assertTrue(keeps(10, 1_399), "69.95 %");
+        assertFalse(keeps(10, 1_400), "70 % with POT_STOP potions: back to the fight");
+        assertTrue(keeps(0, 1_400), "70 % but dry: it waits for a share");
+        assertTrue(keeps(10, 200), "a share at 10 % does not send it back before it drank up");
         assertFalse(keeps(-1, 200), "an unknown count never rests");
     }
 

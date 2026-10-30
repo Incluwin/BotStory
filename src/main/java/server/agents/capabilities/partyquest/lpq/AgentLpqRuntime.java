@@ -21,6 +21,19 @@ public final class AgentLpqRuntime {
         return AgentLpqCoordinator.ownsDryLine(characterId, mapId);
     }
 
+    /**
+     * True while the run holds this member back on Alishar's floor by its stage-9 rest (AgentLpqStageNineBossPolicy:
+     * its walk, its stand and its fight against a summon from the rest point, which is grind mode), so the generic
+     * out-of-potions grind stop leaves its moves and words to the run (AgentPartyQuestSystem.ownsPotionRest). Memory
+     * only.
+     */
+    public static boolean ownsPotionRest(int characterId, int mapId) {
+        if (mapId != AgentLpqDefinition.stage(9).mapId()) return false;
+        AgentLpqSession session = AgentLpqSessionRegistry.forMember(characterId);
+        AgentLpqMemberState member = session == null ? null : session.member(characterId);
+        return member != null && member.stageNineState().resting();
+    }
+
     public static boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
         AgentLpqSession session = AgentLpqSessionRegistry.forMember(agent.getId());
         if (session == null) {

@@ -114,36 +114,40 @@ class AgentLpqStageNineOrderTest {
     }
 
     @Test
-    void restingStartsBelowFortyPercentAndHoldsUntilSeventy() {
+    void restingStartsBelowFortyPercentWithOrWithoutPotionsAndHoldsUntilSeventyWithPotions() {
         AgentLpqMemberState member = agent(762_321);
-        Order fighting = pass(member, shooter(0, true, 233, 600, 0, 900));
-        assertEquals(Move.FIGHT_FROM_STATION, fighting.move(), "45 %: still fighting");
+        Order fighting = pass(member, shooter(0, true, 233, 600, POT_STOP, 900));
+        assertEquals(Move.FIGHT_FROM_STATION, fighting.move(), "45 % with POT_STOP potions: still fighting");
         assertFalse(member.stageNineState().resting());
 
-        Order start = pass(member, shooter(0, false, 233, 600, 0, 780));
-        assertEquals(Move.WALK_TO_REST, start.move(), "39 % and no potions: it backs off");
+        Order start = pass(member, shooter(0, false, 233, 600, POT_STOP, 780));
+        assertEquals(Move.WALK_TO_REST, start.move(), "39 %: it backs off while it still holds potions");
         assertEquals(at(-250), start.point(), "the floor end on its side, 850 px from him");
         assertTrue(member.stageNineState().resting());
         assertNull(start.targets(), "a member walking to rest does not fight");
 
         for (int hp : new int[]{1_000, 1_200, 1_399}) {
-            Order resting = pass(member, shooter(0, false, -250, 600, 0, hp));
+            Order resting = pass(member, shooter(0, false, -250, 600, POT_STOP, hp));
             assertEquals(Move.REST, resting.move(), hp + " HP: still resting");
             assertEquals(at(-250), resting.point());
         }
 
-        Order back = pass(member, shooter(0, false, -250, 600, 0, 1_400));
-        assertFalse(member.stageNineState().resting(), "70 %: back to the fight");
+        Order back = pass(member, shooter(0, false, -250, 600, POT_STOP, 1_400));
+        assertFalse(member.stageNineState().resting(), "70 % with POT_STOP potions: back to the fight");
         assertNull(member.stageNineState().restPoint());
         assertEquals(Move.FIGHT_FROM_STATION, back.move());
         assertEquals(at(233), back.point(), "its group, side and station waited for it");
         assertEquals(Group.A, member.stageNineState().group());
 
-        AgentLpqMemberState potted = agent(762_322);
-        pass(potted, shooter(0, true, 233, 600, 0, 700));
-        assertTrue(potted.stageNineState().resting());
-        Order rebought = pass(potted, shooter(0, false, -250, 600, POT_STOP, 900));
-        assertFalse(potted.stageNineState().resting(), "POT_STOP potions again: back to the fight at 45 %");
+        AgentLpqMemberState dry = agent(762_322);
+        pass(dry, shooter(0, true, 233, 600, 0, 1_800));
+        assertTrue(dry.stageNineState().resting(), "no potions: it rests at 90 %");
+        assertEquals(Move.REST, pass(dry, shooter(0, false, -250, 600, 0, 1_900)).move(),
+                "95 % but dry: it waits for a share");
+        assertTrue(pass(dry, shooter(0, false, -250, 600, POT_STOP, 900)).state().resting(),
+                "a share at 45 % does not send it back before it drank up");
+        Order rebought = pass(dry, shooter(0, false, -250, 600, POT_STOP, 1_400));
+        assertFalse(dry.stageNineState().resting(), "POT_STOP potions and 70 %: back to the fight");
         assertEquals(Move.FIGHT_FROM_STATION, rebought.move());
     }
 
@@ -192,17 +196,18 @@ class AgentLpqStageNineOrderTest {
         assertTrue(flatBoss.contains("booleanstageNineGroupsUnset=alisharAlive&&session.members().stream()"
                 + ".allMatch(member->member.stageNineGroup()==null);"));
         assertTrue(flatBoss.contains("fightAlishar(session,member,entry,agent,alishar.getPosition(),"
-                + "stageNineShooters,stageNineGroupsUnset,stageNineSummons);"));
+                + "stageNineShooters,stageNineGroupsUnset,stageNineSummons,nowMs);"));
 
         String fight = AgentLpqStageNineStationTest.method(source, "    private static void fightAlishar(");
         String flat = fight.replaceAll("\\s+", "");
         assertTrue(flat.contains("AgentLpqStageNineBossPolicy.MemberStatebefore=member.stageNineState();"), flat);
         assertTrue(flat.contains("intpotions=ACTIONS.hpPotionCount(agent);"), flat);
+        assertTrue(flat.contains("intpotStop=server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP;"), flat);
         assertTrue(flat.contains("AgentLpqStageNineBossPolicy.Orderorder=AgentLpqStageNineBossPolicy.order(before,"
                 + "newAgentLpqStageNineBossPolicy.Pass(stageNineShooter(agent,session.companionAdopted()),"
                 + "shooterIds.indexOf(agent.getId()),"
                 + "groupsUnset,agent.getPosition(),boss,summons,potions,"
-                + "server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP,agent.getHp(),agent.getMaxHp()),"
+                + "potStop,agent.getHp(),agent.getMaxHp()),"
                 + "stageNineFloor());"), flat);
         assertTrue(flat.contains("member.applyStageNine(order.state());"), flat);
         assertTrue(flat.contains("switch(order.move()){"

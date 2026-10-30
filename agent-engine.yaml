@@ -1183,14 +1183,22 @@ tuning:
     # Purpose: Lets an LPQ stage-9 shooter fight one of Alishar's summons first while one stands this close to it (horizontally and vertically), then go back to Alishar; a resting member out of his reach fights such a summon from its rest point.
     # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9; the summons are MobSkill 200 levels 29-31 (9300015, 9300016, 9300017). The HPQ guard's wake radius is the precedent; melee members always take the summons first.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.ADD_THREAT_PX: '100'
-    # Values: 0.2-0.6 of maximum HP. Recommended: 0.4, the generic out-of-potions stop's own threshold, so both fire together.
-    # Purpose: Sets the HP fraction under which an LPQ stage-9 member holding fewer than POT_STOP HP potions stops fighting Alishar, backs off out of his reach and rests.
-    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9 while Alishar lives; POT_STOP is server.agents.runtime.AgentRuntimeConfig.POT_STOP and the count is the HP-potion count 'LPQ potions' logs. A dead member is never evaluated.
+    # Values: 0.2-0.6 of maximum HP, below RESUME_HP_FRACTION. Recommended: 0.4, the generic out-of-potions stop's own threshold (the EPQ golem rest uses 0.5).
+    # Purpose: Sets the HP fraction under which an LPQ stage-9 member stops fighting Alishar, with or without potions, backs off out of his reach and rests; a member with fewer than POT_STOP HP potions rests at any HP.
+    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9 while Alishar lives (the EPQ golem rest's rule since 2026-10-29, AgentLpqStageNineBossPolicy.resting); POT_STOP is server.agents.runtime.AgentRuntimeConfig.POT_STOP and the count is the HP-potion count 'LPQ potions' logs; an unknown count never rests. A dead member is never evaluated.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REST_HP_FRACTION: '0.4'
-    # Values: 0.5-0.95 of maximum HP, above REST_HP_FRACTION. Recommended: 0.7 so a rested member rejoins with room for one of Alishar's hits.
-    # Purpose: Sets the HP fraction at which a resting LPQ stage-9 member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
-    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9. Resting heals by passive regen only (BASE_HP_RECOVERY 10 HP per 10 s, plus a warrior's Improved HP Recovery while it stands still), and a stopped member does not ask anyone for potions.
+    # Values: 0.5-0.95 of maximum HP, above REST_HP_FRACTION. Recommended: 0.7 so a rested member rejoins with room for one of Alishar's hits (the EPQ golem rest uses 0.8).
+    # Purpose: Sets the HP fraction a resting LPQ stage-9 member drinks up to and must reach, holding POT_STOP HP potions, before it rejoins the fight.
+    # Technical: Only AgentLpqStageNineBossPolicy and AgentLpqCoordinator.restUp read this, for LPQ stage 9. A rester under it drinks one HP potion every REST_DRINK_INTERVAL_MS (passive regen, BASE_HP_RECOVERY 10 HP per 10 s, when it has none); a dry rester asks its party every DRY_ASK_INTERVAL_MS, and a stack shared at low HP does not end the rest.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.RESUME_HP_FRACTION: '0.7'
+    # Values: 300-2000 milliseconds. Recommended: 600, the EPQ golem rest's TOP_UP_INTERVAL_MS, so a rester's drinks look like a player's quick potion presses without draining a stack in one tick.
+    # Purpose: Spaces the HP potions a resting LPQ stage-9 member drinks while it backs off from Alishar and waits out of his reach.
+    # Technical: AgentLpqCoordinator.restUp (LPQ stage 9 while Alishar lives): while the member rests under RESUME_HP_FRACTION with an HP potion, one AgentPotionService.selectAutopotForCurrentDeficit choice per interval through the primitive gateway's useItem, on the walk to its rest point too; stored on the member's LPQ state (claimStageNineRestDrink).
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REST_DRINK_INTERVAL_MS: '600'
+    # Values: 10000-120000 milliseconds. Recommended: 30000, the generic potion share's own cohort cooldown, as the EPQ golem rest's DRY_ASK_INTERVAL_MS.
+    # Purpose: Spaces the asks a resting LPQ stage-9 member with fewer than POT_STOP HP potions makes to its party for HP potions, so a dry rester does not sit out the rest of Alishar's fight after one ask.
+    # Technical: AgentLpqCoordinator.restUp: a dry rest asks once as it starts, then once every interval while the rester holds fewer than POT_STOP HP potions, through AgentPotionService.requestPotShareAt on the LPQ tick's own clock (its 30 s cohort cooldown, 10-minute no-donor backoff and donor bar still apply); each try logs 'LPQ stage9 rest ask:' with result=sent or result=held.
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.DRY_ASK_INTERVAL_MS: '30000'
     # Values: 5000-120000 milliseconds. Recommended: 30000, the 30 seconds '!lpqtest party prod' gives the leader to talk to the Red Sign.
     # Purpose: How long a companion run waits for its human leader to take the party into LPQ, and then for every member to stand in his instance on stage 1, before it ends quietly or goes on without the absent ones while five are inside.
     # Technical: Read only by AgentLpqCoordinator's companion-run PREPARING and ENTERING (AgentLpqSession.companionAdopted); stock, background and '!lpqtest' fixture runs keep PHASE_TIMEOUT_MS.

@@ -32,6 +32,10 @@ final class AgentLpqStageNineBossPolicy {
             "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REST_HP_FRACTION");
     private static final double RESUME_HP_FRACTION = config.AgentTuning.doubleValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.RESUME_HP_FRACTION");
+    static final long REST_DRINK_INTERVAL_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REST_DRINK_INTERVAL_MS");
+    static final long DRY_ASK_INTERVAL_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.DRY_ASK_INTERVAL_MS");
 
     enum Side {
         LEFT, RIGHT;
@@ -198,22 +202,25 @@ final class AgentLpqStageNineBossPolicy {
     }
 
     /**
-     * Whether a living stage-9 member out of potions rests (LPQ base fix 6): it starts with fewer than
-     * {@code potStop} HP potions and HP under {@code rest} of its maximum (the generic out-of-potions stop's own
-     * thresholds) and keeps resting until its HP reaches {@code resume} of its maximum or it holds {@code potStop}
-     * potions again. An unknown count (-1) never rests.
+     * Whether a living stage-9 member rests (LPQ base fix 6, on the EPQ golem rest's rule of 2026-10-09,
+     * AgentEpqRecoveryPolicy.resting). It starts once its HP falls under {@code rest} of its maximum, with or without
+     * potions (so it backs off while it still holds some, not after the autopot drained them under Alishar), or while
+     * it holds fewer than {@code potStop} HP potions at any HP. It keeps resting until its HP reaches {@code resume} of
+     * its maximum and it holds {@code potStop} potions again: a stack shared at low HP does not send it back before it
+     * drank up. An unknown count (-1) or maximum never rests.
      */
     static boolean resting(boolean wasResting, int hpPotions, int potStop, int hp, int maxHp,
                            double rest, double resume) {
-        if (hpPotions < 0) return false;
-        if (wasResting) return hpPotions < potStop && hp < maxHp * resume;
-        return hpPotions < potStop && hp < maxHp * rest;
+        if (hpPotions < 0 || maxHp <= 0) return false;
+        boolean stocked = hpPotions >= potStop;
+        if (wasResting) return !stocked || hp < maxHp * resume;
+        return !stocked || hp < maxHp * rest;
     }
 
     /**
      * One living member's stage-9 order while Alishar lives (LPQ base fix 5 and 6), from its state and this pass.
      *
-     * <p>A member out of potions rests (see {@link #resting}): it walks to its rest point and stands still there, and
+     * <p>A member low on HP or HP potions rests (see {@link #resting}): it walks to its rest point and stands still there, and
      * its group, side and station are kept for its return; out of his reach, a summon on it is fought from there. A
      * melee member fights the summons first and Alishar when none is up. A shooter without a group joins one: by its
      * rank while no member has a group yet, else group A; its home side is the side of Alishar it stands on. It then
