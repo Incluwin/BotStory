@@ -373,14 +373,26 @@ final class AgentOpqConductor {
         }
     }
 
-    /** The leader is in the centre with statue pieces in his bag: a companion there asks for them, once per set. */
+    /**
+     * The leader is in the centre with statue pieces in his bag: a companion there asks for them, once per set. With none
+     * of them there, one asks him in party chat to keep them until one comes, once per set: a piece left lying with
+     * nobody to take it up expires in three minutes (the risk the O5 hand-over was built with).
+     */
     private static void piecesLine(AgentOpqSession session, Character leader) {
         if (leader.getMapId() != AgentOpqDefinition.CENTER_MAP) return;
         List<Integer> held = AgentOpqDefinition.STATUE_PIECES.stream()
                 .filter(piece -> leader.getItemQuantity(piece, false) > 0).toList();
         if (held.isEmpty()) return;
         Character speaker = companionOn(session, AgentOpqDefinition.CENTER_MAP);
-        if (speaker == null) return;
+        if (speaker == null) {
+            Character away = companions(session).stream().map(member -> AgentOpqCoordinator.character(member.characterId()))
+                    .filter(Objects::nonNull).findFirst().orElse(null);
+            if (away != null) {
+                AgentOpqDialogue.narrate(session, "pieces-keep-" + held, away, leader,
+                        AgentOpqCompanionPlay.keepYourPieces(leader.getName()));
+            }
+            return;
+        }
         AgentOpqDialogue.narrate(session, "pieces-" + held, speaker, leader,
                 AgentOpqCompanionPlay.dropYourPieces(leader.getName()));
     }

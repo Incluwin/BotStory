@@ -50,6 +50,11 @@ final class AgentOpqCompanionPlay {
         return leader + ", drop your statue pieces here. i'll put them up.";
     }
 
+    /** The leader came back to the centre with statue pieces and none of his companions is there to take them up. */
+    static String keepYourPieces(String leader) {
+        return leader + ", hold the statue pieces till one of us is in the middle, they vanish on the floor.";
+    }
+
     /** Stay off the platforms: Eak counts everyone standing on them. */
     static String offThePlatforms() {
         return "stay off the platforms when you talk to him, he counts everyone on them.";

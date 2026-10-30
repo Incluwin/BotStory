@@ -409,6 +409,29 @@ class AgentOpqHumanLedRoomsTest {
     }
 
     @Test
+    void withNoCompanionInTheCentreHeIsAskedToHoldHisPiecesUntilOneComes() {
+        AgentOpqCoordinator.tickSession(session, 10_000L);
+        stand(mira, AgentOpqDefinition.WALKWAY_MAP, 300, -138);
+        stand(kes, AgentOpqDefinition.STORAGE_MAP, 0, 0);
+        stand(pel, AgentOpqDefinition.LOBBY_MAP, 0, 0);
+        stand(hal, AgentOpqDefinition.ON_WAY_UP_MAP, 0, -1_000);
+        stand(gus, AgentOpqDefinition.LOUNGE_MAP, -45, -728);
+        holds(ben, AgentOpqDefinition.STATUE_PIECES.get(0), 1);
+
+        AgentOpqCoordinator.tickSession(session, 11_000L);
+        AgentOpqCoordinator.tickSession(session, 12_000L);
+
+        verify(run.party, times(1)).sendPartyChat(mira,
+                "Ben, hold the statue pieces till one of us is in the middle, they vanish on the floor.");
+        verify(packets, never()).broadcastChatText(any(), eq("Ben, drop your statue pieces here. i'll put them up."),
+                anyBoolean(), anyInt());
+
+        stand(kes, AgentOpqDefinition.CENTER_MAP, 0, 0); // back from the storage room
+        AgentOpqCoordinator.tickSession(session, 13_000L);
+        verify(packets).broadcastChatText(kes, "Ben, drop your statue pieces here. i'll put them up.", false, 0);
+    }
+
+    @Test
     void aCompanionWaitingInTheCentreFightsItsFlyingBoogies() {
         // 2026-10-24 live (run 4): the centre's Flying Boogies killed Ben twice while he waited there for the calls.
         AgentOpqCoordinator.tickSession(session, 10_000L);
