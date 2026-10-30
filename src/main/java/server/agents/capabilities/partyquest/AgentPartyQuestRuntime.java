@@ -355,6 +355,10 @@ public final class AgentPartyQuestRuntime {
             return AgentLpqRuntime.ownsDryLine(characterId, mapId);
         }
 
+        @Override public boolean ownsPotionRest(int characterId, int mapId) {
+            return AgentLpqRuntime.ownsPotionRest(characterId, mapId);
+        }
+
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("lpq"); }
         @Override public boolean sessionActive(int characterId) { return AgentLpqSessionRegistry.active(characterId); }
         @Override public boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {

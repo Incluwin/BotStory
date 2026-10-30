@@ -1,12 +1,16 @@
 package server.living.population;
 
+import server.agents.capabilities.behavior.AgentJumpNoise;
+
 /**
  * The jump-quest noise's calibration (docs/BOT_CONCEPT_PLAN.md F5b). Navigation picks a jump's launch inside the edge's
- * window, a margin from its ends; the noise (AgentJumpNoise) moves it by a draw from N(0, sigma); the jump lands when the
- * moved launch is inside the jump's real landing window, measured with the jump probe (JumpQuestCourses: wider than the
- * graph's window, which is trimmed to be safe). A jump's chance is the average over the picks, a stage's the product
- * over its jumps, and {@link #sigmaFor} finds the sigma that gives a stage the citizen's chance: a narrow jump fails more
- * often than a wide one, as for people, and each citizen clears a stage about as often as its skill says.
+ * window, a margin from its ends; the noise (AgentJumpNoise.launchX) moves it by a whole-pixel draw from N(0, sigma),
+ * kept on the platform (never past navigation's own pick), and keeps the press only when the jump probe calls it safe,
+ * else draws again (REDRAWS tries, then navigation's own pick). The jump lands when the kept press is one the probe lands
+ * on its target (JumpQuestCourses: every pixel of the platform, so a one-pixel hole in a landing run does not cut it short).
+ * A jump's chance is the average over the picks, a stage's the product over its jumps, and {@link #sigmaFor} finds the
+ * sigma that gives a stage the citizen's chance: a narrow jump fails more often than a wide one, as for people, and each
+ * citizen clears a stage about as often as its skill says.
  */
 public final class JumpWindows {
     /** Navigation keeps its pick this far inside a window (two walk steps; AgentNavigationWaypointService). */
@@ -21,10 +25,43 @@ public final class JumpWindows {
     }
 
     /**
-     * One jump: navigation picks its launch in {@code pickLow..pickHigh} (the graph window), and it lands from any
-     * launch in {@code okLow..okHigh} (the probe's; {@code -OPEN}/{@code OPEN} where it reaches the platform's end).
+     * One jump: navigation picks its launch in {@code pickLow..pickHigh} (the graph window); a press goes no farther than
+     * {@code pressLow..pressHigh} (the platform less the noise's edge margin; never past navigation's own pick). For a
+     * press from {@code x} in {@code first..first + lands.length - 1}: {@code lands} whether the probe lands it on the
+     * jump's target, {@code safe} whether the noise keeps it (AgentJumpNoise.safePress over its readiness band). A
+     * press outside that run is never drawn (MAX_OFFSET_PX).
      */
-    public record Jump(int pickLow, int pickHigh, int okLow, int okHigh) {
+    public record Jump(int pickLow, int pickHigh, int pressLow, int pressHigh, int first, boolean[] lands, boolean[] safe) {
+        /**
+         * A jump that lands from {@code okLow..okHigh} ({@code -OPEN}/{@code OPEN}: to the end of what a press can
+         * reach on that side) and misses safely from everywhere else, on a platform with no end in reach.
+         */
+        public Jump(int pickLow, int pickHigh, int okLow, int okHigh) {
+            this(pickLow, pickHigh, Integer.MIN_VALUE, Integer.MAX_VALUE, pickLow - AgentJumpNoise.MAX_OFFSET_PX,
+                    run(pickLow - AgentJumpNoise.MAX_OFFSET_PX, pickHigh + AgentJumpNoise.MAX_OFFSET_PX, okLow, okHigh),
+                    run(pickLow - AgentJumpNoise.MAX_OFFSET_PX, pickHigh + AgentJumpNoise.MAX_OFFSET_PX,
+                            Integer.MIN_VALUE, Integer.MAX_VALUE));
+        }
+
+        private static boolean[] run(int from, int to, int low, int high) {
+            boolean[] out = new boolean[to - from + 1];
+            for (int x = from; x <= to; x++) {
+                out[x - from] = x >= low && x <= high;
+            }
+            return out;
+        }
+
+        /** True when the probe lands a press from {@code x} on the jump's target. */
+        public boolean landsFrom(int x) {
+            int i = x - first;
+            return i >= 0 && i < lands.length && lands[i];
+        }
+
+        /** True when the noise keeps a press from {@code x} (a refused one is drawn again). */
+        public boolean keptFrom(int x) {
+            int i = x - first;
+            return i >= 0 && i < safe.length && safe[i];
+        }
     }
 
     /**
@@ -38,30 +75,75 @@ public final class JumpWindows {
 
     /** The chance {@code jump} lands with a press spread of {@code sigma} pixels. */
     public static double jumpSuccess(Jump jump, double sigma) {
-        if (jump.okHigh() < jump.okLow()) {
-            return 0.0d;
-        }
+        return jumpSuccess(jump, sigma, offsets(sigma));
+    }
+
+    /**
+     * As AgentJumpNoise.launchX takes it, for each of the picks: a draw of {@code offset} pixels (whole, capped at
+     * MAX_OFFSET_PX) is kept on the platform and never past the pick; the pick itself is taken as navigation would,
+     * any other press only when the probe keeps it, else the next draw, and after REDRAWS refused draws the pick.
+     */
+    private static double jumpSuccess(Jump jump, double sigma, double[] offsets) {
         int width = Math.max(0, jump.pickHigh() - jump.pickLow());
         int margin = Math.min(width / 2, PICK_MARGIN_PX);
-        double low = jump.pickLow() + margin;
-        double high = jump.pickHigh() - margin;
+        int low = jump.pickLow() + margin;
+        int high = jump.pickHigh() - margin;
+        int reach = (offsets.length - 1) / 2;
         double sum = 0.0d;
         for (int i = 0; i < PICKS; i++) {
-            double pick = high <= low ? (low + high) / 2.0d : low + (high - low) * i / (PICKS - 1);
+            int pick = high <= low ? (low + high) / 2 : (int) Math.round(low + (high - low) * i / (double) (PICKS - 1));
+            double exact = jump.landsFrom(pick) ? 1.0d : 0.0d;
             if (sigma <= 0.0d) {
-                sum += pick >= jump.okLow() && pick <= jump.okHigh() ? 1.0d : 0.0d;
-            } else {
-                sum += phi((jump.okHigh() + 0.5d - pick) / sigma) - phi((jump.okLow() - 0.5d - pick) / sigma);
+                sum += exact;
+                continue;
             }
+            int pressLow = Math.min(jump.pressLow(), pick);
+            int pressHigh = Math.max(jump.pressHigh(), pick);
+            double hit = 0.0d;
+            double refused = 0.0d;
+            for (int k = -reach; k <= reach; k++) {
+                double chance = offsets[k + reach];
+                int press = Math.max(pressLow, Math.min(pressHigh, pick + k));
+                if (press == pick) {
+                    hit += chance * exact;
+                } else if (!jump.keptFrom(press)) {
+                    refused += chance;
+                } else if (jump.landsFrom(press)) {
+                    hit += chance;
+                }
+            }
+            double kept = 1.0d;
+            double tries = 0.0d;
+            for (int attempt = 0; attempt < AgentJumpNoise.REDRAWS; attempt++) {
+                tries += kept;
+                kept *= refused;
+            }
+            sum += hit * tries + kept * exact;
         }
         return sum / PICKS;
     }
 
+    /** The chance of each whole-pixel draw, -reach..reach (reach: MAX_OFFSET_PX, or less where the rest is nil). */
+    private static double[] offsets(double sigma) {
+        if (sigma <= 0.0d) {
+            return new double[]{1.0d};
+        }
+        int reach = (int) Math.min(AgentJumpNoise.MAX_OFFSET_PX, Math.ceil(8.0d * sigma) + 1);
+        double[] out = new double[2 * reach + 1];
+        for (int k = -reach; k <= reach; k++) {
+            double below = k == -reach ? 0.0d : phi((k - 0.5d) / sigma);
+            double above = k == reach ? 1.0d : phi((k + 0.5d) / sigma);
+            out[k + reach] = above - below;
+        }
+        return out;
+    }
+
     /** The chance every jump of a stage lands. */
     public static double stageSuccess(Jump[] jumps, double sigma) {
+        double[] offsets = offsets(sigma);
         double chance = 1.0d;
         for (Jump jump : jumps) {
-            chance *= jumpSuccess(jump, sigma);
+            chance *= jumpSuccess(jump, sigma, offsets);
         }
         return chance;
     }

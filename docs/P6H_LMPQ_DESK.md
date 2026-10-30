@@ -69,8 +69,8 @@ Binding plan: `p6h_lmpq_plan.md`, section "STEPS 2-6", in the session scratchpad
 
 - Every pace prior and TAUROMACIS_MIN_LEVEL is provisional because Step 0 never ran. Calibrate from the first runs and bump PACE_EPOCH if the profile changes.
 - D5 (escort) is not built. It is needed only if L1 shows the leader getting lost.
-- A director-run LMPQ (maxLobbies 1) still blocks the desk with the stock "Another party has already entered..." message.
-- LMPQ has no AMMO_STANDARDS entry, so it uses PARTY_QUEST_AMMO (500).
+- A director-run LMPQ (maxLobbies 1) no longer takes the lobby while a party with a human waits on 220000000: an Agents-only director lobby goes back to forming (`AgentLmpqAdmissionService.admitFromLobby`, 2026-10-29). One already inside still holds the channel's only lobby until it ends, like any party; never letting a director run take it (KPQ's HUMAN_RESERVED_LOBBIES rule) needs a decision.
+- `AMMO_STANDARDS` lists lmpq=1600 (2026-10-29), as lpq and epq: two stacks for the maze's 15 minutes.
 - Rolly's lines and the companions' lines are drafts; the user may edit them.
 - The integrator still has to flip the switch and regenerate server-knowledge.json.
 
@@ -107,7 +107,7 @@ Binding plan: `p6h_lmpq_plan.md`, section "STEPS 2-6", in the session scratchpad
 | AgentLmpqPaceProfile.PACE_EPOCH | 1 | from 1 | 4 |
 | AgentLmpqWatchdogRuntime.PERIOD_MS | 1000 | 250-5000 | 1b |
 
-Unchanged elsewhere: `AgentSupplyReadiness.PARTY_QUEST_STANDARDS` already lists lmpq=30/40.
+Unchanged elsewhere: `AgentSupplyReadiness.PARTY_QUEST_STANDARDS` already lists lmpq=30/40. `AMMO_STANDARDS` lists lmpq=1600 since 2026-10-29.
 
 ## Live 2026-10-19 (89d38f027, "lmpq" on by default)
 

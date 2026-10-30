@@ -491,6 +491,11 @@ public final class CitizenJumpQuests {
             }
 
             @Override
+            public double sigmaAt(Point launch) {
+                return sigmas[stages.stageAt(launch)];
+            }
+
+            @Override
             public boolean belowMap(Character agent) {
                 return fellBelowMap(citizenId, agent);
             }

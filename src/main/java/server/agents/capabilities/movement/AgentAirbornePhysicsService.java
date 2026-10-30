@@ -345,11 +345,11 @@ public final class AgentAirbornePhysicsService {
         return MAX_FALL_PXS * AgentMovementPhysicsConfig.configuredMovementTickMs() / 1000f;
     }
 
-    private static double landingGroundHSpeed(MapleMap map,
-                                              Foothold foothold,
-                                              double incomingDeltaX,
-                                              double incomingDeltaY,
-                                              AgentMovementProfile profile) {
+    static double landingGroundHSpeed(MapleMap map,
+                                      Foothold foothold,
+                                      double incomingDeltaX,
+                                      double incomingDeltaY,
+                                      AgentMovementProfile profile) {
         double landingDeltaX = incomingDeltaX;
         if (foothold != null && !foothold.isWall() && foothold.slope() != 0.0) {
             double tangentX = foothold.getX2() - foothold.getX1();

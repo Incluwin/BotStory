@@ -241,6 +241,25 @@ public final class AgentJumpProbeService {
         return simulatePostLandingGroundTicks(map, landing, Integer.compare(stepX, 0), profile, postLandingTicks);
     }
 
+    /**
+     * A rope jump's landing and where it is {@code ticks} later with no key held: it lands with the speed it flew
+     * (AgentAirbornePhysicsService.landOnGround), so a landing in a platform's last pixels slides off it.
+     */
+    public static AgentPostLandingJump simulateRopeJumpLandingAtRest(MapleMap map,
+                                                                     Point from,
+                                                                     int direction,
+                                                                     AgentMovementProfile profile,
+                                                                     int ticks) {
+        AgentJumpLanding landing = simulateRopeJumpLanding(map, from, direction, profile);
+        if (landing == null) {
+            return null;
+        }
+        double speed = AgentAirbornePhysicsService.landingGroundHSpeed(map, landing.foothold(),
+                landing.incomingDeltaX(), landing.incomingDeltaY(), profile);
+        return simulatePostLandingGroundTicks(map, landing, 0,
+                new AgentGroundTravelState(landing.point().x, speed, 0.0), profile, ticks);
+    }
+
     public static boolean canReachRopeFromGround(MapleMap map, Point from, Rope rope) {
         return canReachRopeFromGround(map, from, rope, AgentMovementProfile.base());
     }
@@ -266,9 +285,19 @@ public final class AgentJumpProbeService {
                                                                        int desiredDir,
                                                                        AgentMovementProfile profile,
                                                                        int ticks) {
+        return simulatePostLandingGroundTicks(map, landing, desiredDir,
+                new AgentGroundTravelState(landing.point().x, 0.0, 0.0), profile, ticks);
+    }
+
+    private static AgentPostLandingJump simulatePostLandingGroundTicks(MapleMap map,
+                                                                       AgentJumpLanding landing,
+                                                                       int desiredDir,
+                                                                       AgentGroundTravelState initialState,
+                                                                       AgentMovementProfile profile,
+                                                                       int ticks) {
         Point cursor = landing.point();
         Foothold currentFoothold = landing.foothold();
-        AgentGroundTravelState state = new AgentGroundTravelState(cursor.x, 0.0, 0.0);
+        AgentGroundTravelState state = initialState;
         for (int i = 0; i < Math.max(0, ticks); i++) {
             if (Thread.currentThread().isInterrupted()) {
                 return null;

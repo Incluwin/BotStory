@@ -53,6 +53,7 @@ import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.supplies.AgentAmmoService;
 import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
+import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import scripting.reactor.ReactorActionManager;
@@ -4356,7 +4357,7 @@ final class AgentLpqCoordinator {
                             agent.getPosition(), alishar.getPosition());
                 }
                 fightAlishar(session, member, entry, agent, alishar.getPosition(), stageNineShooters,
-                        stageNineGroupsUnset, stageNineSummons);
+                        stageNineGroupsUnset, stageNineSummons, nowMs);
                 continue;
             }
             if (triggerRatzAlive && stageNineRatzShooter(agent, session.companionAdopted())) {
@@ -4418,9 +4419,12 @@ final class AgentLpqCoordinator {
 
     /**
      * Stage-9 orders while Alishar lives (LPQ base fix 5 and 6), one living member per call, as
-     * AgentLpqStageNineBossPolicy.order decides them. A member out of potions backs off out of his reach and rests
-     * there, so a companion is no longer sent back to its owner at his feet; resting heals by regen, asks no one for
-     * potions and keeps the member registered, and out of his reach it fights a summon that reaches it. A shooter
+     * AgentLpqStageNineBossPolicy.order decides them. A member under REST_HP_FRACTION, or with fewer than POT_STOP HP
+     * potions, backs off out of his reach and rests there (the EPQ golem rest's rule), so a companion is no longer sent
+     * back to its owner at his feet; it stays registered, and out of his reach it fights a summon that reaches it.
+     * While under RESUME_HP_FRACTION it drinks one HP potion (the autopot's choice for its deficit) every
+     * REST_DRINK_INTERVAL_MS, on the way too, and with fewer than POT_STOP it asks its party for HP potions as the
+     * dry rest starts and every DRY_ASK_INTERVAL_MS; it rejoins at RESUME_HP_FRACTION with POT_STOP potions. A shooter
      * fights him from a station outside his reach: it walks without attacking to cross him or to get out of his
      * reach, and otherwise farms from its station, attacking what is in range and walking back to the station between
      * attacks; a summon that reaches it is fought first. Melee members take his summons first and Alishar when none is
@@ -4429,23 +4433,49 @@ final class AgentLpqCoordinator {
      */
     private static void fightAlishar(AgentLpqSession session, AgentLpqMemberState member, AgentRuntimeEntry entry,
                                      Character agent, Point boss, List<Integer> shooterIds, boolean groupsUnset,
-                                     List<Point> summons) {
+                                     List<Point> summons, long nowMs) {
         AgentLpqStageNineBossPolicy.MemberState before = member.stageNineState();
         int potions = ACTIONS.hpPotionCount(agent);
+        int potStop = server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP;
         AgentLpqStageNineBossPolicy.Order order = AgentLpqStageNineBossPolicy.order(before,
                 new AgentLpqStageNineBossPolicy.Pass(stageNineShooter(agent, session.companionAdopted()),
                         shooterIds.indexOf(agent.getId()),
                         groupsUnset, agent.getPosition(), boss, summons, potions,
-                        server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP, agent.getHp(), agent.getMaxHp()),
+                        potStop, agent.getHp(), agent.getMaxHp()),
                 stageNineFloor());
         member.applyStageNine(order.state());
         logStageNineOrder(session, member, agent, boss, potions, before, order);
+        if (order.state().resting()) restUp(session, member, entry, agent, potions, potStop, nowMs);
         switch (order.move()) {
             case MELEE -> ACTIONS.grind(entry, order.targets().preferred(), order.targets().fallback());
             case WALK_TO_STATION, WALK_TO_REST -> ACTIONS.navigate(entry, order.point(), true);
             case FIGHT_FROM_STATION, FIGHT_AT_REST -> ACTIONS.grindFromAnchor(entry, order.point(),
                     order.targets().preferred(), order.targets().fallback());
             case REST -> ACTIONS.stop(entry);
+        }
+    }
+
+    /**
+     * A stage-9 rester recovers as a player backing off does (the EPQ golem rest's drinkWhileResting and askWhileDry):
+     * under RESUME_HP_FRACTION with an HP potion it drinks the autopot's choice for its deficit, at most one every
+     * REST_DRINK_INTERVAL_MS, wherever it stands; with fewer than POT_STOP it asks its party for HP potions at once and
+     * then every DRY_ASK_INTERVAL_MS, since standing still it is outside the grind and follow modes the generic potion
+     * check asks from. The ask is the generic potion share's on this tick's clock (requestPotShareAt), with its cohort
+     * cooldown, no-donor backoff and donor bar ('LPQ stage9 rest ask:' result=sent|held).
+     */
+    private static void restUp(AgentLpqSession session, AgentLpqMemberState member, AgentRuntimeEntry entry,
+                               Character agent, int potions, int potStop, long nowMs) {
+        if (potions > 0 && agent.getHp() < agent.getMaxHp() * AgentLpqStageNineBossPolicy.resumeHpFraction()
+                && member.claimStageNineRestDrink(nowMs, AgentLpqStageNineBossPolicy.REST_DRINK_INTERVAL_MS)) {
+            var choice = AgentPotionService.selectAutopotForCurrentDeficit(agent, true);
+            if (choice != null) ACTIONS.useItem(agent, choice.itemId());
+        }
+        if (potions < potStop
+                && member.claimStageNineRestAsk(nowMs, AgentLpqStageNineBossPolicy.DRY_ASK_INTERVAL_MS)) {
+            boolean sent = AgentPotionService.requestPotShareAt(entry, agent, true, nowMs);
+            log.info("LPQ stage9 rest ask: session={} member={}({}) result={} hp={}/{} hpPotions={}",
+                    session.sessionId(), agent.getName(), agent.getId(), sent ? "sent" : "held", agent.getHp(),
+                    agent.getMaxHp(), potions);
         }
     }
 

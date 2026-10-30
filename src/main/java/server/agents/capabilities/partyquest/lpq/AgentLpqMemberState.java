@@ -87,6 +87,9 @@ public final class AgentLpqMemberState {
     private RewardState rewardState = RewardState.PENDING;
     private AgentLpqStageNineBossPolicy.MemberState stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
     private boolean stageNineGroupLogged;
+    /** When a stage-9 rester may next drink, and next ask its party for HP potions (0: at once). */
+    private long stageNineNextRestDrinkAtMs;
+    private long stageNineNextRestAskAtMs;
     private boolean fullRateHeld;
     private boolean fullRateWasRequired;
     private long handOverStartedAtMs;
@@ -323,6 +326,8 @@ public final class AgentLpqMemberState {
         stageFiveUnhandedPasses = 0;
         stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
         stageNineGroupLogged = false;
+        stageNineNextRestDrinkAtMs = 0L;
+        stageNineNextRestAskAtMs = 0L;
         endHandOver();
         markRoomRetries(0, 0);
         clearRoomGivenUp();
@@ -340,6 +345,20 @@ public final class AgentLpqMemberState {
 
     /** The stage-9 shooter group: null for a melee member or before Alishar's fight. */
     AgentLpqStageNineBossPolicy.Group stageNineGroup() { return stageNine.group(); }
+
+    /** Claims a stage-9 rester's next drink: true at most once every {@code intervalMs}. */
+    boolean claimStageNineRestDrink(long nowMs, long intervalMs) {
+        if (nowMs < stageNineNextRestDrinkAtMs) return false;
+        stageNineNextRestDrinkAtMs = nowMs + intervalMs;
+        return true;
+    }
+
+    /** Claims a dry stage-9 rester's next ask for HP potions: true at most once every {@code intervalMs}. */
+    boolean claimStageNineRestAsk(long nowMs, long intervalMs) {
+        if (nowMs < stageNineNextRestAskAtMs) return false;
+        stageNineNextRestAskAtMs = nowMs + intervalMs;
+        return true;
+    }
 
     /** True once per stage-9 fight: the member's 'LPQ stage9 group:' line is due. */
     boolean claimStageNineGroupLine() {

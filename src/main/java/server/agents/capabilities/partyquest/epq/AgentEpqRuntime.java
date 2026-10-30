@@ -30,14 +30,17 @@ public final class AgentEpqRuntime {
     /**
      * True while the run owns this member's moves and words on the golem's map: while it rests from the golem
      * (AgentEpqCoordinator.bossRest, its fight from the rest point included), and in a companion run past the clear
-     * (AgentEpqCompanionRun.afterClearMember: the add fight, the marble errand or a stand). The generic out-of-potions
-     * grind stop then stays quiet. Memory only.
+     * (AgentEpqCompanionRun.afterClearMember: the add fight, the marble errand or a stand), and on stage one, whose
+     * grind the run gives every member again on every pass (AgentEpqCoordinator.stageOne): the generic stop could not
+     * hold, and its "walking to you" was said by a member that went on grinding. The generic out-of-potions grind stop
+     * then stays quiet. Memory only.
      */
     public static boolean ownsPotionRest(int id, int mapId) {
-        if (mapId != AgentEpqDefinition.BOSS_MAP) return false;
+        if (mapId != AgentEpqDefinition.BOSS_MAP && mapId != AgentEpqDefinition.STAGE_ONE_MAP) return false;
         AgentEpqSession session = AgentEpqSessionRegistry.forMember(id);
         AgentEpqMemberState member = session == null ? null : session.member(id);
         if (member == null) return false;
+        if (mapId == AgentEpqDefinition.STAGE_ONE_MAP) return true;
         return member.bossResting()
                 || (session.companionAdopted() && AgentEpqTerminationService.pastTheClear(session.eventInstance()));
     }

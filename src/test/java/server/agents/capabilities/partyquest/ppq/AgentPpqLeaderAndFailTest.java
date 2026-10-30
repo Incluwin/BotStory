@@ -157,10 +157,13 @@ class AgentPpqLeaderAndFailTest {
             run.onMap(TOBI, AgentPpqDefinition.EXIT_MAP);
 
             run.tick(2_500L);
-            handback.verify(() -> AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut("ppq",
-                    run.session.sessionId(), TOBI, AgentPpqDefinition.RECRUIT_MAP, 2_500L)));
-            lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.recoverDetachedMember(TOBI, "ppq", 2_500L));
+            handback.verify(() -> AgentPartyQuestHandback.tapOut(any()), never()); // R18: it walks to Guon first
+            run.onMap(TOBI, AgentPpqDefinition.RECRUIT_MAP); // his exit took it to his ship
             run.tick(3_000L);
+            handback.verify(() -> AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut("ppq",
+                    run.session.sessionId(), TOBI, AgentPpqDefinition.RECRUIT_MAP, 3_000L)));
+            lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.recoverDetachedMember(TOBI, "ppq", 3_000L));
+            run.tick(3_500L);
 
             assertFalse(run.session.terminal());
             verify(run.packets).broadcastChatText(run.character(MIRA), "c12 had to go. we'll keep going.", false, 0);

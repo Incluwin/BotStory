@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -54,17 +53,15 @@ class JumpQuestRoutesTest {
     private static final int TELEPORT_PX = 150;
 
     /**
-     * Every leg but course B's first: on 101000102 the bot climbs the first rope and stops on its top, then loses the
-     * zig-zag (a jump down off each rope's top to the next rope) and loops back on the start's rope. Course B is left
-     * out of JQ_COURSES until it climbs (the rest of B is proven here).
+     * Every leg of every course. Course B's first (101000102) once looped from its first rope: the jump right off rope
+     * x -361 landed on the last pixel of the 56 px platform on top and slid off it (AgentNavigationRopeJumpExitTest);
+     * it now steps off each rope's top. Course B stays out of JQ_COURSES until its noisy climbs are checked live.
      */
     static Stream<Arguments> legs() {
         List<Arguments> out = new ArrayList<>();
         for (Course course : JumpQuestCourses.SHIPPED) {
             for (int leg = 0; leg < course.legs().size(); leg++) {
-                if (!(course.key().equals("fop_b") && leg == 0)) {
-                    out.add(Arguments.of(course.key(), leg));
-                }
+                out.add(Arguments.of(course.key(), leg));
             }
         }
         return out.stream();
@@ -214,6 +211,11 @@ class JumpQuestRoutesTest {
             }
 
             @Override
+            public double sigmaAt(Point launch) {
+                return sigmas[stages.stageAt(launch)];
+            }
+
+            @Override
             public boolean belowMap(Character agent) {
                 belowMap.incrementAndGet();
                 return false;
@@ -226,46 +228,75 @@ class JumpQuestRoutesTest {
     }
 
     /**
-     * Each stage's chance through the real jump physics (drawn presses, the probe's landings) against what the citizen's
-     * skill asks of it (its chance on seven jumps, scaled to the stage's jumps): the calibration's windows are the probe's
-     * own, so a 30% citizen clears about 30% of seven-jump stretches and a 70% one about 70%.
+     * Each stage's chance through the noise's own draws (AgentJumpNoise.launchX: navigation's seeded pick, the draw kept
+     * on the platform and never past the pick, a press its probe refuses drawn again) and the probe's landings is the
+     * calibration's (JumpWindows), stage by stage, on the courses citizens climb: so a 30% citizen clears about 30% of
+     * seven-jump stretches and a 70% one about 70%, or what the stage allows at most. On Pet-Walking Road they once
+     * disagreed: 0.98 where 0.70 was asked (a one-pixel hole cut a landing run short), 0.00 where 0.78 was (a window in
+     * its platform's last pixels was clamped off itself), and refused misses let a 30% climber miss one jump in fourteen.
      */
-    @Test
-    void eachStagesMeasuredChanceIsNearWhatTheCitizensSkillAsks() {
+    @ParameterizedTest(name = "{0} leg {1}")
+    @MethodSource("noisyLegs")
+    void eachStagesChanceThroughTheNoisesOwnDrawsIsTheCalibrations(String key, int legIndex) {
+        Leg leg = leg(key, legIndex);
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(leg.mapId());
+        Stages stages = JumpQuestCourses.cut(leg, map);
+        List<JumpQuestCourses.JumpGroup> groups = JumpQuestCourses.groups(leg, map);
+        assertEquals(stages.count(), groups.size());
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map, AgentMovementProfile.base());
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        AgentRuntimeEntry entry = lab.spawnBot("JQ", 77, map, ground(map, leg.start()));
         List<String> report = new ArrayList<>();
+        int worst = 0;
         for (double skill : new double[]{0.3d, 0.7d}) {
-            double measuredSum = 0.0d;
-            double targetSum = 0.0d;
-            int stagesMeasured = 0;
-            for (Course course : JumpQuestCourses.SHIPPED) {
-                for (int index = 0; index < course.legs().size(); index++) {
-                    Leg leg = course.legs().get(index);
-                    MapleMap map = AgentNavigationMapLoader.loadMapGeometry(leg.mapId());
-                    Stages stages = JumpQuestCourses.cut(leg, map);
-                    List<JumpQuestCourses.JumpGroup> groups = JumpQuestCourses.groups(leg, map);
-                    assertEquals(stages.count(), groups.size());
-                    for (int s = 0; s < stages.count(); s++) {
-                        JumpWindows.Jump[] jumps = stages.jumps().get(s);
-                        double target = JumpWindows.targetFor(skill, jumps.length);
-                        double sigma = JumpWindows.sigmaFor(jumps, target);
-                        if (jumps.length == 0 || sigma >= JumpWindows.SIGMA_MAX || sigma <= JumpWindows.SIGMA_MIN) {
-                            continue; // a stage that cannot be failed (ladders, stacked platforms) is not calibrated
-                        }
-                        double measured = measure(map, groups.get(s).jumps(), sigma, new Random(11L + s));
-                        measuredSum += measured;
-                        targetSum += target;
-                        stagesMeasured++;
-                        report.add(String.format("%s/%d/%d p=%.1f jumps=%d target=%.2f measured=%.2f", course.key(),
-                                index, s, skill, jumps.length, target, measured));
-                    }
+            AgentJumpNoise.Plan plan = plan(stages, skill, new AtomicInteger());
+            for (int s = 0; s < stages.count(); s++) {
+                JumpWindows.Jump[] jumps = stages.jumps().get(s);
+                if (jumps.length == 0) {
+                    continue; // a walk to the top
                 }
+                double target = JumpWindows.targetFor(skill, jumps.length);
+                double calibrated = JumpWindows.stageSuccess(jumps, JumpWindows.sigmaFor(jumps, target));
+                lab.setMoveTarget("JQ", stages.checkpoints().get(s), true); // the stage's checkpoint, as in a climb
+                double drawn = 1.0d;
+                for (AgentNavigationGraph.Edge edge : groups.get(s).jumps()) {
+                    drawn *= drawnChance(map, graph, entry, plan, edge, 200);
+                }
+                worst = Math.max(worst, (int) Math.round(Math.abs(drawn - calibrated) * 100));
+                report.add(String.format("%s/%d/%d p=%.1f jumps=%d target=%.2f calibrated=%.2f drawn=%.2f", key, legIndex,
+                        s, skill, jumps.length, target, calibrated, drawn));
             }
-            assertTrue(stagesMeasured >= 20, "stages measured: " + stagesMeasured);
-            double meanMeasured = measuredSum / stagesMeasured;
-            double meanTarget = targetSum / stagesMeasured;
-            assertEquals(meanTarget, meanMeasured, 0.10d, "skill " + skill + ": mean measured " + meanMeasured
-                    + " vs asked " + meanTarget + "\n" + String.join("\n", report));
         }
+        assertTrue(worst <= 10, "a stage's drawn chance is off its calibration by " + worst + " points:\n"
+                + String.join("\n", report));
+    }
+
+    /** One jump's chance over {@code draws} attempts: navigation's pick, the noise's press, the probe's landing. */
+    private static double drawnChance(MapleMap map, AgentNavigationGraph graph, AgentRuntimeEntry entry,
+                                      AgentJumpNoise.Plan plan, AgentNavigationGraph.Edge edge, int draws) {
+        AgentMovementProfile profile = AgentMovementProfile.base();
+        AgentNavigationGraph.Region region = graph.getRegion(edge.fromRegionId);
+        int min = Math.max(edge.launchMinX, region.minX);
+        int max = Math.min(edge.launchMaxX, region.maxX);
+        if (min > max) {
+            min = edge.launchMinX;
+            max = edge.launchMaxX;
+        }
+        int margin = Math.min((max - min) / 2, 12); // AgentNavigationWaypointService.selectJumpLaunchX: two walk steps
+        int stepX = AgentJumpActionService.resolveAirVelocityX(map, profile, edge.launchStepX);
+        int hits = 0;
+        for (int i = 0; i < draws; i++) {
+            AgentJumpNoise.install(entry, plan, 7_919L * i + edge.fromRegionId);
+            int pick = AgentJumpNoise.pickLaunchX(entry, min + margin, max - margin);
+            int x = AgentJumpNoise.launchX(entry, graph, edge, pick);
+            AgentPostLandingJump landing = AgentJumpNoise.probe(map,
+                    region.pointAt(Math.max(region.minX, Math.min(region.maxX, x))), stepX, profile);
+            if (landing != null && landing.landing() != null && landing.landing().foothold() != null
+                    && !landing.lostGround() && graph.findRegionId(map, landing.finalPoint()) == edge.toRegionId) {
+                hits++;
+            }
+        }
+        return hits / (double) draws;
     }
 
     @Test
@@ -404,36 +435,5 @@ class JumpQuestRoutesTest {
     private static Point ground(MapleMap map, Point at) {
         Point ground = AgentGroundingService.findGroundPoint(map, new Point(at.x, at.y - 5));
         return ground == null ? new Point(at) : ground;
-    }
-
-    /** A stage's chance through the jump probe: picks inside the graph window, presses drawn with {@code sigma}. */
-    private static double measure(MapleMap map, List<AgentNavigationGraph.Edge> jumps, double sigma, Random random) {
-        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map, AgentMovementProfile.base());
-        AgentMovementProfile profile = AgentMovementProfile.base();
-        double chance = 1.0d;
-        for (AgentNavigationGraph.Edge edge : jumps) {
-            AgentNavigationGraph.Region region = graph.getRegion(edge.fromRegionId);
-            int min = Math.max(edge.launchMinX, region.minX);
-            int max = Math.min(edge.launchMaxX, region.maxX);
-            int margin = Math.min((max - min) / 2, 12);
-            int stepX = AgentJumpActionService.resolveAirVelocityX(map, profile, edge.launchStepX);
-            int hits = 0;
-            int draws = 200;
-            for (int i = 0; i < draws; i++) {
-                int span = max - min - 2 * margin;
-                int pick = min + margin + (span <= 0 ? 0 : random.nextInt(span + 1));
-                int offset = (int) Math.round(Math.max(-90.0d, Math.min(90.0d, random.nextGaussian() * sigma)));
-                int margin4 = region.maxX - region.minX > 2 * AgentJumpNoise.EDGE_MARGIN_PX ? AgentJumpNoise.EDGE_MARGIN_PX : 0;
-                int x = Math.max(region.minX + margin4, Math.min(region.maxX - margin4, pick + offset)); // as launchX
-                AgentPostLandingJump landing = AgentJumpProbeService.simulateJumpLandingWithPostLandingTicks(map,
-                        region.pointAt(x), stepX, profile, 3);
-                if (landing != null && landing.landing() != null && landing.landing().foothold() != null
-                        && !landing.lostGround() && graph.findRegionId(map, landing.finalPoint()) == edge.toRegionId) {
-                    hits++;
-                }
-            }
-            chance *= hits / (double) draws;
-        }
-        return chance;
     }
 }
