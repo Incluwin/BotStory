@@ -115,8 +115,12 @@ function getEligibleParty(party) {      //selects, from the given party, the tea
     return Java.to(eligible, Java.type('net.server.world.PartyCharacter[]'));
 }
 
-function setup(level, lobbyid) {
-    var eim = em.newInstance("Balrog" + lobbyid);
+// an expedition's setup gets the leader's channel alone, and Mu Young finds the running fight as "Balrog" + channel
+// for a member who comes back (canJoin)
+function setup(channel) {
+    var eim = em.newInstance("Balrog" + channel);
+    eim.setProperty("canJoin", 1);
+    var level = 1;
     eim.setProperty("level", level);
     eim.setProperty("boss", "0");
     eim.setProperty("balrogRewardOpenedAt", "0");
