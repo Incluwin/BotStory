@@ -300,6 +300,11 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     return false;
                 }
 
+                if (isSparkProc(attack) && player.getBuffedValue(BuffStat.SPARK) == null) {
+                    // a spark is free only as the proc of a live Spark buff; without one it is a forged attack
+                    player.sendPacket(PacketCreator.enableActions());
+                    return false;
+                }
                 if (!isSparkProc(attack) && !attackEffect.canPaySkillCost(player)) {
                     if (player.getMp() < attackEffect.getMpCon()) {
                         AutobanFactory.MPCON.addPoint(player.getAutobanManager(), "Skill: " + attack.skill + "; Player MP: " + player.getMp() + "; MP Needed: " + attackEffect.getMpCon());

@@ -1,6 +1,7 @@
 package net.server.channel.handlers;
 
 import client.BotClient;
+import client.BuffStat;
 import client.Character;
 import client.Client;
 import client.Job;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -90,6 +92,15 @@ class SparkProcHandlerTest {
     }
 
     @Test
+    void aSparkWithoutTheSparkBuffIsRefused() {
+        Character thunderBreaker = thunderBreaker(5_000);
+        when(thunderBreaker.getBuffedValue(BuffStat.SPARK)).thenReturn(null);
+
+        assertFalse(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1),
+                "a client that sends a spark with no Spark buff gets no free attack");
+    }
+
+    @Test
     void anAgentsSparkOnAMonsterAcrossTheMapRaisesNoAlertAndNoRefresh() {
         Character agent = attacker(AGENT_ID, new BotClient(0, 1));
         Monster far = monsterAt(new Point(agent.getPosition().x - 1_000, agent.getPosition().y));
@@ -131,6 +142,7 @@ class SparkProcHandlerTest {
     private static Character thunderBreaker(int mp) {
         MapleMap map = mock(MapleMap.class);
         Character chr = mock(Character.class);
+        when(chr.getBuffedValue(BuffStat.SPARK)).thenReturn(SPARK_LEVEL);
         when(chr.getMap()).thenReturn(map);
         when(chr.getJob()).thenReturn(Job.THUNDERBREAKER3);
         when(chr.getSkillLevel(any(Skill.class))).thenAnswer(invocation ->
