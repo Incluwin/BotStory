@@ -100,6 +100,13 @@ public final class CompanionViews {
         return stored == null ? null : stored.entry;
     }
 
+    /** {@link #row} only while the owner's crew is cached (nothing is read); null otherwise or when it is not theirs. */
+    public RosterEntry cachedRow(int ownerId, String personaId) {
+        Crew cached = crews.get(ownerId);
+        CompanionView.Stored stored = cached == null ? null : cached.stored().get(personaId);
+        return stored == null ? null : stored.entry;
+    }
+
     /**
      * The citizen guests in the owner's party: the GUEST seats charged to them (CompanionSlots) whose citizen is a member
      * online now, each marked {@code guest}. Nothing here is cached or read from the database.

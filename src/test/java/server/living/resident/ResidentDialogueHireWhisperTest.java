@@ -65,6 +65,7 @@ class ResidentDialogueHireWhisperTest {
         when(roster.hasCompanions(owner)).thenReturn(true);
         when(roster.roster(owner)).thenReturn(List.of(row));
         when(roster.ownerOf(HIRE_ID)).thenReturn(OWNER);
+        when(roster.cachedOwnerOf(HIRE_ID)).thenReturn(OWNER); // whose a whisper is, from memory
         when(roster.entry(OWNER, HIRE_ID)).thenReturn(row);
         when(roster.call(owner, wren)).thenReturn(new RosterResult.Ok("Wren is on the way."));
         dialogue = new ResidentDialogue(world);

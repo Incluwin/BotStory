@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
@@ -132,6 +133,30 @@ class ResidentDialogueWhisperedRecallTest {
 
         verify(verbs, never()).say(any(), anyString(), any());
         verify(roster, never()).call(any(), any());
+    }
+
+    /**
+     * Whisper review P1 (2026-10-10): every whisper to a persona read the roster, once for its roster commands and
+     * again for its recall, another player's whisper too. The owner's now reads its row once; another player's none.
+     */
+    @Test
+    void theOwnersWhisperReadsItsRowOnceAndAnotherPlayersNone() {
+        state(RosterState.BENCHED);
+
+        assertTrue(dialogue.onWhisper(owner, "Tamsin", "come back to me"));
+        verify(roster).entry(OWNER, "tamsin");
+
+        clearInvocations(roster);
+        Character stranger = mock(Character.class);
+        when(stranger.getId()).thenReturn(OWNER + 1);
+        when(stranger.getName()).thenReturn("Passerby");
+        when(world.quests()).thenReturn(mock(server.living.quest.QuestLedger.class));
+        when(world.residents()).thenReturn(mock(ResidentRuntime.class));
+        when(world.arcs()).thenReturn(mock(server.living.arc.ArcService.class));
+        when(world.bonds()).thenReturn(mock(server.living.bond.BondService.class));
+        assertTrue(dialogue.onWhisper(stranger, "Tamsin", "hi"), "Tamsin answers a stranger's whisper");
+        verify(roster, never()).entry(anyInt(), anyString());
+        verify(roster, never()).ownerOf(anyString());
     }
 
     private void state(RosterState state) {

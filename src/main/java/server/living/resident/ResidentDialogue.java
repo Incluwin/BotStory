@@ -32,6 +32,7 @@ import server.living.phrases.PhraseMatcher;
 import server.living.roster.CompanionChatVerbs;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionSlots;
+import server.living.roster.CompanionViews;
 import server.living.roster.HireOffers;
 import server.living.roster.HiredHands;
 import server.living.roster.RosterResult;
@@ -259,14 +260,22 @@ public final class ResidentDialogue {
             return false;
         }
         String normalized = PhraseMatcher.normalize(text);
+        // whose it is from memory, and the owner's row read once for both checks below: before, every whisper to a
+        // persona read the roster once or twice, another player's too (whisper review P1, 2026-10-10)
+        if (world.roster().cachedOwnerOf(persona.id()) != speaker.getId()) {
+            return converse(speaker, persona, normalized, text) || true;
+        }
         String command = addressedTo(persona, normalized);
-        if (rosterCommandFor(speaker, persona, command, true) || recalled(speaker, persona, command)) {
-            return true;
-        }
-        if (world.roster().ownerOf(persona.id()) == speaker.getId()) {
-            return false; // companion commands travel the agent whisper bridge
-        }
-        return converse(speaker, persona, normalized, text) || true;
+        RosterEntry entry = ownersRow(speaker, persona);
+        // false: companion commands travel the agent whisper bridge
+        return rosterCommandFor(speaker, persona, entry, command, true) || recalled(speaker, persona, entry, command);
+    }
+
+    /** The owner's row of the persona: the Crew window's view cache when it holds their crew, else one roster read. */
+    private RosterEntry ownersRow(Character owner, Persona persona) {
+        CompanionViews views = world.views();
+        RosterEntry cached = views == null ? null : views.cachedRow(owner.getId(), persona.id());
+        return cached != null ? cached : world.roster().entry(owner.getId(), persona.id());
     }
 
     /** The whisper without its addressee's name, first or last ("tamsin come back", "come here tamsin"), as map chat. */
@@ -288,12 +297,9 @@ public final class ResidentDialogue {
      * whose tail the roster's call words do not list ("come back to me", "come back here"), or what its Agent would
      * read as "follow me" or "come here" ("get over here", "lets go", "come to me"), calls it. Before, such a whisper
      * went on to the whisper bridge, which a live bench slice refuses, and the companion whispered back "call me back
-     * first". Out with its owner, those lines stay its Agent's. Only the owner's call reads the roster row.
+     * first". Out with its owner, those lines stay its Agent's. {@code entry}: the owner's row of it (null: none).
      */
-    private boolean recalled(Character owner, Persona persona, String command) {
-        if (world.roster().cachedOwnerOf(persona.id()) != owner.getId()) {
-            return false;
-        }
+    private boolean recalled(Character owner, Persona persona, RosterEntry entry, String command) {
         PhraseMatcher phrases = world.phrases();
         String canonical = phrases == null ? null : phrases.commandFor(command);
         boolean toOwner = ("follow me".equals(canonical) || "move here".equals(canonical))
@@ -301,7 +307,6 @@ public final class ResidentDialogue {
         if (!RECALL.matcher(command).matches() && !toOwner) {
             return false;
         }
-        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED || entry.state() == RosterState.ACTIVE) {
             return false;
         }
@@ -971,7 +976,11 @@ public final class ResidentDialogue {
 
     /** Companion-directed roster commands: assignments, camp, haul; {@code whispered}: the owner whispered the line to it. */
     private boolean rosterCommandFor(Character owner, Persona persona, String command, boolean whispered) {
-        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
+        return rosterCommandFor(owner, persona, world.roster().entry(owner.getId(), persona.id()), command, whispered);
+    }
+
+    /** {@link #rosterCommandFor(Character, Persona, String, boolean)} with the owner's row of it read already. */
+    private boolean rosterCommandFor(Character owner, Persona persona, RosterEntry entry, String command, boolean whispered) {
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return false;
         }
