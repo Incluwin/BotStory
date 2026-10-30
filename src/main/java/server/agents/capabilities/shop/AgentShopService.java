@@ -357,6 +357,19 @@ public final class AgentShopService {
         Point botPos = bot.getPosition();
         Point target = AgentShopStateRuntime.shopTargetOrNpcPosition(entry);
         boolean reachedApproach = manhattan(botPos, target) <= SHOP_ARRIVE_DIST;
+        if (!reachedApproach && !AgentShopStateRuntime.shopSequenceActive(entry)) {
+            // A walk that stopped gets none of its route's time: stuck where it landed, an Agent at Mushroom Shrine
+            // waited out the route and the delay and the timeout, 64 s, before it gave up. One still walking keeps
+            // the whole allowance (visitTimedOut).
+            AgentShopStateRuntime.noteShopApproach(entry, manhattan(botPos, target), SHOP_STUCK_MOVE_TOLERANCE_PX, now);
+            if (AgentShopStateRuntime.shopApproachStalled(entry, now, SHOP_VISIT_TIMEOUT_MS)) {
+                AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
+                logShopFailure(entry, bot, "visit timeout (never reached the shop NPC: no closer in "
+                        + SHOP_VISIT_TIMEOUT_MS + " ms)");
+                clearShopState(entry);
+                return false;
+            }
+        }
         boolean stuckAtNpc = !AgentShopStateRuntime.shopSequenceActive(entry)
                 && !reachedApproach
                 && isStuckNearNpc(entry, botPos, now);

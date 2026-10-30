@@ -121,5 +121,24 @@ class AgentShopServiceRouteTimeoutTest {
                 "the Agent was still trying to reach the shop " + gaveUpAfterMs + " ms in");
         assertTrue(gaveUpAfterMs > MAX_APPROACH_DELAY_MS + VISIT_TIMEOUT_MS,
                 "the visit gave up after " + gaveUpAfterMs + " ms, before the approach delay and the timeout had passed");
+        assertTrue(gaveUpAfterMs <= MAX_APPROACH_DELAY_MS + VISIT_TIMEOUT_MS + 2 * TICK_MS,
+                "it came no closer, yet it waited " + gaveUpAfterMs + " ms: the 29 s route too (64 s live)");
+    }
+
+    @Test
+    void anAgentStillWalkingKeepsItsRoutesTime() {
+        long start = 1_000_000L;
+        AgentShopService.startShopVisit(entry, bot, POTION_SELLER, MAX_APPROACH_DELAY_MS, 0, 0, 0, start);
+        position = new Point(LANDING);
+        long now = start;
+        // a slow walker: 3,000 px in 60 s, a step closer every tick, past the delay and the timeout
+        while (AgentShopStateRuntime.shopVisitPending(entry) && now - start <= MAX_APPROACH_DELAY_MS + VISIT_TIMEOUT_MS + 10_000L) {
+            AgentShopService.tickShopVisit(entry, bot, inventory, now);
+            now += TICK_MS;
+            position = new Point(position.x + (int) (TICK_MS / 20L), LANDING.y);
+        }
+
+        assertTrue(AgentShopStateRuntime.shopVisitPending(entry), "a walk still under way was given up "
+                + (now - start) + " ms in at " + position);
     }
 }

@@ -78,6 +78,28 @@ class AgentShopStateTest {
     }
 
     @Test
+    void anApproachThatComesNoCloserStallsAndOneStepCloserRestartsTheClock() {
+        AgentShopState state = new AgentShopState();
+        state.startVisit(new Point(10, 20), new Point(30, 40), 0, 1_000L);
+        assertFalse(state.approachStalled(100_000L, 30_000L), "no look yet: no clock");
+
+        state.noteApproach(2_000, 2, 2_000L);
+        state.noteApproach(2_001, 2, 20_000L); // a step back, and the closest it has been stays
+        state.noteApproach(1_999, 2, 25_000L); // a pixel closer is no progress
+        assertFalse(state.approachStalled(32_000L, 30_000L));
+        assertTrue(state.approachStalled(32_001L, 30_000L));
+
+        state.noteApproach(1_900, 2, 32_001L);
+        assertFalse(state.approachStalled(62_001L, 30_000L), "closer: its clock starts again");
+
+        state.markSequenceActive(62_001L);
+        assertFalse(state.approachStalled(200_000L, 30_000L), "at the counter nothing stalls the walk");
+        state.clear();
+        state.startVisit(new Point(10, 20), new Point(30, 40), 0, 300_000L);
+        assertFalse(state.approachStalled(400_000L, 30_000L), "a new visit starts a new walk");
+    }
+
+    @Test
     void returnsDefensivePointCopiesAndFallsBackToNpcTarget() {
         AgentShopState state = new AgentShopState();
 

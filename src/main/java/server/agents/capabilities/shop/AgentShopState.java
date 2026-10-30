@@ -26,6 +26,8 @@ public final class AgentShopState {
     private int lastRequiredItemCount = 0;
     private Point stuckCheckPosition = null;
     private long stuckCheckAtMs = 0L;
+    private int closestApproachPx = Integer.MAX_VALUE;
+    private long approachProgressAtMs = 0L;
 
     public boolean visitPending() {
         return visitPending;
@@ -140,6 +142,22 @@ public final class AgentShopState {
         return visitStartedAtMs > 0 && !sequenceActive && nowMs - visitStartedAtMs > timeoutMs + visitAllowanceMs;
     }
 
+    /**
+     * On its way to the shopkeeper, the Agent stood {@code distancePx} from where it trades at {@code nowMs}: closer
+     * than it has been by more than {@code stepPx} restarts the no-progress clock, which its first look starts.
+     */
+    public void noteApproach(int distancePx, int stepPx, long nowMs) {
+        if (approachProgressAtMs == 0L || distancePx < closestApproachPx - stepPx) {
+            closestApproachPx = Math.min(closestApproachPx, distancePx);
+            approachProgressAtMs = nowMs;
+        }
+    }
+
+    /** No step closer to the shopkeeper for more than {@code stallMs}: a walk that stopped waits no longer. */
+    public boolean approachStalled(long nowMs, long stallMs) {
+        return visitPending && !sequenceActive && approachProgressAtMs > 0L && nowMs - approachProgressAtMs > stallMs;
+    }
+
     public boolean sequenceTimedOut(long nowMs, long timeoutMs) {
         return sequenceActive && sequenceStartedAtMs > 0
                 && nowMs - sequenceStartedAtMs > timeoutMs + sequenceAllowanceMs;
@@ -185,6 +203,8 @@ public final class AgentShopState {
         visitStartedAtMs = startedAtMs;
         sequenceStartedAtMs = 0L;
         sequenceAllowanceMs = 0L;
+        closestApproachPx = Integer.MAX_VALUE;
+        approachProgressAtMs = 0L;
     }
 
     public void markSequenceActive(long startedAtMs) {
@@ -249,6 +269,8 @@ public final class AgentShopState {
         requiredItemCount = 0;
         stuckCheckPosition = null;
         stuckCheckAtMs = 0L;
+        closestApproachPx = Integer.MAX_VALUE;
+        approachProgressAtMs = 0L;
     }
 
     public boolean lastVisitRequestedItem(int itemId, int itemCount) {
