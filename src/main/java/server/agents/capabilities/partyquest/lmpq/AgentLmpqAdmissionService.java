@@ -17,6 +17,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.activity.AgentActivityBootstrap;
 import server.agents.runtime.simulation.AgentAbstractExecutionScope;
+import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -107,12 +108,36 @@ public final class AgentLmpqAdmissionService {
         }
     }
 
-    /** Admits a formed lobby as a stock run: a director's lobby (AgentLmpqLobbyAdmissionRuntime). */
+    /**
+     * Admits a formed lobby as a stock run: a director's lobby (AgentLmpqLobbyAdmissionRuntime). One of Agents only
+     * waits, back to forming, while a party with a human in it stands outside the maze on Rolly's map: LudiMazePQ.js
+     * has one lobby a channel and a run keeps it to its end, so a human there (at Rolly's desk with his companions, or
+     * about to be) comes first, as the citizen door leaves a lobby for each human party waiting.
+     */
     public static AdmissionResult admitFromLobby(
             AgentPartyQuestEngagement engagement, AgentPartyQuestLobbySession lobby,
             Character operator, Character eventLeader, List<Character> partyMembers,
             long seed, long nowMs) {
+        if (lobby != null && lobby.memberIds().stream().allMatch(id -> AgentRuntimeRegistry
+                .findByAgentCharacterId(id) != null) && humanPartyWaiting(eventLeader, lobby.memberIds())) {
+            return restoreFailure(engagement, lobby, HUMAN_PARTY_FIRST, nowMs);
+        }
         return admitFromLobby(engagement, lobby, operator, eventLeader, partyMembers, seed, nowMs, false);
+    }
+
+    /** Why a director's Agents-only lobby waits (admitFromLobby). */
+    static final String HUMAN_PARTY_FIRST = "LMPQ's one lobby waits for a human party at Rolly";
+
+    /** A party with a human in it, not one of {@code lobbyMembers}, stands outside any event on the leader's map. */
+    static boolean humanPartyWaiting(Character leader, java.util.Collection<Integer> lobbyMembers) {
+        MapleMap map = leader == null ? null : leader.getMap();
+        if (map == null) return false;
+        for (Character player : map.getAllPlayers()) {
+            if (player == null || lobbyMembers.contains(player.getId()) || isAgent(player)
+                    || player.getEventInstance() != null) continue;
+            if (AgentPartyGatewayRuntime.party().hasParty(player)) return true;
+        }
+        return false;
     }
 
     /**
