@@ -8,7 +8,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -23,6 +27,12 @@ class BotStoryWzEquipsTest {
     private static final int TIGER_TALON = 1152000;  // Community Repack shoulder pad
     private static final int REPACK_SWORD = 1302160;
     private static final int STOCK_SWORD = 1302000;  // in the Cosmic WZ files
+    // Listed equips left without a String.wz name, so the server treats them as missing: no v83 class wields a Soul
+    // Shooter (122), Scepter (125), Cane (136) or Hand Cannon (153), v83 has no badge slot (118), and the Community
+    // Repack's String.wz has no name for 1152164 either.
+    private static final Set<Integer> UNNAMED = Set.of(1182008, 1222014, 1222058, 1222060, 1222072, 1222075, 1222109,
+            1222113, 1222114, 1222116, 1222120, 1222121, 1222122, 1222123, 1252060, 1362046, 1532018, 1532081, 1532098,
+            1532099, 1532106, 1532110, 1532144, 1532148, 1532150, 1532151, 1532155, 1532156, 1532157, 1532158, 1152164);
 
     @Test
     void theListHoldsTheRepackEquipsAndTheEvolvingRings() {
@@ -53,6 +63,28 @@ class BotStoryWzEquipsTest {
         }
         assertEquals(307, lines);
         assertEquals(List.of(), missing);
+    }
+
+    @Test
+    void everyListedEquipAV83ClassCanWearHasItsNameInTheServerWz() throws IOException {
+        String eqp = Files.readString(Path.of("wz", "String.wz", "Eqp.img.xml"));
+        Matcher entry = Pattern.compile("<imgdir name=\"(\\d+)\">(.*?)</imgdir>", Pattern.DOTALL).matcher(eqp);
+        Pattern name = Pattern.compile("<string name=\"name\" value=\"[^\"]*\\S[^\"]*\"");
+        Set<Integer> named = new HashSet<>();
+        while (entry.find()) {
+            if (name.matcher(entry.group(2)).find()) {
+                named.add(Integer.parseInt(entry.group(1)));
+            }
+        }
+        List<Integer> nameless = new ArrayList<>();
+        for (int id : BotStoryWzEquips.ids()) {
+            if (!named.contains(id) && !UNNAMED.contains(id)) {
+                nameless.add(id);
+            }
+        }
+        nameless.sort(null);
+        assertEquals(List.of(), nameless, "!item refuses an equip without a String.wz name");
+        assertTrue(named.contains(REPACK_SWORD));
     }
 
     @Test

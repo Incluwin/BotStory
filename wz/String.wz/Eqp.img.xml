@@ -1552,6 +1552,13 @@
         <string name="name" value="Hunter's Codex" />
         <string name="desc" value="A field journal whose strength comes from a specific roster of elusive monsters. Cards from the 6th, 7th, and 8th tabs of your Monster Book each add power, and every duplicate counts up to the 5-card cap. The codex is fully maxed when every card in those three tabs is collected at 5 copies. Cannot be unequipped, traded, or dropped." />
       </imgdir>
+      <imgdir name="1142247">
+        <string name="name" value="Time Traveler" />
+        <string name="desc" value="From the Future Doctor Bing." />
+      </imgdir>
+      <imgdir name="1142438">
+        <string name="name" value="No Time for Fun" />
+      </imgdir>
       <imgdir name="1152000">
         <string name="name" value="Tiger Talon" />
         <string name="desc" value="A talon that contains the energy of a tiger." />
@@ -2226,6 +2233,17 @@
       </imgdir>
     </imgdir>
     <imgdir name="Cap">
+      <imgdir name="1002786">
+        <string name="name" value="Three Coloured Hat" />
+      </imgdir>
+      <imgdir name="1002815">
+        <string name="name" value="Beginner Magician's Hat" />
+        <string name="desc" value="It is a hat with a bit of awkwardness, but also showing wisdom of a magician." />
+      </imgdir>
+      <imgdir name="1002816">
+        <string name="name" value="Beginner Rogue's Hat" />
+        <string name="desc" value="It is hat with a bit of awkwardness, but also showing agility of a rogue." />
+      </imgdir>
       <imgdir name="1002859">
         <string name="name" value="MV's Hat (DEX)" />
       </imgdir>
@@ -5533,6 +5551,9 @@
       </imgdir>
       <imgdir name="1102227">
         <string name="name" value="해군 장교의 망토" />
+      </imgdir>
+      <imgdir name="1102333">
+        <string name="name" value="Taru Spirit Cape" />
       </imgdir>
     </imgdir>
     <imgdir name="Coat">
@@ -9271,6 +9292,9 @@
       <imgdir name="1082262">
         <string name="name" value="MISSING NAME" />
         <string name="desc" value="MISSING INFO" />
+      </imgdir>
+      <imgdir name="1082270">
+        <string name="name" value="Lita's Ocean Gloves" />
       </imgdir>
     </imgdir>
     <imgdir name="Hair">
@@ -14262,6 +14286,9 @@
       <imgdir name="1050152">
         <string name="name" value="Sailor Outfit" />
       </imgdir>
+      <imgdir name="1050162">
+        <string name="name" value="Awakening Suit for Warrior" />
+      </imgdir>
       <imgdir name="1051000">
         <string name="name" value="Steel Fitted Mail" />
       </imgdir>
@@ -18900,6 +18927,9 @@
       </imgdir>
     </imgdir>
     <imgdir name="Weapon">
+      <imgdir name="1300000">
+        <string name="name" value="Tree Branch" />
+      </imgdir>
       <imgdir name="1302107">
         <string name="name" value="Black Crystal Blade" />
       </imgdir>
@@ -19179,6 +19209,21 @@
         <string name="name" value="Lunch box (Lv 120)" />
         <string name="desc" value="A special lunchbox given to hold roughly 2 weeks' worth of lunch.  Hits hard, hits fast!" />
       </imgdir>
+      <imgdir name="1302122">
+        <string name="name" value="Machete" />
+      </imgdir>
+      <imgdir name="1302123">
+        <string name="name" value="Eloon" />
+      </imgdir>
+      <imgdir name="1302160">
+        <string name="name" value="Swift Stirge Whip" />
+      </imgdir>
+      <imgdir name="1302161">
+        <string name="name" value="Frantic Stirge Whip" />
+      </imgdir>
+      <imgdir name="1302162">
+        <string name="name" value="Enraged Stirge Whip" />
+      </imgdir>
       <imgdir name="1312000">
         <string name="name" value="Double Axe" />
       </imgdir>
@@ -19295,6 +19340,9 @@
       <imgdir name="1312038">
         <string name="name" value="Reverse Bardiche" />
         <string name="h1" value="#c+1 level on Brandish#" />
+      </imgdir>
+      <imgdir name="1312121">
+        <string name="name" value="Blazing Sword" />
       </imgdir>
       <imgdir name="1322000">
         <string name="name" value="Mace" />
@@ -19703,6 +19751,24 @@
       <imgdir name="1332080">
         <string name="name" value="Dusk Raven's Beak" />
       </imgdir>
+      <imgdir name="1332082">
+        <string name="name" value="Light Beam Saver" />
+      </imgdir>
+      <imgdir name="1332083">
+        <string name="name" value="Flairgrave" />
+      </imgdir>
+      <imgdir name="1332090">
+        <string name="name" value="Triple-Tipped Zamadar" />
+      </imgdir>
+      <imgdir name="1332091">
+        <string name="name" value="Coconut Knife" />
+      </imgdir>
+      <imgdir name="1332092">
+        <string name="name" value="Iron Dagger" />
+      </imgdir>
+      <imgdir name="1332098">
+        <string name="name" value="Frost Saber" />
+      </imgdir>
       <imgdir name="1372000">
         <string name="name" value="Fairy Wand" />
       </imgdir>
@@ -19832,6 +19898,15 @@
       </imgdir>
       <imgdir name="1372043">
         <string name="name" value="Beginner Magician's wand" />
+      </imgdir>
+      <imgdir name="1372055">
+        <string name="name" value="Metal Wand" />
+      </imgdir>
+      <imgdir name="1372057">
+        <string name="name" value="Frost Saber" />
+      </imgdir>
+      <imgdir name="1372108">
+        <string name="name" value="Hardwood Wand" />
       </imgdir>
       <imgdir name="1382000">
         <string name="name" value="Wooden Staff" />
@@ -20004,6 +20079,30 @@
       <imgdir name="1382060">
         <string name="name" value="Crimson Arcanon" />
       </imgdir>
+      <imgdir name="1382063">
+        <string name="name" value="Light Beam Saver" />
+      </imgdir>
+      <imgdir name="1382064">
+        <string name="name" value="Flairgrave" />
+      </imgdir>
+      <imgdir name="1382071">
+        <string name="name" value="Sapphire Staff" />
+      </imgdir>
+      <imgdir name="1382072">
+        <string name="name" value="Old Wooden Staff" />
+      </imgdir>
+      <imgdir name="1382073">
+        <string name="name" value="Wizard Staff" />
+      </imgdir>
+      <imgdir name="1382079">
+        <string name="name" value="Frost Saber" />
+      </imgdir>
+      <imgdir name="1382082">
+        <string name="name" value="Night Raven Staff" />
+      </imgdir>
+      <imgdir name="1382177">
+        <string name="name" value="Boleadoras" />
+      </imgdir>
       <imgdir name="1402000">
         <string name="name" value="Two-Handed Sword" />
       </imgdir>
@@ -20153,6 +20252,15 @@
       </imgdir>
       <imgdir name="1402051">
         <string name="name" value="Dusk Raven's Wing" />
+      </imgdir>
+      <imgdir name="1402060">
+        <string name="name" value="Ribgol Sword" />
+      </imgdir>
+      <imgdir name="1402063">
+        <string name="name" value="Red Shower" />
+      </imgdir>
+      <imgdir name="1402221">
+        <string name="name" value="Asuna's Sword" />
       </imgdir>
       <imgdir name="1412000">
         <string name="name" value="Two-Handed Axe" />
@@ -20708,6 +20816,15 @@
       <imgdir name="1442068">
         <string name="name" value="Crimson Arcglaive" />
       </imgdir>
+      <imgdir name="1442121">
+        <string name="name" value="Swift Warrior Rose" />
+      </imgdir>
+      <imgdir name="1442122">
+        <string name="name" value="Frantic Warrior Rose" />
+      </imgdir>
+      <imgdir name="1442123">
+        <string name="name" value="Enraged Warrior Rose" />
+      </imgdir>
       <imgdir name="1452000">
         <string name="name" value="Battle Bow" />
       </imgdir>
@@ -20876,6 +20993,27 @@
       <imgdir name="1452060">
         <string name="name" value="Crimson Arclancer" />
       </imgdir>
+      <imgdir name="1452063">
+        <string name="name" value="Light Beam Saver" />
+      </imgdir>
+      <imgdir name="1452064">
+        <string name="name" value="Flairgrave" />
+      </imgdir>
+      <imgdir name="1452074">
+        <string name="name" value="Composite Bow" />
+      </imgdir>
+      <imgdir name="1452075">
+        <string name="name" value="Hunter's Bow" />
+      </imgdir>
+      <imgdir name="1452076">
+        <string name="name" value="Battle Bow" />
+      </imgdir>
+      <imgdir name="1452082">
+        <string name="name" value="Frost Saber" />
+      </imgdir>
+      <imgdir name="1452087">
+        <string name="name" value="Night Raven Bow" />
+      </imgdir>
       <imgdir name="1462000">
         <string name="name" value="Mountain Crossbow" />
       </imgdir>
@@ -21028,6 +21166,24 @@
       </imgdir>
       <imgdir name="1462055">
         <string name="name" value="Dusk Raven's Eye" />
+      </imgdir>
+      <imgdir name="1462057">
+        <string name="name" value="Light Beam Saver" />
+      </imgdir>
+      <imgdir name="1462058">
+        <string name="name" value="Flairgrave" />
+      </imgdir>
+      <imgdir name="1462064">
+        <string name="name" value="Dark Neschere" />
+      </imgdir>
+      <imgdir name="1462067">
+        <string name="name" value="Battle Crossbow" />
+      </imgdir>
+      <imgdir name="1462068">
+        <string name="name" value="Balanche" />
+      </imgdir>
+      <imgdir name="1462074">
+        <string name="name" value="Frost Saber" />
       </imgdir>
       <imgdir name="1472000">
         <string name="name" value="Garnier" />
@@ -21240,6 +21396,24 @@
       <imgdir name="1472075">
         <string name="name" value="Dusk Raven's Claw" />
       </imgdir>
+      <imgdir name="1472079">
+        <string name="name" value="Flairgrave" />
+      </imgdir>
+      <imgdir name="1472085">
+        <string name="name" value="Dragon Purple Sleve" />
+      </imgdir>
+      <imgdir name="1472090">
+        <string name="name" value="Mithril Titans" />
+      </imgdir>
+      <imgdir name="1472091">
+        <string name="name" value="Bronze Igor" />
+      </imgdir>
+      <imgdir name="1472092">
+        <string name="name" value="Meba" />
+      </imgdir>
+      <imgdir name="1472099">
+        <string name="name" value="Frost Saber" />
+      </imgdir>
       <imgdir name="1482000">
         <string name="name" value="Steel Knuckler" />
       </imgdir>
@@ -21318,6 +21492,81 @@
         <string name="name" value="Timeless Equinox" />
         <string name="h1" value="#c+1 level on Barrage#" />
       </imgdir>
+      <imgdir name="1482033">
+        <string name="name" value="Emperor's Claw" />
+      </imgdir>
+      <imgdir name="1482035">
+        <string name="name" value="Flairgrave" />
+      </imgdir>
+      <imgdir name="1482038">
+        <string name="name" value="Leather Arms" />
+      </imgdir>
+      <imgdir name="1482039">
+        <string name="name" value="Double Tail Knuckler" />
+      </imgdir>
+      <imgdir name="1482040">
+        <string name="name" value="Norman Grip" />
+      </imgdir>
+      <imgdir name="1482048">
+        <string name="name" value="Night Raven Knuckle" />
+      </imgdir>
+      <imgdir name="1482084">
+        <string name="name" value="Shark Tooth Wild Talon" />
+      </imgdir>
+      <imgdir name="1482134">
+        <string name="name" value="Golden Clover Equinox" />
+      </imgdir>
+      <imgdir name="1482145">
+        <string name="name" value="Blackbeard's Knuckle" />
+      </imgdir>
+      <imgdir name="1482146">
+        <string name="name" value="Tiger Paw Knuckle" />
+      </imgdir>
+      <imgdir name="1482147">
+        <string name="name" value="Metallic Arm" />
+      </imgdir>
+      <imgdir name="1482148">
+        <string name="name" value="Lightning Soul" />
+      </imgdir>
+      <imgdir name="1482151">
+        <string name="name" value="Loveless Equinox" />
+      </imgdir>
+      <imgdir name="1482168">
+        <string name="name" value="Fafnir Perry Talon" />
+      </imgdir>
+      <imgdir name="1482169">
+        <string name="name" value="Scarlet Griffey Claw" />
+      </imgdir>
+      <imgdir name="1482177">
+        <string name="name" value="Meister Griffey Claw" />
+      </imgdir>
+      <imgdir name="1482180">
+        <string name="name" value="Terminus Striker" />
+      </imgdir>
+      <imgdir name="1482216">
+        <string name="name" value="AbsoLab Blast Knuckle" />
+      </imgdir>
+      <imgdir name="1482221">
+        <string name="name" value="Arcane Umbra Knuckle" />
+      </imgdir>
+      <imgdir name="1482222">
+        <string name="name" value="AbsoLab Blast Knuckle" />
+      </imgdir>
+      <imgdir name="1482224">
+        <string name="name" value="AbsoLab Blast Knuckle" />
+      </imgdir>
+      <imgdir name="1482230">
+        <string name="name" value="Fafnir Perry Talon" />
+      </imgdir>
+      <imgdir name="1482231">
+        <string name="name" value="Sealed Genesis Claw" />
+      </imgdir>
+      <imgdir name="1482232">
+        <string name="name" value="Genesis Claw" />
+      </imgdir>
+      <imgdir name="1482233">
+        <string name="name" value="Fafnir Perry Talon" />
+      </imgdir>
       <imgdir name="1492000">
         <string name="name" value="Pistol" />
       </imgdir>
@@ -21391,6 +21640,75 @@
       </imgdir>
       <imgdir name="1492022">
         <string name="name" value="Maple Canon Shooter" />
+      </imgdir>
+      <imgdir name="1492031">
+        <string name="name" value="Judgement" />
+      </imgdir>
+      <imgdir name="1492039">
+        <string name="name" value="Dellinger Special" />
+      </imgdir>
+      <imgdir name="1492040">
+        <string name="name" value="The Negotiator" />
+      </imgdir>
+      <imgdir name="1492041">
+        <string name="name" value="Golden Hook" />
+      </imgdir>
+      <imgdir name="1492047">
+        <string name="name" value="Night Raven Shooter" />
+      </imgdir>
+      <imgdir name="1492085">
+        <string name="name" value="Shark Tooth Sharpshooter" />
+      </imgdir>
+      <imgdir name="1492134">
+        <string name="name" value="Golden Clover Blindness" />
+      </imgdir>
+      <imgdir name="1492157">
+        <string name="name" value="The Jackal" />
+      </imgdir>
+      <imgdir name="1492158">
+        <string name="name" value="Saw Machine Gun" />
+      </imgdir>
+      <imgdir name="1492161">
+        <string name="name" value="Resistance Gun" />
+      </imgdir>
+      <imgdir name="1492162">
+        <string name="name" value="Loveless Blindness" />
+      </imgdir>
+      <imgdir name="1492179">
+        <string name="name" value="Fafnir Zeliska" />
+      </imgdir>
+      <imgdir name="1492180">
+        <string name="name" value="Scarlet Infinity's Wrath" />
+      </imgdir>
+      <imgdir name="1492188">
+        <string name="name" value="Meister Infinity's Wrath" />
+      </imgdir>
+      <imgdir name="1492191">
+        <string name="name" value="Terminus Raider" />
+      </imgdir>
+      <imgdir name="1492231">
+        <string name="name" value="AbsoLab Point Gun" />
+      </imgdir>
+      <imgdir name="1492235">
+        <string name="name" value="Arcane Umbra Pistol" />
+      </imgdir>
+      <imgdir name="1492236">
+        <string name="name" value="AbsoLab Point Gun" />
+      </imgdir>
+      <imgdir name="1492238">
+        <string name="name" value="AbsoLab Point Gun" />
+      </imgdir>
+      <imgdir name="1492243">
+        <string name="name" value="Fafnir Zeliska" />
+      </imgdir>
+      <imgdir name="1492244">
+        <string name="name" value="Sealed Genesis Pistol" />
+      </imgdir>
+      <imgdir name="1492245">
+        <string name="name" value="Genesis Pistol" />
+      </imgdir>
+      <imgdir name="1492246">
+        <string name="name" value="Fafnir Zeliska" />
       </imgdir>
       <imgdir name="1602000">
         <string name="name" value="Basic Skill Effect (warrior)" />
