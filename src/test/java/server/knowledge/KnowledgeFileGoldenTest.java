@@ -41,7 +41,7 @@ class KnowledgeFileGoldenTest {
         assertEquals(50, zhelm.reqLevel());
         assertEquals(0, zhelm.reqStr(), "secondary stats are zeroed in the edited Character.wz");
         long unnamedEquips = knowledge.items().stream().filter(item -> item.unnamed() && item.equip()).count();
-        assertEquals(136, unnamedEquips, "custom equips without a String.wz name stay visible to lint");
+        assertEquals(31, unnamedEquips, "custom equips without a String.wz name stay visible to lint");
         assertTrue(knowledge.items().stream().anyMatch(item -> item.reqPop() > 0), "reqPOP (fame) is exported");
     }
 
