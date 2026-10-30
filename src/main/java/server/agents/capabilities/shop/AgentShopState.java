@@ -30,6 +30,7 @@ public final class AgentShopState {
     private boolean saleOnly = false;
     /** The map whose owner-opened shop it last looked at; outlives a visit, reset on each arrival (onArrival). */
     private int ownerShopSaleMapId = 0;
+    private boolean saleOnArrival = false;
     private int minimumMesoReserve = 0;
     private int requiredItemId = 0;
     private int requiredItemCount = 0;
@@ -162,6 +163,15 @@ public final class AgentShopState {
 
     public void setOwnerShopSaleMapId(int mapId) {
         ownerShopSaleMapId = mapId;
+    }
+
+    /** A sale-only visit asked before its arrival on the map ran (a bench sale slice's load); outlives a clear. */
+    public boolean saleOnArrival() {
+        return saleOnArrival;
+    }
+
+    public void setSaleOnArrival(boolean pending) {
+        saleOnArrival = pending;
     }
 
     public int minimumMesoReserve() {

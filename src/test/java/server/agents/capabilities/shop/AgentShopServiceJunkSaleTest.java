@@ -604,6 +604,39 @@ class AgentShopServiceJunkSaleTest {
     }
 
     @Test
+    void aBenchSaleSliceAskedBeforeItsArrivalSellsOnceItHasArrived() {
+        // a bench sale slice loads it at the shop and asks at once; its first tick runs the arrival, which clears visits
+        carryJunk(2);
+        stockPotions();
+        AgentMapStateRuntime.setMapTracking(entry, EL_NATH, Map.of()); // its arrival on the shop map has not run
+
+        assertTrue(AgentShopService.requestSaleHere(entry, bot));
+        assertFalse(AgentShopStateRuntime.shopVisitPending(entry), "it waits for its arrival");
+
+        AgentMapStateRuntime.setMapTracking(entry, EL_NATH_POTION_SHOP_MAP, Map.of());
+        AgentShopService.onArrival(entry, bot, inventoryGateway);
+        assertTrue(AgentShopStateRuntime.shopVisitPending(entry), "arrived: it walks to the shopkeeper to sell");
+        assertTrue(AgentShopStateRuntime.shopSaleOnly(entry));
+        runVisit();
+        assertTrue(equips.list().isEmpty(), "its junk was sold");
+        assertEquals(List.of(), spoken);
+
+        AgentShopService.onArrival(entry, bot, inventoryGateway);
+        assertFalse(AgentShopStateRuntime.shopVisitPending(entry), "the ask was for one arrival only");
+    }
+
+    @Test
+    void aBenchSaleSliceAskedAfterItsArrivalSellsAtOnceAndOneWithNothingToSellSaysSo() {
+        stockPotions();
+        assertFalse(AgentShopService.requestSaleHere(entry, bot), "nothing to sell");
+
+        carryJunk(1);
+        assertTrue(AgentShopService.requestSaleHere(entry, bot));
+        assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
+        assertTrue(AgentShopStateRuntime.shopSaleOnly(entry));
+    }
+
+    @Test
     void theAgentsShopPhaseLooksAtItsOwnersShopOnEveryTick() {
         // the owner trigger is run by the shop phase of every Agent tick (AgentLiveModeTickRuntime), visit or none
         carryJunk(1);

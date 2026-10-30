@@ -88,6 +88,18 @@ public final class AgentShopStateRuntime {
         entry.shopState().setOwnerShopSaleMapId(mapId);
     }
 
+    /** A sale-only visit waits for the Agent's arrival on its map (AgentShopService.requestSaleHere). */
+    public static void setShopSaleOnArrival(AgentRuntimeEntry entry, boolean pending) {
+        entry.shopState().setSaleOnArrival(pending);
+    }
+
+    /** True, once, when a sale-only visit waited for this arrival. */
+    public static boolean takeShopSaleOnArrival(AgentRuntimeEntry entry) {
+        boolean pending = entry.shopState().saleOnArrival();
+        entry.shopState().setSaleOnArrival(false);
+        return pending;
+    }
+
     public static int minimumMesoReserve(AgentRuntimeEntry entry) {
         return entry.shopState().minimumMesoReserve();
     }

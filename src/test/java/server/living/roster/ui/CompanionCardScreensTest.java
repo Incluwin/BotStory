@@ -993,6 +993,13 @@ class CompanionCardScreensTest {
         assertFalse(lastTalk().text().contains("(live)"), lastTalk().text());
         LivingTalk.forget(owner);
 
+        when(slice.selling()).thenReturn(true); // its TRAIN slice filled its Equip tab: a shop slice sells the junk
+        menus.card(owner, miraRow);
+        assertTrue(lastTalk().text().contains("\r\nselling junk in Henesys\r\n"), lastTalk().text());
+        assertFalse(lastTalk().text().contains("restocking"), lastTalk().text());
+        when(slice.selling()).thenReturn(false);
+        LivingTalk.forget(owner);
+
         RosterEntry resting = new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.REST, 0, 0, ANT_TUNNEL, 0L, 0L, 0L,
                 0L, 0L, 0L, 0, null);
         rows.set(rows.indexOf(miraRow), resting);

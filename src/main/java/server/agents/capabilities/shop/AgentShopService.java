@@ -154,15 +154,21 @@ public final class AgentShopService {
      * holds back for mesos (AgentSupplyReadiness.heldForMesos: a broke companion that followed its owner into a store)
      * starts no visit of its own. What it cannot pay for its readiness says, and what its owner hands it there stays
      * a gift it can answer. A supply trip that begins here still opens its visit ({@link #onMapChange}). A new map
-     * visit gets one more look at a shop its owner opens there ({@link #tickOwnerShopping}).
+     * visit gets one more look at a shop its owner opens there ({@link #tickOwnerShopping}). A sale asked before this
+     * arrival ({@link #requestSaleHere}) opens now, unless the arrival opened a visit of its own (whose counter sells
+     * the junk anyway).
      */
     public static void onArrival(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
         AgentShopStateRuntime.setOwnerShopSaleMapId(entry, 0);
+        boolean saleAsked = AgentShopStateRuntime.takeShopSaleOnArrival(entry);
         if (AgentSupplyReadiness.heldForMesos(entry, System.currentTimeMillis())) {
             clearShopState(entry);
             return;
         }
         onMapChange(entry, bot, inventory);
+        if (saleAsked && !AgentShopStateRuntime.shopVisitPending(entry)) {
+            requestSaleVisit(entry, bot, 0, true);
+        }
     }
 
     public static void onMapChange(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
@@ -321,6 +327,22 @@ public final class AgentShopService {
         log.info("Agent '{}' walks to NPC {} on map {} to sell its junk", bot.getName(), match.npc().getId(),
                 bot.getMapId());
         return true;
+    }
+
+    /**
+     * {@link #requestSaleVisit} at any shopkeeper on the map the Agent was just loaded onto (a bench sale slice,
+     * BenchDutyDispatcher). Its arrival there clears every visit (onArrival), so before that has run the sale waits for
+     * it. True when the visit opened or waits for the arrival. On the Agent's own thread.
+     */
+    public static boolean requestSaleHere(AgentRuntimeEntry entry, Character bot) {
+        if (entry == null || bot == null || bot.getMap() == null) {
+            return false;
+        }
+        if (!AgentMapStateRuntime.isTrackingMap(entry, bot.getMapId())) {
+            AgentShopStateRuntime.setShopSaleOnArrival(entry, true);
+            return true;
+        }
+        return requestSaleVisit(entry, bot, 0, true);
     }
 
     /**
