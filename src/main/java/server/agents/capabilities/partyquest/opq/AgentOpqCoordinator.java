@@ -65,6 +65,14 @@ final class AgentOpqCoordinator {
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.LOUNGE_JUMP");
     /** The lounge subroom a base jump reaches: 920010604 through in03, down the rope below the lounge's door. */
     static final int LOUNGE_LOW_SUBROOM = AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(3);
+    /**
+     * The lounge subrooms whose doors stand past its trial doors: 602's in01 (y -1830) and 603's in02 (y -2333), on and
+     * above the doors' landing (y -1829). 601's in00 (y -1266) stands on the floor below the doors, the one a wrong door
+     * drops a runner on, and 604's in03 below the lounge floor. 2026-10-25 live (run 6): Jinx, given 601, went through
+     * the doors for 33 minutes; past them, her way to in00 led back down to the floor below them and through them again.
+     */
+    private static final Set<Integer> LOUNGE_SUBROOMS_PAST_THE_DOORS = Set.of(
+            AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(1), AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(2));
     private static final int LOOT_RADIUS = server.agents.runtime.AgentRuntimeConfig.cfg.LOOT_RADIUS;
     private static final Point ENTRANCE_HANDOFF = new Point(170, 96);
     private static final Point ENTRANCE_EAK = new Point(377, 66);
@@ -912,7 +920,7 @@ final class AgentOpqCoordinator {
             return;
         }
         if (portal != null) {
-            if (portal != 6 && agent.getPosition().y > -1_760) {
+            if (LOUNGE_SUBROOMS_PAST_THE_DOORS.contains(targetRoom) && agent.getPosition().y > -1_760) {
                 tickLoungePortalDiscovery(session, entry, agent, member, nowMs);
             } else enterAuthoredPortal(entry, agent, portal, nowMs, member);
         }

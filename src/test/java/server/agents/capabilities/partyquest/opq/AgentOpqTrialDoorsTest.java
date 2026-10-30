@@ -21,6 +21,7 @@ import server.maps.Portal;
 
 import java.awt.Point;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -100,6 +101,32 @@ class AgentOpqTrialDoorsTest {
 
         assertTrue(position.get().y < -1_760, "stuck at " + position.get() + " after " + ticks + " ticks");
         assertTrue(session.loungeRoute().solved(0) && session.loungeRoute().solved(1));
+    }
+
+    /**
+     * 2026-10-25 live (run 6): Jinx (speed 140, jump 119 with Haste), given 920010601, went through the trial doors for
+     * 33 minutes and never entered it. Its door (in00, y -1266) stands on the floor below the doors; past them, her way
+     * back to it led down to that floor and into the doors again. Same harness, the old coordinator never entered it in
+     * 1,200 ticks.
+     */
+    @Test
+    void theLoungeRunnerGivenTheFirstSubroomTakesItsDoorBelowTheTrialDoors() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(AgentOpqDefinition.LOUNGE_MAP);
+        AgentRuntimeEntry real = drive(map, new Point(-45, -728), 140, 119,
+                AgentOpqMemberState.Role.LOUNGE_RUNNER, AgentOpqDefinition.Room.LOUNGE, 920_010_601);
+        AtomicBoolean throughADoor = new AtomicBoolean();
+        doors(map, real, portal -> { // run 6's doors: the first of each row is right
+            throughADoor.set(true);
+            if (Integer.parseInt(portal.getName().substring(4, 6)) % 10 != 1) return 2;
+            return portal.getId() >= 14 ? 1 : portal.getId() + 3;
+        });
+        AtomicBoolean entered = new AtomicBoolean();
+        doAnswer(invocation -> { entered.set(true); return true; }).when(run.partyQuest).enterPortal(kes, 3); // in00
+
+        int ticks = tick(real, 600, entered::get);
+
+        assertTrue(entered.get(), "never entered 920010601; at " + position.get() + " after " + ticks + " ticks");
+        assertFalse(throughADoor.get(), "went through the trial doors on the way to 920010601");
     }
 
     @Test
