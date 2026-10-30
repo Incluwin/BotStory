@@ -92,6 +92,9 @@ public final class AgentShopService {
     private static final int AMMO_TARGET_THRESHOLD = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.AMMO_TARGET_THRESHOLD"); // full target when buying at shop
     private static final int RECHARGE_MAX_SETS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.RECHARGE_MAX_SETS"); // cap recharge to the best N own-type stacks
 
+    /** The clock a shop step's lateness is read on ({@link #scheduleShopStep}); a test's own virtual one. */
+    static java.util.function.LongSupplier stepClock = System::currentTimeMillis;
+
     private AgentShopService() {}
 
     private record NpcShopMatch(NPC npc, Shop shop, Point npcPos) {}
@@ -2597,6 +2600,7 @@ public final class AgentShopService {
         // due (a supply trip or a map change re-runs onMapChange), the step is dropped: live, it aborted the
         // new visit with "couldn't get to the shopkeeper" because the new visit had no transaction yet.
         long visitGeneration = AgentShopStateRuntime.shopVisitGeneration(entry);
+        long dueAtMs = stepClock.getAsLong() + delayMs;
         AgentShopRuntime.afterDelay(entry, delayMs, () -> {
             if (!AgentShopStateRuntime.shouldRunScheduledShopStep(entry, visitGeneration)) {
                 if (AgentShopStateRuntime.shopVisitPending(entry)) {
@@ -2606,6 +2610,11 @@ public final class AgentShopService {
                 }
                 return;
             }
+            // The time a step runs past its due time spends none of the transaction's budget, which prices the visit's
+            // own pace: an unwatched Agent's steps run on its mailbox at its tick rate, about 1.5 s a sale against the
+            // 0.5 s step with 250 Agents (10-29), and 23 sell trips of 70-80 items ran out of time after selling
+            // ("took too long at the shop"). A step that never runs adds nothing: a stalled visit still times out.
+            AgentShopStateRuntime.extendShopSequence(entry, stepClock.getAsLong() - dueAtMs);
             try {
                 step.run();
             } catch (RuntimeException exception) {

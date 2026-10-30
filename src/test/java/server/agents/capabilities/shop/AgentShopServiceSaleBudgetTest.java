@@ -84,6 +84,10 @@ class AgentShopServiceSaleBudgetTest {
     private final StatEffect redEffect = mock(StatEffect.class);
     private long now;
     private long order;
+    /** How long past its due time each scheduled step runs (an unwatched Agent's mailbox). */
+    private long lateMs;
+    /** The scheduled steps that run before the rest never come. */
+    private int stallAfterSteps = Integer.MAX_VALUE;
     private int purse = 50_000;
     private Character bot;
     private AgentRuntimeEntry entry;
@@ -177,10 +181,12 @@ class AgentShopServiceSaleBudgetTest {
         etcSales = mockStatic(AgentQuestItemDispositionRuntime.class);
         etcSales.when(() -> AgentQuestItemDispositionRuntime.collectShopSaleCandidates(any(), any(), any(), anyLong()))
                 .thenAnswer(inv -> etc.list().stream().map(AgentShopServiceSaleBudgetTest::saleOf).toList());
+        AgentShopService.stepClock = () -> now;
     }
 
     @AfterEach
     void close() {
+        AgentShopService.stepClock = System::currentTimeMillis;
         etcSales.close();
         trash.close();
         runtime.close();
@@ -200,6 +206,37 @@ class AgentShopServiceSaleBudgetTest {
         assertTrue(equips.list().isEmpty(), "every trash equip was sold");
         assertTrue(etc.list().isEmpty(), "every surplus ETC stack was sold");
         assertFalse(bought.isEmpty(), "the purchase steps ran after the sale");
+    }
+
+    /**
+     * Live 10-29 (250 Agents): an unwatched citizen's sell trip sold one piece every ~1.5 s, its steps running on its
+     * mailbox well past their 0.5 s, so 72 sold pieces outran the budget of 1 s a planned sale and the purchases after
+     * them gave up ("took too long at the shop", 23 trips). The time a step runs late is the scheduler's, not the
+     * visit's.
+     */
+    @Test
+    void aFullBagSoldAtAnUnwatchedAgentsPaceStillFinishesItsPurchases() {
+        carry(0, 90);
+        lateMs = 1_000L;
+
+        supplyTrip();
+
+        assertFalse(spoken.contains(AgentDialogueCatalog.shopSequenceTimeoutReply()), () -> "spoke " + spoken);
+        assertEquals(AgentShopWorkflowPhase.COMPLETED, AgentShopStateRuntime.workflow(entry).phase());
+        assertTrue(equips.list().isEmpty(), "every trash equip was sold");
+        assertFalse(bought.isEmpty(), "the purchase steps ran after the sale");
+    }
+
+    @Test
+    void aSaleWhoseStepsStopComingStillTimesOut() {
+        carry(0, 10);
+        stallAfterSteps = 4;
+
+        supplyTrip();
+        now += 200_000L;
+        AgentShopService.tickShopVisit(entry, bot, inventoryGateway, now);
+
+        assertTrue(spoken.contains(AgentDialogueCatalog.shopSequenceTimeoutReply()), () -> "spoke " + spoken);
     }
 
     @Test
@@ -265,9 +302,10 @@ class AgentShopServiceSaleBudgetTest {
             AgentShopService.tickShopVisit(entry, bot, inventoryGateway, now);
             now += APPROACH_TICK_MS;
         }
-        while (!steps.isEmpty()) {
+        int ran = 0;
+        while (!steps.isEmpty() && ran++ < stallAfterSteps) {
             Step step = steps.poll();
-            now = Math.max(now, step.atMs());
+            now = Math.max(now, step.atMs() + lateMs);
             AgentShopService.tickShopVisit(entry, bot, inventoryGateway, now);
             step.action().run();
         }
