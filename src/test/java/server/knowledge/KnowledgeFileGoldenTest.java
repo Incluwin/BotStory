@@ -155,6 +155,21 @@ class KnowledgeFileGoldenTest {
     }
 
     @Test
+    void routesReachRienTheDojoHappyvilleAndBackAndLeaveMapleIsland() {
+        for (int home : List.of(140000000, 130000000, 925020000, 209000000)) {
+            assertFalse(knowledge.route(100000000, home).isEmpty(), () -> "Henesys -> " + home);
+            assertFalse(knowledge.route(home, 100000000).isEmpty(), () -> home + " -> Henesys");
+        }
+        assertTrue(knowledge.route(140000000, 104000000).contains(140020300), "Rien's road ends at its dock");
+        assertTrue(knowledge.route(925020000, 250000000).contains(250000100), "the Dojo's exit, back to Mu Lung Temple");
+        assertFalse(knowledge.route(250000000, 100000000).contains(925020000), "the Dojo is no way to Victoria");
+        assertTrue(knowledge.route(2000000, 100000000).contains(104000000), "Shanks sails Southperry -> Lith Harbor");
+        assertEquals(List.of(), knowledge.route(104000000, 2000000), "nothing sails back to Maple Island");
+        assertEquals("mu-lung", knowledge.map(925020000).orElseThrow().region());
+        assertEquals("victoria", knowledge.map(910000000).orElseThrow().region());
+    }
+
+    @Test
     void scriptPortalsWithOneLiteralTargetAreExits() {
         assertTrue(knowledge.map(130000200).orElseThrow().exits().contains(130000100),
                 "Crossroads of Ereve: portal/rankRoom.js, case 130000200 -> Knights Chamber");

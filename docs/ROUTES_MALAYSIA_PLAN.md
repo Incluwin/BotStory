@@ -89,7 +89,11 @@ Happyville, the Internet Cafe and the Exclusive Training Center are instances or
 spas, below 809050000) or `ludibrium` (the Maze), 926 -> `ariant` (Nett's Pyramid), 930 -> `ellin-forest` (the Forest of
 Poison Haze). None of the 809/926/930 maps that lack a forced return has a mob spawn, so none turns into a training
 suggestion. 910 (the Free Market and its hub maps, HPQ's Primrose Hill) and 925 (Mu Lung Dojo, three of whose maps
-have mobs and no forced return) stay null. Then `tools\knowledge-export.bat`.
+have mobs and no forced return) stay null. Then `tools\knowledge-export.bat`. Since `fix/routes-2026-10-29` the Free
+Market's entrance and rooms (910000000-910000022) are `victoria` and the Dojo's entrance, hall, exit and rooftop
+(925020000-925020003) `mu-lung`, so the Residents who live there know their home region; neither range has monsters.
+`travel.yaml` gains the Dojo board and exit, Rien's walk down to its dock (enterPort warps to two literal maps, so
+the export finds no exit there), Shanks's one-way ship and Rooney/Rupi (Ellinia only, as on the agent graph).
 
 ## 4. Shops and potions
 
