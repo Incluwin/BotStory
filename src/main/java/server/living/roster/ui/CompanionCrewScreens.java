@@ -141,7 +141,7 @@ final class CompanionCrewScreens {
         options.add(Option.heading("\r\n#eBench (" + bench.size() + " of " + (world.config().ROSTER_MAX - party.size())
                 + " bench seats)#n"));
         for (CompanionView view : bench) {
-            options.add(row(owner, from, view, benchText(view)));
+            options.add(row(owner, from, view, benchText(owner, view)));
         }
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
@@ -660,13 +660,21 @@ final class CompanionCrewScreens {
     }
 
     /** A bench block row as the Crew window lists it: {@link #benchLine} with the live bench's note, or its errand. */
-    String benchText(CompanionView view) {
+    String benchText(Character owner, CompanionView view) {
         String lent = lentLine(view);
         if (lent != null) {
             return lent;
         }
         String errand = menus.errand(view);
-        return (errand == null ? benchLine(view, benchNote(view)) : errandLine(view, errand)) + friendship(view);
+        return (errand == null ? benchLine(view, benchNote(view), dutyOf(owner, view)) : errandLine(view, errand))
+                + friendship(view);
+    }
+
+    /** The row's duty, from the view cache; null when the cache has no row for it. */
+    private Assignment dutyOf(Character owner, CompanionView view) {
+        CompanionViews views = world.views();
+        RosterEntry row = views == null ? null : views.row(owner.getId(), view.personaId());
+        return row == null ? null : row.assignment();
     }
 
     /**
@@ -729,14 +737,16 @@ final class CompanionCrewScreens {
      * reads "away: ...".
      */
     static String benchLine(CompanionView view) {
-        return benchLine(view, "");
+        return benchLine(view, "", null);
     }
 
     /**
      * {@link #benchLine(CompanionView)}, ending " - resting" while it rests after a rough hunt (flow 12) and " - out of
-     * supplies" while it can neither heal nor buy potions ({@code note}: BenchDutyDispatcher.note).
+     * supplies" while it can neither heal nor buy potions ({@code note}: BenchDutyDispatcher.note). A {@code duty} done
+     * away from its camp (a rest in town, a stall, a sale) names no camp, as its card does (found 2026-09-29: Garrick's
+     * row read "rest @ <his camp>" while he rested in Perion); null: the camp is named.
      */
-    static String benchLine(CompanionView view, String note) {
+    static String benchLine(CompanionView view, String note, Assignment duty) {
         if (view.travelMs() > 0) {
             return benchRow(view); // "on the way (~40 s)"
         }
@@ -745,7 +755,7 @@ final class CompanionCrewScreens {
             line.append("away: ");
         }
         line.append(view.progress().isEmpty() ? view.duty() : "farm"); // the item is in the progress
-        if (!view.camp().isEmpty()) {
+        if (!view.camp().isEmpty() && !CompanionMenus.doneAwayFromCamp(duty)) {
             line.append(" @ ").append(view.camp());
         }
         if (!view.progress().isEmpty()) {

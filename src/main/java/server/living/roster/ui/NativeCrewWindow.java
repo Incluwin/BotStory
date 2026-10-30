@@ -628,7 +628,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
         }
         List<Row> bench = new ArrayList<>();
         for (CompanionView view : blocks.bench()) {
-            bench.add(row(owner, view, crews.benchText(view), versions, anyoneToComeIn, anyoneOut));
+            bench.add(row(owner, view, crews.benchText(owner, view), versions, anyoneToComeIn, anyoneOut));
         }
         int flags = (crews.usualCallable(owner, blocks.bench()) ? USUAL_CALLABLE : 0)
                 | (CompanionCrewScreens.anyoneOut(blocks.party()) ? SOMEONE_OUT : 0);
