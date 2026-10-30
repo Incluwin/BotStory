@@ -107,6 +107,33 @@ class AgentBossDisabledStateTest {
         verify(thane).triggerAutopotWhileLow(true, false);
     }
 
+    /**
+     * 2026-10-30: the held tick skips the common systems, so a stunned member standing in a mob took no touch damage.
+     * A stunned player still gets hit; a touch that kills it hands the tick back so the common systems see the death.
+     */
+    @Test
+    void aStunnedMemberStandingInAMobStillTakesItsTouchAndATouchThatKillsHandsTheTickBack() {
+        Character thane = inside(THANE, new Point(0, 0), Disease.STUN);
+        java.util.concurrent.atomic.AtomicInteger hp = new java.util.concurrent.atomic.AtomicInteger(9_000);
+        when(thane.getHp()).thenAnswer(invocation -> hp.get());
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+        try (MockedStatic<server.agents.capabilities.combat.AgentCombatDamageRuntime> damage =
+                     mockStatic(server.agents.capabilities.combat.AgentCombatDamageRuntime.class)) {
+            damage.when(() -> server.agents.capabilities.combat.AgentCombatDamageRuntime.tickMobDamage(
+                    any(), any(), any(), any())).thenAnswer(invocation -> {
+                hp.addAndGet(-4_500);
+                return null;
+            });
+
+            assertTrue(AgentBossDisabledState.holds(entry, thane), "a touch it survives keeps it held");
+            assertEquals(4_500, hp.get());
+            assertFalse(AgentBossDisabledState.holds(entry, thane),
+                    "the touch that kills it gives the tick back to the death check");
+            damage.verify(() -> server.agents.capabilities.combat.AgentCombatDamageRuntime.tickMobDamage(
+                    any(), any(), any(), any()), times(2));
+        }
+    }
+
     @Test
     void aStunnedFollowerFollowsWhomItFollowedOnceTheStunWearsOff() {
         Character thane = inside(THANE, new Point(0, 0), Disease.STUN);

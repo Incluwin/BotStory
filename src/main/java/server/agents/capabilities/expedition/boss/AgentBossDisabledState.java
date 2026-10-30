@@ -6,9 +6,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.capabilities.combat.AgentCombatConfig;
+import server.agents.capabilities.combat.AgentCombatDamageRuntime;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.capabilities.movement.AgentMovementTimers;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -99,6 +102,15 @@ public final class AgentBossDisabledState {
                 AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
                 boolean held = AgentMovementStateRuntime.grounded(entry);
                 if (held) {
+                    // 2026-10-30: the held tick skips the common systems, so a stunned member also took no touch
+                    // damage; a stunned player standing in a mob still gets hit. A touch that kills hands the tick
+                    // back, so the common systems put it in its dead state.
+                    int hpBefore = agent.getHp();
+                    AgentCombatDamageRuntime.tickMobDamage(entry, agent, AgentCombatConfig.cfg,
+                            AgentMovementTimers::tickDown);
+                    if (hpBefore > 0 && agent.getHp() <= 0) {
+                        return false;
+                    }
                     // 2026-10-29: the held tick skips the potion check, and a stunned player's pet still drinks
                     AgentPotionService.tickLowTopUp(entry, agent, System.currentTimeMillis());
                 }
