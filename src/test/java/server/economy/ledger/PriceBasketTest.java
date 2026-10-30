@@ -3,6 +3,7 @@ package server.economy.ledger;
 import config.EconomyConfig;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +46,39 @@ class PriceBasketTest {
                 "one doubled, one halved");
         assertEquals(200d, PriceBasket.index(List.of(price(1, 200), price(2, 800), price(3, 100)), first), 1e-9);
         assertNull(PriceBasket.index(List.of(price(9, 100)), first), "nothing priced twice yet");
+    }
+
+    /**
+     * Live 10-29: the 10-28 close priced 8 basket items at the index's old 10-meso seed and a sword under what an NPC
+     * pays for it, all repaired by the price floor that night, and the 10-29 close read 941 (controller: basket
+     * +841 %, buy budgets x0.75) for a basket that moved about -1 %. A seed or a price under the NPC's is no base:
+     * the item's next recorded price is.
+     */
+    @Test
+    void aSeedOrAPriceUnderTheNpcsIsNoBase() {
+        LocalDate seeded = LocalDate.of(2026, 10, 28);
+        LocalDate repaired = seeded.plusDays(1);
+        int scroll = 2_043_002;
+        int sword = 1_302_020;
+        int potion = 2_000_004;
+        List<PriceBasket.Recorded> history = List.of(
+                new PriceBasket.Recorded(scroll, seeded, 10L),
+                new PriceBasket.Recorded(sword, seeded, 20_333L),
+                new PriceBasket.Recorded(potion, seeded, 5_000L),
+                new PriceBasket.Recorded(scroll, repaired, 1_216_281L),
+                new PriceBasket.Recorded(sword, repaired, 292_857L),
+                new PriceBasket.Recorded(potion, repaired, 4_900L));
+        Map<Integer, Integer> paid = Map.of(scroll, 1, sword, 117_143, potion, 1_200);
+        java.util.function.IntToLongFunction npcPays = itemId -> paid.getOrDefault(itemId, 0);
+
+        Map<Integer, Long> bases = PriceBasket.bases(history, npcPays);
+
+        assertEquals(Map.of(scroll, 1_216_281L, sword, 292_857L, potion, 5_000L), bases);
+        Double before = PriceBasket.index(PriceBasket.on(history, seeded, npcPays), bases);
+        Double after = PriceBasket.index(PriceBasket.on(history, repaired, npcPays), bases);
+        assertEquals(100d, before, 1e-9, "the seeded day counts its one market price, the potion's");
+        assertEquals(100d * Math.pow(0.98, 1d / 3d), after, 1e-9, "the potion's -2 % over three items");
+        assertEquals(-0.0067, after / before - 1d, 1e-4, "the day's change the controller reads, not +841 %");
     }
 
     private static PriceBasket.Price price(int itemId, long price) {
