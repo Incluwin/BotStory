@@ -23,18 +23,26 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntToLongFunction;
 
 /**
  * The price basket (docs/ECONOMY_PLAN.md E0): each basket item's price for a day, from the day's player-shop sales
  * when it had economy.CPI_MIN_SALES of them, else the median of what is listed in the Free Market now, else the price
- * index (living_price_index). The index of a day is the geometric mean of each priced item's price over its first
- * recorded one, x 100: a basket that costs what it cost on its first day reads 100.
+ * index (living_price_index). The index of a day is the geometric mean of each priced item's price over its base, its
+ * first recorded market price ({@link #bases}), x 100: a basket that costs what it cost on its first day reads 100.
  */
 public final class PriceBasket {
     public enum Source { SALES, LISTINGS, INDEX }
 
     public record Price(int itemId, long price, Source source, int samples) {
     }
+
+    /** A basket price as a close recorded it (economy_cpi_daily). */
+    public record Recorded(int itemId, LocalDate day, long price) {
+    }
+
+    /** The price index's old minimum seed (Market.MINIMUM_SEED): a row at it was a seed, never a market price. */
+    static final long SEED_PRICE = 10L;
 
     private static final int FREE_MARKET_ENTRANCE = 910_000_000;
     private static final int FREE_MARKET_ROOMS = 22;
@@ -72,7 +80,40 @@ public final class PriceBasket {
         return out;
     }
 
-    /** The basket index: 100 x the geometric mean of today's price over each item's first recorded price. */
+    /**
+     * Each basket item's base, the price its index is measured against: its first recorded price that was a market
+     * price. One at the index's old 10-meso seed or under what an NPC shop pays for the item ({@code npcPays}) was a
+     * placeholder the price index has since repaired (it never sits under the NPC price since 10-28): the 10-28 close
+     * priced 8 basket items at 10 meso and one under its NPC price, so the 10-29 close read 941 for a basket that moved
+     * about -1 %, and the controller cut the buy budgets for it. Such an item's next market price is its base.
+     * {@code history} in day order.
+     */
+    public static Map<Integer, Long> bases(List<Recorded> history, IntToLongFunction npcPays) {
+        Map<Integer, Long> out = new HashMap<>();
+        for (Recorded recorded : history) {
+            if (!out.containsKey(recorded.itemId()) && marketPrice(recorded, npcPays)) {
+                out.put(recorded.itemId(), recorded.price());
+            }
+        }
+        return out;
+    }
+
+    /** The market prices {@code history} recorded on {@code day} (no seed: {@link #bases}), as the index reads them. */
+    public static List<Price> on(List<Recorded> history, LocalDate day, IntToLongFunction npcPays) {
+        List<Price> out = new ArrayList<>();
+        for (Recorded recorded : history) {
+            if (recorded.day().equals(day) && marketPrice(recorded, npcPays)) {
+                out.add(new Price(recorded.itemId(), recorded.price(), Source.INDEX, 0));
+            }
+        }
+        return out;
+    }
+
+    private static boolean marketPrice(Recorded recorded, IntToLongFunction npcPays) {
+        return recorded.price() > SEED_PRICE && recorded.price() >= npcPays.applyAsLong(recorded.itemId());
+    }
+
+    /** The basket index: 100 x the geometric mean of today's price over each item's base ({@link #bases}). */
     public static Double index(List<Price> today, Map<Integer, Long> firstPrices) {
         double logSum = 0d;
         int n = 0;

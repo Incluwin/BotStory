@@ -196,6 +196,26 @@ class MarketErrandStallTest {
                 "the stall it gave up on");
     }
 
+    /**
+     * Live 10-29: all 9 citizens who gave up on a stall had full equip bags, and 145 of the 204 full bags were on gear
+     * errands; they walked to the stall, could not take the piece and gave up, every market tick. A full bag sends it to
+     * sell its loot first.
+     */
+    @Test
+    void aFullEquipBagSendsItToSellBeforeItWalksToAStall() {
+        rooms.put(HERE, List.of(shop(77, ANN, true, 400, sword(120_000))));
+        client.inventory.Inventory bag = new client.inventory.Inventory(agent, client.inventory.InventoryType.EQUIP, (byte) 1);
+        bag.addItem(client.inventory.Equip.restored(MAPLE_SWORD, (short) 0));
+        when(agent.getInventory(client.inventory.InventoryType.EQUIP)).thenReturn(bag);
+
+        new Market(population, itemId -> 40_000L).tick();
+
+        verify(presence).sellSoon(eq(session), anyLong());
+        movement.verifyNoInteractions();
+        verify(presence, never()).travel(any(), any(), anyInt(), anyLong());
+        assertNull(session.shopping);
+    }
+
     @Test
     void aTripCountsItsTriesAtOneStall() {
         Market.ErrandStall stall = new Market.ErrandStall(HERE, 77, new Point(), RED_KATANA, "Ann");

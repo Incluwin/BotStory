@@ -477,6 +477,9 @@ public final class PresenceScheduler {
             session.mapId = map.getId();
             session.channel = citizen.channel();
             session.activity = activity;
+            if (activity != Activity.JOB && sellTrips.due(session, now)) {
+                replanSoon = true; // its plan could not read its bag: it goes to sell its loot at the next sweep
+            }
             session.lastPlanAtMs = replanSoon ? 0L : now;
             openKnowledge(session, agent, map.getId(), now);
             startActivity(session, map, now);
@@ -709,6 +712,19 @@ public final class PresenceScheduler {
 
     CitizenSellTrips sellTrips() {
         return sellTrips;
+    }
+
+    /**
+     * A citizen that found no room in its equip bag for what it came to buy (Market.seekErrandStall) plans again at the
+     * next sweep when a sell trip is due, so it sells its loot first, as a player clears a full bag before shopping;
+     * true when it does. Before, it walked to the stall, could not take the piece and gave up, every market tick.
+     */
+    boolean sellSoon(CitizenSession session, long now) {
+        if (session.sellTrip != null || !sellTrips.due(session, now)) {
+            return false;
+        }
+        session.lastPlanAtMs = 0L;
+        return true;
     }
 
     Activity plan(CitizenSession session, long now) {

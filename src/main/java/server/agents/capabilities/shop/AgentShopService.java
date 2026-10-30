@@ -14,6 +14,7 @@ import server.agents.capabilities.supplies.AgentPotionRecoveryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSkillConsumablePolicy;
 import server.agents.capabilities.supplies.AgentSupplyConfig;
+import server.agents.capabilities.supplies.AgentSupplyProcurementRuntime;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 
 import client.Character;
@@ -92,6 +93,9 @@ public final class AgentShopService {
     private static final int AMMO_TARGET_THRESHOLD = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.AMMO_TARGET_THRESHOLD"); // full target when buying at shop
     private static final int RECHARGE_MAX_SETS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.RECHARGE_MAX_SETS"); // cap recharge to the best N own-type stacks
 
+    /** The clock a shop step's lateness is read on ({@link #scheduleShopStep}); a test's own virtual one. */
+    static java.util.function.LongSupplier stepClock = System::currentTimeMillis;
+
     private AgentShopService() {}
 
     private record NpcShopMatch(NPC npc, Shop shop, Point npcPos) {}
@@ -138,6 +142,12 @@ public final class AgentShopService {
     public static void onMapChange(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
         clearShopState(entry);
         if (bot == null || bot.getMap() == null) {
+            return;
+        }
+        if (AgentSupplyProcurementRuntime.travellingPast(entry, bot.getMapId())) {
+            // on its way to its supplier: a shop it passes is not its stop. Live 10-25..29, supply trips to Ludibrium's
+            // potion shop 221000200 stopped at the Gumball Machine on 221021600, whose counter no walk reaches, and
+            // timed out there ("never reached the shop NPC") before walking on
             return;
         }
 
@@ -347,6 +357,19 @@ public final class AgentShopService {
         Point botPos = bot.getPosition();
         Point target = AgentShopStateRuntime.shopTargetOrNpcPosition(entry);
         boolean reachedApproach = manhattan(botPos, target) <= SHOP_ARRIVE_DIST;
+        if (!reachedApproach && !AgentShopStateRuntime.shopSequenceActive(entry)) {
+            // A walk that stopped gets none of its route's time: stuck where it landed, an Agent at Mushroom Shrine
+            // waited out the route and the delay and the timeout, 64 s, before it gave up. One still walking keeps
+            // the whole allowance (visitTimedOut).
+            AgentShopStateRuntime.noteShopApproach(entry, manhattan(botPos, target), SHOP_STUCK_MOVE_TOLERANCE_PX, now);
+            if (AgentShopStateRuntime.shopApproachStalled(entry, now, SHOP_VISIT_TIMEOUT_MS)) {
+                AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
+                logShopFailure(entry, bot, "visit timeout (never reached the shop NPC: no closer in "
+                        + SHOP_VISIT_TIMEOUT_MS + " ms)");
+                clearShopState(entry);
+                return false;
+            }
+        }
         boolean stuckAtNpc = !AgentShopStateRuntime.shopSequenceActive(entry)
                 && !reachedApproach
                 && isStuckNearNpc(entry, botPos, now);
@@ -1261,7 +1284,7 @@ public final class AgentShopService {
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessAmmoHeadroomStep(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, WeaponType wt,
             int buyTarget, int minimumMesoReserve) {
-        AgentShopBuyReport report = buyReadinessAmmo(bot, shop, wt, sequence.inventory(), buyTarget,
+        AgentShopBuyReport report = buyReadinessAmmoHeadroom(bot, shop, wt, sequence.inventory(), buyTarget,
                 minimumMesoReserve);
         if (report.quantity() > 0) {
             log.info("Agent '{}' readiness ammo headroom: {} x{} ({}), now {}", bot.getName(), report.itemId(),
@@ -1280,6 +1303,23 @@ public final class AgentShopService {
      */
     static AgentShopBuyReport buyReadinessAmmo(Character bot, Shop shop, WeaponType wt, InventoryGateway inventory,
                                                int target, int minimumMesoReserve) {
+        return buyReadinessAmmo(bot, shop, wt, inventory, target, minimumMesoReserve, false);
+    }
+
+    /**
+     * {@link #buyReadinessAmmo} toward a readiness trip's headroom ({@link #readinessAmmoBuyTarget}), which it never
+     * passes: a refill or a set only while the whole of it still fits under {@code target}. A set is a whole stack, so
+     * buying sets until the count reached the target took claws and guns from the standard's 2,100 to 4,000 for a
+     * 3,200 buy target (live 2026-10-08/09: Kestrel, Sorrel, Flint); arrows were bought to the count already.
+     */
+    static AgentShopBuyReport buyReadinessAmmoHeadroom(Character bot, Shop shop, WeaponType wt,
+                                                       InventoryGateway inventory, int target, int minimumMesoReserve) {
+        return buyReadinessAmmo(bot, shop, wt, inventory, target, minimumMesoReserve, true);
+    }
+
+    private static AgentShopBuyReport buyReadinessAmmo(Character bot, Shop shop, WeaponType wt,
+                                                       InventoryGateway inventory, int target, int minimumMesoReserve,
+                                                       boolean withinTarget) {
         AgentShopBuyReport none = new AgentShopBuyReport(0, 0, 0, AgentShopShortfallReason.NONE);
         if (bot == null || shop == null || wt == null || !AgentCombatAmmoCounter.isRangedAmmoWeapon(wt)
                 || bot.getInventory(InventoryType.USE) == null) {
@@ -1293,8 +1333,12 @@ public final class AgentShopService {
         AgentShopShortfallReason reason = AgentShopShortfallReason.NONE;
         if (isRechargeWeaponType(wt)) {
             for (Item stack : refillableStacks(bot, wt, inventory)) {
-                if (AgentCombatAmmoCounter.countCarried(bot, wt) >= target) {
+                int carried = AgentCombatAmmoCounter.countCarried(bot, wt);
+                if (carried >= target) {
                     break;
+                }
+                if (withinTarget && carried + inventory.getSlotMax(bot, stack.getItemId()) - stack.getQuantity() > target) {
+                    continue;
                 }
                 itemId = stack.getItemId();
                 Shop.TransactionResult result = AgentShopGatewayRuntime.shop().recharge(
@@ -1307,8 +1351,9 @@ public final class AgentShopService {
             ShopSlotItem set = reason == AgentShopShortfallReason.NONE ? findSeedRechargeAmmoItem(shop, wt) : null;
             if (set != null) {
                 itemId = set.shopItem.getItemId();
+                int perSet = inventory.getSlotMax(bot, itemId);
                 int count = AgentCombatAmmoCounter.countCarried(bot, wt);
-                while (count < target) {
+                while (count < target && !(withinTarget && count + perSet > target)) {
                     if (freeUseSlots(bot) <= 1) {
                         reason = AgentShopShortfallReason.NO_SPACE;
                         break;
@@ -1517,7 +1562,14 @@ public final class AgentShopService {
             AgentSupplyReadiness.Activity trip) {
         Character bot = sequence.bot();
         AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(bot, trip);
-        int wanted = stacks(shortfall.hp()) + stacks(shortfall.mp())
+        // a points standard's shortfall is HP and MP points, in potions only as the visit's pick buys them (as the
+        // trip's checks count it): read as potions, live 10-29 Balrog readiness trips "needed" 49-1,192 free Use slots
+        boolean points = AgentSupplyReadiness.recoveryStandard(trip) != null;
+        int hpPotions = points ? AgentSupplyReadiness.potionsFor(shortfall.hp(), coveragePickRecovery(bot, shop, true))
+                : shortfall.hp();
+        int mpPotions = points ? AgentSupplyReadiness.potionsFor(shortfall.mp(), coveragePickRecovery(bot, shop, false))
+                : shortfall.mp();
+        int wanted = stacks(hpPotions) + stacks(mpPotions)
                 + readinessAmmoPlan(bot, shop, bot.getMapId(), trip).newStacks()
                 + readinessCurePlan(bot, shop, trip).newStacks() + 1;
         return makeUseRoom(sequence, shop, wt,
@@ -2597,6 +2649,7 @@ public final class AgentShopService {
         // due (a supply trip or a map change re-runs onMapChange), the step is dropped: live, it aborted the
         // new visit with "couldn't get to the shopkeeper" because the new visit had no transaction yet.
         long visitGeneration = AgentShopStateRuntime.shopVisitGeneration(entry);
+        long dueAtMs = stepClock.getAsLong() + delayMs;
         AgentShopRuntime.afterDelay(entry, delayMs, () -> {
             if (!AgentShopStateRuntime.shouldRunScheduledShopStep(entry, visitGeneration)) {
                 if (AgentShopStateRuntime.shopVisitPending(entry)) {
@@ -2606,6 +2659,11 @@ public final class AgentShopService {
                 }
                 return;
             }
+            // The time a step runs past its due time spends none of the transaction's budget, which prices the visit's
+            // own pace: an unwatched Agent's steps run on its mailbox at its tick rate, about 1.5 s a sale against the
+            // 0.5 s step with 250 Agents (10-29), and 23 sell trips of 70-80 items ran out of time after selling
+            // ("took too long at the shop"). A step that never runs adds nothing: a stalled visit still times out.
+            AgentShopStateRuntime.extendShopSequence(entry, stepClock.getAsLong() - dueAtMs);
             try {
                 step.run();
             } catch (RuntimeException exception) {

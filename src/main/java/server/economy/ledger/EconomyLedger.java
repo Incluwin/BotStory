@@ -2,8 +2,10 @@ package server.economy.ledger;
 
 import config.EconomyConfig;
 import config.YamlConfig;
+import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.ItemInformationProvider;
 import server.TimerManager;
 import tools.DatabaseConnection;
 
@@ -17,8 +19,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,8 +54,8 @@ public final class EconomyLedger {
 
     /**
      * A closed day as the E4 controller reads it (docs/ECONOMY_PLAN.md E4): the supply, the external net without the
-     * one-off purse reset (RESET), what citizens sold to NPC shops, and the basket index and the day before's (null
-     * when that day has no close).
+     * one-off purse reset (RESET), what citizens sold to NPC shops, and the basket index and the day before's, both on
+     * today's bases (PriceBasket.bases; null when that day has no close), so a base that moves moves both alike.
      */
     public record Close(LocalDate day, long supply, long organicNet, long citizenNpcSale, Double cpi,
                         Double previousCpi) { }
@@ -136,18 +138,21 @@ public final class EconomyLedger {
     /** A closed day as the controller reads it, from the tables; null when the day has no close. */
     public static Close readClose(LocalDate day) throws SQLException {
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT supply, external_net, cpi FROM economy_close_daily WHERE day = ?")) {
+             PreparedStatement ps = con.prepareStatement("SELECT supply, external_net FROM economy_close_daily WHERE day = ?")) {
             ps.setDate(1, Date.valueOf(day));
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? record(con, day, rs.getLong(1), rs.getLong(2), (Double) rs.getObject(3, Double.class)) : null;
+                return rs.next() ? record(con, day, rs.getLong(1), rs.getLong(2)) : null;
             }
         }
     }
 
-    private static Close record(Connection con, LocalDate day, long supply, long externalNet, Double cpi)
-            throws SQLException {
+    private static Close record(Connection con, LocalDate day, long supply, long externalNet) throws SQLException {
+        List<PriceBasket.Recorded> history = basketHistory(con);
+        Map<Integer, Long> bases = PriceBasket.bases(history, EconomyLedger::npcPays);
         return new Close(day, supply, externalNet - accountNet(con, day, MesoAccount.RESET),
-                accountIn(con, day, MesoAccount.NPC_SALE, MesoHolder.CITIZEN), cpi, previousCpi(con, day));
+                accountIn(con, day, MesoAccount.NPC_SALE, MesoHolder.CITIZEN),
+                PriceBasket.index(PriceBasket.on(history, day, EconomyLedger::npcPays), bases),
+                PriceBasket.index(PriceBasket.on(history, day.minusDays(1), EconomyLedger::npcPays), bases));
     }
 
     /** With the server's other timers, once the TimerManager runs: the minute flush and the daily close. */
@@ -241,7 +246,8 @@ public final class EconomyLedger {
                 long externalNet = externalNet(con, day);
                 Long previous = previousSupply(con, day);
                 Long residual = previous == null ? null : supply.total() - previous - externalNet;
-                Double cpi = PriceBasket.index(prices, firstPrices(con));
+                Close closed = record(con, day, supply.total(), externalNet);
+                Double cpi = closed.cpi();
                 try (PreparedStatement ps = con.prepareStatement("REPLACE INTO economy_close_daily"
                         + " (day, supply, external_net, residual, cpi) VALUES (?, ?, ?, ?, ?)")) {
                     ps.setDate(1, Date.valueOf(day));
@@ -255,7 +261,7 @@ public final class EconomyLedger {
                         day, supply.total(), externalNet, residual, cpi == null ? "-" : String.format("%.1f", cpi));
                 Consumer<Close> listener = closeListener;
                 if (listener != null) {
-                    listener.accept(record(con, day, supply.total(), externalNet, cpi));
+                    listener.accept(closed);
                 }
             }
         } catch (SQLException | RuntimeException failure) {
@@ -283,15 +289,6 @@ public final class EconomyLedger {
             ps.setString(3, holder.name());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getLong(1) : 0L;
-            }
-        }
-    }
-
-    private static Double previousCpi(Connection con, LocalDate day) throws SQLException {
-        try (PreparedStatement ps = con.prepareStatement("SELECT cpi FROM economy_close_daily WHERE day = ?")) {
-            ps.setDate(1, Date.valueOf(day.minusDays(1)));
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? (Double) rs.getObject(1, Double.class) : null;
             }
         }
     }
@@ -348,18 +345,24 @@ public final class EconomyLedger {
         }
     }
 
-    /** Each basket item's first recorded price, the base of the index. */
-    private static Map<Integer, Long> firstPrices(Connection con) throws SQLException {
-        Map<Integer, Long> out = new HashMap<>();
-        try (PreparedStatement ps = con.prepareStatement("SELECT c.item_id, c.price FROM economy_cpi_daily c"
-                + " JOIN (SELECT item_id, MIN(day) AS first_day FROM economy_cpi_daily GROUP BY item_id) f"
-                + " ON f.item_id = c.item_id AND f.first_day = c.day");
+    /** Every recorded basket price in day order: the bases of the index and the days it compares. */
+    private static List<PriceBasket.Recorded> basketHistory(Connection con) throws SQLException {
+        List<PriceBasket.Recorded> out = new ArrayList<>();
+        try (PreparedStatement ps = con.prepareStatement(
+                "SELECT item_id, day, price FROM economy_cpi_daily ORDER BY day, item_id");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                out.put(rs.getInt(1), rs.getLong(2));
+                out.add(new PriceBasket.Recorded(rs.getInt(1), rs.getDate(2).toLocalDate(), rs.getLong(3)));
             }
         }
         return out;
+    }
+
+    /** What an NPC shop pays for one of the item, as Market.npcPays: no market price sits under it. */
+    private static long npcPays(int itemId) {
+        ItemInformationProvider items = ItemInformationProvider.getInstance();
+        return ItemConstants.isRechargeable(itemId) ? (long) Math.ceil(items.getUnitPrice(itemId))
+                : Math.max(0L, items.getWholePrice(itemId));
     }
 
     /** Journal and outbox rows past economy.JOURNAL_RETENTION_DAYS go, a batch at a time. */

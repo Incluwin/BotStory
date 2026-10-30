@@ -390,6 +390,18 @@ public final class AgentSupplyProcurementRuntime {
         return false;
     }
 
+    /**
+     * True while the Agent's supply trip walks to a supplier on a map other than {@code mapId}: a shop it passes on the
+     * way is not its stop (AgentShopService.onMapChange).
+     */
+    public static boolean travellingPast(AgentRuntimeEntry entry, int mapId) {
+        AgentSupplyProcurementState execution = entry == null ? null
+                : entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY).orElse(null);
+        return execution != null && execution.isActive()
+                && execution.phase() == AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER
+                && execution.supplierMapId() != mapId;
+    }
+
     static boolean begin(AgentRuntimeEntry entry,
                          Character agent,
                          AgentProcurementRequest request,

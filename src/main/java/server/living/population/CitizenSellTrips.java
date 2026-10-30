@@ -100,17 +100,10 @@ final class CitizenSellTrips {
 
     /** At its plan: the shop a loaded citizen whose equip bag is nearly full goes to sell at; null for none. */
     Trip planned(CitizenSession session, long now) {
-        PopulationConfig config = population.config();
-        Character agent = session.virtual ? null : session.agent();
-        Citizen citizen = population.citizen(session.characterId);
-        if (!config.SELL_TRIPS_ENABLED || agent == null || session.entry == null || citizen == null || citizen.hired()) {
+        if (!due(session, now)) {
             return null;
         }
-        int free = freeEquipSlots.applyAsInt(agent);
-        Long last = lastTripAt.get(session.characterId);
-        if (free > config.SELL_TRIP_FREE_SLOTS || last != null && now - last < config.SELL_TRIP_EVERY_HOURS * HOUR_MS) {
-            return null;
-        }
+        int free = freeEquipSlots.applyAsInt(session.agent());
         int[] shop = shopFor.apply(session);
         if (shop == null) {
             return null;
@@ -119,6 +112,25 @@ final class CitizenSellTrips {
         asked.remove(session.characterId);
         log.info("citizen {} goes to sell its loot at map {} ({} free equip slots)", session.name(), shop[0], free);
         return new Trip(shop[0], shop[1], now);
+    }
+
+    /**
+     * Whether this loaded citizen's equip bag sends it to sell at a plan now: SELL_TRIP_FREE_SLOTS free slots or fewer,
+     * and no trip within SELL_TRIP_EVERY_HOURS. Also asked once it has loaded (PresenceScheduler.materialize), as the
+     * plan that chose where it logs in came before its bag could be read: on 10-29 every sell trip began at a citizen's
+     * first re-plan, 25-45 minutes after its login, and the 70 citizens on gear errands whose bags were still full had
+     * sold nothing since the trips began, their sessions over before a re-plan.
+     */
+    boolean due(CitizenSession session, long now) {
+        PopulationConfig config = population.config();
+        Character agent = session.virtual ? null : session.agent();
+        Citizen citizen = population.citizen(session.characterId);
+        if (!config.SELL_TRIPS_ENABLED || agent == null || session.entry == null || citizen == null || citizen.hired()) {
+            return false;
+        }
+        Long last = lastTripAt.get(session.characterId);
+        return freeEquipSlots.applyAsInt(agent) <= config.SELL_TRIP_FREE_SLOTS
+                && (last == null || now - last >= config.SELL_TRIP_EVERY_HOURS * HOUR_MS);
     }
 
     /**
