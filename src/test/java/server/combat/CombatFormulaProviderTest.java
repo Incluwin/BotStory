@@ -11,10 +11,15 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
+import constants.skills.Crusader;
+import constants.skills.DawnWarrior;
 import constants.skills.ILMage;
+import constants.skills.ThunderBreaker;
+import constants.skills.WindArcher;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import net.server.PlayerBuffValueHolder;
 import server.StatEffect;
 
 import java.util.List;
@@ -614,5 +619,36 @@ class CombatFormulaProviderTest {
         when(bot.getInventory(InventoryType.EQUIPPED)).thenReturn(equipped);
         when(equipped.getItem((short) -11)).thenReturn(weapon);
         when(weapon.getItemId()).thenReturn(itemId);
+    }
+
+    @Test
+    void sparkAndTheCygnusFinalAttackBuffsLeaveTheTriggeringSwingsDamageAlone() {
+        List<PlayerBuffValueHolder> buffs = List.of(
+                new PlayerBuffValueHolder(0, skillBuff(ThunderBreaker.SPARK, 120)),
+                new PlayerBuffValueHolder(0, skillBuff(DawnWarrior.FINAL_ATTACK, 115)),
+                new PlayerBuffValueHolder(0, skillBuff(WindArcher.FINAL_ATTACK, 115)));
+        Character bot = mock(Character.class);
+        when(bot.getAllBuffs()).thenReturn(buffs);
+
+        assertEquals(1000, provider.applyCharacterDamageModifiers(1000, bot, 0));
+    }
+
+    @Test
+    void anOrdinaryDamageBuffStillRaisesTheSwing() {
+        List<PlayerBuffValueHolder> buffs = List.of(
+                new PlayerBuffValueHolder(0, skillBuff(ThunderBreaker.SPARK, 120)),
+                new PlayerBuffValueHolder(0, skillBuff(Crusader.COMBO, 110)));
+        Character bot = mock(Character.class);
+        when(bot.getAllBuffs()).thenReturn(buffs);
+
+        assertEquals(1100, provider.applyCharacterDamageModifiers(1000, bot, 0));
+    }
+
+    private static StatEffect skillBuff(int skillId, int damage) {
+        StatEffect effect = mock(StatEffect.class);
+        when(effect.isSkill()).thenReturn(true);
+        when(effect.getSourceId()).thenReturn(skillId);
+        when(effect.getDamage()).thenReturn(damage);
+        return effect;
     }
 }

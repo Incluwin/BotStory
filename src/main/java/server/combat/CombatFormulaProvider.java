@@ -616,6 +616,9 @@ public final class CombatFormulaProvider {
         }
         int bonusDmgBuff = 100;
         for (PlayerBuffValueHolder pbvh : chr.getAllBuffs()) {
+            if (procBuff(pbvh.effect)) {
+                continue;
+            }
             bonusDmgBuff += pbvh.effect.getDamage() - 100;
         }
         if (bonusDmgBuff != 100) {
@@ -629,6 +632,19 @@ public final class CombatFormulaProvider {
             }
         }
         return damage;
+    }
+
+    /**
+     * A buff whose damage is its own proc's (Spark, the Cygnus Final Attacks): the client applies it to the proc's hit,
+     * which already rolls that skill's damage, and never to the swings that trigger it.
+     */
+    private static boolean procBuff(StatEffect effect) {
+        if (effect == null || !effect.isSkill()) {
+            return false;
+        }
+        int sourceId = effect.getSourceId();
+        return sourceId == ThunderBreaker.SPARK || sourceId == DawnWarrior.FINAL_ATTACK
+                || sourceId == WindArcher.FINAL_ATTACK;
     }
 
     /**
