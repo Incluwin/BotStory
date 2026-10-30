@@ -1,6 +1,7 @@
 package server.agents.runtime.simulation;
 
 import client.Character;
+import server.agents.capabilities.shop.AgentShopStateRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -17,6 +18,13 @@ public final class AgentAbstractTickRuntime {
         }
         Character agent = AgentRuntimeIdentityRuntime.bot(entry);
         if (agent == null || agent.getMap() != map) {
+            return false;
+        }
+        if (AgentShopStateRuntime.shopVisitPending(entry)) {
+            // the abstract tick runs TownLife alone and never the shop visit: live 10-29, citizens arriving at
+            // Henesys's spawn (112,197) opened a visit to Inkwell 9000069 and stood there 10-23 minutes, the visit
+            // unticked, until something took them out of abstract execution and it timed out at once. Pending, the
+            // Agent stays in an active mode, where the shop phase of its tick walks it there
             return false;
         }
         return switch (entry.simulationState().abstractExecutionScope()) {
