@@ -5,6 +5,7 @@ import client.Character;
 import client.inventory.InventoryType;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.plans.AgentTask;
 import server.agents.runtime.AgentRuntimeEntry;
 
@@ -40,6 +41,20 @@ class AgentScriptTaskCompletionServiceTest {
 
         assertFalse(AgentScriptTaskCompletionService.isComplete(
                 entry, AgentTask.moveTo(new Point(109, 100), true), 50, ignored -> null));
+    }
+
+    @Test
+    void preciseMoveToIsIncompleteInTheAirInsideTheBox() {
+        AgentRuntimeEntry entry = entryAt(100000000, new Point(104, 96));
+        AgentMoveTargetStateRuntime.setMoveTarget(entry, new Point(100, 100), true);
+        AgentMovementStateRuntime.setInAir(entry, true);
+
+        assertFalse(AgentScriptTaskCompletionService.isComplete(
+                entry, AgentTask.moveTo(new Point(100, 100), true), 50, ignored -> null));
+
+        AgentMovementStateRuntime.setInAir(entry, false);
+        assertTrue(AgentScriptTaskCompletionService.isComplete(
+                entry, AgentTask.moveTo(new Point(100, 100), true), 50, ignored -> null));
     }
 
     @Test

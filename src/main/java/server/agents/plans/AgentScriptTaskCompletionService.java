@@ -18,8 +18,11 @@ public final class AgentScriptTaskCompletionService {
                                      IntFunction<Character> followTargetResolver) {
         return switch (task.type()) {
             case MOVE_TO -> !AgentMoveTargetStateRuntime.hasMoveTarget(entry)
-                    || isNear(AgentRuntimeIdentityRuntime.botPosition(entry), task.point(),
-                    task.precise() ? 8 : normalMoveArrivalDistance);
+                    || (task.precise()
+                    ? AgentMoveTargetStateRuntime.standsAtPreciseTarget(
+                            entry, AgentRuntimeIdentityRuntime.botPosition(entry), task.point())
+                    : isNear(AgentRuntimeIdentityRuntime.botPosition(entry), task.point(),
+                    normalMoveArrivalDistance));
             case FOLLOW_UNTIL_NEAR -> {
                 Character target = followTargetResolver.apply(task.targetCharacterId());
                 yield target != null
