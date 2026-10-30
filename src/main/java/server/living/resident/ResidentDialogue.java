@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.TimerManager;
 import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
+import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
 import server.agents.commands.AgentDismissCommandService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentInteractionRuntime;
@@ -390,7 +391,9 @@ public final class ResidentDialogue {
                 nearest = session;
             }
         }
-        if (nearest != null && directed(normalized) && !openContentQuestion(normalized)) {
+        // a plain yes or no while one of the speaker's own Agents waits on their answer is that Agent's
+        if (nearest != null && directed(normalized) && !openContentQuestion(normalized)
+                && !AgentChatIntentRuntime.answersOwnAgent(speaker, normalized)) {
             return new Target(nearest.persona, normalized);
         }
         return null;

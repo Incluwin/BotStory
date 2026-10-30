@@ -78,6 +78,18 @@ final class AgentChatPendingAsks {
         return new Resolution(Reply.OTHER, ask);
     }
 
+    /** True while the entry waits on a live suggestion {@code speakerId} may answer; nothing is consumed. */
+    boolean waitsOn(AgentRuntimeEntry entry, int speakerId, long nowMs) {
+        Pending ask = pending.get(entry);
+        return ask != null && ask.answerableBy(speakerId) && ask.expiresAtMs() > nowMs;
+    }
+
+    /** A plain yes or no, as {@link #resolve} reads one. */
+    static boolean isAnswer(String message) {
+        String normalized = normalize(message);
+        return YES.contains(normalized) || NO.contains(normalized);
+    }
+
     static String normalize(String message) {
         return message.toLowerCase(Locale.ROOT).replaceAll("[^a-z ]", " ").trim().replaceAll("\\s+", " ");
     }
