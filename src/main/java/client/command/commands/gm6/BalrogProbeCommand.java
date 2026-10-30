@@ -13,7 +13,7 @@ import server.life.autonomy.balrog.EasyBalrogBodyBehavior;
  * {@code hp <percent> [mobId]} lowers each live, non-fake mob on your map (or only mobId) to
  * max(1, floor(maxHp x percent / 100)); it never kills a mob and never raises HP.
  * {@code telegraph action|none} sets whether the body's skill casts send the skill1 action
- * ({@link EasyBalrogBodyBehavior#setTelegraphSkillActions}); the switch is not saved, so a restart restores none.
+ * ({@link EasyBalrogBodyBehavior#setTelegraphSkillActions}); the switch is not saved, so a restart restores action.
  */
 public final class BalrogProbeCommand extends Command {
     static final String USAGE = "Syntax: !balrogprobe hp <percent> [mobId] | !balrogprobe telegraph [action|none]";
@@ -89,9 +89,9 @@ public final class BalrogProbeCommand extends Command {
         boolean now = EasyBalrogBodyBehavior.telegraphSkillActions();
         gm.yellowMessage(now
                 ? "balrogprobe telegraph = action: the Easy Balrog body's skill casts play skill1 and its sound."
-                + " A restart resets it to none."
+                + " This is the default."
                 : "balrogprobe telegraph = none: the Easy Balrog body's skill casts send no action"
-                + " (no skill1, no sound). This is the default.");
+                + " (no skill1, no sound). A restart resets it to action.");
         log.info("gm balrogprobe telegraph: gm={} map={} telegraph={} was={}", gm.getName(), gm.getMapId(),
                 name(now), name(before));
     }

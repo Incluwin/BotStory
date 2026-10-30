@@ -252,7 +252,7 @@ class ServerMobAutonomyServiceTest {
     }
 
     @Test
-    void easyBalrogBodyCastPacketCarriesNoSkillActionByDefault() {
+    void easyBalrogBodyCastPacketCarriesItsSkillActionByDefault() {
         Fixture fixture = easyBalrogBodyAtHalfHp();
 
         assertTrue(service.acquire(fixture.monster, fixture.agent));
@@ -263,10 +263,11 @@ class ServerMobAutonomyServiceTest {
                         == server.life.MobSkillType.PHYSICAL_AND_MAGIC_COUNTER),
                 org.mockito.ArgumentMatchers.eq(true));
         byte[] bytes = castPacketBytes(fixture);
-        assertEquals(0xFF, Byte.toUnsignedInt(bytes[8]),
-                "the body's cast must carry no action, so the client skips skill1 and its sound");
-        assertEquals(0, Byte.toUnsignedInt(bytes[9]));
-        assertEquals(0, Byte.toUnsignedInt(bytes[10]));
+        assertEquals(43, Byte.toUnsignedInt(bytes[8]),
+                "left-facing skill1 must use the client skill animation activity");
+        assertEquals(server.life.MobSkillType.PHYSICAL_AND_MAGIC_COUNTER.getId(),
+                Byte.toUnsignedInt(bytes[9]));
+        assertEquals(4, Byte.toUnsignedInt(bytes[10]));
         verify(fixture.overall).registerOverallAction(
                 org.mockito.ArgumentMatchers.eq(922010900),
                 org.mockito.ArgumentMatchers.any(),
@@ -274,8 +275,8 @@ class ServerMobAutonomyServiceTest {
     }
 
     @Test
-    void easyBalrogBodyCastPacketCarriesItsSkillActionWhenTheSwitchAllowsIt() {
-        EasyBalrogBodyBehavior.setTelegraphSkillActions(true);
+    void easyBalrogBodyCastPacketCarriesNoSkillActionWhenTheSwitchIsOff() {
+        EasyBalrogBodyBehavior.setTelegraphSkillActions(false);
         try {
             Fixture fixture = easyBalrogBodyAtHalfHp();
 
@@ -283,17 +284,16 @@ class ServerMobAutonomyServiceTest {
             service.tickForTest(System.nanoTime());
 
             byte[] bytes = castPacketBytes(fixture);
-            assertEquals(43, Byte.toUnsignedInt(bytes[8]),
-                    "left-facing skill1 must use the client skill animation activity");
-            assertEquals(server.life.MobSkillType.PHYSICAL_AND_MAGIC_COUNTER.getId(),
-                    Byte.toUnsignedInt(bytes[9]));
-            assertEquals(4, Byte.toUnsignedInt(bytes[10]));
+            assertEquals(0xFF, Byte.toUnsignedInt(bytes[8]),
+                    "with the switch off the body's cast carries no action, so the client skips skill1 and its sound");
+            assertEquals(0, Byte.toUnsignedInt(bytes[9]));
+            assertEquals(0, Byte.toUnsignedInt(bytes[10]));
             verify(fixture.overall).registerOverallAction(
                     org.mockito.ArgumentMatchers.eq(922010900),
                     org.mockito.ArgumentMatchers.any(),
                     org.mockito.ArgumentMatchers.eq(2_280L));
         } finally {
-            EasyBalrogBodyBehavior.setTelegraphSkillActions(false);
+            EasyBalrogBodyBehavior.setTelegraphSkillActions(true);
         }
     }
 

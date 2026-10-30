@@ -300,3 +300,7 @@ How to read the results:
 - Fix A (stop stale body control) fixes a real server defect and stays. The stale-control log also saw one MOVE_LIFE for
   claw 8830009 at encounter start, so claws can briefly be client-controlled too. Fix B (body casts without the skill
   action) has not been shown to matter; it stays on until the memory check, then the user decides.
+- 2026-10-29: Fix B is off by default (`telegraph = action`). The memory check settled the crash: the large-address-aware
+  client (shipped 2026-10-09) ran Easy Balrog with 9 body casts and no crash, and with the WZ mapping fix (2026-10-14)
+  boss fights peak at 1.5-2.5 GB of the 4 GB address space. Fix A stays. `!balrogprobe telegraph none` still turns Fix B
+  back on until a restart.
