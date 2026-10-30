@@ -210,7 +210,7 @@ What the branch adds:
 - Fix A: when the server owns the body, its activation sends a stop-control packet for the body to every human on the
   map who is not changing maps. The `Easy Balrog body activated` line gains `controlStops=<count>`.
 - Fix B: the body's skill casts (145 and 133) send no action. The movement and the impact do not change.
-- Visible change while Fix B is on (the default): the body's 145 and 133 casts play no skill1 animation and no Skill1
+- Visible change while Fix B is on (the default until 2026-10-29): the body's 145 and 133 casts play no skill1 animation and no Skill1
   sound. The status still applies at impact.
 - The GM6 tool `!balrogprobe`.
 
@@ -221,7 +221,7 @@ What the branch adds:
 - `!balrogprobe telegraph action` makes the body's casts send the skill1 action again (Fix B off).
 - `!balrogprobe telegraph none` sends the casts without the action (Fix B on).
 - `!balrogprobe telegraph` prints the current value.
-- The switch is not saved. A restart sets it back to `none`.
+- The switch is not saved. A restart sets it back to the default: `none` until 2026-10-29, `action` since.
 
 Warning: each arm below may close the human client. Each step changes only your own test server.
 
