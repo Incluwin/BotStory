@@ -2,6 +2,7 @@ package server.agents.capabilities.combat;
 
 import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.capabilities.expedition.boss.AgentBossClientLoad;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.expedition.boss.AgentBossTargetGate;
 import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
 
@@ -110,7 +111,7 @@ public final class AgentCombatAttackRuntime {
         attack.numAttackedAndDamage = AgentAttackPacketPolicy.packCounts(numAttacked, numDamage);
         attack.speed = attackPlan.speed;
         attack.stance = attackPlan.stance;
-        attack.display = attackPlan.display;
+        attack.display = AgentSparkProc.swingDisplay(bot, attackPlan);
         attack.direction = attackPlan.direction;
         attack.rangedirection = attackPlan.rangedDirection;
         attack.ranged = attackPlan.route == AgentAttackRoute.RANGED;
@@ -188,6 +189,8 @@ public final class AgentCombatAttackRuntime {
         AgentAranCombo.countHits(bot, attackPlan.skillId, (int) attack.targets.values().stream()
                 .filter(target -> target.damageLines().stream().anyMatch(damage -> damage > 0)).count());
         AgentCombatAlertRuntime.markAlerted(entry);
+        // what a v83 client sends on its own after this swing: a Spark
+        AgentSparkProc.afterSwing(entry, bot, attackPlan, primaryTarget);
         return AgentAttackTransactionResult.committed(
                 bot.getMapId(),
                 attackPlan.skillId,
@@ -195,6 +198,69 @@ public final class AgentCombatAttackRuntime {
                 hitLines,
                 totalLines - hitLines,
                 committedAtMs);
+    }
+
+    /**
+     * 2026-10-30: sends {@code followUp}, an attack a v83 client sends on its own after a swing (AgentSparkProc), at its
+     * targets as listed (none is fine: the client sends it so too), the n-th target's lines {@code delaysMs[n]} after.
+     * No readiness gate: the swing that set it off was the decision and holds the attack lock. The same handler, damage
+     * and boss scaling as a swing; the skill usage histogram counts it under its own id, and the learner does not hear
+     * of it.
+     */
+    static AgentAttackTransactionResult commitFollowUp(AgentRuntimeEntry entry, Character bot,
+                                                       AgentAttackPlan followUp, List<Integer> delaysMs) {
+        MapleMap attackMap = bot.getMap();
+        int numDamage = AgentAttackPacketPolicy.damageLineCount(followUp.numDamage);
+        List<Monster> targets = authoritativeTargets(bot, followUp.targets,
+                AgentAttackPacketPolicy.targetCount(followUp.targets.size()), attackMap);
+        AbstractDealDamageHandler.AttackInfo attack = new AbstractDealDamageHandler.AttackInfo();
+        attack.skill = followUp.skillId;
+        attack.skilllevel = followUp.skillLevel;
+        attack.numDamage = numDamage;
+        attack.numAttacked = targets.size();
+        attack.numAttackedAndDamage = AgentAttackPacketPolicy.packCounts(targets.size(), numDamage);
+        attack.speed = followUp.speed;
+        attack.stance = followUp.stance;
+        attack.display = followUp.display;
+        attack.direction = followUp.direction;
+        attack.rangedirection = followUp.rangedDirection;
+        attack.ranged = followUp.route == AgentAttackRoute.RANGED;
+        CombatFormulaProvider.DamageProfile damageProfile = AgentAttackDamageProfileService.resolve(bot, followUp);
+        attack.magic = damageProfile.magicAttack();
+        attack.targets = new LinkedHashMap<>();
+        for (Monster target : targets) {
+            int index = followUp.targets.indexOf(target);
+            int delayMs = index >= 0 && index < delaysMs.size() ? delaysMs.get(index) : followUp.hitDelayMs;
+            attack.targets.put(target.getObjectId(), scaled(
+                    CombatFormulaProvider.getInstance().makeTarget(bot, target, numDamage,
+                            followUp.skillId, damageProfile, delayMs),
+                    linePercent(followUp.skillId, AgentBossClientLoad.damagePercent(bot, target.getId()))));
+        }
+        CombatAttackApplicationResult application =
+                AgentAttackExecutionProvider.applyAttackRoute(followUp.route, attack, bot);
+        if (application == null || !application.applied()) {
+            return AgentAttackTransactionResult.rejected(
+                    AgentAttackTransactionResult.Reason.HANDLER_REJECTED, bot.getMapId(), followUp.skillId);
+        }
+        int hitLines = attack.targets.values().stream().flatMap(target -> target.damageLines().stream())
+                .mapToInt(damage -> damage > 0 ? 1 : 0).sum();
+        int totalLines = attack.targets.values().stream().mapToInt(target -> target.damageLines().size()).sum();
+        long dealt = attack.targets.values().stream().flatMap(target -> target.damageLines().stream())
+                .mapToLong(damage -> damage).sum();
+        AgentCombatSkillUsageStateRuntime.record(entry, followUp.skillId, dealt);
+        AgentBossClientLoad.memberAttack(bot, followUp.skillId, dealt);
+        return AgentAttackTransactionResult.committed(bot.getMapId(), followUp.skillId,
+                targets.stream().map(Monster::getObjectId).toList(), hitLines, totalLines - hitLines,
+                System.currentTimeMillis());
+    }
+
+    /** Whether a follow-up may land on {@code monster}: one the Agent would attack itself, on its own map. */
+    static boolean mayFollowUpOn(AgentRuntimeEntry entry, Character bot, Monster monster) {
+        return AgentCombatTargetEligibilityPolicy.isHostileLivingMonster(monster)
+                && monster.getMap() == bot.getMap()
+                && !AgentBossRunRegistry.neverTarget(monster)
+                && !AgentBossTargetGate.refuses(bot, monster)
+                && AgentCombatObjectiveTargetStateRuntime.allows(entry, monster.getId());
     }
 
     /**

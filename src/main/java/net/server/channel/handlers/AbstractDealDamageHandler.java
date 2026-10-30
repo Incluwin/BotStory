@@ -236,7 +236,8 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
             distanceToDetect += 60000;
         }
 
-        if (distance > distanceToDetect && !isAgentHitOnServerOwnedBoss(player, monster)) {
+        if (distance > distanceToDetect && !isAgentHitOnServerOwnedBoss(player, monster)
+                && !isAgentSpark(attack, player)) {
             AutobanFactory.DISTANCE_HACK.alert(player, "Distance Sq to monster: " + distance + " SID: " + attack.skill + " MID: " + monster.getId());
             monster.refreshMobPosition();
         }
@@ -245,6 +246,24 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
     private static boolean isAgentHitOnServerOwnedBoss(Character player, Monster monster) {
         return player.getClient() instanceof BotClient
                 && (ServerMobAutonomyService.isActiveInstance(monster) || AgentBossScope.guards(monster));
+    }
+
+    /**
+     * 2026-10-30: an Agent's Spark is exempt too. A real client's spark jumps on from the monster the swing struck to
+     * monsters anywhere on the map (up to 1479 px from the Thunder Breaker in a capture, which raised 20 alerts in
+     * three minutes for a human), and an Agent's sparks jump the same way (AgentSparkProc).
+     */
+    private static boolean isAgentSpark(AttackInfo attack, Character player) {
+        return isSparkProc(attack) && player.getClient() instanceof BotClient;
+    }
+
+    /**
+     * 2026-10-30: a Thunder Breaker's Spark, which the client sends on its own after a swing while the buff is on. It
+     * costs no MP and leaves the buff as it is. This handler recast the buff for each one: all 24 sparks of a human
+     * capture re-broadcast the Spark cast effect to the map, and each charged the buff's 30 MP.
+     */
+    static boolean isSparkProc(AttackInfo attack) {
+        return attack.skill == ThunderBreaker.SPARK;
     }
 
     /** The damage every line of {@code attack} reports, summed over its targets. */
@@ -281,7 +300,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     return false;
                 }
 
-                if (!attackEffect.canPaySkillCost(player)) {
+                if (!isSparkProc(attack) && !attackEffect.canPaySkillCost(player)) {
                     if (player.getMp() < attackEffect.getMpCon()) {
                         AutobanFactory.MPCON.addPoint(player.getAutobanManager(), "Skill: " + attack.skill + "; Player MP: " + player.getMp() + "; MP Needed: " + attackEffect.getMpCon());
                     }
@@ -300,6 +319,8 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                         } else if (attack.skill == DawnWarrior.FINAL_ATTACK || attack.skill == WindArcher.FINAL_ATTACK) {
                             // prevent cygnus FA refreshing
                             mobCount = 15;
+                        } else if (isSparkProc(attack)) {
+                            // the proc neither pays the buff's MP again nor recasts it
                         } else if (attack.skill == NightWalker.POISON_BOMB) {// Poison Bomb
                             attackEffect.applyTo(player, new Point(attack.position.x, attack.position.y));
                         } else {
