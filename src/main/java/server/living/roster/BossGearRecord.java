@@ -67,13 +67,23 @@ final class BossGearRecord {
      * for an item that is no equip). The same for the piece wherever it lies, carried or saved.
      */
     static int print(Item item) {
+        int[] stats = stats(item);
+        return stats == null ? 0 : Arrays.hashCode(stats);
+    }
+
+    /** Two copies of one equip id with the same stats, scrolls passed and upgrade slots left ({@link #print}'s). */
+    static boolean samePiece(Item item, Item other) {
+        return item.getItemId() == other.getItemId() && Arrays.equals(stats(item), stats(other));
+    }
+
+    private static int[] stats(Item item) {
         if (!(item instanceof Equip equip)) {
-            return 0;
+            return null;
         }
-        return Arrays.hashCode(new int[] {equip.getStr(), equip.getDex(), equip.getInt(), equip.getLuk(),
+        return new int[] {equip.getStr(), equip.getDex(), equip.getInt(), equip.getLuk(),
                 equip.getHp(), equip.getMp(), equip.getWatk(), equip.getMatk(), equip.getWdef(), equip.getMdef(),
                 equip.getAcc(), equip.getAvoid(), equip.getHands(), equip.getSpeed(), equip.getJump(),
-                equip.getVicious(), equip.getUpgradeSlots(), equip.getLevel()});
+                equip.getVicious(), equip.getUpgradeSlots(), equip.getLevel()};
     }
 
     /**
