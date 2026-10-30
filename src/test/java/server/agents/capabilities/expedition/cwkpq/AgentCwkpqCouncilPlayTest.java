@@ -108,6 +108,7 @@ class AgentCwkpqCouncilPlayTest {
         assertEquals(List.of("Orrin: " + AgentCwkpqCouncilPlay.READY_LINE, "Orrin: " + AgentCwkpqCouncilPlay.CLEAR_LINE),
                 party);
         verify(fight, never()).tick(any(), any(), anyLong());
+        verify(fight, never()).tick(any(), any(), any(), anyLong());
     }
 
     @Test
@@ -122,7 +123,7 @@ class AgentCwkpqCouncilPlayTest {
         AgentCwkpqCouncilPlay.council(ports, List.of(magna, orrin), event, run, 1_000L);
 
         verify(gateway).grind(entries.get(10), Set.of(9_400_592), Set.of(9_400_590, 9_400_591, 9_400_593));
-        verify(fight).tick(List.of(orrin), event, 1_000L);
+        verify(fight).tick(List.of(orrin), List.of(magna, orrin), event, 1_000L); // its status line names Magna too
     }
 
     @Test
@@ -134,7 +135,20 @@ class AgentCwkpqCouncilPlayTest {
 
         AgentCwkpqCouncilPlay.council(ports, List.of(magna), event, run, 1_000L);
 
-        verify(fight).tick(List.of(magna), event, 1_000L);
+        verify(fight).tick(List.of(magna), List.of(magna), event, 1_000L);
+    }
+
+    @Test
+    void withOnlyMagesOnTheirMastersTheFightStillReportsThem() {
+        Character magna = member(10, "Magna", Job.FP_ARCHMAGE);
+        Character ingrid = member(11, "Ingrid", Job.IL_ARCHMAGE);
+        when(map.countMonsters()).thenReturn(4);
+        when(event.getIntProperty("glpq6")).thenReturn(2);
+        when(gateway.liveMonsterCounts(any())).thenReturn(Map.of(9_400_592, 1, 9_400_593, 1));
+
+        AgentCwkpqCouncilPlay.council(ports, List.of(magna, ingrid), event, run, 1_000L);
+
+        verify(fight).tick(List.of(), List.of(magna, ingrid), event, 1_000L);
     }
 
     @Test

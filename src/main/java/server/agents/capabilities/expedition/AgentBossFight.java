@@ -18,6 +18,15 @@ public interface AgentBossFight {
     /** Drives the alive adopted members that stand on the battle map of {@code event}. */
     void tick(List<Character> fighters, EventInstanceManager event, long nowMs);
 
+    /**
+     * Drives {@code fighters} as {@link #tick(List, EventInstanceManager, long)} does, while what the fight reports of
+     * the members (its status line) covers all of {@code party}: the fighters and the members another play steers in
+     * the same fight (CWKPQ's Council Hall mages).
+     */
+    default void tick(List<Character> fighters, List<Character> party, EventInstanceManager event, long nowMs) {
+        tick(fighters, event, nowMs);
+    }
+
     /** Releases fight-owned state when the run ends. */
     void end(EventInstanceManager event);
 
