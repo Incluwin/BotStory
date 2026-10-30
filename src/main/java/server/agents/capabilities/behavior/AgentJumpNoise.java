@@ -5,6 +5,8 @@ import server.agents.capabilities.combat.AgentFallDamageCalculator;
 import server.agents.capabilities.movement.AgentJumpActionService;
 import server.agents.capabilities.movement.AgentPostLandingJump;
 import server.agents.capabilities.movement.AgentJumpProbeService;
+import server.agents.capabilities.movement.AgentMovementKinematicsService;
+import server.agents.capabilities.movement.AgentMovementPhysicsStateRuntime;
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
@@ -28,12 +30,8 @@ import java.util.concurrent.ThreadLocalRandom;
  * while the noise is on (one source of falls, not two). With no plan installed every jump is exactly today's.
  */
 public final class AgentJumpNoise {
-    /** A drawn launch is taken this close to its x: about one walk step at the 50 ms movement tick. */
-    static final int LAUNCH_TOLERANCE_PX = 7;
     /** A drawn press stays this far inside its platform's ends, so walking to it never steps off. */
     public static final int EDGE_MARGIN_PX = 4;
-    /** The tolerance band is probed every this many pixels. */
-    static final int SAFE_PROBE_STEP_PX = 3;
     /** Ticks after a probed landing that it must still stand on its foothold. */
     static final int POST_LANDING_TICKS = 3;
     /** A landing this far below its launch is a miss (a real drop to a lower foothold). */
@@ -66,6 +64,7 @@ public final class AgentJumpNoise {
         private Random random = new Random();
         private AgentNavigationGraph.Edge drawnEdge;
         private int drawnX = Integer.MIN_VALUE;
+        private int drawnTolerance;
         private boolean moved;
         private int pendingLaunchY = Integer.MIN_VALUE;
         private int jumps;
@@ -162,6 +161,7 @@ public final class AgentJumpNoise {
             double sigma = Math.max(0.0d, plan.sigmaAt(edge.startPoint.y));
             MapleMap map = sigma > 0.0d ? AgentRuntimeIdentityRuntime.botMap(entry) : null; // only a draw needs them
             AgentMovementProfile profile = map != null ? AgentMovementStateRuntime.movementProfile(entry) : null;
+            int tolerance = map != null ? launchTolerance(map, profile) : 0;
             int x = selectedX;
             boolean drawn = false;
             for (int attempt = 0; attempt < REDRAWS && sigma > 0.0d && map != null; attempt++) {
@@ -169,7 +169,7 @@ public final class AgentJumpNoise {
                 int offset = (int) Math.round(Math.max(-MAX_OFFSET_PX, Math.min(MAX_OFFSET_PX, state.random.nextGaussian() * sigma)));
                 int candidate = Math.max(from.minX + edgeMargin, Math.min(from.maxX - edgeMargin, selectedX + offset));
                 if (candidate == selectedX // navigation's own pick: its rules as always; any other press is probed
-                        || safeLaunch(entry, graph, map, profile, from, edge, candidate)) {
+                        || safeLaunch(entry, graph, map, profile, from, edge, candidate, tolerance)) {
                     x = candidate;
                     drawn = true;
                     break;
@@ -180,9 +180,18 @@ public final class AgentJumpNoise {
             }
             state.drawnEdge = edge;
             state.drawnX = x;
+            state.drawnTolerance = tolerance;
             state.moved = x != selectedX;
             return x;
         }
+    }
+
+    /**
+     * How far from its drawn x a moved press may still be taken (readyAtDraw): half a walk step, by an Agent that came
+     * to rest that close (a precise approach to a jump coasts to rest on its launch, a pixel either way).
+     */
+    public static int launchTolerance(MapleMap map, AgentMovementProfile profile) {
+        return (AgentMovementKinematicsService.walkStep(map, profile) + 1) / 2;
     }
 
     /** True when {@code x} is this Agent's drawn launch for {@code edge} (navigation's cache keeps it). */
@@ -198,7 +207,11 @@ public final class AgentJumpNoise {
 
     /**
      * Readiness for a drawn launch the noise moved off navigation's pick (a press too early or too late): null when the
-     * edge has no such draw (navigation decides as always), else whether the Agent stands within LAUNCH_TOLERANCE_PX of it.
+     * edge has no such draw (navigation decides as always), else whether the Agent is on it (a pixel either way), or at
+     * rest within the draw's launchTolerance of it. So the takeoff is the draw, as the calibration (JumpWindows) asks.
+     * Taken at the first position near it instead, it came on the approach side every time (navigation looks every
+     * 100 ms, two walk steps): 1-7 px early within a whole step, and a 70% climber cleared about 30% of 101000100's
+     * stages; 2-3 px early within half a step, still about 45%.
      */
     public static Boolean readyAtDraw(AgentRuntimeEntry entry, AgentNavigationGraph.Edge edge, Point position) {
         State state = entry == null || position == null ? null : entry.capabilityStates().find(State.STATE_KEY).orElse(null);
@@ -209,7 +222,8 @@ public final class AgentJumpNoise {
             if (state.drawnEdge != edge || !state.moved) {
                 return null;
             }
-            return Math.abs(position.x - state.drawnX) <= LAUNCH_TOLERANCE_PX;
+            int off = Math.abs(position.x - state.drawnX);
+            return off <= 1 || off <= state.drawnTolerance && AgentMovementPhysicsStateRuntime.horizontalSpeed(entry) == 0.0;
         }
     }
 
@@ -250,19 +264,21 @@ public final class AgentJumpNoise {
     }
 
     /**
-     * A press the noise moved: every launch within LAUNCH_TOLERANCE_PX of it lands on a foothold that can still reach the
+     * A press the noise moved: every launch within {@code tolerance} of it lands on a foothold that can still reach the
      * Agent's move target (its target or a lower one: a miss), and
      * no farther down than a fall that hurts (a jump quest's misses cost a climb, never HP: no deaths from them).
      */
     private static boolean safeLaunch(AgentRuntimeEntry entry, AgentNavigationGraph graph, MapleMap map,
                                       AgentMovementProfile profile, AgentNavigationGraph.Region from,
-                                      AgentNavigationGraph.Edge edge, int x) {
+                                      AgentNavigationGraph.Edge edge, int x, int tolerance) {
         int stepX = AgentJumpActionService.resolveAirVelocityX(map, profile, edge.launchStepX);
         Point target = AgentMoveTargetStateRuntime.moveTarget(entry);
         int targetRegion = target == null ? -1 : graph.findRegionId(map, target);
-        // It takes off anywhere within LAUNCH_TOLERANCE_PX of the drawn x: every launch in that band must be safe, and
-        // where it stands a few ticks after landing (a landing near a platform's end can slide off) is what counts.
-        for (int at = x - LAUNCH_TOLERANCE_PX; at <= x + LAUNCH_TOLERANCE_PX; at += SAFE_PROBE_STEP_PX) {
+        // It takes off anywhere within the tolerance of the drawn x (readyAtDraw): every launch in that band must be
+        // safe, and where it stands a few ticks after landing (a landing near a platform's end can slide off) is what
+        // counts. Every pixel: one pixel past a window's end can be the one that clears the platform's lip or misses it
+        // into a void (101000101's r60->r59: -548 lands on r59, -547 falls off the map's left edge).
+        for (int at = x - tolerance; at <= x + tolerance; at++) {
             Point origin = from.pointAt(Math.max(from.minX, Math.min(from.maxX, at)));
             AgentPostLandingJump landing = origin == null ? null
                     : AgentJumpProbeService.simulateJumpLandingWithPostLandingTicks(map, origin, stepX, profile, POST_LANDING_TICKS);

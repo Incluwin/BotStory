@@ -3,6 +3,7 @@ package server.agents.runtime;
 import server.agents.capabilities.recovery.AgentRecoveryTeleportService;
 import client.Character;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
@@ -11,6 +12,7 @@ import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,6 +104,51 @@ class AgentRecoveryTeleportServiceTest {
 
         assertTrue(recovered);
         counters.assertRecoverySideEffects();
+    }
+
+    /**
+     * A jump quest's miss that falls out of the map meets this recovery before the airborne below-map margin: the
+     * attempt's host decides, as it does there. A player watching: no teleport (it logs off); nobody: the teleport runs.
+     */
+    @Test
+    void aJumpQuestsFallOutOfTheMapIsLeftToItsHost() {
+        MapleMap map = map(new Rectangle(-698, -3893, 1125, 4416));
+        Character agent = character(map, new Point(-698, 526));
+        AgentRuntimeEntry entry = entry(agent);
+        AgentMoveTargetStateRuntime.setMoveTarget(entry, new Point(-563, -1522), true);
+        AtomicBoolean watched = new AtomicBoolean(true);
+        AtomicInteger asked = new AtomicInteger();
+        AgentJumpNoise.install(entry, new AgentJumpNoise.Plan() {
+            @Override
+            public double sigmaAt(int launchY) {
+                return 9.0d;
+            }
+
+            @Override
+            public boolean belowMap(Character fallen) {
+                asked.incrementAndGet();
+                return watched.get();
+            }
+        }, 15L);
+        Counters seen = new Counters(null);
+        assertTrue(AgentRecoveryTeleportService.recoverTeleportDistance(
+                entry, agent, new Point(-563, -1522), 4000, 600, hooks(seen)));
+        assertEquals(1, asked.get());
+        seen.assertNoSideEffects();
+
+        watched.set(false);
+        Counters unseen = new Counters(null);
+        assertTrue(AgentRecoveryTeleportService.recoverTeleportDistance(
+                entry, agent, new Point(-563, -1522), 4000, 600, hooks(unseen)));
+        assertEquals(2, asked.get());
+        unseen.assertRecoverySideEffects();
+
+        AgentJumpNoise.clear(entry);
+        Counters after = new Counters(null);
+        assertTrue(AgentRecoveryTeleportService.recoverTeleportDistance(
+                entry, agent, new Point(-563, -1522), 4000, 600, hooks(after)));
+        assertEquals(2, asked.get(), "no attempt on: the recovery as always");
+        after.assertRecoverySideEffects();
     }
 
     @Test

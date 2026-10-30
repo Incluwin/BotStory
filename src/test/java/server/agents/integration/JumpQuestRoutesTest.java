@@ -6,11 +6,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import server.agents.capabilities.behavior.AgentJumpNoise;
+import server.agents.capabilities.combat.AgentFallDamageCalculator;
 import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentJumpActionService;
 import server.agents.capabilities.movement.AgentJumpProbeService;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.capabilities.movement.AgentMovementPhysicsStateRuntime;
 import server.agents.capabilities.movement.AgentMovementProfile;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.capabilities.movement.AgentPostLandingJump;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
@@ -89,8 +92,8 @@ class JumpQuestRoutesTest {
 
     /**
      * A clumsy citizen (30%) for six minutes of game time: it misses, every miss comes down on a lower foothold of the
-     * map, never below it, never teleported, never hurt (fall damage would throw here: the lab has no timers), and it
-     * never stands still two minutes (the user's no-long-idle rule). In the activity it gives up after JQ_FALLS_MAX.
+     * map, never below it, never teleported, never far enough to hurt, and it never stands still two minutes (the
+     * user's no-long-idle rule). In the activity it gives up after JQ_FALLS_MAX.
      */
     @ParameterizedTest(name = "{0} leg {1}")
     @MethodSource("noisyLegs")
@@ -104,6 +107,7 @@ class JumpQuestRoutesTest {
         assertEquals(climb.misses, climb.lowerLandings, "every miss came down on a lower foothold of the map");
         assertEquals(0, belowMap.get(), "no fall below the map");
         assertEquals(0, climb.teleports, "no recovery teleport");
+        assertTrue(climb.longestFall < AgentFallDamageCalculator.FALL_DIST_THRESHOLD_PX, "fell " + climb.longestFall);
         assertTrue(climb.longestStillTicks < 2_400, "stood still " + climb.longestStillTicks * 50 / 1000 + " s: "
                 + String.join("\n", climb.trace));
     }
@@ -122,6 +126,78 @@ class JumpQuestRoutesTest {
         assertEquals(climb.misses, climb.lowerLandings, "every miss came down on a lower foothold of the map");
         assertEquals(0, belowMap.get(), "no fall below the map");
         assertEquals(0, climb.teleports, "no recovery teleport");
+        assertTrue(climb.longestFall < AgentFallDamageCalculator.FALL_DIST_THRESHOLD_PX, "fell " + climb.longestFall);
+    }
+
+    /**
+     * Seed 15's skilled climb of fop_a's second map once missed off the r60->r59 jump into the void left of the map
+     * (1,700 px down, past the fall-damage distance) and the out-of-bounds recovery put it on its checkpoint in one
+     * tick. Now its misses come down on footholds like the rest.
+     */
+    @Test
+    void theSkilledClimbThatOnceFellOffTheMapMissesOntoItsFootholds() {
+        Leg leg = leg("fop_a", 1);
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(leg.mapId());
+        Stages stages = JumpQuestCourses.cut(leg, map);
+        AtomicInteger belowMap = new AtomicInteger();
+        Climb climb = climb(map, leg, stages, plan(stages, 0.7d, belowMap), 15L, 9_000, Integer.MAX_VALUE);
+        assertEquals(-1, climb.stalledAt, "stalled at stage " + climb.stalledAt + ": " + String.join("\n", climb.trace));
+        assertTrue(climb.misses >= 1, "it still misses: " + climb.misses + " of " + climb.jumps);
+        assertEquals(climb.misses, climb.lowerLandings, "every miss came down on a lower foothold of the map");
+        assertEquals(0, belowMap.get(), "no fall below the map");
+        assertEquals(0, climb.teleports, "no recovery teleport");
+        assertTrue(climb.longestFall < AgentFallDamageCalculator.FALL_DIST_THRESHOLD_PX, "fell " + climb.longestFall);
+    }
+
+    /**
+     * A drawn press is taken anywhere its readiness accepts (launchTolerance either side), so every launch there must
+     * land on the map: r60->r59 on 101000101 has its window end a pixel from the void (-548 lands on r59, -547 falls off
+     * the map's left edge), which a probe every 3 px stepped over. Each draw the noise keeps there, over many seeds.
+     */
+    @Test
+    void everyLaunchAroundAKeptDrawLandsOnTheMap() {
+        Leg leg = leg("fop_a", 1);
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(leg.mapId());
+        Stages stages = JumpQuestCourses.cut(leg, map);
+        AgentMovementProfile profile = AgentMovementProfile.base();
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map, profile);
+        AgentNavigationGraph.Region from = graph.getRegion(graph.findRegionId(map, new Point(-500, -1162)));
+        int to = graph.findRegionId(map, new Point(-620, -1222));
+        AgentNavigationGraph.Edge edge = graph.getOutgoing(from.id).stream()
+                .filter(e -> e.toRegionId == to && e.type == AgentNavigationGraph.EdgeType.JUMP)
+                .findFirst().orElseThrow();
+        assertEquals(new Point(-558, -1162), edge.startPoint, "the jump seed 15 missed");
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        AgentRuntimeEntry entry = lab.spawnBot("JQ", 77, map, from.pointAt(-500));
+        lab.setMoveTarget("JQ", new Point(-563, -1522), true); // the stage's checkpoint, as in that climb
+        int stepX = AgentJumpActionService.resolveAirVelocityX(map, profile, edge.launchStepX);
+        int tolerance = AgentJumpNoise.launchTolerance(map, AgentMovementStateRuntime.movementProfile(entry));
+        assertTrue(tolerance >= 3, "a walk step's half: " + tolerance);
+        int kept = 0;
+        for (long seed = 0; seed < 300; seed++) {
+            AgentJumpNoise.install(entry, plan(stages, 0.7d, new AtomicInteger()), seed);
+            int x = AgentJumpNoise.launchX(entry, graph, edge, edge.startPoint.x);
+            if (x == edge.startPoint.x) {
+                continue; // navigation's own pick: its window, as always
+            }
+            kept++;
+            AgentMovementPhysicsStateRuntime.setHorizontalSpeed(entry, -3.0d); // walking: it presses on the draw
+            assertEquals(Boolean.TRUE, AgentJumpNoise.readyAtDraw(entry, edge, new Point(x + 1, -1162)));
+            assertEquals(Boolean.FALSE, AgentJumpNoise.readyAtDraw(entry, edge, new Point(x + 2, -1162)));
+            AgentMovementPhysicsStateRuntime.setHorizontalSpeed(entry, 0.0d); // at rest: anywhere in the band
+            assertEquals(Boolean.FALSE, AgentJumpNoise.readyAtDraw(entry, edge, new Point(x - tolerance - 1, -1162)));
+            assertEquals(Boolean.FALSE, AgentJumpNoise.readyAtDraw(entry, edge, new Point(x + tolerance + 1, -1162)));
+            for (int at = x - tolerance; at <= x + tolerance; at++) {
+                assertEquals(Boolean.TRUE, AgentJumpNoise.readyAtDraw(entry, edge, new Point(at, -1162)), "ready at " + at);
+                Point origin = from.pointAt(Math.max(from.minX, Math.min(from.maxX, at)));
+                AgentPostLandingJump landing = AgentJumpProbeService.simulateJumpLandingWithPostLandingTicks(map, origin,
+                        stepX, profile, 3);
+                assertTrue(landing != null && landing.landing() != null && !landing.lostGround()
+                                && graph.findRegionId(map, landing.finalPoint()) >= 0,
+                        "seed " + seed + ": draw " + x + ", a launch at " + at + " falls off the map");
+            }
+        }
+        assertTrue(kept >= 100, "draws kept off navigation's pick: " + kept);
     }
 
     /** The activity's noise for a citizen of {@code skill}: each stage's spread for its scaled chance. */
@@ -251,6 +327,8 @@ class JumpQuestRoutesTest {
         int lowerLandings;
         /** The longest run of ticks it stayed within 8 px of one spot. */
         int longestStillTicks;
+        /** The deepest it got below an airborne spell's highest point, landed or not (fall damage counts from there). */
+        int longestFall;
         List<String> trace = List.of();
     }
 
@@ -276,6 +354,7 @@ class JumpQuestRoutesTest {
         int stillTicks = 0;
         int ticks = 0;
         int seenMisses = 0;
+        int apexY = Integer.MAX_VALUE;
         for (int s = 0; s < stages.count() && ticks < totalTicks; s++) {
             Point checkpoint = stages.checkpoints().get(s);
             lab.setMoveTarget("JQ", checkpoint, true);
@@ -287,6 +366,12 @@ class JumpQuestRoutesTest {
                     climb.teleports++;
                 }
                 last = now;
+                if (AgentMovementStateRuntime.inAir(entry)) {
+                    apexY = Math.min(apexY, now.y);
+                    climb.longestFall = Math.max(climb.longestFall, now.y - apexY);
+                } else {
+                    apexY = Integer.MAX_VALUE;
+                }
                 if (now.distance(stillAt) > 8) {
                     stillAt = now;
                     stillTicks = 0;

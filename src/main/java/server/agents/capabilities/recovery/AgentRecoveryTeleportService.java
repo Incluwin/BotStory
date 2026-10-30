@@ -1,6 +1,7 @@
 package server.agents.capabilities.recovery;
 
 import client.Character;
+import server.agents.capabilities.behavior.AgentJumpNoise;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -110,6 +111,11 @@ public final class AgentRecoveryTeleportService {
                                                    RecoveryHooks hooks) {
         if (server.agents.progression.AgentMushroomKingdomMovementRecovery.blockWithoutTeleport(
                 entry, agent, "movement exceeded the recovery distance")) return true;
+        // A jump quest's fall out of the map, caught here before the airborne below-map margin: its host decides, as
+        // there (a player watching: it logs off instead of a teleport) (F5b).
+        if (isOutsideKnownMapBounds(agent) && AgentJumpNoise.belowMap(entry, agent)) {
+            return true;
+        }
         Point from = new Point(agent.getPosition());
         Point spawn = hooks.groundPointFinder().apply(agent.getMap(), new Point(targetPosition.x, targetPosition.y - 1));
         if (spawn == null) {
