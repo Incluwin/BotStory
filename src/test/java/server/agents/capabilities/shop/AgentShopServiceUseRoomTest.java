@@ -198,6 +198,28 @@ class AgentShopServiceUseRoomTest {
         assertEquals(List.of(), transactions, "nothing it does not use to sell: the shop refuses the potions as today");
     }
 
+    /**
+     * Live 10-29: Balrog readiness trips logged "needs 1192 more free Use slot(s)" and sold every stack of ammo they did
+     * not use: the room counted a points standard's shortfall (balrog_normal 300,000 HP / 240,000 MP points) as if it
+     * were potions. In the potions the visit picks (White 300, Mana Elixir 300) that is about 18 stacks, which a Use
+     * tab with 66 free slots holds without selling anything.
+     */
+    @Test
+    void aBossTripCountsItsRecoveryPointsInThePotionsItBuys() {
+        List<Item> arrows = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            arrows.add(stack(ARROW, 2_000));
+        }
+        useTab(96, arrows);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+
+        AgentShopService.makeUseRoomForReadiness(new AgentShopPurchaseSequence<>(entry, bot, inventory, new Point(),
+                List.of(), new ArrayList<>(), null), shop(PERION), WeaponType.SPEAR_STAB,
+                server.agents.capabilities.supplies.AgentSupplyReadiness.Activity.partyQuest("balrog_normal"));
+
+        assertEquals(List.of(), transactions, "room enough: none of its arrows sold");
+    }
+
     private void useTab(int slots, List<Item> items) {
         use = new Inventory(bot, InventoryType.USE, (byte) slots);
         items.forEach(use::addItem);

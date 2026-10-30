@@ -1542,7 +1542,14 @@ public final class AgentShopService {
             AgentSupplyReadiness.Activity trip) {
         Character bot = sequence.bot();
         AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(bot, trip);
-        int wanted = stacks(shortfall.hp()) + stacks(shortfall.mp())
+        // a points standard's shortfall is HP and MP points, in potions only as the visit's pick buys them (as the
+        // trip's checks count it): read as potions, live 10-29 Balrog readiness trips "needed" 49-1,192 free Use slots
+        boolean points = AgentSupplyReadiness.recoveryStandard(trip) != null;
+        int hpPotions = points ? AgentSupplyReadiness.potionsFor(shortfall.hp(), coveragePickRecovery(bot, shop, true))
+                : shortfall.hp();
+        int mpPotions = points ? AgentSupplyReadiness.potionsFor(shortfall.mp(), coveragePickRecovery(bot, shop, false))
+                : shortfall.mp();
+        int wanted = stacks(hpPotions) + stacks(mpPotions)
                 + readinessAmmoPlan(bot, shop, bot.getMapId(), trip).newStacks()
                 + readinessCurePlan(bot, shop, trip).newStacks() + 1;
         return makeUseRoom(sequence, shop, wt,
