@@ -23,6 +23,7 @@ public final class AgentKnockbackMovementService {
         agent.setPosition(position);
         AgentClimbStateRuntime.clearBlockedRopeGrab(entry);
         AgentAirborneLaunchService.launchAirborne(entry, position, initialVelocityY, airVelocityX, true);
+        AgentMovementPhysicsStateRuntime.setKnockbackFlight(entry, true);
         AgentMovementStateRuntime.setFacingDirection(entry, preservedFacingDir);
         AgentMovementPoseService.syncCharacterState(entry);
     }
@@ -65,6 +66,7 @@ public final class AgentKnockbackMovementService {
         AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, airVelocityX);
         AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
         AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setKnockbackFlight(entry, true);
         AgentMovementStateRuntime.setDownJumpPending(entry, false);
         AgentClimbStateRuntime.clearBlockedRopeGrab(entry);
         AgentMovementStateRuntime.setMovementVelocity(entry,

@@ -7,6 +7,7 @@ public final class AgentAirborneSteeringState {
     private double velocityX;
     private double steeringVelocityX;
     private boolean fixedAirArc;
+    private boolean knockback;
 
     public double velocityX() {
         return velocityX;
@@ -34,5 +35,14 @@ public final class AgentAirborneSteeringState {
 
     public void setFixedAirArc(boolean fixedAirArc) {
         this.fixedAirArc = fixedAirArc;
+    }
+
+    /** True while the Agent flies from a hit's knockback rather than a jump, fall or drop it made. */
+    public boolean knockback() {
+        return knockback;
+    }
+
+    public void setKnockback(boolean knockback) {
+        this.knockback = knockback;
     }
 }

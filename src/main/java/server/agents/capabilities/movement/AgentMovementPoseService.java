@@ -43,6 +43,7 @@ public final class AgentMovementPoseService {
         AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, 0);
         AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
         AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setKnockbackFlight(entry, false);
         AgentMovementStateRuntime.clearMoveDirection(entry);
         AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, position);
         AgentMovementPhysicsStateRuntime.setHorizontalSpeed(entry, 0.0);
@@ -132,6 +133,7 @@ public final class AgentMovementPoseService {
         AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, 0);
         AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
         AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setKnockbackFlight(entry, false);
         AgentMovementPhysicsStateRuntime.resetFallPeakPhysicsY(entry);
         AgentMovementStateRuntime.setWasMovingX(entry, false);
         AgentMovementStateRuntime.clearMoveDirection(entry);

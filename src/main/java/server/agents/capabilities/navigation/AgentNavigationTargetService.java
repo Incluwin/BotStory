@@ -120,12 +120,17 @@ public final class AgentNavigationTargetService {
                             graph, entry, bot, startRegionId, runAiTick,
                             AgentNavigationPathService::isEdgeUsable);
             if (traversal != null && traversal.holdGroundedExit()) {
+                // Held where it landed unless the target lies on this ground: the walk toward a target
+                // on another region is not planned, and on The Tunnel That Lost Light II (105090100)
+                // it walked the Agent off the 160 px ledge its rope jump had just reached, back to
+                // the floor below, forever.
+                Point hold = traversal.targetRegionId() == startRegionId ? traversal.targetPosition() : botPos;
                 AgentNavigationDebugStateRuntime.clearActiveNavigationEdge(entry);
                 AgentNavigationDebugStateRuntime.clearNavJumpLaunch(entry);
                 AgentNavigationDebugStateRuntime.setNavTargetRegionId(entry, traversal.targetRegionId());
-                AgentNavigationDebugStateRuntime.setNavWaypoint(entry, traversal.targetPosition(), false);
+                AgentNavigationDebugStateRuntime.setNavWaypoint(entry, hold, false);
                 AgentNavigationDebugStateRuntime.setLastDecision(entry, "vertical-settle");
-                return new NavigationDirective(traversal.targetPosition(), false);
+                return new NavigationDirective(hold, false);
             }
             if (traversalWasActive && traversal == null) {
                 // The transaction either completed or invalidated. Do not let its last component

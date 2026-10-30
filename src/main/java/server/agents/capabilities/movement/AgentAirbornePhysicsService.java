@@ -50,6 +50,9 @@ public final class AgentAirbornePhysicsService {
                 map, entry.navigationContinuityState().lastRegionIdForMap(agent.getMapId()));
         int boundedX = AgentHorizontalBoundaryStateRuntime.clampX(
                 entry, map == null ? -1 : map.getId(), nextPosition.x);
+        if (AgentMovementPhysicsStateRuntime.knockbackFlight(entry)) {
+            boundedX = withinTerrain(map, boundedX);
+        }
         if (boundedX != nextPosition.x) {
             return stepAgainstActivityBoundary(entry, agent, map, previousPosition,
                     new Point(boundedX, nextPosition.y), moverZMass);
@@ -101,6 +104,25 @@ public final class AgentAirbornePhysicsService {
         }
         collideWithAirWall(entry, agent, boundaryPoint);
         return AgentAirborneStepResult.WALL;
+    }
+
+    /**
+     * x held between the map's outermost footholds. A hit's knockback flies where no jump the Agent chose would:
+     * from a floor whose side wall runs only below it, the knockback after a long drop's fall damage carried
+     * Agents out past the map's last foothold, where nothing is below (Wild Cargo's Area 105090301,
+     * about 50 falls a day at x -381). The navigation graph never plans a knockback, so it sees no change.
+     */
+    static int withinTerrain(MapleMap map, int x) {
+        if (map == null || map.getFootholds() == null) {
+            return x;
+        }
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        for (Foothold foothold : map.getFootholds().getAllFootholds()) {
+            minX = Math.min(minX, Math.min(foothold.getX1(), foothold.getX2()));
+            maxX = Math.max(maxX, Math.max(foothold.getX1(), foothold.getX2()));
+        }
+        return minX > maxX ? x : Math.clamp(x, minX, maxX);
     }
 
     /** Returns null while the Agent is still above the map's bottom margin. */
@@ -224,6 +246,7 @@ public final class AgentAirbornePhysicsService {
         AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, 0);
         AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
         AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setKnockbackFlight(entry, false);
         AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, position);
         AgentClimbStateRuntime.clearRopeEntry(entry);
         AgentMovementStateRuntime.setDownJumpPending(entry, false);

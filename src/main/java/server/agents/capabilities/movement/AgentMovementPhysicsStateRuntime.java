@@ -59,6 +59,14 @@ public final class AgentMovementPhysicsStateRuntime {
         airborneSteeringState(entry).setFixedAirArc(fixed);
     }
 
+    public static boolean knockbackFlight(AgentRuntimeEntry entry) {
+        return airborneSteeringState(entry).knockback();
+    }
+
+    public static void setKnockbackFlight(AgentRuntimeEntry entry, boolean knockback) {
+        airborneSteeringState(entry).setKnockback(knockback);
+    }
+
     public static double fallPeakPhysicsY(AgentRuntimeEntry entry) {
         return state(entry).fallPeakPhysicsY();
     }

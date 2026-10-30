@@ -23,6 +23,7 @@ import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.navigation.AgentNavigationRegionService;
+import server.agents.capabilities.navigation.AgentPortalApproachService;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
@@ -61,6 +62,7 @@ import server.quest.Quest;
 
 import java.awt.Point;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -437,6 +439,53 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
         int toRegionId = AgentNavigationRegionService.resolvePointTargetRegionId(
                 graph, agent.getMap(), new Point(target.x, target.y - 1));
         return fromRegionId < 0 || toRegionId < 0 || graph.canReach(fromRegionId, toRegionId);
+    }
+
+    @Override
+    public boolean unwalkablePortal(AgentRuntimeEntry entry, Character agent, int portalId) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        server.maps.Portal portal = map == null ? null : map.getPortal(portalId);
+        if (entry == null || portal == null || agent.getPosition() == null) {
+            return false;
+        }
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(
+                map, AgentMovementStateRuntime.movementProfileOrCharacter(entry, agent));
+        return graph != null
+                && AgentNavigationRegionService.resolveCurrentRegionId(graph, entry, map, agent.getPosition()) >= 0
+                && portalRegionId(graph, map, AgentPortalApproachService.navigableTarget(map, portal)) < 0;
+    }
+
+    @Override
+    public Set<Integer> landingExits(AgentRuntimeEntry entry, Character agent, int portalId) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        server.maps.Portal portal = map == null ? null : map.getPortal(portalId);
+        if (entry == null || portal == null || agent.getClient() == null
+                || agent.getClient().getChannelServer() == null) {
+            return Set.of();
+        }
+        MapleMap next = agent.getClient().getChannelServer().getMapFactory().getLoadedMap(portal.getTargetMapId());
+        server.maps.Portal landing = next == null ? null : next.getPortal(portal.getTarget());
+        AgentNavigationGraph graph = landing == null ? null : AgentNavigationGraphService.peekBestGraph(
+                next, AgentMovementStateRuntime.movementProfileOrCharacter(entry, agent));
+        int fromRegionId = graph == null ? -1 : portalRegionId(graph, next, landing.getPosition());
+        if (fromRegionId < 0) {
+            return Set.of();
+        }
+        Set<Integer> exits = new HashSet<>();
+        for (server.maps.Portal exit : next.getPortals()) {
+            int toRegionId = exit.getPortalStatus() && exit.getTargetMapId() != constants.id.MapId.NONE
+                    ? portalRegionId(graph, next, AgentPortalApproachService.navigableTarget(next, exit)) : -1;
+            if (toRegionId >= 0 && graph.canReach(fromRegionId, toRegionId)) {
+                exits.add(exit.getTargetMapId());
+            }
+        }
+        return exits;
+    }
+
+    /** The graph region under a point, looked for from just above it as canReach looks; -1 over no ground. */
+    private static int portalRegionId(AgentNavigationGraph graph, MapleMap map, Point position) {
+        return position == null ? -1 : AgentNavigationRegionService.resolvePointTargetRegionId(
+                graph, map, new Point(position.x, position.y - 1));
     }
 
     @Override
