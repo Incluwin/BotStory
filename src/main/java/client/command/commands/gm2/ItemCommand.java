@@ -125,8 +125,29 @@ public class ItemCommand extends Command {
             flag |= ItemConstants.UNTRADEABLE;
         }
 
-        InventoryManipulator.addById(targetClient, itemId, quantity, actor.getName(), -1, flag, -1);
-        return true;
+        return give(targetClient, actor, itemId, quantity, flag);
+    }
+
+    /**
+     * Adds the item. To a character other than the actor (a gift: !giveitem) only when all of it fits, else nothing
+     * lands and the actor is told: addById fills what room there is and the rest never lands, and the target's own
+     * "inventory full" notice reaches no one when it is a companion (P19 Showa runs, 2026-10-15: Power Elixirs given to
+     * full Use tabs were lost while the GM read "Item given").
+     */
+    static boolean give(Client targetClient, Character actor, int itemId, short quantity, short flag) {
+        Character target = targetClient.getPlayer();
+        boolean gift = target != actor;
+        String tab = ItemConstants.getInventoryType(itemId).name().toLowerCase(java.util.Locale.ROOT);
+        if (gift && !InventoryManipulator.checkSpace(targetClient, itemId, quantity, actor.getName())) {
+            actor.yellowMessage(target.getName() + " has no room for " + quantity + " of that in the " + tab
+                    + " tab: nothing was given.");
+            return false;
+        }
+        boolean added = InventoryManipulator.addById(targetClient, itemId, quantity, actor.getName(), -1, flag, -1);
+        if (gift && !added) {
+            actor.yellowMessage(target.getName() + "'s " + tab + " tab filled up before all " + quantity + " landed.");
+        }
+        return added;
     }
 
     private static boolean isNumber(String string) {
