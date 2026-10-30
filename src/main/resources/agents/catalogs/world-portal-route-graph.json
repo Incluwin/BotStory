@@ -172,6 +172,13 @@
                                 "script":  "enterPort"
                             },
                             {
+                                "sourceMapId":  240040700,
+                                "destinationMapId":  240040600,
+                                "portalName":  "out00",
+                                "portalId":  2,
+                                "script":  "hontale_morph2"
+                            },
+                            {
                                 "sourceMapId":  106020300,
                                 "destinationMapId":  106020400,
                                 "portalName":  "obstacle",

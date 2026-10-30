@@ -269,6 +269,34 @@ class AgentTravelLegRouteTest {
     }
 
     @Test
+    void theCaveOfLifeIsKerobensDoorForACertificateHolderAndTheEntrancesOut00TheWayBack() {
+        AgentTravelLegCatalog.Leg keroben = AgentTravelLegCatalog.legs().stream()
+                .filter(leg -> leg.id().equals("cave-of-life-entrance-to-the-cave")).findFirst().orElseThrow();
+        Character outsider = mock(Character.class);
+        when(outsider.getLevel()).thenReturn(120);
+        Character young = mock(Character.class);
+        when(young.getLevel()).thenReturn(99);
+        when(young.haveItem(4001086)).thenReturn(true);
+        Character member = mock(Character.class);
+        when(member.getLevel()).thenReturn(100);
+        when(member.haveItem(4001086)).thenReturn(true);
+        assertFalse(AgentVictoriaRouteRuntime.letsOn(outsider, keroben), "no certificate");
+        assertFalse(AgentVictoriaRouteRuntime.letsOn(young, keroben), "below level 100");
+        assertTrue(AgentVictoriaRouteRuntime.letsOn(member, keroben));
+        assertFalse(AgentVictoriaRouteRuntime.letsOn(null, keroben), "nobody to ask: shut");
+
+        assertEquals(List.of("cave-of-life-entrance-to-the-cave"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                240000000, 240050000, Set.of(), leg -> AgentVictoriaRouteRuntime.letsOn(member, leg), RIDE_HOP_COST)));
+        assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(240000000, 240050000, Set.of(),
+                leg -> AgentVictoriaRouteRuntime.letsOn(outsider, leg), RIDE_HOP_COST), "no other way into the cave");
+
+        assertEquals(240040600, AgentVictoriaTrainingRouteCatalog.nextHop(240040700, 240000000),
+                "out00 (hontale_morph2) leads back up to the Peak of the Big Nest");
+        assertEquals(2, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(240040700, 240040600));
+        assertNotNull(AgentVictoriaTrainingRouteCatalog.nextHop(240050000, 240000000), "the cave walks back out");
+    }
+
+    @Test
     void theTempleOfTimesRoadsOpenOneQuestAtATimeAsTheirPortalsDo() {
         Character newcomer = mock(Character.class);
         Set<Long> shut = AgentVictoriaRouteRuntime.withGates(Set.of(), newcomer);

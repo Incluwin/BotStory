@@ -105,6 +105,9 @@ public class AgentTravelLegScriptTest {
             if (leg.ticket() != null) {
                 cm.items.put(leg.ticket().itemId(), 1);
             }
+            if (leg.heldItemId() > 0) {
+                cm.items.put(leg.heldItemId(), 1);
+            }
             if (leg.savedLocation() != null) {
                 cm.saved.put(leg.savedLocation(), leg.toMapId()); // as the way in saved it (the Dojo board: MIRROR)
             }
@@ -119,6 +122,9 @@ public class AgentTravelLegScriptTest {
             assertEquals(PURSE - leg.fare(), cm.mesos, () -> leg.id() + ": pays its fare");
             if (leg.ticket() != null) {
                 assertEquals(0, cm.count(leg.ticket().itemId()), () -> leg.id() + ": hands in its ticket");
+            }
+            if (leg.heldItemId() > 0) {
+                assertEquals(1, cm.count(leg.heldItemId()), () -> leg.id() + ": shows the item it needs and keeps it");
             }
         }
     }
@@ -264,6 +270,30 @@ public class AgentTravelLegScriptTest {
         Conversation home = new Conversation(rupi.fromMapId(), PURSE, "true");
         run(rupi.npcId(), home, rupi.selections());
         assertEquals(rupi.toMapId(), home.warpedTo, "with nothing saved Rupi sends you to Ellinia, Rooney's own town");
+    }
+
+    @Test
+    void kerobenLetsOnlyACertificateHolderFromLevelOneHundredIntoTheCaveOfLife() throws Exception {
+        AgentTravelLegCatalog.Leg leg = leg("cave-of-life-entrance-to-the-cave");
+        assertEquals(100, leg.minLevel());
+        assertEquals(4001086, leg.heldItemId(), "the Certificate of the Dragon Squad");
+
+        Conversation outsider = new Conversation(leg.fromMapId(), PURSE, "true");
+        run(leg.npcId(), outsider, leg.selections());
+        assertNull(outsider.warpedTo, "no certificate (and no dragon shape): get lost");
+
+        Conversation young = new Conversation(leg.fromMapId(), PURSE, "true");
+        young.items.put(leg.heldItemId(), 1);
+        young.level = 99;
+        run(leg.npcId(), young, leg.selections());
+        assertNull(young.warpedTo, "a level 99 holder stays at the entrance");
+
+        Conversation member = new Conversation(leg.fromMapId(), PURSE, "true");
+        member.items.put(leg.heldItemId(), 1);
+        member.level = 100;
+        run(leg.npcId(), member, leg.selections());
+        assertEquals(leg.toMapId(), member.warpedTo);
+        assertEquals(PURSE, member.mesos, "selection 2 goes in; 1 would buy his potions");
     }
 
     @Test
@@ -605,6 +635,11 @@ public class AgentTravelLegScriptTest {
         public int getSavedLocation(String type) {
             Integer map = cm.saved.remove(type);
             return map == null ? -1 : map;
+        }
+
+        /** No buff: a rider in the Dragon Elixir's dragon shape (Keroben's other way in) is never planned for. */
+        public int getBuffSource(Object stat) {
+            return -1;
         }
     }
 

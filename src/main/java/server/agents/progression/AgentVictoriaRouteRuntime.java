@@ -350,7 +350,7 @@ public final class AgentVictoriaRouteRuntime {
      * the travel legs (RIDE_HOP_COST a leg), fares and tickets not counted, and legs that kept refusing it left out.
      * Empty when nothing reaches the destination, or the Agent is there. Ties go as ridePath breaks them, so the hops
      * may differ from nextHop's where two walking paths are as short. Gated portals it may not pass and legs above its
-     * level are left out as travelStatus leaves them out; with no Agent to ask, both are.
+     * level or needing an item it lacks are left out as travelStatus leaves them out; with no Agent to ask, all are.
      */
     public static List<PlannedStep> plannedRoute(AgentRuntimeEntry entry,
                                                  int sourceMapId,
@@ -364,7 +364,7 @@ public final class AgentVictoriaRouteRuntime {
                 sourceMapId, destinationMapId, blockedEdges, leg -> false, RIDE_HOP_COST);
         if (path.isEmpty()) {
             path = AgentVictoriaTrainingRouteCatalog.ridePath(sourceMapId, destinationMapId, blockedEdges,
-                    leg -> !blockedEdges.contains(legKey(leg)) && levelFits(agent, leg), RIDE_HOP_COST);
+                    leg -> !blockedEdges.contains(legKey(leg)) && letsOn(agent, leg), RIDE_HOP_COST);
         }
         return path.stream().map(step -> new PlannedStep(step.fromMapId(), step.toMapId(),
                 step.leg() == null ? 0 : step.leg().npcId(), step.leg() == null ? null : step.leg().portal()))
@@ -405,9 +405,13 @@ public final class AgentVictoriaRouteRuntime {
         return false;
     }
 
-    /** True when the leg's NPC lets this Agent on (Jeff from level 50); a leg with no floor lets anyone on. */
-    private static boolean levelFits(Character agent, AgentTravelLegCatalog.Leg leg) {
-        return leg.minLevel() <= 0 || agent != null && agent.getLevel() >= leg.minLevel();
+    /**
+     * True when the leg's NPC lets this Agent on: Jeff from level 50, Keroben only a holder of the Certificate of the
+     * Dragon Squad (as his script asks, haveItem); a leg with neither lets anyone on.
+     */
+    static boolean letsOn(Character agent, AgentTravelLegCatalog.Leg leg) {
+        return (leg.minLevel() <= 0 || agent != null && agent.getLevel() >= leg.minLevel())
+                && (leg.heldItemId() <= 0 || agent != null && agent.haveItem(leg.heldItemId()));
     }
 
     /**
@@ -458,7 +462,7 @@ public final class AgentVictoriaRouteRuntime {
                              long nowMs) {
         int sourceMapId = agent.getMapId();
         long budget = Math.max(0L, rides.spendableMesos());
-        Predicate<AgentTravelLegCatalog.Leg> usable = leg -> !blockedEdges.contains(legKey(leg)) && levelFits(agent, leg)
+        Predicate<AgentTravelLegCatalog.Leg> usable = leg -> !blockedEdges.contains(legKey(leg)) && letsOn(agent, leg)
                 && leg.fare() + (holds(agent, leg.ticket(), gateway) ? 0L : leg.ticket().price()) <= budget;
         List<AgentVictoriaTrainingRouteCatalog.Step> path = AgentVictoriaTrainingRouteCatalog.ridePath(
                 sourceMapId, destinationMapId, blockedEdges, usable, RIDE_HOP_COST);
