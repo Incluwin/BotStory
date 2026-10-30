@@ -38,15 +38,17 @@ public class ExpedsCommand extends Command {
         setDescription("Show all ongoing boss expeditions.");
     }
 
+    // Only the channels that hold one: a "No Expeditions in Channel 3" closing the list read as no run at all.
     @Override
     public void execute(Client c, String[] params) {
         Character player = c.getPlayer();
+        boolean any = false;
         for (Channel ch : Server.getInstance().getChannelsFromWorld(c.getWorld())) {
             List<Expedition> expeds = ch.getExpeditions();
             if (expeds.isEmpty()) {
-                player.yellowMessage("No Expeditions in Channel " + ch.getId());
                 continue;
             }
+            any = true;
             player.yellowMessage("Expeditions in Channel " + ch.getId());
             int id = 0;
             for (Expedition exped : expeds) {
@@ -65,6 +67,9 @@ public class ExpedsCommand extends Command {
                     memId++;
                 }
             }
+        }
+        if (!any) {
+            player.yellowMessage("No Expeditions in any channel.");
         }
     }
 }

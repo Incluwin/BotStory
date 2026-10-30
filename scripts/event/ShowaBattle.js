@@ -92,7 +92,7 @@ function setEventRewards(eim) {
 function afterSetup(eim) {}
 
 function setup(channel) {
-    var eim = em.newInstance("Showa" + channel);
+    var eim = em.newInstance("Showa Gang" + channel);     // Konpei finds it as expedName + channel
     eim.setProperty("canJoin", 1);
     eim.setProperty("playerDied", 0);
 

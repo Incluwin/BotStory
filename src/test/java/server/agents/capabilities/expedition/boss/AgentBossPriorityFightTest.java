@@ -9,6 +9,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
 import server.maps.MapleMap;
+import testutil.LogLines;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,7 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.mock;
@@ -117,6 +120,32 @@ class AgentBossPriorityFightTest {
         fight.tick(List.of(member(11)), event, 1L);
         verify(gateway).stop(isolde);
         verify(gateway, never()).grind(any(AgentRuntimeEntry.class), anySet(), anySet());
+    }
+
+    /**
+     * CWKPQ's Council Hall steers its mages itself and hands the fight only the rest; the status line still names the
+     * whole party (live 10-23 it left the mages out). With nobody left to drive, the line still goes out.
+     */
+    @Test
+    void theStatusLineNamesThePartyTheFightDoesNotDrive() {
+        monsters.add(mob(FIRST));
+        entry(10);
+        Character thane = member(10);
+        when(thane.getName()).thenReturn("Thane");
+        Character magna = member(12);
+        when(magna.getName()).thenReturn("Magna");
+        long every = AgentBossPriorityFight.statusEveryMs();
+
+        try (LogLines lines = new LogLines(AgentBossPriorityFight.class)) {
+            fight.tick(List.of(thane), List.of(thane, magna), event, 0L);
+            fight.tick(List.of(thane), List.of(thane, magna), event, every);
+            fight.tick(List.of(), List.of(magna), event, 2 * every);
+
+            List<String> status = lines.startingWith("Boss fight status: boss=" + KEY);
+            assertEquals(2, status.size(), status.toString());
+            assertTrue(status.get(0).contains("Thane ") && status.get(0).contains("Magna "), status.get(0));
+            assertTrue(status.get(1).contains("Magna ") && !status.get(1).contains("Thane "), status.get(1));
+        }
     }
 
     @Test

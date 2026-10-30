@@ -50,6 +50,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -301,16 +302,46 @@ class CompanionGearToolTest {
 
     @Test
     void aSecondUseSkipsWhatItAlreadyWearsAsBossGear() throws Exception {
-        use("Flint", false);
-        int gun = at(game.worn.get(0), WEAPON).itemId();
-        Item worn = Equip.restored(gun, WEAPON);
-        worn.setOwner(BossGearPlanner.OWNER_TAG);
-        flintWears.removeSlot(WEAPON);
-        flintWears.addItemFromDB(worn);
+        try (MockedStatic<BossGearPlanner> forge = forgeWithoutWz()) {
+            use("Flint", false);
+            flintWears.removeSlot(WEAPON);
+            flintWears.addItemFromDB(forged(at(game.worn.get(0), WEAPON)));
 
-        use("Flint", false);
+            use("Flint", false);
+        }
 
         assertFalse(game.worn.get(1).stream().anyMatch(piece -> piece.position() == WEAPON), game.worn.get(1).toString());
+    }
+
+    @Test
+    void aBossPieceOfTheSameIdScrolledAnotherWayIsReplaced() throws Exception {
+        try (MockedStatic<BossGearPlanner> forge = forgeWithoutWz()) {
+            use("Flint", false);
+            int gun = at(game.worn.get(0), WEAPON).itemId();
+            flintWears.removeSlot(WEAPON);
+            flintWears.addItemFromDB(boss(gun, WEAPON)); // an earlier kit's gun: same id and tag, not these scrolls
+
+            use("Flint", false);
+        }
+
+        assertEquals(List.of(new Use(TEN, 7, 7)), at(game.worn.get(1), WEAPON).plan().uses(),
+                game.worn.get(1).toString());
+    }
+
+    /** BossGearPlanner.forge without WZ: the tagged piece with each scroll that took (attack, as TEN gives) on it. */
+    private static MockedStatic<BossGearPlanner> forgeWithoutWz() {
+        MockedStatic<BossGearPlanner> forge = mockStatic(BossGearPlanner.class, CALLS_REAL_METHODS);
+        forge.when(() -> BossGearPlanner.forge(any())).thenAnswer(inv -> forged(inv.getArgument(0)));
+        return forge;
+    }
+
+    private static Item forged(Piece piece) {
+        Equip equip = (Equip) boss(piece.itemId(), piece.position());
+        for (Use use : piece.plan().uses()) {
+            equip.setWatk((short) (equip.getWatk() + use.takes() * use.scroll().stats().getOrDefault("PAD", 0)));
+            equip.setLevel((byte) (equip.getLevel() + use.takes()));
+        }
+        return equip;
     }
 
     @Test
@@ -330,15 +361,14 @@ class CompanionGearToolTest {
         use("Flint", false);
         List<Piece> kit = game.worn.get(0);
         for (Piece piece : kit) { // the first kit went on after this one was planned
-            Item worn = Equip.restored(piece.itemId(), piece.position());
-            worn.setOwner(BossGearPlanner.OWNER_TAG);
             flintWears.removeSlot(piece.position());
-            flintWears.addItemFromDB(worn);
+            flintWears.addItemFromDB(forged(piece));
         }
         AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
         when(entry.bot()).thenReturn(flint);
 
-        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
+        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class);
+             MockedStatic<BossGearPlanner> forge = forgeWithoutWz()) {
             Outcome outcome = CompanionGearTool.wearKit(entry, kit, game.needs.get(0));
 
             assertEquals(new Outcome(0, 0, kit.size()), outcome);

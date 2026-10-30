@@ -510,9 +510,14 @@ public final class CompanionGearTool {
                 }, chr.getId());
     }
 
+    /**
+     * The slot wears this very piece as the kit would forge it: a boss piece of the same id with the same stats and
+     * scrolls (one forged to another plan, such as another boss's accuracy scrolls, is replaced).
+     */
     private static boolean wearsAlready(Character chr, Piece piece) {
         Item worn = chr.getInventory(InventoryType.EQUIPPED).getItem(piece.position());
-        return worn != null && worn.getItemId() == piece.itemId() && BossGearPlanner.OWNER_TAG.equals(worn.getOwner());
+        return worn != null && worn.getItemId() == piece.itemId() && BossGearPlanner.OWNER_TAG.equals(worn.getOwner())
+                && BossGearRecord.samePiece(worn, BossGearPlanner.forge(piece));
     }
 
     /**

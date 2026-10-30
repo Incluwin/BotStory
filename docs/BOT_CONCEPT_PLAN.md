@@ -674,7 +674,8 @@ min; nothing fires in boss or PQ content.
   C1, C2, F3, F5, F6 and F8 need no schema change: they use `living_bond`, `living_bond.flags` and `living_event_log`.
 - **Quest-log ids:** F6 31600-31999 (reserved, mirrored with the client patch). The Residents sessions hold 30800-31449
   and 32000-32149, and iTCG/Masteria holds 31450-31599. Free after that: 32150-32767 (agreed with the feature-gap
-  coordinator 2026-10-27).
+  coordinator 2026-10-27), of which the Repack towns' Residents now hold 32150-32599 (2026-10-29), leaving 32600-32767.
+  Every block is in `scripts/config/living-world/quest-log-blocks.yaml`; QuestLogIdBlocksTest fails on an overlap.
 - **Other coordinator:** its sessions take changesets from 56 / file 047 up. Each coordinator tells the other before it
   merges onto `feat/companion-manager` or restarts the live server.
 - **Kill switches:** `TELL_AUDIT_ENABLED`, `HIRE_FRIENDSHIP_ENABLED`, `NEEDS_ENABLED`, `CITIZEN_SPOT_LEARNING_ENABLED`,

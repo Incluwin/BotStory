@@ -113,12 +113,19 @@ public final class AgentBossPriorityFight implements AgentBossFight {
 
     @Override
     public void tick(List<Character> fighters, EventInstanceManager event, long nowMs) {
+        tick(fighters, fighters, event, nowMs);
+    }
+
+    @Override
+    public void tick(List<Character> fighters, List<Character> party, EventInstanceManager event, long nowMs) {
+        AgentBossRules.Boss rules = AgentBossRules.of(key);
+        if (!party.isEmpty()) {
+            status(party, rules, nowMs);
+        }
         if (fighters.isEmpty()) {
             return;
         }
         boolean cleared = event != null && event.isEventCleared();
-        AgentBossRules.Boss rules = AgentBossRules.of(key);
-        status(fighters, rules, nowMs);
         PrimitiveCapabilityGateway gateway = ports.gateway();
         Map<MapleMap, Set<Integer>> liveByMap = new HashMap<>();
         for (Character member : fighters) {

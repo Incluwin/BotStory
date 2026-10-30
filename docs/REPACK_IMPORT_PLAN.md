@@ -145,7 +145,8 @@ Dimensional Schism, Twilight Perion around level 160-190, and the nine Arcane Ri
   imported, but nothing leads in.
 - Unreached on foot: Ani's Jail 211061100, Knight Stronghold entrance 271030000 and Hallowed Ground 271030201, Ruins
   in Flames 272000310 and 272000410 (quest portals), Ninja Castle corridor 800040210.
-- Residents for the Repack towns (quest-log ids 31750-32199 reserved).
+- Residents for the Repack towns (quest-log ids 32150-32599 reserved, in `quest-log-blocks.yaml`; 31750-32199, the
+  first reservation, overlapped F6 and the Routes Residents).
 - Arcane River systems (symbols, flying mobs, Arcane mobs).
 
 ## 7. Checks

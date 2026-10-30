@@ -1461,6 +1461,8 @@ public final class RosterService {
         }
         if (!seatedWith(owner, current(entry))) {
             owner.dropMessage(5, RosterVoice.line(persona, outcome));
+        } else if (quiet && owner.getMap() != null) {
+            arrivedAtGate(ownerId, owner.getMapId()); // restored beside a boss's gate: its checks, as on coming in
         }
     }
 
@@ -3259,34 +3261,7 @@ public final class RosterService {
             gateRuns.ownerAtKeystoneGate(owner.getId(), map.getId()); // CWKPQ C3: no keystone, no Hall to Inner Sanctum
         }
         ticketGate.ownerEntered(owner.getId(), map.getId()); // APQ A2: each companion hands Amos the Strong its own ticket
-        if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(map.getId())
-                && !CompanionRestock.tripsFromGate(world, map.getId())) { // P12 G9: a desk trip goes instead
-            int ownerId = owner.getId();
-            int mapId = map.getId();
-            world.executor().submit("companion.restock.boss_gate " + ownerId, () -> {
-                CompanionRestock restock = world.restock();
-                if (restock != null) {
-                    restock.bossGate(ownerId, mapId); // a companion short of potions says there is no shop here
-                }
-            });
-        }
-        CompanionBossRuns bossRuns = world.bossRuns();
-        if (bossRuns != null && (bossRuns.restockKeyAt(map.getId()) != null || bossRuns.fieldTownAt(map.getId())
-                || bossRuns.cureTownAt(map.getId()))) {
-            int ownerId = owner.getId();
-            int mapId = map.getId();
-            // a boss's entrance (Mu Young's room) or a field boss's town (Aquarium for Pianus): companions short of
-            // its standard look at their potions now (P7)
-            world.executor().submit("boss.owner_arrived " + ownerId, () -> bossRuns.ownerArrived(ownerId, mapId));
-        }
-        if (bossRuns != null && bossRuns.approachKeyAt(map.getId()) != null) {
-            int ownerId = owner.getId();
-            int mapId = map.getId();
-            // a boss's approach with a store (Ant Tunnel Park on the way down to Easy Balrog): companions short of its
-            // standard look at their potions now, and shop there before the party walks on (fix L7)
-            world.executor().submit("boss.owner_approached " + ownerId,
-                    () -> bossRuns.ownerApproached(ownerId, mapId));
-        }
+        arrivedAtGate(owner.getId(), map.getId());
         if (map.getEventInstance() != null) {
             return;
         }
@@ -3307,6 +3282,38 @@ public final class RosterService {
                     rejoinHolds(now);
                 }
             });
+        }
+    }
+
+    /**
+     * A boss's gate as the owner arrives on {@code mapId} (on companion-ops): their companions short of its standard
+     * look at their potions now, or say there is no shop here. Run as the owner comes in, and again as each companion
+     * restored at their login takes its seat beside them there ({@link #seatQuietly}): logged in beside Jack, the crew
+     * said nothing until he walked out and back (CWKPQ C9, 2026-10-23). A companion says it once per
+     * COMPANION_RESTOCK_ASK_EVERY_MS, so a second pass repeats nobody.
+     */
+    private void arrivedAtGate(int ownerId, int mapId) {
+        if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(mapId)
+                && !CompanionRestock.tripsFromGate(world, mapId)) { // P12 G9: a desk trip goes instead
+            world.executor().submit("companion.restock.boss_gate " + ownerId, () -> {
+                CompanionRestock restock = world.restock();
+                if (restock != null) {
+                    restock.bossGate(ownerId, mapId); // a companion short of potions says there is no shop here
+                }
+            });
+        }
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (bossRuns != null && (bossRuns.restockKeyAt(mapId) != null || bossRuns.fieldTownAt(mapId)
+                || bossRuns.cureTownAt(mapId))) {
+            // a boss's entrance (Mu Young's room) or a field boss's town (Aquarium for Pianus): companions short of
+            // its standard look at their potions now (P7)
+            world.executor().submit("boss.owner_arrived " + ownerId, () -> bossRuns.ownerArrived(ownerId, mapId));
+        }
+        if (bossRuns != null && bossRuns.approachKeyAt(mapId) != null) {
+            // a boss's approach with a store (Ant Tunnel Park on the way down to Easy Balrog): companions short of its
+            // standard look at their potions now, and shop there before the party walks on (fix L7)
+            world.executor().submit("boss.owner_approached " + ownerId,
+                    () -> bossRuns.ownerApproached(ownerId, mapId));
         }
     }
 

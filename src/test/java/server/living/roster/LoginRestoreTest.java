@@ -86,6 +86,23 @@ class LoginRestoreTest {
         assertEquals(List.of(ANN, 902, 901), game.members);
     }
 
+    /**
+     * Logged in on a boss's gate (Jack's hall for CWKPQ), the gate's checks run as each restored companion takes its
+     * seat, as they run when Ann comes in: before, the crew said nothing until she walked out and back (2026-10-23).
+     */
+    @Test
+    void loggedInAtABossGateEachRestoredCompanionGetsTheGatesChecks() {
+        CompanionBossRuns bossRuns = mock(CompanionBossRuns.class);
+        when(bossRuns.restockKeyAt(HENESYS_FIELD)).thenReturn("cwkpq");
+        when(game.world.bossRuns()).thenReturn(bossRuns);
+
+        game.roster().onOwnerLogin(game.ann);
+        verify(bossRuns, never()).ownerArrived(anyInt(), anyInt());
+        game.runDueTimers();
+
+        verify(bossRuns, times(2)).ownerArrived(ANN, HENESYS_FIELD);
+    }
+
     @Test
     void anOfflineMemberHasItsSeatEvenInAFullParty() {
         game.members.addAll(List.of(950, 951, 952)); // three guests joined Ann's party meanwhile: 6/6

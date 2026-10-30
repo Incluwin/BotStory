@@ -66,9 +66,8 @@ final class AgentCwkpqCouncilPlay {
             fallback.remove(first);
             ports.gateway().grind(entry, Set.of(first), fallback);
         }
-        if (!rest.isEmpty()) {
-            run.council().tick(rest, event, nowMs);
-        }
+        // the fight's status line names the whole hall, the mages this play steers among them
+        run.council().tick(rest, bySlot, event, nowMs);
     }
 
     /** The masters (then revives) a magician's element hurts most, in order; none for any other job. */

@@ -34,15 +34,20 @@ final class AgentTownLifeEventPublisher {
                           AgentTownLifeLifecycleEvent.Phase phase,
                           String reason,
                           long nowMs) {
-        if (entry == null || agent == null || state == null || phase == null
-                || state.sessionId().isBlank()) {
+        if (entry == null || agent == null || state == null || phase == null) {
+            return;
+        }
+        // The session's identity in one read: a citizen's presence scheduler stops its TownLife on its own thread, and
+        // a stop between separate field reads built the event with a blank request id (live 2026-10-19).
+        AgentTownLifeSessionHandle session = state.sessionHandle(agent.getId());
+        if (session == null) {
             return;
         }
         entry.capabilityStates().require(AgentTownLifeTerminalState.STATE_KEY)
-                .record(state.sessionId(), phase, reason, nowMs);
+                .record(session.sessionId(), phase, reason, nowMs);
         AgentSessionEventRuntime.bus(entry).publish(new AgentTownLifeLifecycleEvent(
-                agent.getId(), nowMs, state.townMapId(), state.sessionId(),
-                state.requestId(), state.callerId(), phase, reason,
+                agent.getId(), nowMs, session.townMapId(), session.sessionId(),
+                session.requestId(), session.callerId(), phase, reason,
                 state.activity(), state.activityResult()), AgentEventPriority.IMPORTANT);
         AgentTownLifeMetrics.lifecycle(phase);
     }
