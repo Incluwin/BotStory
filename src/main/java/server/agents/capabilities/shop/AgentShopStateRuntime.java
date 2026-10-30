@@ -55,6 +55,63 @@ public final class AgentShopStateRuntime {
         entry.shopState().setSellTrashPending(pending);
     }
 
+    /** True when its owner or its own supply trip asked for the visit's sale. */
+    public static boolean shopSaleAsked(AgentRuntimeEntry entry) {
+        return entry.shopState().saleAsked();
+    }
+
+    /** True when the visit's sale is the quiet one of every visit (AgentJunkSale). */
+    public static boolean shopRoutineSale(AgentRuntimeEntry entry) {
+        return entry.shopState().routineSale();
+    }
+
+    /** The quiet sale of every visit; an asked sale stays asked. */
+    public static void requestShopRoutineSale(AgentRuntimeEntry entry) {
+        entry.shopState().requestRoutineSale();
+    }
+
+    /** True when the visit was opened only to sell: it buys nothing. */
+    public static boolean shopSaleOnly(AgentRuntimeEntry entry) {
+        return entry.shopState().saleOnly();
+    }
+
+    public static void markShopSaleOnly(AgentRuntimeEntry entry) {
+        entry.shopState().markSaleOnly();
+    }
+
+    /** The map whose owner-opened shop it last looked at (one look per map visit). */
+    public static int ownerShopSaleMapId(AgentRuntimeEntry entry) {
+        return entry.shopState().ownerShopSaleMapId();
+    }
+
+    public static void setOwnerShopSaleMapId(AgentRuntimeEntry entry, int mapId) {
+        entry.shopState().setOwnerShopSaleMapId(mapId);
+    }
+
+    /** A sale-only visit waits for the Agent's arrival on its map (AgentShopService.requestSaleHere). */
+    public static void setShopSaleOnArrival(AgentRuntimeEntry entry, boolean pending) {
+        entry.shopState().setSaleOnArrival(pending);
+    }
+
+    /**
+     * Whether the last visit's potion step left this kind restored at the counter (AgentShopService.buyPotionExtras),
+     * before any it drank since: a supply trip judged after the visit counts what it bought, not what it drank.
+     */
+    public static boolean potionsRestoredAtCounter(AgentRuntimeEntry entry, boolean forHp) {
+        return entry.shopState().restoredAtCounter(forHp);
+    }
+
+    public static void notePotionsRestoredAtCounter(AgentRuntimeEntry entry, boolean hp, boolean mp) {
+        entry.shopState().noteRestoredAtCounter(hp, mp);
+    }
+
+    /** True, once, when a sale-only visit waited for this arrival. */
+    public static boolean takeShopSaleOnArrival(AgentRuntimeEntry entry) {
+        boolean pending = entry.shopState().saleOnArrival();
+        entry.shopState().setSaleOnArrival(false);
+        return pending;
+    }
+
     public static int minimumMesoReserve(AgentRuntimeEntry entry) {
         return entry.shopState().minimumMesoReserve();
     }

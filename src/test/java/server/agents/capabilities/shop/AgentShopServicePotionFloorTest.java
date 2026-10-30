@@ -182,6 +182,43 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void theCounterNotesTheReserveItBoughtToBeforeAnyPotionIsDrunk() {
+        // live 10-29: 10 of 54 ordinary trips were given up "still short of the restock target" by a potion or two
+        // (Neus 8700/8748 MP): low on MP, it drank one the moment it had them, before its trip looked
+        carry(212, 0); // 212 Red: ten HP bars of 1,060, met; no mana potion
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        AgentShopStateRuntime.startShopVisit(entry, new Point(), new Point(), 0, 100L);
+
+        AgentShopService.buyPotionStock(new AgentShopPurchaseSequence<>(entry, bot, mock(InventoryGateway.class),
+                new Point(), List.of(), new ArrayList<>(), null), shop(List.of(RED, WHITE, BLUE)), 0);
+
+        assertArrayEquals(new int[]{212, 60}, AgentPotionService.countPotions(bot), "twelve MP bars of 500 in Blue");
+        assertTrue(AgentShopStateRuntime.potionsRestoredAtCounter(entry, false));
+        assertTrue(AgentShopStateRuntime.potionsRestoredAtCounter(entry, true));
+        use.removeItem(use.findById(BLUE).getPosition(), (short) 1, false); // it drinks one at once
+        assertFalse(server.agents.capabilities.supplies.AgentPotionReserve.of(bot,
+                server.agents.capabilities.contracts.AgentResourceCategory.MP_POTION).met(), "short by one now");
+        assertTrue(AgentShopStateRuntime.potionsRestoredAtCounter(entry, false), "the counter's note stands");
+
+        AgentShopStateRuntime.clearShopState(entry);
+        AgentShopStateRuntime.startShopVisit(entry, new Point(), new Point(), 0, 200L);
+        assertFalse(AgentShopStateRuntime.potionsRestoredAtCounter(entry, false), "a new visit starts unnoted");
+    }
+
+    @Test
+    void aCounterThatRanOutOfMesosNotesItShort() {
+        carry(212, 0);
+        purse = 30 * 200; // thirty of the sixty Blue potions
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+
+        AgentShopService.buyPotionStock(new AgentShopPurchaseSequence<>(entry, bot, mock(InventoryGateway.class),
+                new Point(), List.of(), new ArrayList<>(), null), shop(List.of(RED, WHITE, BLUE)), 0);
+
+        assertArrayEquals(new int[]{212, 30}, AgentPotionService.countPotions(bot), transactions.toString());
+        assertFalse(AgentShopStateRuntime.potionsRestoredAtCounter(entry, false), "the trip is judged short, as before");
+    }
+
+    @Test
     void withoutADutyTheSameVisitBuysNothing() {
         visit(List.of(RED, WHITE, BLUE));
 

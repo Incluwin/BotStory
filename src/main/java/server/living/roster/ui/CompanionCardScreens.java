@@ -378,6 +378,7 @@ final class CompanionCardScreens {
      * slice runs at its camp (the owner can walk there and watch), "gathering at Ant Tunnel I" while a gatherer works a
      * field other than its camp (where its quests' droppers are), "stall open in FM room 3" or "resting in Henesys" while
      * it is out in the Free Market or in town, "restocking in Perion" while a field slice's own shop resupply runs,
+     * "selling junk in Henesys" while a shop slice sells what its TRAIN slice filled its Equip tab with,
      * {@link BenchDutyDispatcher#ROUGH_HUNT} (its own line) while it rests after a death, {@link #OUT_OF_SIGHT} while only
      * the ledger keeps its duty or its slice is not where it works (revived in town, say), and nothing for a parked one.
      */
@@ -396,6 +397,9 @@ final class CompanionCardScreens {
         }
         Character agent = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(slice.characterId()));
         MapleMap at = agent == null ? null : agent.getMap();
+        if (slice.selling()) { // its TRAIN slice filled its Equip tab: this one sells the junk (user 2026-10-10)
+            return at == null ? OUT_OF_SIGHT : "selling junk in " + placeNames.apply(at.getId());
+        }
         if (slice.resupplying()) {
             return at == null ? OUT_OF_SIGHT : "restocking in " + placeNames.apply(at.getId());
         }

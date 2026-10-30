@@ -42,8 +42,6 @@ final class CitizenSellTrips {
     private static final long HOUR_MS = 3_600_000L;
     /** A trip whose sale never began (it ended up elsewhere) is over after this long. */
     static final long TRIP_TIMEOUT_MS = 15 * 60_000L;
-    /** A sale that never ends (the visit failed quietly) is over after this long. */
-    static final long VISIT_TIMEOUT_MS = 5 * 60_000L;
     /** How long a sale asked of the Agent may take to start (it is asked on the Agent's own mailbox). */
     static final long VISIT_START_MS = 5_000L;
     /** Within this of the shopkeeper it asks for the sale; beyond it the visit's own approach ran out of time (10-29). */
@@ -72,6 +70,17 @@ final class CitizenSellTrips {
             () -> AgentShopService.requestSaleAt(entry, agent, npcId));
     /** Whether the Agent's shop visit is still under way (a test's own). */
     Predicate<AgentRuntimeEntry> visiting = AgentShopStateRuntime::shopVisitPending;
+    /**
+     * Whether that visit has outrun its own budget (a test's own): the sale's, which grows with each planned sale and
+     * with the time an unwatched Agent's steps run late (AgentShopService.visitOutOfTime). A fixed 5 minutes here cut
+     * off a full bag's sale (96 equips and the ETC after them, about 1.5 s a sale with 250 Agents) that its own budget
+     * still allowed, and the next plan moved the citizen on mid-sale.
+     */
+    VisitBudget outOfTime = AgentShopService::visitOutOfTime;
+
+    interface VisitBudget {
+        boolean outOfTime(AgentRuntimeEntry entry, long nowMs);
+    }
     /** Walks the Agent to a point (a test's own). */
     BiConsumer<AgentRuntimeEntry, Point> walk = (entry, point) -> AgentMovementCommandRuntime.moveTo(entry, point, false);
     /**
@@ -175,7 +184,7 @@ final class CitizenSellTrips {
         sale.ask(session.entry, agent, trip.npcId());
     }
 
-    /** Whether its trip is over: the sale it asked for ended, never began, or ran too long. */
+    /** Whether its trip is over: the sale it asked for ended, never began, or outran the visit's own budget. */
     boolean finished(CitizenSession session, long now) {
         Trip trip = session.sellTrip;
         if (trip == null) {
@@ -185,7 +194,8 @@ final class CitizenSellTrips {
         if (at == null) {
             return now - trip.plannedAtMs() >= TRIP_TIMEOUT_MS;
         }
-        if (now - at < VISIT_START_MS || now - at < VISIT_TIMEOUT_MS && session.entry != null && visiting.test(session.entry)) {
+        if (now - at < VISIT_START_MS || session.entry != null && visiting.test(session.entry)
+                && !outOfTime.outOfTime(session.entry, now)) {
             return false;
         }
         asked.remove(session.characterId);

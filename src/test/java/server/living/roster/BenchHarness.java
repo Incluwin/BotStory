@@ -134,6 +134,7 @@ final class BenchHarness implements AutoCloseable {
         store.levels.put(BEN, 30);
         field = new BenchSessions(world);
         duty = new BenchDutyDispatcher(world, field, () -> now);
+        duty.freeEquipSlots = agent -> 96; // a roomy Equip tab unless a test fills it (BenchJunkSaleSliceTest)
         yields = new BenchYieldModel(world);
         when(world.benchSessions()).thenReturn(field);
         when(world.benchDuty()).thenReturn(duty);

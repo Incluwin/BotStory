@@ -186,6 +186,49 @@ class CompanionSettingsApplierTest {
     }
 
     @Test
+    void aCompanionOutWithItsOwnerOrOnATrainSliceSellsItsJunkAtEveryVisitAndNobodyElse() {
+        // user decision 2026-10-10: companions sell their junk at every shop visit (AgentJunkSale)
+        hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, HENESYS_FIELD, null);
+        Character citizen = game.bot(950, "Marlo");
+        assertFalse(applier().sellsAtEveryVisit(citizen.getId()), "a citizen is never anyone's companion");
+
+        assertTrue(game.roster().call(game.ann, hadrik).ok());
+        applier().install();
+        Character bot = game.bot(hadrik);
+
+        assertTrue(applier().sellsAtEveryVisit(HADRIK), "out with its owner");
+        assertTrue(server.agents.capabilities.shop.AgentJunkSale.routineSale(bot), "installed as the seam's rule");
+        assertFalse(server.agents.capabilities.shop.AgentJunkSale.routineSale(citizen));
+
+        game.selfLed.add(HADRIK); // self-led: a bench slice, or loaded for something else
+        assertFalse(applier().sellsAtEveryVisit(HADRIK), "self-led with no TRAIN slice");
+        BenchDutyDispatcher.Slice train = new BenchDutyDispatcher.Slice(game.row(hadrik), HADRIK,
+                mock(BenchDutyDispatcher.Form.class), HENESYS_FIELD, 1_000L);
+        when(game.world.benchDuty().sliceOf(HADRIK)).thenReturn(train);
+        assertTrue(applier().sellsAtEveryVisit(HADRIK), "a live TRAIN slice keeps all it picks up: it sells");
+        BenchDutyDispatcher.Slice farm = new BenchDutyDispatcher.Slice(
+                withDuty(game.row(hadrik), server.living.store.LivingStore.Assignment.FARM_MESO), HADRIK,
+                mock(BenchDutyDispatcher.Form.class), HENESYS_FIELD, 1_000L);
+        when(game.world.benchDuty().sliceOf(HADRIK)).thenReturn(farm);
+        assertFalse(applier().sellsAtEveryVisit(HADRIK), "a farming slice hauls its loot");
+        game.selfLed.remove(HADRIK);
+
+        game.config.COMPANION_SELL_JUNK_EVERY_VISIT = false;
+        assertFalse(applier().sellsAtEveryVisit(HADRIK), "the kill switch");
+        game.config.COMPANION_SELL_JUNK_EVERY_VISIT = true;
+        CompanionSettingsApplier.uninstall();
+        assertFalse(server.agents.capabilities.shop.AgentJunkSale.routineSale(bot), "taken out with the other seams");
+    }
+
+    private static server.living.store.LivingStore.RosterEntry withDuty(server.living.store.LivingStore.RosterEntry row,
+                                                                        server.living.store.LivingStore.Assignment duty) {
+        return new server.living.store.LivingStore.RosterEntry(row.characterId(), row.personaId(), row.state(), duty,
+                row.assignmentItem(), row.assignmentCount(), row.campMapId(), row.accruedExp(), row.haulMeso(),
+                row.wagesPaidUntilMs(), row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(),
+                row.farmSecondsToday(), row.farmDay());
+    }
+
+    @Test
     void theSameCompanionsSayWhatTheirBooksNeed() {
         // 2026-10-16: Orrin's failed Blast book went unnoticed for two days (AgentBookSpeech)
         hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, HENESYS_FIELD, null);

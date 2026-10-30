@@ -14,6 +14,7 @@ import server.agents.capabilities.movement.AgentFormationHook;
 import server.agents.capabilities.movement.AgentFormationRuntime;
 import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+import server.agents.capabilities.shop.AgentJunkSale;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentPotionThresholds;
 import server.agents.capabilities.supplies.AgentWalletReserve;
@@ -26,6 +27,7 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.habits.OwnerHabitBook;
 import server.living.store.LivingStore;
+import server.living.store.LivingStore.Assignment;
 import server.quest.Quest;
 
 import java.util.ArrayList;
@@ -59,7 +61,7 @@ import java.util.function.UnaryOperator;
  * per owner in living_crew; everyone it placed keeps to the crew's formation from then on).</p>
  */
 public final class CompanionSettingsApplier implements AgentPotionThresholds.Rule, AgentLootPolicy.Rule, AgentWalletReserve.Rule,
-        AgentChatToggleHook.Rule, AgentFormationHook.Rule, AgentBagFullSpeech.Rule, AgentBookSpeech.Rule {
+        AgentChatToggleHook.Rule, AgentFormationHook.Rule, AgentBagFullSpeech.Rule, AgentBookSpeech.Rule, AgentJunkSale.Rule {
     /** How long what an owner's quests need is kept before their started quests are read again (QUEST_ONLY). */
     private static final long QUEST_NEEDS_TTL_MS = 1_000L;
 
@@ -85,7 +87,10 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         this.roster = roster;
     }
 
-    /** Installs the potion, loot, chat toggle, formation and bag-full seams, book lines too (LivingWorld.start). */
+    /**
+     * Installs the potion, loot, chat toggle, formation and bag-full seams, book lines and the junk sale of every shop
+     * visit too (LivingWorld.start).
+     */
     public void install() {
         AgentPotionThresholds.install(this);
         AgentLootPolicy.install(this);
@@ -94,6 +99,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         AgentFormationHook.install(this);
         AgentBagFullSpeech.install(this);
         AgentBookSpeech.install(this);
+        AgentJunkSale.install(this);
         AgentCombatPriorHint.install(this::priorBump);
     }
 
@@ -106,6 +112,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         AgentFormationHook.install(null);
         AgentBagFullSpeech.install(null);
         AgentBookSpeech.install(null);
+        AgentJunkSale.install(null);
         AgentCombatPriorHint.install(null);
     }
 
@@ -485,6 +492,27 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
     @Override
     public boolean speaksOfBooks(Character agent) {
         return speaksOfFullBag(agent);
+    }
+
+    /**
+     * The junk sale of every shop visit (AgentJunkSale, user decision 2026-10-10): a companion out with its owner (its
+     * runtime leader is its roster owner), or on a live TRAIN bench slice (a trainee keeps everything it picks up, so
+     * its Equip tab fills: BenchDutyDispatcher sends it to sell). A farming slice hauls its loot, a friend's loan keeps
+     * the friend's rules, and a Resident, a citizen and every other Agent keep today's visits. Off with
+     * COMPANION_SELL_JUNK_EVERY_VISIT. Memory only.
+     */
+    @Override
+    public boolean sellsAtEveryVisit(int agentCharacterId) {
+        Bound at = bound.get(agentCharacterId);
+        if (at == null || !world.config().COMPANION_SELL_JUNK_EVERY_VISIT) {
+            return false;
+        }
+        if (AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) == at.ownerId()) {
+            return true;
+        }
+        BenchDutyDispatcher bench = world.benchDuty();
+        BenchDutyDispatcher.Slice slice = bench == null ? null : bench.sliceOf(agentCharacterId);
+        return slice != null && slice.ownerId() == at.ownerId() && slice.duty() == Assignment.TRAIN;
     }
 
     /**

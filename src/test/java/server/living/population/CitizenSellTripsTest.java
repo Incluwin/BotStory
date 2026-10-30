@@ -46,6 +46,8 @@ class CitizenSellTripsTest {
     private final List<Point> walks = new ArrayList<>();
     private final Deque<Runnable> queue = new ArrayDeque<>();
     private final boolean[] visiting = {false};
+    /** Whether the visit has outrun its own budget (AgentShopService.visitOutOfTime). */
+    private final boolean[] outOfTime = {false};
     private final int[] free = {2};
     private final long[] clock = {0L};
     private final Point[] position = {new Point(300, 100)};
@@ -69,6 +71,7 @@ class CitizenSellTripsTest {
         trips.shopFor = who -> new int[]{SHOP_MAP, SHOPKEEPER};
         trips.sale = (entry, who, npcId) -> asked.add(npcId);
         trips.visiting = entry -> visiting[0];
+        trips.outOfTime = (entry, now) -> outOfTime[0];
         trips.walk = (entry, point) -> walks.add(point);
         trips.clock = () -> clock[0];
         trips.later = (task, delayMs) -> queue.add(task);
@@ -191,7 +194,10 @@ class CitizenSellTripsTest {
         position[0] = COUNTER;
         runChecks(1);
         visiting[0] = true;
-        assertTrue(trips.finished(session, clock[0] + CitizenSellTrips.VISIT_TIMEOUT_MS), "a visit that never ends");
+        assertFalse(trips.finished(session, clock[0] + 10 * 60_000L), "a long sale its own budget still allows");
+        outOfTime[0] = true;
+        assertTrue(trips.finished(session, clock[0] + 10 * 60_000L), "a visit that outran its own budget");
+        outOfTime[0] = false;
 
         arrive(20 * HOUR);
         visiting[0] = false;
