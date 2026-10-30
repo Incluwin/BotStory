@@ -66,6 +66,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -129,7 +130,9 @@ public class ItemInformationProvider {
     protected Map<Integer, Integer> mobHP = new HashMap<>();
     protected Map<Integer, Integer> levelCache = new HashMap<>();
     protected Map<Integer, Pair<Integer, List<RewardItem>>> rewardCache = new HashMap<>();
-    protected List<Pair<Integer, String>> itemNameCache = new ArrayList<>();
+    /** getAllItems' list: null until the first call reads it, and again after clearCaches. */
+    private volatile List<Pair<Integer, String>> itemNameCache;
+    private final Object itemNameLock = new Object();
     protected Map<Integer, Boolean> consumeOnPickupCache = new HashMap<>();
     protected Map<Integer, Boolean> isQuestItemCache = new HashMap<>();
     protected Map<Integer, Boolean> isPartyQuestItemCache = new HashMap<>();
@@ -183,10 +186,22 @@ public class ItemInformationProvider {
     }
 
 
+    /** Every item's id and name in the String files, read once and shared by every caller (read-only). */
     public List<Pair<Integer, String>> getAllItems() {
-        if (!itemNameCache.isEmpty()) {
-            return itemNameCache;
+        List<Pair<Integer, String>> cached = itemNameCache;
+        if (cached == null) {
+            synchronized (itemNameLock) {
+                cached = itemNameCache;
+                if (cached == null) {
+                    cached = Collections.unmodifiableList(readAllItems());
+                    itemNameCache = cached;
+                }
+            }
         }
+        return cached;
+    }
+
+    private List<Pair<Integer, String>> readAllItems() {
         List<Pair<Integer, String>> itemPairs = new ArrayList<>();
         Data itemsData;
         itemsData = stringData.getData("Cash.img");
@@ -219,10 +234,6 @@ public class ItemInformationProvider {
     }
 
     public List<Pair<Integer, String>> getAllEtcItems() {
-        if (!itemNameCache.isEmpty()) {
-            return itemNameCache;
-        }
-
         List<Pair<Integer, String>> itemPairs = new ArrayList<>();
         Data itemsData;
 
@@ -2490,7 +2501,7 @@ public class ItemInformationProvider {
         mobHP.clear();
         levelCache.clear();
         rewardCache.clear();
-        itemNameCache.clear();
+        itemNameCache = null;
         consumeOnPickupCache.clear();
         isQuestItemCache.clear();
         isPartyQuestItemCache.clear();
