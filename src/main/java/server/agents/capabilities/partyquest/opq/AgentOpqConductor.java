@@ -78,7 +78,8 @@ final class AgentOpqConductor {
         Set<AgentOpqDefinition.Room> climbRooms = AgentOpqCoordinator.lobbyWantsClimber(AgentOpqCoordinator.lobbyDay())
                 ? EnumSet.of(AgentOpqDefinition.Room.LOBBY, AgentOpqDefinition.Room.LOUNGE)
                 : EnumSet.of(AgentOpqDefinition.Room.LOUNGE);
-        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(input, complete, climbRooms);
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(input, complete, climbRooms,
+                loungeSeats(session, input));
         List<AgentOpqMemberState> holders = new ArrayList<>();
         for (AgentOpqMemberState member : companions) {
             AgentOpqConductorPlan.Assignment assignment = plan.get(member.characterId());
@@ -101,6 +102,37 @@ final class AgentOpqConductor {
             AgentOpqCoordinator.assignSealedPlatforms(session, holders);
         }
         AgentOpqCoordinator.assignLoungeSubrooms(session);
+    }
+
+    /**
+     * The lounge subrooms a helper would get this pass (AgentOpqConductorPlan.LoungeSeats): the open ones nobody holds,
+     * less those the lounge's own workers without an open one take first, as AgentOpqCoordinator.assignLoungeSubrooms
+     * hands them out (a climber any, the others only the low one).
+     */
+    static AgentOpqConductorPlan.LoungeSeats loungeSeats(AgentOpqSession session,
+                                                         List<AgentOpqConductorPlan.Companion> companions) {
+        Set<Integer> held = new java.util.HashSet<>();
+        for (AgentOpqMemberState member : AgentOpqCoordinator.counted(session)) {
+            int subroom = member.assignedSubroomMapId();
+            if (member.role() == AgentOpqMemberState.Role.LOUNGE_RUNNER && subroom > 0
+                    && !session.loungeSubroomComplete(subroom)) held.add(subroom);
+        }
+        int high = 0;
+        int low = 0;
+        for (int subroom : AgentOpqDefinition.LOUNGE_ROOM_MAPS) {
+            if (session.loungeSubroomComplete(subroom) || held.contains(subroom)) continue;
+            if (subroom == AgentOpqCoordinator.LOUNGE_LOW_SUBROOM) low++;
+            else high++;
+        }
+        for (AgentOpqConductorPlan.Companion companion : companions) {
+            if (companion.room() != AgentOpqDefinition.Room.LOUNGE) continue;
+            AgentOpqMemberState member = session.member(companion.id());
+            int subroom = member == null ? 0 : member.assignedSubroomMapId();
+            if (subroom > 0 && !session.loungeSubroomComplete(subroom)) continue;
+            if (companion.climber() && high > 0) high--;
+            else if (low > 0) low--;
+        }
+        return new AgentOpqConductorPlan.LoungeSeats(high, low);
     }
 
     /**

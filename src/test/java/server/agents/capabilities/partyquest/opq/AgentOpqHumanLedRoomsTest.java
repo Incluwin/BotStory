@@ -424,6 +424,27 @@ class AgentOpqHumanLedRoomsTest {
     }
 
     @Test
+    void companionsThatCannotClimbWaitInTheCentreWhenTheLoungeHasNoSubroomForThem() {
+        // 2026-10-25 live (run 6): after the sealed room Vex, Marrow and Kettle, none of whom climbs the lounge's
+        // ledges, were sent to help in the lounge, whose low subroom was done, and stood at its entry for eight minutes.
+        AgentOpqCoordinator.tickSession(session, 10_000L);
+        assertEquals(AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(0), session.member(6).assignedSubroomMapId());
+        session.completeLoungeSubroom(AgentOpqCoordinator.LOUNGE_LOW_SUBROOM, 10_500L);
+        completeRooms(AgentOpqDefinition.Room.WALKWAY, AgentOpqDefinition.Room.STORAGE, AgentOpqDefinition.Room.LOBBY,
+                AgentOpqDefinition.Room.ON_WAY_UP, AgentOpqDefinition.Room.SEALED);
+        for (Character grounded : List.of(mira, pel, hal)) when(grounded.getTotalJumpStat()).thenReturn(100);
+
+        AgentOpqCoordinator.tickSession(session, 11_000L);
+
+        assertEquals(AgentOpqMemberState.Role.LOUNGE_RUNNER, session.member(3).role(), "Kes climbs");
+        assertEquals(AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(1), session.member(3).assignedSubroomMapId());
+        for (int grounded : List.of(2, 4, 5)) {
+            assertEquals(AgentOpqMemberState.Role.IDLE, session.member(grounded).role(), "member " + grounded);
+        }
+        assertEquals(AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(0), session.member(6).assignedSubroomMapId());
+    }
+
+    @Test
     void theWholeStatueCallsHimToTheCentresEakEvenInTheCentre() {
         session.transition(AgentOpqSession.Phase.RESTORING_STATUE, 9_000L);
         Reactor scar = mock(Reactor.class);
