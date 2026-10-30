@@ -38,6 +38,24 @@ class AgentWorldMilestoneEvaluatorTest {
     }
 
     @Test
+    void aFirstStageCheckpointOnAnAgentWithAJobIsStale() {
+        // found 2026-10-01: Agents advanced by shaping, a GM or their owner keep the career run's first stage
+        AgentWorldMilestoneSnapshot warrior = AgentWorldMilestoneEvaluator.evaluate(
+                context(31, 110, 102_000_000, "WAITING_FOR_MAPLE_ISLAND", false));
+        assertTrue(warrior.achieved(AgentWorldMilestone.LEVEL_15_FOUNDATION_COMPLETE),
+                warrior.evidence().get(AgentWorldMilestone.LEVEL_15_FOUNDATION_COMPLETE));
+        assertEquals(AgentWorldMilestoneStatus.NOT_ACHIEVED, AgentWorldMilestoneEvaluator.evaluate(
+                        context(12, 100, 102_000_000, "WAITING_FOR_MAPLE_ISLAND", false))
+                .status(AgentWorldMilestone.LEVEL_15_FOUNDATION_COMPLETE), "a job, but not level 15 yet");
+        assertEquals(AgentWorldMilestoneStatus.NOT_ACHIEVED, AgentWorldMilestoneEvaluator.evaluate(
+                        context(16, 0, 102_000_000, "WAITING_FOR_MAPLE_ISLAND", false))
+                .status(AgentWorldMilestone.LEVEL_15_FOUNDATION_COMPLETE), "a Beginner's first stage is its own");
+        assertEquals(AgentWorldMilestoneStatus.NOT_ACHIEVED, AgentWorldMilestoneEvaluator.evaluate(
+                        context(16, 100, 102_000_000, "INSTRUCTOR_TRAINING", false))
+                .status(AgentWorldMilestone.LEVEL_15_FOUNDATION_COMPLETE), "a run under way is not stale");
+    }
+
+    @Test
     void recognizesSouthperryHandoffBoundaryWithoutClaimingVictoriaArrival() {
         AgentWorldContext context = new AgentWorldContext(
                 2L, 2_000L, 27, "KiwiAgent", 9, 0, 2_000_000,

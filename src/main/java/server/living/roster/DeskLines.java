@@ -62,6 +62,8 @@ public final class DeskLines {
     static final String OTHER_CHANNEL = "on another channel";
     static final String KNOCKED_OUT = "knocked out";
     static final String BAGS_FULL = "bags full";
+    /** No weapon its job can fight with (CompanionPartyQuestService.armed): it would never hit in there. */
+    static final String NO_WEAPON = "no weapon to fight with";
     /** A companion lent to the leader's party by its owner (CompanionLoans): it waits outside every run (D2 b). */
     static final String ON_LOAN = "on loan, waits outside";
 

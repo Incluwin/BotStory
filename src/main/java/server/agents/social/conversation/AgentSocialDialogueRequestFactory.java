@@ -84,6 +84,21 @@ public final class AgentSocialDialogueRequestFactory {
             String speakerText,
             SocialCounterpartyType counterpartyType,
             long nowMs) {
+        return prepare(entry, speakerId, speakerName, speakerText, counterpartyType, nowMs, false);
+    }
+
+    /**
+     * {@code whisper}: a whispered line, whose prompt sees the whispered turns too; a public line's sees only the public
+     * ones (whisper review P2, 2026-10-10: what a player whispered could come back in a reply on the map).
+     */
+    public PreparedDialogue prepare(
+            AgentRuntimeEntry entry,
+            int speakerId,
+            String speakerName,
+            String speakerText,
+            SocialCounterpartyType counterpartyType,
+            long nowMs,
+            boolean whisper) {
         AgentContextSnapshot identity = AgentContextRuntime.snapshot(entry);
         if (identity.characterId() <= 0 || speakerId <= 0 || speakerId == identity.characterId()) {
             throw new IllegalArgumentException("Distinct Agent and speaker identities are required");
@@ -94,7 +109,7 @@ public final class AgentSocialDialogueRequestFactory {
         DialogueStyleSnapshot style = styles.resolve(personalityId).snapshot();
         SocialRelationshipKey relationshipKey = new SocialRelationshipKey(
                 identity.characterId(), counterpartyType, speakerId);
-        SocialMemorySnapshot memory = SocialMemoryPersistenceRuntime.snapshot(relationshipKey, nowMs);
+        SocialMemorySnapshot memory = SocialMemoryPersistenceRuntime.snapshot(relationshipKey, nowMs, whisper);
         var operational = AgentSocialContextProjectionRuntime.snapshot(entry);
         String intentKey = intentClassifier.classify(speakerText);
         String requestId = identity.characterId() + ":" + speakerId + ":"

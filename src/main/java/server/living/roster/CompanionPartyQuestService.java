@@ -2,15 +2,19 @@ package server.living.roster;
 
 import client.Character;
 import client.Client;
+import client.inventory.Inventory;
 import client.inventory.InventoryType;
+import client.inventory.Item;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.ItemInformationProvider;
 import server.agents.capabilities.combat.AgentExpectedDamagePolicy;
 import server.agents.capabilities.combat.data.AgentAttackDataProvider;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.dialogue.AgentDialogueSelector;
+import server.agents.capabilities.equipment.AgentWeaponCompatibilityPolicy;
 import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -54,6 +58,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleBiFunction;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
+import java.util.function.Predicate;
 
 /**
  * Party quests with companions (docs/BOT_MANAGEMENT_PLAN.md P6, flow 3): a party leader who asks a listed party quest's
@@ -207,6 +212,8 @@ public final class CompanionPartyQuestService {
     private final ToIntFunction<Character> mpPotions;
     /** The projectiles a loaded companion carries for its weapon (Integer.MAX_VALUE: it shoots none). */
     private volatile ToIntFunction<Character> ammo = AgentSupplyReadiness::carriedAmmo;
+    /** A loaded companion holds a weapon its job can fight with ({@link #armed}). */
+    private volatile Predicate<Character> armed = CompanionPartyQuestService::armed;
     /** What a loaded companion hits for at an entrance (the lineup's choice without a clear time). */
     private final ToDoubleBiFunction<Character, PqEntrance> dps;
     private final PaceSource pace;
@@ -257,6 +264,11 @@ public final class CompanionPartyQuestService {
     /** Tests count a companion's projectiles themselves. */
     void ammoCounter(ToIntFunction<Character> counter) {
         ammo = counter;
+    }
+
+    /** Tests say which companions hold a weapon they can fight with. */
+    void armedCheck(Predicate<Character> check) {
+        armed = check;
     }
 
     public CompanionPartyQuestService(LivingWorld world) {
@@ -774,6 +786,9 @@ public final class CompanionPartyQuestService {
         if (!problem.isEmpty()) {
             return entrance.voice().reason(problem, bot.getLevel());
         }
+        if (!armed.test(bot)) {
+            return DeskLines.NO_WEAPON; // it would stand in the quest and never hit (live 10-02: Garrick at Lakelis)
+        }
         AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(hpPotions.applyAsInt(bot),
                 mpPotions.applyAsInt(bot), AgentSupplyReadiness.needsManaPotions(bot),
                 AgentSupplyReadiness.Activity.partyQuest(entrance.key()));
@@ -819,6 +834,21 @@ public final class CompanionPartyQuestService {
     private static boolean engaged(Character leader, int id) {
         return AgentPartyQuestEngagementRegistry.forMember(id) != null
                 || id == leader.getId() && AgentPartyQuestEngagementRegistry.forOperator(id) != null;
+    }
+
+    /**
+     * It holds a weapon its job can fight with (AgentWeaponCompatibilityPolicy): found 2026-10-02, Lakelis kept seating
+     * Garrick, who held none he could use, so he stood in the quest and never hit. One whose equipment cannot be read
+     * counts as armed.
+     */
+    static boolean armed(Character bot) {
+        Inventory equipped = bot.getInventory(InventoryType.EQUIPPED);
+        if (equipped == null) {
+            return true;
+        }
+        Item weapon = equipped.getItem((short) -11);
+        return weapon != null && AgentWeaponCompatibilityPolicy.isWeaponCompatible(bot,
+                ItemInformationProvider.getInstance().getWeaponType(weapon.getItemId()));
     }
 
     /** The HP-restoring potions in the companion's USE inventory, by quantity, as the Agent counts them. */

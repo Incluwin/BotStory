@@ -198,6 +198,26 @@ class CrewScreensTest {
     }
 
     @Test
+    void aDutyDoneAwayFromItsCampNamesNoCampOnItsRow() {
+        // found 2026-09-29: Garrick's row read "rest @ <his camp>" while he rested in Perion (his card was right)
+        doAnswer(inv -> switch (((RosterEntry) inv.getArgument(0)).assignment()) {
+            case REST -> "rest";
+            case STALL -> "run a stall";
+            default -> "train";
+        }).when(roster).describeAssignment(any());
+        add(new RosterEntry(ANN, "garrick", RosterState.BENCHED, Assignment.REST, 0, 0, ANT_TUNNEL, 0L, 0L, 0L, 0L, 0L, 0L,
+                0, null), "Garrick", 906, 35, Job.PAGE);
+        add(new RosterEntry(ANN, "ilse", RosterState.BENCHED, Assignment.STALL, 0, 0, ANT_TUNNEL, 0L, 0L, 0L, 0L, 0L, 0L,
+                0, null), "Ilse", 907, 30, Job.HUNTER);
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+
+        menus.crew(owner);
+
+        assertEquals(List.of("Garrick, Lv35 Page - rest", "Ilse, Lv30 Hunter - run a stall",
+                "Mira, Lv28 Hunter - train @ Ant Tunnel"), lastTalk().labels().subList(0, 3));
+    }
+
+    @Test
     void aBenchRowSaysWhyItIsNotOutRestingOrOutOfSupplies() {
         add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
         add(row("tobi", RosterState.BENCHED), "Tobi", 902, 30, Job.CLERIC);

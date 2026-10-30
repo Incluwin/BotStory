@@ -4,14 +4,18 @@ import client.Character;
 import config.AgentYamlConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.dialogue.AgentPendingActionStateRuntime;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.Decision;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.Outcome;
+import server.agents.capabilities.trade.AgentOfferService;
+import server.agents.capabilities.trade.AgentOfferStateRuntime;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.integration.cosmic.typesafe.AgentChatJevStateFactory;
 import server.agents.integration.typesafe.JevClient;
 import server.agents.integration.typesafe.JevJudgmentMode;
 import server.agents.integration.typesafe.state.JevState;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.async.AgentAsyncTaskGateway;
 import server.agents.runtime.async.AgentAsyncWorkKind;
 
@@ -284,6 +288,27 @@ public final class AgentChatIntentRuntime {
      */
     public static boolean actHandled(String canonicalCommand, Boolean handled) {
         return Boolean.TRUE.equals(handled) || AgentChatFallThroughCommands.handledDeterministically(canonicalCommand);
+    }
+
+    /**
+     * True when {@code line} is a plain yes or no and an Agent {@code speaker} leads waits on their answer: a "did you
+     * mean ...?" it asked them, a question of its own ("log off?"), or an offer to them. The living world's nearest
+     * Resident leaves such a line to them (found 2026-09-23, "did you mean X?" then "yes" did nothing: in town the
+     * Resident beside the owner took the "yes" as accepting its quest, and the Agents never saw it).
+     */
+    public static boolean answersOwnAgent(Character speaker, String line) {
+        if (speaker == null || line == null || !AgentChatPendingAsks.isAnswer(line)) {
+            return false;
+        }
+        long nowMs = System.currentTimeMillis();
+        for (AgentRuntimeEntry entry : AgentRuntimeRegistry.entriesForLeader(speaker.getId())) {
+            if (PENDING_ASKS.waitsOn(entry, speaker.getId(), nowMs)
+                    || AgentPendingActionStateRuntime.hasPendingAction(entry)
+                    || AgentOfferService.offerAwaitsAnswer(entry) && AgentOfferStateRuntime.pendingOfferRecipientIs(entry, speaker)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The owner's next message can confirm or decline this suggestion; see {@link AgentChatPendingAsks}. */

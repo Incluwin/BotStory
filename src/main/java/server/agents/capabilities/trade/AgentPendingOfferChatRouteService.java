@@ -37,7 +37,7 @@ public final class AgentPendingOfferChatRouteService {
                 message,
                 new AgentPendingOfferResponseService.Hooks<E>(
                         AgentPendingOfferChatRouteService::expirePendingOffer,
-                        AgentPendingOfferChatRouteService::isPendingOfferTarget,
+                        AgentPendingOfferChatRouteService::awaitsAnswerFrom,
                         AgentCommandTargetResolver::resolveTargetedAgent,
                         AgentPendingOfferChatRouteService::handlePendingOfferResponse,
                         (target, feedback) -> target.dropMessage(5, feedback)));
@@ -134,5 +134,15 @@ public final class AgentPendingOfferChatRouteService {
                 && !AgentOfferStateRuntime.pendingOfferExpired(entry, System.currentTimeMillis())
                 && AgentOfferStateRuntime.pendingOfferRecipientIs(entry, speaker)
                 && AgentRuntimeIdentityRuntime.botMapId(entry) == speaker.getMapId();
+    }
+
+    /**
+     * {@link #isPendingOfferTarget}, and the offer is still the newest thing it asked ({@link
+     * AgentOfferService#offerAwaitsAnswer}). Found 2026-09-26: two bots that had offered loot and were then asked to log
+     * out both counted as waiting on an offer, so the owner's "yes" got "More than one bot is waiting on you" and no bot
+     * logged out; one bot alone already let its newer question take the answer.
+     */
+    static boolean awaitsAnswerFrom(AgentRuntimeEntry entry, Character speaker) {
+        return isPendingOfferTarget(entry, speaker) && AgentOfferService.offerAwaitsAnswer(entry);
     }
 }

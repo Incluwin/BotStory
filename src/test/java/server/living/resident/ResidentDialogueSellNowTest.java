@@ -62,6 +62,7 @@ class ResidentDialogueSellNowTest {
         when(owner.getId()).thenReturn(OWNER);
         when(owner.getName()).thenReturn("Bossfriend");
         when(roster.ownerOf("tamsin")).thenReturn(OWNER);
+        when(roster.cachedOwnerOf("tamsin")).thenReturn(OWNER); // whose a whisper is, from memory
         when(roster.assign(any(), any(), any(), anyInt(), anyInt())).thenReturn(new RosterResult.Ok("ok"));
         dialogue = new ResidentDialogue(world);
     }
@@ -87,6 +88,7 @@ class ResidentDialogueSellNowTest {
         Persona hadrik = persona("hadrik", "Hadrik", "WARRIOR");
         when(content.personaByName("hadrik")).thenReturn(hadrik);
         when(roster.ownerOf("hadrik")).thenReturn(OWNER);
+        when(roster.cachedOwnerOf("hadrik")).thenReturn(OWNER); // whose a whisper is, from memory
         when(roster.entry(OWNER, "hadrik")).thenReturn(row("hadrik", RosterState.ACTIVE));
         state(RosterState.ACTIVE);
 

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.TimerManager;
 import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
+import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
 import server.agents.commands.AgentDismissCommandService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentInteractionRuntime;
@@ -32,6 +33,7 @@ import server.living.phrases.PhraseMatcher;
 import server.living.roster.CompanionChatVerbs;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionSlots;
+import server.living.roster.CompanionViews;
 import server.living.roster.HireOffers;
 import server.living.roster.HiredHands;
 import server.living.roster.RosterResult;
@@ -170,7 +172,8 @@ public final class ResidentDialogue {
     private static final Pattern RELEASE = Pattern.compile("^(release|fire|let go) (\\w+)$");
     private static final Pattern EVERYONE_BENCH = Pattern.compile("^(everyone|all|everybody) (bench|rest|go to camp)$");
     private static final Pattern EVERYONE_PARK = Pattern.compile("^(park|park (everyone|all|everybody)|(everyone|all|everybody) park)$");
-    private static final Pattern CALL_USUAL = Pattern.compile("^(call|bring) (the usual|everyone|all|everybody)$");
+    private static final Pattern CALL_USUAL = Pattern.compile(
+            "^(call|summon|bring) (the usual|everyone|all|everybody|the crew|my crew)$");
     private static final Pattern EVERYONE_KEYSTONE = Pattern.compile("^((everyone|all|everybody) )?get (your |a |the )?keystones$");
     private static final Pattern EVERYONE_TICKET = Pattern.compile("^((everyone|all|everybody) )?get (your |a |the )?(entrance )?tickets$");
     private static final Pattern FARM_ITEM = Pattern.compile("^farm (\\d+ )?(.+?)( x?(\\d+))?$");
@@ -258,14 +261,22 @@ public final class ResidentDialogue {
             return false;
         }
         String normalized = PhraseMatcher.normalize(text);
+        // whose it is from memory, and the owner's row read once for both checks below: before, every whisper to a
+        // persona read the roster once or twice, another player's too (whisper review P1, 2026-10-10)
+        if (world.roster().cachedOwnerOf(persona.id()) != speaker.getId()) {
+            return converse(speaker, persona, normalized, text) || true;
+        }
         String command = addressedTo(persona, normalized);
-        if (rosterCommandFor(speaker, persona, command, true) || recalled(speaker, persona, command)) {
-            return true;
-        }
-        if (world.roster().ownerOf(persona.id()) == speaker.getId()) {
-            return false; // companion commands travel the agent whisper bridge
-        }
-        return converse(speaker, persona, normalized, text) || true;
+        RosterEntry entry = ownersRow(speaker, persona);
+        // false: companion commands travel the agent whisper bridge
+        return rosterCommandFor(speaker, persona, entry, command, true) || recalled(speaker, persona, entry, command);
+    }
+
+    /** The owner's row of the persona: the Crew window's view cache when it holds their crew, else one roster read. */
+    private RosterEntry ownersRow(Character owner, Persona persona) {
+        CompanionViews views = world.views();
+        RosterEntry cached = views == null ? null : views.cachedRow(owner.getId(), persona.id());
+        return cached != null ? cached : world.roster().entry(owner.getId(), persona.id());
     }
 
     /** The whisper without its addressee's name, first or last ("tamsin come back", "come here tamsin"), as map chat. */
@@ -287,12 +298,9 @@ public final class ResidentDialogue {
      * whose tail the roster's call words do not list ("come back to me", "come back here"), or what its Agent would
      * read as "follow me" or "come here" ("get over here", "lets go", "come to me"), calls it. Before, such a whisper
      * went on to the whisper bridge, which a live bench slice refuses, and the companion whispered back "call me back
-     * first". Out with its owner, those lines stay its Agent's. Only the owner's call reads the roster row.
+     * first". Out with its owner, those lines stay its Agent's. {@code entry}: the owner's row of it (null: none).
      */
-    private boolean recalled(Character owner, Persona persona, String command) {
-        if (world.roster().cachedOwnerOf(persona.id()) != owner.getId()) {
-            return false;
-        }
+    private boolean recalled(Character owner, Persona persona, RosterEntry entry, String command) {
         PhraseMatcher phrases = world.phrases();
         String canonical = phrases == null ? null : phrases.commandFor(command);
         boolean toOwner = ("follow me".equals(canonical) || "move here".equals(canonical))
@@ -300,7 +308,6 @@ public final class ResidentDialogue {
         if (!RECALL.matcher(command).matches() && !toOwner) {
             return false;
         }
-        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED || entry.state() == RosterState.ACTIVE) {
             return false;
         }
@@ -384,7 +391,9 @@ public final class ResidentDialogue {
                 nearest = session;
             }
         }
-        if (nearest != null && directed(normalized) && !openContentQuestion(normalized)) {
+        // a plain yes or no while one of the speaker's own Agents waits on their answer is that Agent's
+        if (nearest != null && directed(normalized) && !openContentQuestion(normalized)
+                && !AgentChatIntentRuntime.answersOwnAgent(speaker, normalized)) {
             return new Target(nearest.persona, normalized);
         }
         return null;
@@ -860,9 +869,9 @@ public final class ResidentDialogue {
             return true;
         }
         Matcher m = CALL.matcher(normalized);
-        if (m.matches()) {
-            return owned(owner, m.group(2), persona -> verbs.say(owner, "roster.call",
-                    () -> RosterVoice.line(persona, world.roster().call(owner, persona))));
+        if (m.matches() && owned(owner, m.group(2), persona -> verbs.say(owner, "roster.call",
+                () -> RosterVoice.line(persona, world.roster().call(owner, persona))))) {
+            return true; // no companion of that name ("call everyone", found live 10-03): the crew-wide call takes it
         }
         m = BENCH.matcher(normalized);
         if (m.matches()) {
@@ -970,7 +979,11 @@ public final class ResidentDialogue {
 
     /** Companion-directed roster commands: assignments, camp, haul; {@code whispered}: the owner whispered the line to it. */
     private boolean rosterCommandFor(Character owner, Persona persona, String command, boolean whispered) {
-        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
+        return rosterCommandFor(owner, persona, world.roster().entry(owner.getId(), persona.id()), command, whispered);
+    }
+
+    /** {@link #rosterCommandFor(Character, Persona, String, boolean)} with the owner's row of it read already. */
+    private boolean rosterCommandFor(Character owner, Persona persona, RosterEntry entry, String command, boolean whispered) {
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return false;
         }

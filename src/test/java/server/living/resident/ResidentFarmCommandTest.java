@@ -62,6 +62,7 @@ class ResidentFarmCommandTest {
         when(roster.entry(OWNER, "lisa")).thenReturn(new RosterEntry(OWNER, "lisa", RosterState.BENCHED, Assignment.TRAIN, 0, 0,
                 103000000, 0L, 0L, 0L, 1_000L, 1_000L, 1_000L, 0, null));
         when(roster.ownerOf("lisa")).thenReturn(OWNER);
+        when(roster.cachedOwnerOf("lisa")).thenReturn(OWNER); // whose a whisper is, from memory
         when(roster.assign(any(), any(), any(), anyInt(), anyInt())).thenReturn(new RosterResult.Ok("ok"));
         when(roster.delegate(any(), any(), any(), anyInt(), anyInt(), anyInt())).thenReturn(new RosterResult.Ok("ok"));
         dialogue = new ResidentDialogue(world);
