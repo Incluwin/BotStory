@@ -56,15 +56,15 @@
     { "x": 4059, "y": 123, "seatId": 19 },
     { "x": 4909, "y": -120, "seatId": 0 },
     { "x": 4976, "y": -120, "seatId": 1 },
-    { "x": 5422, "y": 453, "seatId": 2 },
-    { "x": 5462, "y": 453, "seatId": 3 },
-    { "x": 5502, "y": 453, "seatId": 4 },
-    { "x": 5542, "y": 453, "seatId": 5 },
-    { "x": 5582, "y": 453, "seatId": 6 },
-    { "x": 5622, "y": 453, "seatId": 7 },
-    { "x": 5662, "y": 453, "seatId": 8 },
-    { "x": 5702, "y": 453, "seatId": 9 },
-    { "x": 5743, "y": 453, "seatId": 10 },
+    { "x": 5422, "y": 453, "seatId": 8 },
+    { "x": 5445, "y": 453, "seatId": 9 },
+    { "x": 5466, "y": 453, "seatId": 10 },
+    { "x": 5609, "y": 453, "seatId": 5 },
+    { "x": 5632, "y": 453, "seatId": 6 },
+    { "x": 5653, "y": 453, "seatId": 7 },
+    { "x": 5699, "y": 453, "seatId": 2 },
+    { "x": 5722, "y": 453, "seatId": 3 },
+    { "x": 5743, "y": 453, "seatId": 4 },
     { "x": 5812, "y": -177, "seatId": 11 },
     { "x": 5838, "y": -177, "seatId": 12 },
     { "x": 5864, "y": -177, "seatId": 13 },
@@ -73,12 +73,12 @@
     { "x": 5943, "y": -177, "seatId": 16 }
   ],
   "roamFallbackSpots": [
-    { "x": 112, "y": 197 },
-    { "x": 1473, "y": 260 },
-    { "x": 2741, "y": 259 },
-    { "x": 3827, "y": 368 },
-    { "x": 4690, "y": 300 },
-    { "x": 5634, "y": 402 }
+    { "x": 112, "y": 274 },
+    { "x": 1473, "y": 334 },
+    { "x": 2741, "y": 334 },
+    { "x": 3827, "y": 454 },
+    { "x": 4690, "y": 424 },
+    { "x": 5634, "y": 454 }
   ],
   "npcSpots": [
     { "npcId": 1012000, "offsetX": 65 },
@@ -196,15 +196,15 @@
       "capacity": 9,
       "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
       "spots": [
-        { "x": 5422, "y": 453, "seatId": 2 },
-        { "x": 5462, "y": 453, "seatId": 3 },
-        { "x": 5502, "y": 453, "seatId": 4 },
-        { "x": 5542, "y": 453, "seatId": 5 },
-        { "x": 5582, "y": 453, "seatId": 6 },
-        { "x": 5622, "y": 453, "seatId": 7 },
-        { "x": 5662, "y": 453, "seatId": 8 },
-        { "x": 5702, "y": 453, "seatId": 9 },
-        { "x": 5743, "y": 453, "seatId": 10 }
+        { "x": 5422, "y": 453, "seatId": 8 },
+        { "x": 5445, "y": 453, "seatId": 9 },
+        { "x": 5466, "y": 453, "seatId": 10 },
+        { "x": 5609, "y": 453, "seatId": 5 },
+        { "x": 5632, "y": 453, "seatId": 6 },
+        { "x": 5653, "y": 453, "seatId": 7 },
+        { "x": 5699, "y": 453, "seatId": 2 },
+        { "x": 5722, "y": 453, "seatId": 3 },
+        { "x": 5743, "y": 453, "seatId": 4 }
       ]
     },
     {
@@ -230,12 +230,12 @@
       "platformKind": "MAIN",
       "capacity": 1,
       "affordances": ["BROWSE"],
-      "spots": [{ "x": 2900, "y": 368, "seatId": -1 }]
+      "spots": [{ "x": 2900, "y": 334, "seatId": -1 }]
     }
   ],
   "facilities": [
     { "id": "henesys-market-facility", "type": "GENERAL_SHOP", "npcId": 0,
-      "destinationMapId": 100000100, "approachPoints": [{ "x": 2900, "y": 368 }],
+      "destinationMapId": 100000100, "approachPoints": [{ "x": 2900, "y": 334 }],
       "services": ["browse", "buy", "sell", "free-market-access"] }
   ],
   "hotspots": [

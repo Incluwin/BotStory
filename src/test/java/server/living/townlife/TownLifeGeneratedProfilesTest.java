@@ -15,24 +15,27 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TownLifeGeneratedProfilesTest {
     private static final int GRAPH_BUILDERS = 4;
 
+    /**
+     * Every profile in the index, the seven hand-authored Victoria ones too (their floating and street spots were
+     * grounded and Henesys's east benches put on the seats their ids name, 2026-10-29), stands on its map.
+     */
     @Test
-    void everyGeneratedProfileInTheIndexStandsOnItsMap() throws Exception {
+    void everyProfileInTheIndexStandsOnItsMap() throws Exception {
         // defaultRepository() already rejects invalid profiles, and the geometry check repeats the validator's errors.
-        List<AgentTownLifeProfile> generated = AgentTownLifeProfileRepository.defaultRepository().profiles().stream()
-                .filter(profile -> !TownLifeProfileMain.HAND_AUTHORED.contains(profile.profileId()))
+        List<AgentTownLifeProfile> profiles = AgentTownLifeProfileRepository.defaultRepository().profiles().stream()
                 .sorted(Comparator.comparing(AgentTownLifeProfile::profileId))
                 .toList();
-        assertFalse(generated.isEmpty());
-        buildNavigationGraphsInParallel(generated);
+        assertTrue(profiles.stream().map(AgentTownLifeProfile::profileId).toList()
+                .containsAll(TownLifeProfileMain.HAND_AUTHORED));
+        buildNavigationGraphsInParallel(profiles);
 
         List<String> failures = new ArrayList<>();
-        for (AgentTownLifeProfile profile : generated) {
+        for (AgentTownLifeProfile profile : profiles) {
             TownLifeGeometryCheck.check(profile, TownMapData.load(profile.mapId())).errors()
                     .forEach(error -> failures.add(profile.profileId() + ": " + error));
         }
