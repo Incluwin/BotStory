@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -103,8 +104,13 @@ class AgentWorldPortalRouteGraphFreshnessTest {
         assertEquals(Set.of(), stale, "catalog edges WZ no longer has: run Export-WorldPortalRouteGraph.ps1");
     }
 
+    /**
+     * Each scripted portal's script, run for a traveller standing on its source map (AgentTravelLegScriptTest's
+     * recording stub), sends it to the destination once the gate's quests are done, and not before: scripts that work
+     * the target or the quest out from the map id (timeQuest.js on the Temple of Time's roads) are checked too.
+     */
     @Test
-    void everyScriptedPortalRunsItsScriptToItsDestination() throws IOException {
+    void everyScriptedPortalRunsItsScriptToItsDestination() throws Exception {
         JsonNode portals = new ObjectMapper().readTree(CATALOG.toFile()).path("scriptedPortals");
         assertTrue(portals.size() >= 5, "the Time Gate, An Empty House's door and the Temple of Time's flights");
         for (JsonNode portal : portals) {
@@ -122,13 +128,29 @@ class AgentWorldPortalRouteGraphFreshnessTest {
                     () -> source + ": the portal id names " + name);
             assertTrue(entry.group(1).contains("<string name=\"script\" value=\"" + script + "\"/>"),
                     () -> source + ": " + name + " runs " + script);
-            String js = Files.readString(Path.of("scripts", "portal", script + ".js"));
-            assertTrue(js.contains("warp(" + destination), () -> script + " sends the traveller to " + destination);
-            for (JsonNode quest : portal.path("gate").path("completedAny")) {
-                assertTrue(js.contains("isQuestCompleted(" + quest.asInt() + ")"), () -> script + " checks " + quest);
+            JsonNode gate = portal.path("gate");
+            AgentTravelLegScriptTest.Conversation open = new AgentTravelLegScriptTest.Conversation(source, 0, "true");
+            gate.path("completedAny").forEach(quest -> open.completedQuests.add(quest.asInt()));
+            gate.path("activeAny").forEach(quest -> open.startedQuests.add(quest.asInt()));
+            AgentTravelLegScriptTest.enter(script, open);
+            assertEquals(destination, open.warpedTo,
+                    () -> source + ": " + script + " sends the traveller to " + destination);
+            for (JsonNode quest : gate.path("completedAny")) {
+                AgentTravelLegScriptTest.Conversation one = new AgentTravelLegScriptTest.Conversation(source, 0, "true");
+                one.completedQuests.add(quest.asInt());
+                AgentTravelLegScriptTest.enter(script, one);
+                assertEquals(destination, one.warpedTo, () -> source + ": " + script + " opens for " + quest + " done");
             }
-            for (JsonNode quest : portal.path("gate").path("activeAny")) {
-                assertTrue(js.contains("isQuestStarted(" + quest.asInt() + ")"), () -> script + " checks " + quest);
+            for (JsonNode quest : gate.path("activeAny")) {
+                AgentTravelLegScriptTest.Conversation one = new AgentTravelLegScriptTest.Conversation(source, 0, "true");
+                one.startedQuests.add(quest.asInt());
+                AgentTravelLegScriptTest.enter(script, one);
+                assertEquals(destination, one.warpedTo, () -> source + ": " + script + " opens for " + quest + " taken");
+            }
+            if (!gate.isMissingNode()) {
+                AgentTravelLegScriptTest.Conversation shut = new AgentTravelLegScriptTest.Conversation(source, 0, "true");
+                AgentTravelLegScriptTest.enter(script, shut);
+                assertNotEquals(destination, shut.warpedTo, () -> source + ": " + script + " is shut without the quests");
             }
         }
     }

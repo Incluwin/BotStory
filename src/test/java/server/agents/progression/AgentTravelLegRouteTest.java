@@ -3,7 +3,11 @@ package server.agents.progression;
 import client.Character;
 import client.QuestStatus;
 import org.junit.jupiter.api.Test;
+import server.living.config.Content;
+import server.living.config.ContentLoader;
+import server.living.resident.ResidentSpots;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -146,6 +150,105 @@ class AgentTravelLegRouteTest {
         when(halfway.getQuestStatus(2260)).thenReturn((byte) QuestStatus.Status.STARTED.getId());
         assertTrue(AgentVictoriaRouteRuntime.withGates(Set.of(), halfway).contains(door),
                 "2260 counts only once it is completed");
+    }
+
+    @Test
+    void everyRecruitsHomeTownIsReachableFromHenesysAndBack() {
+        Map<String, Integer> homes = new java.util.TreeMap<>();
+        for (Content.Persona persona : ContentLoader.load(Path.of("scripts/config/living-world")).personas().values()) {
+            if (persona.recruitable()) {
+                homes.put(persona.id() + " (" + persona.homeTown() + ")", ResidentSpots.townMapId(persona.homeTown()));
+            }
+        }
+        for (String recruit : List.of("caedmon", "liesl", "hrafn", "maelis", "gaspard", "lianhua", "caius", "brynja")) {
+            assertTrue(homes.keySet().stream().anyMatch(key -> key.startsWith(recruit + " (")), recruit);
+        }
+        homes.forEach((recruit, home) -> {
+            assertTrue(home > 0, () -> recruit + " has a home map");
+            if (home != 100000000) {
+                assertFalse(AgentVictoriaTrainingRouteCatalog.ridePath(100000000, home, Set.of(), leg -> true,
+                        RIDE_HOP_COST).isEmpty(), () -> "Henesys reaches " + recruit + "'s home " + home);
+                assertFalse(AgentVictoriaTrainingRouteCatalog.ridePath(home, 100000000, Set.of(), leg -> true,
+                        RIDE_HOP_COST).isEmpty(), () -> recruit + "'s home " + home + " reaches Henesys");
+            }
+        });
+    }
+
+    @Test
+    void ereveIsTheSkyFerryFromElliniaOrOrbisAndRienTheWhaleFromLithHarbor() {
+        List<AgentVictoriaTrainingRouteCatalog.Step> toEreve = AgentVictoriaTrainingRouteCatalog.ridePath(
+                100000000, 130000000, Set.of(), leg -> true, RIDE_HOP_COST);
+        assertEquals(List.of("ellinia-to-ereve"), legs(toEreve));
+        assertEquals(List.of(130000210, 130000200, 130000100, 130000000), toEreve.stream()
+                .map(AgentVictoriaTrainingRouteCatalog.Step::toMapId).toList().subList(toEreve.size() - 4, toEreve.size()),
+                "off the dock, through the Crossroads' rankRoom door and the Knights' passage into town");
+        assertEquals(27, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(101000000, 101000400), "Ellinia's in04");
+        assertEquals(4, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(130000200, 130000100), "the Crossroads' east00");
+        assertEquals(1, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(130000000, 130000100), "the town's west00");
+        assertEquals(List.of("ereve-to-ellinia"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                130000000, 100000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        assertEquals(List.of("ereve-to-orbis"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                130000000, 200000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        assertEquals(List.of("orbis-station-to-ereve-platform", "orbis-to-ereve"), legs(AgentVictoriaTrainingRouteCatalog
+                .ridePath(200000000, 130000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+
+        List<AgentVictoriaTrainingRouteCatalog.Step> toRien = AgentVictoriaTrainingRouteCatalog.ridePath(
+                100000000, 140000000, Set.of(), leg -> true, RIDE_HOP_COST);
+        assertEquals(List.of("lith-harbor-to-rien"), legs(toRien));
+        assertEquals(List.of("rien-to-lith-harbor"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                140000000, 100000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        assertEquals(2, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(140020200, 140020300), "enterPort to the dock");
+    }
+
+    @Test
+    void theDojoIsTheBoardInMuLungTempleAndNeverAWayToVictoria() {
+        assertEquals(List.of("mu-lung-temple-to-the-dojo"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                250000000, 925020000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        List<AgentVictoriaTrainingRouteCatalog.Step> out = AgentVictoriaTrainingRouteCatalog.ridePath(
+                925020000, 250000000, Set.of(), leg -> true, RIDE_HOP_COST);
+        assertEquals(List.of("the-dojo-to-mu-lung-temple"), legs(out));
+        List<String> toVictoria = legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                250000000, 100000000, Set.of(), leg -> true, RIDE_HOP_COST));
+        assertFalse(toVictoria.contains("mu-lung-temple-to-the-dojo"),
+                "the exit lands back in Mu Lung Temple, so the Dojo is no way to Henesys: " + toVictoria);
+    }
+
+    @Test
+    void mapleIslandSailsToLithHarborOnlyAndHappyvilleIsRooneyInElliniaAndRupiBack() {
+        assertEquals(List.of("southperry-to-lith-harbor"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                10000, 100000000, Set.of(), leg -> true, RIDE_HOP_COST)), "Mushroom Town walks the island road to Shanks");
+        assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(
+                100000000, 2000000, Set.of(), leg -> true, RIDE_HOP_COST), "nothing sails back to Maple Island");
+
+        assertEquals(List.of("ellinia-to-happyville"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                100000000, 209000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        assertEquals(List.of("happyville-to-ellinia"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                209000000, 100000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        assertFalse(legs(AgentVictoriaTrainingRouteCatalog.ridePath(240000000, 101000000, Set.of(), leg -> true,
+                RIDE_HOP_COST)).contains("happyville-to-ellinia"), "Happyville is no shortcut to Ellinia");
+    }
+
+    @Test
+    void theTempleOfTimesRoadsOpenOneQuestAtATimeAsTheirPortalsDo() {
+        Character newcomer = mock(Character.class);
+        Set<Long> shut = AgentVictoriaRouteRuntime.withGates(Set.of(), newcomer);
+        assertTrue(shut.contains(AgentVictoriaTrainingRouteCatalog.edgeKey(270010100, 270010110)));
+        assertNotNull(AgentVictoriaTrainingRouteCatalog.nextHop(270000100, 270010100, shut), "Memory Lane 1 is open");
+        assertNull(AgentVictoriaTrainingRouteCatalog.nextHop(270000100, 270010110, shut));
+
+        Character walker = mock(Character.class);
+        when(walker.getQuestStatus(3501)).thenReturn((byte) QuestStatus.Status.COMPLETED.getId());
+        Set<Long> one = AgentVictoriaRouteRuntime.withGates(Set.of(), walker);
+        assertFalse(one.contains(AgentVictoriaTrainingRouteCatalog.edgeKey(270010100, 270010110)));
+        assertNotNull(AgentVictoriaTrainingRouteCatalog.nextHop(270000100, 270010200, one), "on to Memory Lane 2");
+        assertNull(AgentVictoriaTrainingRouteCatalog.nextHop(270000100, 270010210, one), "Memory Lane 2's exit needs 3502");
+
+        assertNotNull(AgentVictoriaTrainingRouteCatalog.nextHop(270000100, 270040100, Set.of()),
+                "with every road's quest done the Temple Ruins are a walk");
+        assertTrue(shut.contains(AgentVictoriaTrainingRouteCatalog.edgeKey(106020400, 106020501)),
+                "Mushroom Castle's gate needs quest 2324");
+        assertTrue(shut.contains(AgentVictoriaTrainingRouteCatalog.edgeKey(106020300, 106020400)),
+                "the vines need quest 30000");
     }
 
     @Test

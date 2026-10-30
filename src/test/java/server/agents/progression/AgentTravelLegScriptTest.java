@@ -103,6 +103,9 @@ public class AgentTravelLegScriptTest {
             if (leg.ticket() != null) {
                 cm.items.put(leg.ticket().itemId(), 1);
             }
+            if (leg.savedLocation() != null) {
+                cm.saved.put(leg.savedLocation(), leg.toMapId()); // as the way in saved it (the Dojo board: MIRROR)
+            }
             board(leg, cm);
 
             if (leg.rideMapIds().isEmpty()) {
@@ -163,8 +166,10 @@ public class AgentTravelLegScriptTest {
                 assertTrue(placed(leg.fromMapId(), leg.npcId()),
                         () -> leg.id() + ": its NPC stands on " + leg.fromMapId());
             }
-            assertTrue(nodes.contains(leg.fromMapId()), () -> leg.id() + ": boards on the walking graph");
-            assertTrue(nodes.contains(leg.toMapId()), () -> leg.id() + ": lands on the walking graph");
+            assertTrue(nodes.contains(leg.fromMapId()) || walledIn(leg.fromMapId()),
+                    () -> leg.id() + ": boards on the walking graph");
+            assertTrue(nodes.contains(leg.toMapId()) || walledIn(leg.toMapId()),
+                    () -> leg.id() + ": lands on the walking graph");
             for (int ride : leg.rideMapIds()) {
                 assertTrue(!nodes.contains(ride), () -> leg.id() + ": its ride map " + ride + " is never walked");
             }
@@ -212,6 +217,53 @@ public class AgentTravelLegScriptTest {
         }
     }
 
+    @Test
+    void shanksSailsNobodyBelowLevelSevenOffMapleIsland() throws Exception {
+        for (String id : List.of("southperry-to-lith-harbor", "maple-road-southperry-to-lith-harbor")) {
+            AgentTravelLegCatalog.Leg leg = leg(id);
+            assertEquals(7, leg.minLevel());
+
+            Conversation young = new Conversation(leg.fromMapId(), PURSE, "true");
+            young.level = 6;
+            run(leg.npcId(), young, leg.selections());
+            assertNull(young.warpedTo, () -> id + ": a level 6 newcomer stays on the island");
+
+            Conversation ready = new Conversation(leg.fromMapId(), PURSE, "true");
+            ready.level = 7;
+            run(leg.npcId(), ready, leg.selections());
+            assertEquals(leg.toMapId(), ready.warpedTo);
+        }
+    }
+
+    @Test
+    void theDojoBoardAndRooneySaveWhereTheRiderWasAndTheWayOutLandsThere() throws Exception {
+        AgentTravelLegCatalog.Leg board = leg("mu-lung-temple-to-the-dojo");
+        Conversation challenger = new Conversation(board.fromMapId(), PURSE, "true");
+        run(board.npcId(), challenger, board.selections());
+        assertEquals(925020000, challenger.warpedTo);
+        assertEquals(250000100, challenger.saved.get("MIRROR"), "the board keeps Mu Lung Temple");
+
+        AgentTravelLegCatalog.Leg out = leg("the-dojo-to-mu-lung-temple");
+        assertEquals("MIRROR", out.savedLocation());
+        Conversation leaving = new Conversation(out.fromMapId(), PURSE, "true");
+        leaving.saved.put("MIRROR", 250000100);
+        board(out, leaving);
+        assertEquals(out.toMapId(), leaving.warpedTo, "the exit lands where the board saved the rider");
+        Conversation resident = new Conversation(out.fromMapId(), PURSE, "true");
+        board(out, resident);
+        assertEquals(100000000, resident.warpedTo, "with nothing saved the exit lands in Henesys");
+
+        AgentTravelLegCatalog.Leg rooney = leg("ellinia-to-happyville");
+        Conversation visitor = new Conversation(rooney.fromMapId(), PURSE, "true");
+        run(rooney.npcId(), visitor, rooney.selections());
+        assertEquals(209000000, visitor.warpedTo);
+        assertEquals(101000000, visitor.saved.get("HAPPYVILLE"));
+        AgentTravelLegCatalog.Leg rupi = leg("happyville-to-ellinia");
+        Conversation home = new Conversation(rupi.fromMapId(), PURSE, "true");
+        run(rupi.npcId(), home, rupi.selections());
+        assertEquals(rupi.toMapId(), home.warpedTo, "with nothing saved Rupi sends you to Ellinia, Rooney's own town");
+    }
+
     private static AgentTravelLegCatalog.Leg leg(String id) {
         return AgentTravelLegCatalog.legs().stream().filter(leg -> leg.id().equals(id)).findFirst().orElseThrow();
     }
@@ -224,13 +276,41 @@ public class AgentTravelLegScriptTest {
         }
         String name = portalScript(leg.fromMapId(), leg.portal());
         assertNotNull(name, () -> leg.id() + ": its portal runs a script");
-        ScriptEngine engine = engines.getEngineByName("graal.js");
+        assertEquals(Boolean.TRUE, enter(name, cm), () -> leg.id() + ": the portal lets the rider through");
+    }
+
+    /** Runs portal script {@code name} for {@code cm} (as PortalScriptManager does) and returns enter's answer. */
+    static Object enter(String name, Conversation cm) throws Exception {
+        ScriptEngine engine = engines().getEngineByName("graal.js");
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.allowHostAccess", true);
         bindings.put("polyglot.js.allowHostClassLookup", true);
         engine.eval(Files.readString(Path.of("scripts", "portal", name + ".js")));
-        Object entered = ((Invocable) engine).invokeFunction("enter", cm);
-        assertEquals(Boolean.TRUE, entered, () -> leg.id() + ": the portal lets the rider through");
+        return ((Invocable) engine).invokeFunction("enter", cm);
+    }
+
+    private static synchronized ScriptEngineManager engines() {
+        if (engines == null) {
+            graal();
+        }
+        return engines;
+    }
+
+    /** No portal on the map leads to another map: only travel legs come and go (Happyville). */
+    private static boolean walledIn(int mapId) throws Exception {
+        Path file = Path.of("wz", "Map.wz", "Map", "Map" + mapId / 100_000_000, String.format("%09d.img.xml", mapId));
+        Matcher block = PORTAL_BLOCK.matcher(Files.readString(file));
+        if (!block.find()) {
+            return true;
+        }
+        Matcher target = Pattern.compile("<int name=\"tm\" value=\"(\\d+)\"/>").matcher(block.group(1));
+        while (target.find()) {
+            int to = Integer.parseInt(target.group(1));
+            if (to != 999999999 && to != mapId) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** The script of the portal of that name on the map, or null when there is none. */
@@ -254,13 +334,20 @@ public class AgentTravelLegScriptTest {
         return null;
     }
 
-    /** As NPCScriptManager and the headless gateway do: start, then one action(1, 0, selection) per advance. */
+    /**
+     * As NPCScriptManager and the headless gateway do: start, then one action(1, 0, selection) per advance. A bot is no
+     * Agent operator (Shanks offers operators an administration menu first), so AgentAuthorityService answers no for
+     * the stub player, which is no Character.
+     */
     private static void run(int npcId, Conversation cm, List<Integer> selections) throws Exception {
-        ScriptEngine engine = engines.getEngineByName("graal.js");
+        ScriptEngine engine = engines().getEngineByName("graal.js");
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.allowHostAccess", true);
         bindings.put("polyglot.js.allowHostClassLookup", true);
         bindings.put("cm", cm);
+        engine.eval("var hostType = Java.type; Java.type = function (name) { return name === "
+                + "'server.agents.auth.AgentAuthorityService' ? { mayOperate: function () { return false; } }"
+                + " : hostType(name); };");
         engine.eval(Files.readString(Path.of("scripts", "npc", npcId + ".js")));
         Invocable script = (Invocable) engine;
         script.invokeFunction("start");
@@ -304,6 +391,8 @@ public class AgentTravelLegScriptTest {
         private final PlayerStub player;
         final Map<Integer, Integer> items = new HashMap<>();
         final Map<String, Integer> saved = new HashMap<>();
+        final Set<Integer> completedQuests = new HashSet<>();
+        final Set<Integer> startedQuests = new HashSet<>();
         final String entry;
         int mesos;
         int level = 120;
@@ -344,6 +433,14 @@ public class AgentTravelLegScriptTest {
 
         public void playPortalSound() { }
 
+        public boolean isQuestCompleted(int questId) {
+            return completedQuests.contains(questId);
+        }
+
+        public boolean isQuestStarted(int questId) {
+            return startedQuests.contains(questId);
+        }
+
         public void message(String text) { }
 
         public void playerMessage(int type, String text) { }
@@ -372,6 +469,10 @@ public class AgentTravelLegScriptTest {
 
         public boolean haveItem(int itemId, int quantity) {
             return count(itemId) >= quantity;
+        }
+
+        public boolean hasItem(int itemId) {
+            return haveItem(itemId);
         }
 
         public int itemQuantity(int itemId) {

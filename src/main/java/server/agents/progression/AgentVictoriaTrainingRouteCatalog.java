@@ -76,8 +76,10 @@ final class AgentVictoriaTrainingRouteCatalog {
      */
     static List<Step> ridePath(int source, int destination, Set<Long> excludedEdges,
                                Predicate<AgentTravelLegCatalog.Leg> usable, int rideHopCost) {
-        if (source == destination || !LANDMASS.containsKey(destination)) {
-            return List.of(); // every leg lands on the graphs, so a map off them is never reached
+        if (source == destination
+                || !LANDMASS.containsKey(destination) && !AgentTravelLegCatalog.station(destination)) {
+            // every leg lands on the graphs or on a map only legs reach (Happyville): a map off both is never reached
+            return List.of();
         }
         int legCost = Math.max(1, rideHopCost);
         Map<Integer, Integer> cost = new HashMap<>();

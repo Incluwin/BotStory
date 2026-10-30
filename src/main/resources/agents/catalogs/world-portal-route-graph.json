@@ -2,8 +2,13 @@
     "schemaVersion":  1,
     "catalogId":  "world-standard-portal-route-graph-v1",
     "sourcePath":  "wz/Map.wz/Map",
-    "sourceSha256":  "053137d0c87e9aa4050e044e160e7908b17c51ee313085a3d832beb1ccc62823",
+    "sourceSha256":  "93f14574d741e3eb119e0390854e0dff8a6bc07ce2c9af0f40616e7b1192c59c",
     "groups":  [
+                   {
+                       "id":  "maple-island",
+                       "firstMapId":  10000,
+                       "endMapId":  3000000
+                   },
                    {
                        "id":  "ereve",
                        "firstMapId":  130000000,
@@ -53,6 +58,11 @@
                        "id":  "zipangu",
                        "firstMapId":  800000000,
                        "endMapId":  810000000
+                   },
+                   {
+                       "id":  "mu-lung-dojo",
+                       "firstMapId":  925020000,
+                       "endMapId":  925020002
                    }
                ],
     "excludedRanges":  [
@@ -127,9 +137,437 @@
                                 "portalName":  "west00",
                                 "portalId":  4,
                                 "script":  "dracoout"
+                            },
+                            {
+                                "sourceMapId":  101000000,
+                                "destinationMapId":  101000400,
+                                "portalName":  "in04",
+                                "portalId":  27,
+                                "script":  "inERShip"
+                            },
+                            {
+                                "sourceMapId":  130000200,
+                                "destinationMapId":  130000100,
+                                "portalName":  "east00",
+                                "portalId":  4,
+                                "script":  "rankRoom"
+                            },
+                            {
+                                "sourceMapId":  130000000,
+                                "destinationMapId":  130000100,
+                                "portalName":  "west00",
+                                "portalId":  1,
+                                "script":  "rankRoom"
+                            },
+                            {
+                                "sourceMapId":  140020200,
+                                "destinationMapId":  140020300,
+                                "portalName":  "east00",
+                                "portalId":  2,
+                                "script":  "enterPort"
+                            },
+                            {
+                                "sourceMapId":  106020300,
+                                "destinationMapId":  106020400,
+                                "portalName":  "obstacle",
+                                "portalId":  3,
+                                "script":  "obstacle",
+                                "gate":  {
+                                             "activeAny":  [
+                                                               30000
+                                                           ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  106020400,
+                                "destinationMapId":  106020501,
+                                "portalName":  "right00",
+                                "portalId":  3,
+                                "script":  "gotocastle",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  2324
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270010100,
+                                "destinationMapId":  270010110,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3501
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270010200,
+                                "destinationMapId":  270010210,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3502
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270010300,
+                                "destinationMapId":  270010310,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3503
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270010400,
+                                "destinationMapId":  270010410,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3504
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270010500,
+                                "destinationMapId":  270020000,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3507
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270020100,
+                                "destinationMapId":  270020110,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3508
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270020200,
+                                "destinationMapId":  270020210,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3509
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270020300,
+                                "destinationMapId":  270020310,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3510
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270020400,
+                                "destinationMapId":  270020410,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3511
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270020500,
+                                "destinationMapId":  270030000,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3514
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270030100,
+                                "destinationMapId":  270030110,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3515
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270030200,
+                                "destinationMapId":  270030210,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3516
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270030300,
+                                "destinationMapId":  270030310,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3517
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270030400,
+                                "destinationMapId":  270030410,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3518
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270030500,
+                                "destinationMapId":  270040000,
+                                "portalName":  "in00",
+                                "portalId":  7,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3519
+                                                              ]
+                                         }
+                            },
+                            {
+                                "sourceMapId":  270040000,
+                                "destinationMapId":  270040100,
+                                "portalName":  "in00",
+                                "portalId":  4,
+                                "script":  "timeQuest",
+                                "gate":  {
+                                             "completedAny":  [
+                                                                  3522
+                                                              ]
+                                         }
                             }
                         ],
     "edges":  [
+                  {
+                      "fromMapId":  10000,
+                      "toMapId":  20000
+                  },
+                  {
+                      "fromMapId":  20000,
+                      "toMapId":  30000
+                  },
+                  {
+                      "fromMapId":  20001,
+                      "toMapId":  20000
+                  },
+                  {
+                      "fromMapId":  30000,
+                      "toMapId":  30001
+                  },
+                  {
+                      "fromMapId":  30000,
+                      "toMapId":  40000
+                  },
+                  {
+                      "fromMapId":  30001,
+                      "toMapId":  30000
+                  },
+                  {
+                      "fromMapId":  40000,
+                      "toMapId":  50000
+                  },
+                  {
+                      "fromMapId":  40001,
+                      "toMapId":  40000
+                  },
+                  {
+                      "fromMapId":  40001,
+                      "toMapId":  40002
+                  },
+                  {
+                      "fromMapId":  40002,
+                      "toMapId":  40001
+                  },
+                  {
+                      "fromMapId":  40002,
+                      "toMapId":  50000
+                  },
+                  {
+                      "fromMapId":  50000,
+                      "toMapId":  1000000
+                  },
+                  {
+                      "fromMapId":  50001,
+                      "toMapId":  50000
+                  },
+                  {
+                      "fromMapId":  50001,
+                      "toMapId":  60000
+                  },
+                  {
+                      "fromMapId":  50001,
+                      "toMapId":  1000001
+                  },
+                  {
+                      "fromMapId":  50001,
+                      "toMapId":  1000002
+                  },
+                  {
+                      "fromMapId":  60000,
+                      "toMapId":  50001
+                  },
+                  {
+                      "fromMapId":  60000,
+                      "toMapId":  60001
+                  },
+                  {
+                      "fromMapId":  60001,
+                      "toMapId":  60000
+                  },
+                  {
+                      "fromMapId":  1000000,
+                      "toMapId":  50000
+                  },
+                  {
+                      "fromMapId":  1000000,
+                      "toMapId":  1000001
+                  },
+                  {
+                      "fromMapId":  1000000,
+                      "toMapId":  1000003
+                  },
+                  {
+                      "fromMapId":  1000000,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1000001,
+                      "toMapId":  1000000
+                  },
+                  {
+                      "fromMapId":  1000002,
+                      "toMapId":  1000000
+                  },
+                  {
+                      "fromMapId":  1000003,
+                      "toMapId":  1000000
+                  },
+                  {
+                      "fromMapId":  1000004,
+                      "toMapId":  1000000
+                  },
+                  {
+                      "fromMapId":  1000005,
+                      "toMapId":  1020000
+                  },
+                  {
+                      "fromMapId":  1000006,
+                      "toMapId":  1020000
+                  },
+                  {
+                      "fromMapId":  1010000,
+                      "toMapId":  1000000
+                  },
+                  {
+                      "fromMapId":  1010000,
+                      "toMapId":  1020000
+                  },
+                  {
+                      "fromMapId":  1010001,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1010002,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1010002,
+                      "toMapId":  1010004
+                  },
+                  {
+                      "fromMapId":  1010003,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1010004,
+                      "toMapId":  1010002
+                  },
+                  {
+                      "fromMapId":  1010100,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1010200,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1010300,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1010400,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1020000,
+                      "toMapId":  1010000
+                  },
+                  {
+                      "fromMapId":  1020000,
+                      "toMapId":  2000000
+                  },
+                  {
+                      "fromMapId":  1020001,
+                      "toMapId":  1020000
+                  },
+                  {
+                      "fromMapId":  2000000,
+                      "toMapId":  1020000
+                  },
+                  {
+                      "fromMapId":  2000000,
+                      "toMapId":  2000001
+                  },
+                  {
+                      "fromMapId":  2000001,
+                      "toMapId":  2000000
+                  },
                   {
                       "fromMapId":  130000000,
                       "toMapId":  130030006
@@ -7705,6 +8143,14 @@
                   {
                       "fromMapId":  809050015,
                       "toMapId":  809050008
+                  },
+                  {
+                      "fromMapId":  925020000,
+                      "toMapId":  925020001
+                  },
+                  {
+                      "fromMapId":  925020001,
+                      "toMapId":  925020000
                   }
               ]
 }

@@ -784,6 +784,9 @@ Ereve and Rien out of the agent graph (their docks are not joined to the towns b
 it is merged, and for the Dojo, Ereve and Rien after it, `call <recruit>` from elsewhere finds no way to Caedmon,
 Liesl, Hrafn, Maelis, Gaspard, Lianhua, Caius or Brynja's homes; inside their own maps, and for players on foot,
 everything works. Adding Three Doors and the Time Gate to the citizen regions' towns waits for both merges.
+Both are merged; `fix/routes-2026-10-29` adds the rest (`docs/ROUTES_MALAYSIA_PLAN.md` 2.2): Ereve's sky ferries and
+rankRoom doors, Rien's whale and enterPort, and the Dojo board and exit, so every recruit's home is on the agent graph
+both ways (`AgentTravelLegRouteTest.everyRecruitsHomeTownIsReachableFromHenesysAndBack`).
 
 ### 10.5 Live checks after deploy
 
