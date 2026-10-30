@@ -837,6 +837,11 @@ class AgentPhysicsEngineTest {
         assertEquals(-399, footholds.getMinDropX());
         assertEquals(399, footholds.getMaxDropX());
 
+        server.maps.FootholdTree eastOnly = new server.maps.FootholdTree(new Point(-1000, -1000), new Point(3000, 1000));
+        eastOnly.insert(new Foothold(new Point(500, 95), new Point(1800, 95), 2));
+        assertEquals(500, eastOnly.getMinDropX(), "a map wholly east of x 0 starts its drop bounds at its own west end");
+        assertEquals(1800, eastOnly.getMaxDropX());
+
         Character bot = mockBot(new Point(-389, 61), map);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
         AgentMovementStateRuntime.setInAir(entry, true);

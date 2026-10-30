@@ -42,6 +42,7 @@ public class FootholdTree {
     private static final int maxDepth = 8;
     private int maxDropX;
     private int minDropX;
+    private boolean hasDropX; // the first foothold sets both bounds, so a map entirely on one side of x 0 isn't stretched to 0
     private int minimumZMass = -1;
 
     public FootholdTree(Point p1, Point p2) {
@@ -62,6 +63,10 @@ public class FootholdTree {
             minimumZMass = f.getZMass();
         }
         if (depth == 0) {
+            if (!hasDropX) {
+                minDropX = maxDropX = f.getX1();
+                hasDropX = true;
+            }
             if (f.getX1() > maxDropX) {
                 maxDropX = f.getX1();
             }
