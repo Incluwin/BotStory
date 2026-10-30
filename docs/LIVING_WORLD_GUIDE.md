@@ -428,6 +428,8 @@ header shows "Over Level N" from `lvmin` and the giver's own portrait (`npc`, fr
 1. `tools\living-world-questlog.bat` - assigns every quest a stable client id (30000-32767) in
    `quest-log-ids.yaml` and exports name/description text to `target/living-quest-log.json`.
    New quests get the next free id; ids are never renumbered (they live in players' save data).
+   Each piece of work takes its ids from its own block in `quest-log-blocks.yaml` (no two blocks
+   overlap; a new one comes from the free range there and is added first).
 2. `cd MapleEdit\app && python living_world_quests.py` - writes QuestInfo/Check/Act entries into
    `out/Quest.wz` and names the Residents group in `out/Etc.wz` (both stacking with other edits)
    and stages the server XML; deploy Quest.wz and Etc.wz from the MapleEdit dashboard so the patch

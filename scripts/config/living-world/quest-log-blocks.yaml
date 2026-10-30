@@ -1,0 +1,17 @@
+# Client quest-log id blocks (Quest.wz's custom range 30000-32767): which work takes its ids where. Each id in
+# quest-log-ids.yaml lies in one block and no two blocks overlap (QuestLogIdBlocksTest). A session takes ids only
+# from its own block; new work takes a block from the free range below and adds it here first. The server does not
+# read this file.
+blocks:
+  30000-30196: the first Residents (the Victoria towns)
+  30197-30279: Regional Residents wave 1 (docs/REGIONAL_RESIDENTS_PLAN.md)
+  30280-30284: Cygnus and Aran bots
+  30285-30408: Regional Residents wave 2
+  30409-30799: Regional Residents wave 3
+  30800-31099: Victoria remainder Residents (wave 4)
+  31100-31449: Ossyria remainder Residents
+  31450-31599: iTCG and Masteria (docs/ITCG_MASTERIA_PLAN.md)
+  31600-31999: F6 story arcs (docs/BOT_CONCEPT_PLAN.md section 12)
+  32000-32149: Routes and Malaysia Residents (docs/ROUTES_MALAYSIA_PLAN.md)
+  32150-32599: Residents of the Repack towns (docs/REPACK_IMPORT_PLAN.md section 6)
+# free: 32600-32767
