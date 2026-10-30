@@ -336,6 +336,7 @@ public interface PrimitiveCapabilityGateway {
         return false;
     }
 
+    /** Swings at reactor {@code objectId} and hits it; false when the reactor is gone or in a state that takes no hit. */
     boolean hitReactor(Character agent, int objectId);
 
     /**

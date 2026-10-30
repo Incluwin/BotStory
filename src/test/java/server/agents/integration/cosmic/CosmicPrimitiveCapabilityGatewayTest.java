@@ -4,6 +4,7 @@ import client.Character;
 import client.QuestStatus;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.navigation.AgentNavigationMapLoader;
@@ -11,6 +12,7 @@ import server.agents.capabilities.supplies.AgentSupplyInventorySnapshot;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.MapleMap;
+import server.maps.Reactor;
 import server.quest.Quest;
 
 import java.awt.Point;
@@ -24,9 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CosmicPrimitiveCapabilityGatewayTest {
@@ -135,5 +141,28 @@ class CosmicPrimitiveCapabilityGatewayTest {
             assertTrue(CosmicPrimitiveCapabilityGateway.INSTANCE.startQuest(agent, 8223, lukan));
             scripts.verify(() -> CosmicHeadlessQuestScriptGateway.start(agent, 8223, lukan));
         }
+    }
+
+    /**
+     * A broken reactor with no respawn delay stands on at its last state, alive but with no event there (RJPQ Lab 1's
+     * decoys): Reactor.hitReactor ignores a hit on it, so the gateway says no hit and swings at nothing.
+     */
+    @Test
+    void anAliveReactorAtAStateWithNoEventTakesNoHit() {
+        Character agent = mock(Character.class);
+        MapleMap map = mock(MapleMap.class);
+        when(agent.getMap()).thenReturn(map);
+        Reactor decoy = mock(Reactor.class);
+        when(decoy.isAlive()).thenReturn(true);
+        when(decoy.isActive()).thenReturn(false);
+        when(map.getReactorByOid(1_000_000_007)).thenReturn(decoy);
+
+        try (MockedStatic<AgentAttackExecutionProvider> attacks = mockStatic(AgentAttackExecutionProvider.class)) {
+            assertFalse(CosmicPrimitiveCapabilityGateway.INSTANCE.hitReactor(agent, 1_000_000_007));
+
+            attacks.verifyNoInteractions();
+        }
+        verify(decoy, never()).hitReactor(anyBoolean(), anyInt(), anyShort(), anyInt(), any());
+        assertFalse(CosmicPrimitiveCapabilityGateway.INSTANCE.hitReactor(agent, 1_000_000_008), "no reactor there");
     }
 }

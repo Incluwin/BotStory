@@ -897,7 +897,8 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     @Override
     public boolean hitReactor(Character agent, int objectId) {
         Reactor reactor = agent.getMap().getReactorByOid(objectId);
-        if (reactor == null || !reactor.isAlive()) {
+        // one standing on at a state with no event takes no hit (Reactor.hitReactor ignores it), as hitReactorWithSkill
+        if (reactor == null || !reactor.isAlive() || !reactor.isActive()) {
             return false;
         }
         AgentAttackExecutionProvider.BasicAttackData attack =
