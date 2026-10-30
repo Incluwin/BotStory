@@ -3162,14 +3162,17 @@ public class PacketCreator {
         p.writeLong(secondmask);
     }
 
+    /**
+     * The mob's 128-bit status flag, as applyMonsterStatus and cancelMonsterStatus write it: two empty ints, then the
+     * "first" statuses, then the rest. MonsterStatus values are ints, so the old {@code value >> 32 * i} shifted by
+     * 32 = 0 bits and wrote every status twice (a second status into ints 3 and 4, a first one into ints 1 and 2): the
+     * client then read a payload for a bit no status wrote one for (why WATK and WDEF are filtered out above).
+     */
     private static void writeLongEncodeTemporaryMask(final OutPacket p, Collection<MonsterStatus> stati) {
         int[] masks = new int[4];
 
         for (MonsterStatus statup : stati) {
-            int pos = statup.isFirst() ? 0 : 2;
-            for (int i = 0; i < 2; i++) {
-                masks[pos + i] |= statup.getValue() >> 32 * i;
-            }
+            masks[statup.isFirst() ? 2 : 3] |= statup.getValue();
         }
 
         for (int mask : masks) {
