@@ -1265,6 +1265,7 @@ public final class CompanionPartyQuestService {
             abort(leader, run, firstAgent, voice.forStart(started), clickedAt);
             return;
         }
+        records.damage().start(run.key, run.memberIds); // its members' kills count toward its damage shares (F6.4)
         run.started = true;
     }
 

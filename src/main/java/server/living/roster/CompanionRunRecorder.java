@@ -33,6 +33,8 @@ public final class CompanionRunRecorder {
     private final LivingWorld world;
     /** Quest key -> companion character id -> its record in that quest. */
     private final Map<String, Map<Integer, CompanionRunStats>> stats = new ConcurrentHashMap<>();
+    /** Who did how much of each run's damage, written with its rows (companion_performance.damage_share). */
+    private final RunDamage damage = new RunDamage();
 
     CompanionRunRecorder(LivingWorld world) {
         this.world = world;
@@ -65,6 +67,7 @@ public final class CompanionRunRecorder {
         if (!run.started) {
             return;
         }
+        Map<Integer, Double> shares = damage.end(run.key); // the tally ends with the run, re-rolled or not
         logPotions(run);
         if (run.rerolled) {
             return;
@@ -74,9 +77,14 @@ public final class CompanionRunRecorder {
             int id = companion.getKey();
             String outcome = run.tappedOut.contains(id) ? "tapped_out" : run.cleared ? "cleared" : "failed";
             CompanionRunRow row = new CompanionRunRow(companion.getValue(), id, run.personaByCompanion.get(id),
-                    run.pqKey, outcome, durationS, run.deaths.getOrDefault(id, 0), run.partySize);
+                    run.pqKey, outcome, durationS, run.deaths.getOrDefault(id, 0), run.partySize, shares.get(id));
             save(row);
         }
+    }
+
+    /** The runs' damage tallies (F6.4): party quest kills while a run goes, boss parts in a boss run. */
+    public RunDamage damage() {
+        return damage;
     }
 
     /**
@@ -153,6 +161,11 @@ public final class CompanionRunRecorder {
         if (record.runs() >= LineupPlan.RECORD_RUNS) {
             lines.add(label + ": cleared " + record.clears() + " of " + record.runs());
         }
+    }
+
+    /** The companion's runs and clears in one activity, a quest or a boss (crew banter's rival records, F6.4). */
+    public CompanionRunStats record(String activity, int companionId) {
+        return stats(activity, companionId);
     }
 
     /** The companion's record in {@code pqKey} ({@link #NONE} before its first run of it). */

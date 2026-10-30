@@ -141,6 +141,43 @@ public class ClearStore {
         return out;
     }
 
+    /**
+     * Every clear {@code playerId} was in as a player, oldest first, each with only its companions (P) as members, names
+     * left out: what the owner's crew ties count (F6.4 CrewTies). Empty when none, or when the read failed (logged).
+     */
+    public List<Clear> companionClearsOf(int playerId) {
+        String sql = "SELECT c.id, c.quest, c.duration_ms, m.character_id FROM living_clear_member o"
+                + " JOIN living_clear c ON c.id = o.clear_id"
+                + " JOIN living_clear_member m ON m.clear_id = o.clear_id AND m.kind = 'P'"
+                + " WHERE o.character_id = ? AND o.kind = 'H' ORDER BY c.id";
+        Map<Integer, Clear> clears = new java.util.LinkedHashMap<>();
+        Map<Integer, List<Clear.Member>> members = new HashMap<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, playerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt(1);
+                    if (!clears.containsKey(id)) {
+                        clears.put(id, new Clear(id, rs.getString(2), "", 0, 0, 0L, 0L, rs.getLong(3), Clear.Kind.HUMAN,
+                                0, List.of()));
+                    }
+                    members.computeIfAbsent(id, key -> new ArrayList<>())
+                            .add(new Clear.Member(rs.getInt(4), Clear.AS_COMPANION, ""));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_clear companion clears of {} could not be read", playerId, failure);
+            return List.of();
+        }
+        List<Clear> out = new ArrayList<>();
+        for (Clear clear : clears.values()) {
+            out.add(new Clear(clear.id(), clear.quest(), clear.instance(), clear.channel(), clear.mapId(),
+                    clear.startedAtMs(), clear.clearedAtMs(), clear.durationMs(), clear.kind(), clear.crewId(),
+                    members.getOrDefault(clear.id(), List.of())));
+        }
+        return out;
+    }
+
     private static void readAll(PreparedStatement ps, List<Clear> out) throws SQLException {
         try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {

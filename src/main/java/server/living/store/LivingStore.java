@@ -1532,10 +1532,16 @@ public final class LivingStore {
 
     /**
      * One companion_performance row (changeset 40): how one companion's party-quest run went. {@code outcome} is
-     * cleared, failed or tapped_out; its damage share is not measured (NULL).
+     * cleared, failed or tapped_out; {@code damageShare} its share 0..1 of the run's damage (RunDamage, F6.4), null
+     * when none was measured.
      */
     public record CompanionRunRow(int ownerCharacterId, int companionCharacterId, String personaId, String activity,
-                                  String outcome, int durationS, int deaths, int partySize) { }
+                                  String outcome, int durationS, int deaths, int partySize, Double damageShare) {
+        public CompanionRunRow(int ownerCharacterId, int companionCharacterId, String personaId, String activity,
+                               String outcome, int durationS, int deaths, int partySize) {
+            this(ownerCharacterId, companionCharacterId, personaId, activity, outcome, durationS, deaths, partySize, null);
+        }
+    }
 
     /** A companion's record in one activity: its runs, and how many of them cleared. */
     public record CompanionRunStats(int runs, int clears) { }
@@ -1543,7 +1549,7 @@ public final class LivingStore {
     /** Adds one companion_performance row (recorded_at is the database's now); false when the write failed. */
     public boolean saveCompanionRun(CompanionRunRow row) {
         String sql = SqlTime.utc("INSERT INTO companion_performance (owner_character_id, companion_character_id, persona_id,"
-                + " activity, outcome, duration_s, deaths, damage_share, party_size) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)");
+                + " activity, outcome, duration_s, deaths, damage_share, party_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, row.ownerCharacterId());
             ps.setInt(2, row.companionCharacterId());
@@ -1552,7 +1558,13 @@ public final class LivingStore {
             ps.setString(5, row.outcome());
             ps.setInt(6, row.durationS());
             ps.setInt(7, row.deaths());
-            ps.setInt(8, row.partySize());
+            if (row.damageShare() == null) {
+                ps.setNull(8, java.sql.Types.DECIMAL);
+            } else { // DECIMAL(5,4)
+                ps.setBigDecimal(8, java.math.BigDecimal.valueOf(Math.max(0d, Math.min(1d, row.damageShare())))
+                        .setScale(4, java.math.RoundingMode.HALF_UP));
+            }
+            ps.setInt(9, row.partySize());
             ps.executeUpdate();
             return true;
         } catch (SQLException failure) {

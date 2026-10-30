@@ -64,6 +64,7 @@ public final class LivingWorldHooks {
                         () -> world.friendship().onBossKilled(monster.getId(), attackers, map));
             } else if (monster.isBoss() && !scene && world.bossRuns() != null) {
                 world.bossRuns().bossKilledInRun(map, attackerIds);
+                world.bossRuns().bossDamage(map, monster, attackerIds); // toward the run's damage shares (F6.4)
             }
             server.living.population.PopulationHooks.mobKilled(monster, attackerIds, map);
             if (world.ownerHabits() != null) {
@@ -76,6 +77,12 @@ public final class LivingWorldHooks {
                         personal.killed(attackerId, mobId, map.getId());
                     }
                 }
+            }
+            server.living.roster.CompanionPartyQuestService quests = world.partyQuests();
+            server.living.roster.CompanionRunRecorder records = quests == null ? null : quests.records();
+            if (records != null && records.damage() != null) {
+                // a running companion party quest's members add their damage on it (F6.4); nothing while none runs
+                records.damage().killed(monster, attackerIds);
             }
         } catch (RuntimeException failure) {
             log.warn("living world mobKilled hook failed", failure);
@@ -259,6 +266,9 @@ public final class LivingWorldHooks {
             if (world.mentors() != null) {
                 world.mentors().chat(speaker, text); // "quiet please", or a branch word, to a newcomer's mentor (F4)
             }
+            if (world.crew() != null) {
+                world.crew().heard(speaker, text); // "quiet" or "talk more" to the crew banter (F6.4)
+            }
             if (world.dialogue().onMapChat(speaker, text)) {
                 return true;
             }
@@ -269,14 +279,22 @@ public final class LivingWorldHooks {
         }
     }
 
-    /** Party chat (MultiChatHandler, after it went out): a newcomer's word to its mentor (F4). Takes nothing. */
+    /**
+     * Party chat (MultiChatHandler, after it went out): a newcomer's word to its mentor (F4), an owner's "quiet" or
+     * "talk more" to its crew's banter (F6.4). Takes nothing.
+     */
     public static void partyChat(Character speaker, String text) {
         LivingWorld world = LivingWorld.get();
-        if (world == null || speaker == null || text == null || world.mentors() == null) {
+        if (world == null || speaker == null || text == null) {
             return;
         }
         try {
-            world.mentors().chat(speaker, text);
+            if (world.mentors() != null) {
+                world.mentors().chat(speaker, text);
+            }
+            if (world.crew() != null) {
+                world.crew().heard(speaker, text);
+            }
         } catch (RuntimeException failure) {
             log.warn("living world partyChat hook failed", failure);
         }
@@ -316,6 +334,9 @@ public final class LivingWorldHooks {
             if (world.stories() != null) { // a companion's chapter opened while they were away (F6), on companion-ops
                 world.executor().submit("story.login " + chr.getId(), () -> world.stories().loggedIn(chr));
             }
+            if (world.crew() != null) {
+                world.crew().loggedIn(chr); // its crew ties read back and its banter mute, on companion-ops (F6.4)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world login hook failed", failure);
         }
@@ -346,6 +367,9 @@ public final class LivingWorldHooks {
             world.markers().loggedOut(chr);
             if (world.ownerHabits() != null) {
                 world.ownerHabits().loggedOut(chr); // an owner's habits are written and dropped (F2)
+            }
+            if (world.crew() != null) {
+                world.crew().loggedOut(chr); // its crew ties and banter state dropped (F6.4)
             }
         } catch (RuntimeException failure) {
             log.warn("living world logout hook failed", failure);
