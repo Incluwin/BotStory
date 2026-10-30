@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import scripting.event.EventInstanceManager;
+import server.TimerManager;
 import server.agents.capabilities.partyquest.lpq.AgentLpqMemberState;
 import server.agents.capabilities.partyquest.lpq.AgentLpqSession;
 import server.agents.capabilities.partyquest.lpq.AgentLpqSessionRegistry;
@@ -28,6 +29,8 @@ import testutil.LogLines;
 
 import java.awt.Point;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGenerator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,8 +46,12 @@ import static org.mockito.Mockito.when;
 
 class ServerMobAutonomyServiceTest {
     private final RandomGenerator random = mock(RandomGenerator.class);
+    /** Hands each impact to the map channel's OverallService mock, so a test can verify and run it. */
+    private static final ServerMobAutonomyService.ImpactScheduler OVERALL_MOCK_IMPACTS = (map, impact, delayMs) ->
+            ((OverallService) map.getChannelServer().getServiceAccess(ChannelServices.OVERALL))
+                    .registerOverallAction(map.getId(), impact, delayMs);
     private final ServerMobAutonomyService service =
-            new ServerMobAutonomyService(random, false);
+            new ServerMobAutonomyService(random, false, 2_000_000_000L, OVERALL_MOCK_IMPACTS);
 
     @AfterEach
     void tearDown() {
@@ -114,6 +121,37 @@ class ServerMobAutonomyServiceTest {
         verify(fixture.overall).registerOverallAction(
                 org.mockito.ArgumentMatchers.eq(922010900), impact.capture(),
                 org.mockito.ArgumentMatchers.eq(1_155L));
+    }
+
+    /**
+     * 2026-10-29: OverallService checks its entries against the server clock, which moves in 777 ms steps, so an
+     * impact went off up to 0.8 s before or after its animation; TimerManager runs it at its own delay.
+     */
+    @Test
+    void anImpactRunsOnTimerManagerAtItsDelayNotOnTheCoarseOverallClock() throws InterruptedException {
+        TimerManager.getInstance().start();
+        ServerMobAutonomyService timed = new ServerMobAutonomyService(random, false);
+        try {
+            Fixture fixture = fixture(0);
+            when(fixture.monster.canUseSkill(org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(false);
+            assertTrue(timed.acquire(fixture.monster, fixture.agent));
+            long castAt = System.nanoTime();
+            timed.tickForTest(castAt);
+
+            CountDownLatch impact = new CountDownLatch(1);
+            when(fixture.monster.isAlive()).thenAnswer(invocation -> {
+                impact.countDown();
+                return true;
+            });
+            assertTrue(impact.await(10, TimeUnit.SECONDS), "the impact never ran");
+            long afterMs = (System.nanoTime() - castAt) / 1_000_000L;
+            assertTrue(afterMs >= 1_150, "the impact ran " + afterMs + " ms after the cast, before its 1,155 ms");
+            verify(fixture.overall, never()).registerOverallAction(org.mockito.ArgumentMatchers.anyInt(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong());
+        } finally {
+            timed.dispose();
+        }
     }
 
     @Test
@@ -414,7 +452,7 @@ class ServerMobAutonomyServiceTest {
         NativeFixture fixture = nativeFixture(
                 91_011, 91_012, PapaPixieActorBehavior.MOB_ID);
         ServerMobAutonomyService guardedService =
-                new ServerMobAutonomyService(random, false, 1_000_000L);
+                new ServerMobAutonomyService(random, false, 1_000_000L, OVERALL_MOCK_IMPACTS);
         try {
             assertFalse(guardedService.acquire(fixture.monster, fixture.agent));
             guardedService.recordAcceptedClientMovement(fixture.monster, fixture.human);
@@ -432,7 +470,7 @@ class ServerMobAutonomyServiceTest {
     void poisonGolemRemainsServerOwnedWithCapableHumanPartyMember() {
         NativeFixture fixture = nativeFixture(91_013, 91_014, 9_300_180);
         ServerMobAutonomyService guardedService =
-                new ServerMobAutonomyService(random, false, 1_000_000L);
+                new ServerMobAutonomyService(random, false, 1_000_000L, OVERALL_MOCK_IMPACTS);
         try {
             assertTrue(guardedService.acquire(fixture.monster, fixture.agent));
 
@@ -456,7 +494,7 @@ class ServerMobAutonomyServiceTest {
         when(fixture.map.getAllPlayers()).thenReturn(List.of(observer));
         when(fixture.event.getPlayers()).thenReturn(List.of(observer));
         ServerMobAutonomyService guardedService =
-                new ServerMobAutonomyService(random, false, 1_000_000L);
+                new ServerMobAutonomyService(random, false, 1_000_000L, OVERALL_MOCK_IMPACTS);
         try {
             assertTrue(guardedService.acquire(fixture.monster, fixture.agent));
             guardedService.tickForTest(System.nanoTime() + 2_000_000L);
@@ -495,7 +533,7 @@ class ServerMobAutonomyServiceTest {
     void capableHumanLpqParticipantKeepsStickyNativeAuthority() {
         NativeFixture fixture = nativeFixture(91_101, 91_102);
         ServerMobAutonomyService guardedService =
-                new ServerMobAutonomyService(random, false, 1_000_000L);
+                new ServerMobAutonomyService(random, false, 1_000_000L, OVERALL_MOCK_IMPACTS);
         try {
             assertFalse(guardedService.acquire(fixture.monster, fixture.agent));
             guardedService.recordAcceptedClientMovement(fixture.monster, fixture.human);
@@ -513,7 +551,7 @@ class ServerMobAutonomyServiceTest {
     void lpqClientThatDoesNotSimulateFallsBackToServerAfterGrace() {
         NativeFixture fixture = nativeFixture(91_201, 91_202);
         ServerMobAutonomyService guardedService =
-                new ServerMobAutonomyService(random, false, 1_000_000L);
+                new ServerMobAutonomyService(random, false, 1_000_000L, OVERALL_MOCK_IMPACTS);
         try {
             assertFalse(guardedService.acquire(fixture.monster, fixture.agent));
             guardedService.tickForTest(System.nanoTime() + 2_000_000L);
@@ -540,7 +578,7 @@ class ServerMobAutonomyServiceTest {
         when(fixture.map.getAllPlayers()).thenReturn(List.of(observer));
         when(fixture.event.getPlayers()).thenReturn(List.of(observer));
         ServerMobAutonomyService guardedService =
-                new ServerMobAutonomyService(random, false, 1_000_000L);
+                new ServerMobAutonomyService(random, false, 1_000_000L, OVERALL_MOCK_IMPACTS);
         try {
             assertTrue(guardedService.acquire(fixture.monster, fixture.agent));
             guardedService.tickForTest(System.nanoTime() + 2_000_000L);
@@ -567,7 +605,7 @@ class ServerMobAutonomyServiceTest {
         when(replacement.isAlive()).thenReturn(true);
         when(replacement.isLoggedinWorld()).thenReturn(true);
         ServerMobAutonomyService guardedService =
-                new ServerMobAutonomyService(random, false, 1_000_000L);
+                new ServerMobAutonomyService(random, false, 1_000_000L, OVERALL_MOCK_IMPACTS);
         try {
             assertFalse(guardedService.acquire(fixture.monster, fixture.agent));
             guardedService.recordAcceptedClientMovement(fixture.monster, fixture.human);

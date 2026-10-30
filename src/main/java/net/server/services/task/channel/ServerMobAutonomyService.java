@@ -54,11 +54,26 @@ public final class ServerMobAutonomyService extends BaseService {
     private final Map<Object, AuthorityRuntime> authorities = new ConcurrentHashMap<>();
     private final Map<Monster, AuthorityRuntime> authorityByMonster = new ConcurrentHashMap<>();
     private final Set<Monster> agentInteractiveSummons = ConcurrentHashMap.newKeySet();
+    /**
+     * 2026-10-29: an action's impact runs on TimerManager at its own delay. It ran on OverallService, which checks
+     * its entries against Server.getCurrentTime, a clock that moves in UPDATE_INTERVAL (777 ms) steps, so an impact
+     * landed up to about 0.8 s before or after its animation (a 1,320 ms DEFENSE_UP impact live at 1,012 and 1,602 ms).
+     */
+    static final ImpactScheduler TIMER_IMPACTS = (map, impact, delayMs) ->
+            TimerManager.getInstance().schedule(impact, delayMs);
+
     private final RandomGenerator random;
     private final boolean schedulingEnabled;
     private final long clientCapabilityGraceNanos;
+    private final ImpactScheduler impacts;
     private final Object tickLock = new Object();
     private volatile ScheduledFuture<?> task;
+
+    /** Runs a server-owned action's impact {@code delayMs} after its cast, for a mob on {@code map}. */
+    @FunctionalInterface
+    interface ImpactScheduler {
+        void schedule(MapleMap map, Runnable impact, long delayMs);
+    }
 
     public ServerMobAutonomyService() {
         this(RandomGenerator.getDefault(), true);
@@ -70,9 +85,15 @@ public final class ServerMobAutonomyService extends BaseService {
 
     ServerMobAutonomyService(RandomGenerator random, boolean schedulingEnabled,
                              long clientCapabilityGraceNanos) {
+        this(random, schedulingEnabled, clientCapabilityGraceNanos, TIMER_IMPACTS);
+    }
+
+    ServerMobAutonomyService(RandomGenerator random, boolean schedulingEnabled,
+                             long clientCapabilityGraceNanos, ImpactScheduler impacts) {
         this.random = random;
         this.schedulingEnabled = schedulingEnabled;
         this.clientCapabilityGraceNanos = Math.max(0L, clientCapabilityGraceNanos);
+        this.impacts = impacts;
         INSTANCES.add(this);
     }
 
@@ -529,15 +550,12 @@ public final class ServerMobAutonomyService extends BaseService {
         }
     }
 
-    private static void scheduleImpact(ActorRuntime actor, PreparedAction prepared,
-                                       int delayMs) {
+    private void scheduleImpact(ActorRuntime actor, PreparedAction prepared,
+                                int delayMs) {
         if (actor.map.getChannelServer() == null) {
             return;
         }
-        OverallService overall = (OverallService) actor.map.getChannelServer()
-                .getServiceAccess(ChannelServices.OVERALL);
-        overall.registerOverallAction(actor.map.getId(),
-                () -> applyImpact(actor, prepared), delayMs);
+        impacts.schedule(actor.map, () -> applyImpact(actor, prepared), delayMs);
     }
 
     private static void applyImpact(ActorRuntime actor, PreparedAction prepared) {
@@ -548,7 +566,7 @@ public final class ServerMobAutonomyService extends BaseService {
         if (action instanceof BossAction.Skill skillAction) {
             List<Character> banished = new ArrayList<>();
             MobSkill skill = skillAction.mobSkill();
-            // The impact runs on the OverallService clock, not at impactMs: log the real delay.
+            // The real delay since the cast, beside the cast line's impactMs.
             log.info("Boss server impact mob={} oid={} skill={} level={} sinceCastMs={}",
                     actor.monster.getId(), actor.monster.getObjectId(), skill.getType(),
                     skill.getId().level(), (System.nanoTime() - prepared.castNanos) / 1_000_000L);
