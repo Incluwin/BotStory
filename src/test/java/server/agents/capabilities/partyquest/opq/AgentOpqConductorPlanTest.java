@@ -129,6 +129,30 @@ class AgentOpqConductorPlanTest {
     }
 
     @Test
+    void helpersJoinTheLoungeOnlyForASubroomTheyReach() {
+        // 2026-10-25 live (run 6): three companions that cannot climb were sent to help a lounge whose low subroom was
+        // done and stood at its entry for eight minutes.
+        Set<AgentOpqDefinition.Room> done = EnumSet.of(STORAGE, LOBBY, WALKWAY, SEALED, WAY_UP);
+        List<AgentOpqConductorPlan.Companion> party = List.of(grounded(12, null), grounded(13, null), fresh(14),
+                grounded(15, null), working(16, LOUNGE));
+
+        Map<Integer, AgentOpqConductorPlan.Assignment> highOnly = AgentOpqConductorPlan.plan(party, done,
+                EnumSet.of(LOUNGE), new AgentOpqConductorPlan.LoungeSeats(2, 0));
+        assertEquals(room(LOUNGE), highOnly.get(14), "the climber takes a high subroom");
+        for (int grounded : List.of(12, 13, 15)) {
+            assertEquals(AgentOpqConductorPlan.Assignment.WAIT, highOnly.get(grounded));
+        }
+        assertEquals(room(LOUNGE), highOnly.get(16));
+
+        Map<Integer, AgentOpqConductorPlan.Assignment> lowOpen = AgentOpqConductorPlan.plan(party, done,
+                EnumSet.of(LOUNGE), new AgentOpqConductorPlan.LoungeSeats(0, 1));
+        assertEquals(room(LOUNGE), lowOpen.get(12), "the first free companion takes the low subroom");
+        for (int waiting : List.of(13, 14, 15)) {
+            assertEquals(AgentOpqConductorPlan.Assignment.WAIT, lowOpen.get(waiting));
+        }
+    }
+
+    @Test
     void aRoomWhoseWorkerDepartedGoesToAFreeCompanion() {
         // Hal (way up) departed: the run no longer counts him, and the first free companion takes his room.
         Map<Integer, AgentOpqConductorPlan.Assignment> plan = plan(EnumSet.of(STORAGE), working(12, WALKWAY),

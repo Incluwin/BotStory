@@ -71,6 +71,29 @@ class AgentVerticalTraversalServiceTest {
     }
 
     @Test
+    void aLandingOnOtherGroundThanTheTargetsHoldsAtTheExitsLanding() {
+        // 2026-10-25 live (OPQ walkway 920010200): the rope's top exit lands on a short ledge and the target is on the
+        // platform a jump above it. Steered at the target during the hand-off, a background tick's five substeps walked
+        // the Agent off the ledge's end before the next AI tick planned the jump, for five minutes.
+        Fixture fixture = fixture();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        assertTrue(AgentVerticalTraversalService.beginIfRopeEntry(
+                fixture.graph, entry, bot, fixture.entryEdge, 5, new Point(180, 40),
+                (graph, candidate, startPosition, startRegionId, targetRegionId, targetPosition) -> fixture.exitEdge));
+        AgentClimbStateRuntime.setClimbingOnRope(entry, mock(Rope.class));
+        assertSame(fixture.exitEdge, resolve(fixture, entry, bot, 2, true).edge());
+        AgentClimbStateRuntime.setClimbingOnRope(entry, null);
+
+        AgentVerticalTraversalService.TraversalDirective landed = resolve(fixture, entry, bot, 3, true);
+        assertTrue(landed.holdGroundedExit());
+        assertEquals(fixture.exitEdge.endPoint, landed.targetPosition());
+        assertEquals(5, landed.targetRegionId());
+        assertEquals(fixture.exitEdge.endPoint, resolve(fixture, entry, bot, 3, false).targetPosition());
+        assertNull(resolve(fixture, entry, bot, 3, true));
+    }
+
+    @Test
     void jumpOffExitNudgesNoCloserToTheRopeThanItsLanding() {
         // A rope jump-off landed 79 px from the rope (610020004). Its traversal completed on the
         // ledge, and the nudge to the rope's side (rope x + 32) walked the Agent back off it.

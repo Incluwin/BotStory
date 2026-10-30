@@ -62,6 +62,8 @@ public final class AgentOpqDefinition {
     public static final Set<Integer> GARDEN_MOBS = Set.of(
             9_300_048, 9_300_049, 9_300_054, 9_300_055, 9_300_056, PAPA_PIXIE);
     public static final Set<Integer> HIDDEN_ROOM_MOBS = Set.of(9_300_051, 9_300_052, 9_300_053);
+    /** The centre's four Flying Boogies (Map.wz 920010100: mobTime -1, so they never come back; firstAttack). */
+    public static final Set<Integer> CENTER_MOBS = Set.of(9_300_050);
     public static final Set<Integer> ALL_COMBAT_MOBS = Set.of(
             9_300_041, 9_300_042, 9_300_043, 9_300_045, 9_300_046,
             9_300_047, 9_300_048, 9_300_049, 9_300_054, 9_300_055,

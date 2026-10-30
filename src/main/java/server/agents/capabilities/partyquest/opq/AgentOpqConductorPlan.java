@@ -21,8 +21,9 @@ import java.util.Set;
  * carries a statue piece, and the rooms complete: a companion keeps its room until the room is complete; a companion
  * that carries a piece takes it to the statue first; every other one is free. Free companions take, in order, the
  * open rooms nobody works (walkway, storage, lobby, the way up, the lounge), then the sealed room once three are free
- * for its three platforms, then help in the lounge once the sealed room is staffed or done; the rest wait in the
- * centre. With five companions the first pass gives each of them one of those five rooms.
+ * for its three platforms, then help in the lounge once the sealed room is staffed or done, as many as it has subrooms
+ * open that they reach; the rest wait in the centre. With five companions the first pass gives each of them one of those
+ * five rooms.
  * <p>
  * 2026-10-20 (live run: a Fighter stood at the lounge's door for 43 minutes): three of the lounge's four subrooms sit up
  * ledges a base jump cannot reach, so the lounge wants a climber (a companion whose jump with its Haste reaches
@@ -57,6 +58,15 @@ final class AgentOpqConductorPlan {
         static final Assignment WAIT = new Assignment(Duty.WAIT, null);
     }
 
+    /**
+     * The lounge subrooms a free companion that helps there would get: {@code high} the open ones up the ledges a climber
+     * reaches (920010601-603), {@code low} the low one (920010604), each nobody works or will be given first.
+     */
+    record LoungeSeats(int high, int low) {
+        /** As many as there are helpers (the plan before the lounge's seats were counted). */
+        static final LoungeSeats ANY = new LoungeSeats(Integer.MAX_VALUE, Integer.MAX_VALUE);
+    }
+
     private AgentOpqConductorPlan() {
     }
 
@@ -65,13 +75,22 @@ final class AgentOpqConductorPlan {
         return plan(companions, complete, EnumSet.of(AgentOpqDefinition.Room.LOUNGE));
     }
 
+    /** Every companion's assignment, by id in id order, with a seat in the lounge for every helper. */
+    static Map<Integer, Assignment> plan(List<Companion> companions, Set<AgentOpqDefinition.Room> complete,
+                                         Set<AgentOpqDefinition.Room> climbRooms) {
+        return plan(companions, complete, climbRooms, LoungeSeats.ANY);
+    }
+
     /**
      * Every companion's assignment, by id in id order. {@code climbRooms}: the rooms that want a climber, taken in
      * SOLO_ROOMS order (2026-10-24: the lobby on a day whose LP box sits above a base jump, before the lounge, so a lone
-     * climber clears the lobby first and then joins the lounge as a free climber).
+     * climber clears the lobby first and then joins the lounge as a free climber). {@code seats}: the lounge subrooms a
+     * helper would get; a free companion helps there only with a seat it reaches, a climber's first (2026-10-25 live,
+     * run 6: after the sealed room three companions that cannot climb stood at the lounge's entry for eight minutes, its
+     * low subroom done and the high ones out of their reach).
      */
     static Map<Integer, Assignment> plan(List<Companion> companions, Set<AgentOpqDefinition.Room> complete,
-                                         Set<AgentOpqDefinition.Room> climbRooms) {
+                                         Set<AgentOpqDefinition.Room> climbRooms, LoungeSeats seats) {
         Map<AgentOpqDefinition.Room, List<Integer>> owners = new EnumMap<>(AgentOpqDefinition.Room.class);
         for (AgentOpqDefinition.Room room : AgentOpqDefinition.Room.values()) owners.put(room, new ArrayList<>());
         Map<Integer, Assignment> plan = new LinkedHashMap<>();
@@ -101,8 +120,17 @@ final class AgentOpqConductorPlan {
             while (holders.size() < SEALED_HOLDERS) holders.add(free.remove(0));
         }
         if (!complete.contains(AgentOpqDefinition.Room.LOUNGE) && (!sealedOpen || holders.size() >= SEALED_HOLDERS)) {
-            owners.get(AgentOpqDefinition.Room.LOUNGE).addAll(free);
-            free.clear();
+            Set<Integer> climbers = climbers(ordered);
+            int high = seats.high();
+            int low = seats.low();
+            for (java.util.Iterator<Integer> helpers = free.iterator(); helpers.hasNext(); ) {
+                int helper = helpers.next();
+                if (climbers.contains(helper) && high > 0) high--;
+                else if (low > 0) low--;
+                else continue;
+                owners.get(AgentOpqDefinition.Room.LOUNGE).add(helper);
+                helpers.remove();
+            }
         }
         owners.forEach((room, ids) -> ids.forEach(id -> plan.put(id, new Assignment(Duty.ROOM, room))));
         free.forEach(id -> plan.put(id, Assignment.WAIT));

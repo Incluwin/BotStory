@@ -26,6 +26,7 @@ class AgentOpqLinesLintTest {
     private static List<String> lines() {
         List<String> lines = new ArrayList<>(List.of(AgentOpqCompanionPlay.splitUp(LEADER),
                 AgentOpqCompanionPlay.statueDone(LEADER), AgentOpqCompanionPlay.dropYourPieces(LEADER),
+                AgentOpqCompanionPlay.keepYourPieces(LEADER),
                 AgentOpqCompanionPlay.offThePlatforms(), AgentOpqCompanionPlay.atYourFeet(LEADER, true),
                 AgentOpqCompanionPlay.atYourFeet(LEADER, false), AgentOpqCompanionPlay.byEak(LEADER),
                 AgentOpqCompanionPlay.stillOnTheFloor(LEADER), AgentOpqCompanionPlay.pickedBackUp(),
@@ -45,6 +46,7 @@ class AgentOpqLinesLintTest {
         }
         for (AgentOpqDefinition.Room room : AgentOpqDefinition.Room.values()) {
             lines.add(AgentOpqCompanionPlay.call(room, LEADER));
+            lines.add(AgentOpqCompanionPlay.ready(room));
         }
         return lines;
     }

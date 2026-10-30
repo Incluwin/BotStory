@@ -25,6 +25,11 @@ final class AgentOpqCompanionPlay {
         };
     }
 
+    /** The leader is in the room and its holders stand as the next guess: the worker's word to talk to Eak. */
+    static String ready(AgentOpqDefinition.Room room) {
+        return room == AgentOpqDefinition.Room.ON_WAY_UP ? "levers are set. talk to eak." : "we're set. talk to eak.";
+    }
+
     /** The statue is whole: the centre's Eak sends the party on. */
     static String statueDone(String leader) {
         return leader + ", the statue's done. talk to eak in the middle.";
@@ -43,6 +48,11 @@ final class AgentOpqCompanionPlay {
     /** The leader came back to the centre with statue pieces in his bag. */
     static String dropYourPieces(String leader) {
         return leader + ", drop your statue pieces here. i'll put them up.";
+    }
+
+    /** The leader came back to the centre with statue pieces and none of his companions is there to take them up. */
+    static String keepYourPieces(String leader) {
+        return leader + ", hold the statue pieces till one of us is in the middle, they vanish on the floor.";
     }
 
     /** Stay off the platforms: Eak counts everyone standing on them. */

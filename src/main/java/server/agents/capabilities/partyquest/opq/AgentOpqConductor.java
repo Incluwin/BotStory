@@ -78,7 +78,8 @@ final class AgentOpqConductor {
         Set<AgentOpqDefinition.Room> climbRooms = AgentOpqCoordinator.lobbyWantsClimber(AgentOpqCoordinator.lobbyDay())
                 ? EnumSet.of(AgentOpqDefinition.Room.LOBBY, AgentOpqDefinition.Room.LOUNGE)
                 : EnumSet.of(AgentOpqDefinition.Room.LOUNGE);
-        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(input, complete, climbRooms);
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(input, complete, climbRooms,
+                loungeSeats(session, input));
         List<AgentOpqMemberState> holders = new ArrayList<>();
         for (AgentOpqMemberState member : companions) {
             AgentOpqConductorPlan.Assignment assignment = plan.get(member.characterId());
@@ -101,6 +102,37 @@ final class AgentOpqConductor {
             AgentOpqCoordinator.assignSealedPlatforms(session, holders);
         }
         AgentOpqCoordinator.assignLoungeSubrooms(session);
+    }
+
+    /**
+     * The lounge subrooms a helper would get this pass (AgentOpqConductorPlan.LoungeSeats): the open ones nobody holds,
+     * less those the lounge's own workers without an open one take first, as AgentOpqCoordinator.assignLoungeSubrooms
+     * hands them out (a climber any, the others only the low one).
+     */
+    static AgentOpqConductorPlan.LoungeSeats loungeSeats(AgentOpqSession session,
+                                                         List<AgentOpqConductorPlan.Companion> companions) {
+        Set<Integer> held = new java.util.HashSet<>();
+        for (AgentOpqMemberState member : AgentOpqCoordinator.counted(session)) {
+            int subroom = member.assignedSubroomMapId();
+            if (member.role() == AgentOpqMemberState.Role.LOUNGE_RUNNER && subroom > 0
+                    && !session.loungeSubroomComplete(subroom)) held.add(subroom);
+        }
+        int high = 0;
+        int low = 0;
+        for (int subroom : AgentOpqDefinition.LOUNGE_ROOM_MAPS) {
+            if (session.loungeSubroomComplete(subroom) || held.contains(subroom)) continue;
+            if (subroom == AgentOpqCoordinator.LOUNGE_LOW_SUBROOM) low++;
+            else high++;
+        }
+        for (AgentOpqConductorPlan.Companion companion : companions) {
+            if (companion.room() != AgentOpqDefinition.Room.LOUNGE) continue;
+            AgentOpqMemberState member = session.member(companion.id());
+            int subroom = member == null ? 0 : member.assignedSubroomMapId();
+            if (subroom > 0 && !session.loungeSubroomComplete(subroom)) continue;
+            if (companion.climber() && high > 0) high--;
+            else if (low > 0) low--;
+        }
+        return new AgentOpqConductorPlan.LoungeSeats(high, low);
     }
 
     /**
@@ -127,7 +159,10 @@ final class AgentOpqConductor {
         }
         for (Need need : needs) {
             boolean there = need.room() != null && leader.getMapId() == AgentOpqDefinition.roomMap(need.room());
-            if (there) continue;
+            if (there) {
+                readyLine(session, need, leader);
+                continue;
+            }
             String key = need.room() == null ? "call-statue" : "call-" + need.room().name().toLowerCase(
                     java.util.Locale.ROOT);
             if (!session.claimLineWindow(key, nowMs, CALL_REPEAT_MS)) continue;
@@ -136,6 +171,25 @@ final class AgentOpqConductor {
                 logCall(session, key, need.speaker(), leader);
             }
             return;
+        }
+    }
+
+    /**
+     * The leader stands in a puzzle room whose holders stand as the next guess (the sealed room's platforms, the way up's
+     * levers): its worker says so in map chat, once per guess ('ready-sealed-N' / 'ready-on_way_up-N', N his checks so
+     * far). 2026-10-25 live (run 6): the calls went only to a leader on another map, so in the room he had to watch the
+     * holders to know a guess stood; the way up's second pair waited about five minutes for his check.
+     */
+    private static void readyLine(AgentOpqSession session, Need need, Character leader) {
+        int checks = switch (need.room()) {
+            case SEALED -> session.sealedAttempt();
+            case ON_WAY_UP -> session.leverChecks();
+            default -> -1;
+        };
+        if (checks < 0) return;
+        String key = "ready-" + need.room().name().toLowerCase(java.util.Locale.ROOT) + "-" + checks;
+        if (AgentOpqDialogue.narrate(session, key, need.speaker(), leader, AgentOpqCompanionPlay.ready(need.room()))) {
+            logCall(session, key, need.speaker(), leader);
         }
     }
 
@@ -319,14 +373,26 @@ final class AgentOpqConductor {
         }
     }
 
-    /** The leader is in the centre with statue pieces in his bag: a companion there asks for them, once per set. */
+    /**
+     * The leader is in the centre with statue pieces in his bag: a companion there asks for them, once per set. With none
+     * of them there, one asks him in party chat to keep them until one comes, once per set: a piece left lying with
+     * nobody to take it up expires in three minutes (the risk the O5 hand-over was built with).
+     */
     private static void piecesLine(AgentOpqSession session, Character leader) {
         if (leader.getMapId() != AgentOpqDefinition.CENTER_MAP) return;
         List<Integer> held = AgentOpqDefinition.STATUE_PIECES.stream()
                 .filter(piece -> leader.getItemQuantity(piece, false) > 0).toList();
         if (held.isEmpty()) return;
         Character speaker = companionOn(session, AgentOpqDefinition.CENTER_MAP);
-        if (speaker == null) return;
+        if (speaker == null) {
+            Character away = companions(session).stream().map(member -> AgentOpqCoordinator.character(member.characterId()))
+                    .filter(Objects::nonNull).findFirst().orElse(null);
+            if (away != null) {
+                AgentOpqDialogue.narrate(session, "pieces-keep-" + held, away, leader,
+                        AgentOpqCompanionPlay.keepYourPieces(leader.getName()));
+            }
+            return;
+        }
         AgentOpqDialogue.narrate(session, "pieces-" + held, speaker, leader,
                 AgentOpqCompanionPlay.dropYourPieces(leader.getName()));
     }
