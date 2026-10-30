@@ -15,12 +15,16 @@ import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.social.conversation.AgentSocialDialogueRuntime.Styled;
+import server.agents.social.memory.SocialCounterpartyType;
+import server.agents.social.memory.SocialMemoryPersistenceRuntime;
+import server.agents.social.memory.SocialRelationshipKey;
 import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -127,6 +131,32 @@ class AgentSocialDialogueReplyRouteTest {
 
         verify(map, never()).broadcastMessage(any(Packet.class));
         verify(owner, never()).sendPacket(any(Packet.class));
+    }
+
+    /**
+     * Whisper review P2 (2026-10-10): a whispered exchange went into the same conversation memory as public ones, so a
+     * reply said on the map could draw on what the player had whispered. A public reply now never sees it.
+     */
+    @Test
+    void aWhisperedExchangeStaysOutOfAPublicReplysMemory() {
+        Character owner = character(1, "Kiwi", mock(Client.class));
+        when(owner.getMapId()).thenReturn(100000000);
+        AgentRuntimeEntry entry = typedAnswer(owner);
+
+        try (MockedStatic<AgentSchedulerRuntime> scheduler = mockStatic(AgentSchedulerRuntime.class)) {
+            scheduler.when(() -> AgentSchedulerRuntime.scheduleLowPriority(any(Runnable.class), anyLong()))
+                    .thenAnswer(call -> null); // the typed line is not sent here: only what is remembered
+            AgentSocialDialogueRuntime.maybeRespond(entry, owner, "dont tell anyone but i like mira",
+                    new AgentReplyRoute(AgentReplyChannel.WHISPER, owner));
+            drainAll(entry);
+        }
+
+        SocialRelationshipKey key = new SocialRelationshipKey(2, SocialCounterpartyType.PLAYER, 1);
+        long now = System.currentTimeMillis();
+        assertTrue(SocialMemoryPersistenceRuntime.snapshot(key, now).recentTurns().stream()
+                .noneMatch(turn -> turn.text().contains("mira")), "a public reply's memory");
+        assertTrue(SocialMemoryPersistenceRuntime.snapshot(key, now, true).recentTurns().stream()
+                .anyMatch(turn -> turn.text().contains("mira")), "the next whispered reply still remembers it");
     }
 
     /** Kiwi's companion Tamsin, on an observed map, whose host answers in one typed line. */

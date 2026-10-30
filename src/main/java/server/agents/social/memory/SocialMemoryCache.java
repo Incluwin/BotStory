@@ -16,17 +16,28 @@ public final class SocialMemoryCache {
             new ConcurrentHashMap<>();
     private final ConcurrentMap<SocialRelationshipKey, ArrayDeque<ConversationTurn>> turns =
             new ConcurrentHashMap<>();
+    /**
+     * Whispered exchanges, kept apart (whisper review P2, 2026-10-10): a public reply's prompt never sees what the
+     * player whispered, so a line said on the map cannot repeat it; a whispered reply sees both.
+     */
+    private final ConcurrentMap<SocialRelationshipKey, ArrayDeque<ConversationTurn>> whispered =
+            new ConcurrentHashMap<>();
 
     public SocialMemorySnapshot snapshot(SocialRelationshipKey key, long nowMs) {
+        return snapshot(key, nowMs, false);
+    }
+
+    /** {@code whisper}: for a whispered reply, which also sees the whispered turns; a public one sees only public ones. */
+    public SocialMemorySnapshot snapshot(SocialRelationshipKey key, long nowMs, boolean whisper) {
         SocialRelationshipMemory relationship = relationships.getOrDefault(
                 key, SocialRelationshipMemory.neutral(key, nowMs));
-        ArrayDeque<ConversationTurn> history = turns.get(key);
-        if (history == null) {
-            return new SocialMemorySnapshot(relationship, List.of());
+        List<ConversationTurn> recent = copy(turns.get(key));
+        if (whisper) {
+            recent.addAll(copy(whispered.get(key)));
+            recent.sort(java.util.Comparator.comparingLong(ConversationTurn::occurredAtMs));
+            recent = new ArrayList<>(recent.subList(Math.max(0, recent.size() - MAX_RECENT_TURNS), recent.size()));
         }
-        synchronized (history) {
-            return new SocialMemorySnapshot(relationship, new ArrayList<>(history));
-        }
+        return new SocialMemorySnapshot(relationship, recent);
     }
 
     public SocialRelationshipMemory recordConversation(
@@ -34,14 +45,34 @@ public final class SocialMemoryCache {
             ConversationTurn playerTurn,
             ConversationTurn agentTurn,
             long nowMs) {
+        return recordConversation(key, playerTurn, agentTurn, nowMs, false);
+    }
+
+    /** {@code whisper}: a whispered exchange, kept apart from the public turns. */
+    public SocialRelationshipMemory recordConversation(
+            SocialRelationshipKey key,
+            ConversationTurn playerTurn,
+            ConversationTurn agentTurn,
+            long nowMs,
+            boolean whisper) {
         SocialRelationshipMemory relationship = relationships.compute(
                 key,
                 (ignored, current) -> (current == null
                         ? SocialRelationshipMemory.neutral(key, nowMs)
                         : current).recordConversation(nowMs));
-        append(key, playerTurn);
-        append(key, agentTurn);
+        ConcurrentMap<SocialRelationshipKey, ArrayDeque<ConversationTurn>> into = whisper ? whispered : turns;
+        append(into, key, playerTurn);
+        append(into, key, agentTurn);
         return relationship;
+    }
+
+    private static List<ConversationTurn> copy(ArrayDeque<ConversationTurn> history) {
+        if (history == null) {
+            return new ArrayList<>();
+        }
+        synchronized (history) {
+            return new ArrayList<>(history);
+        }
     }
 
     public void hydrate(
@@ -88,10 +119,12 @@ public final class SocialMemoryCache {
     public void clearAgent(int agentId) {
         relationships.keySet().removeIf(key -> key.agentId() == agentId);
         turns.keySet().removeIf(key -> key.agentId() == agentId);
+        whispered.keySet().removeIf(key -> key.agentId() == agentId);
     }
 
-    private void append(SocialRelationshipKey key, ConversationTurn turn) {
-        ArrayDeque<ConversationTurn> history = turns.computeIfAbsent(key, ignored -> new ArrayDeque<>());
+    private static void append(ConcurrentMap<SocialRelationshipKey, ArrayDeque<ConversationTurn>> into,
+                               SocialRelationshipKey key, ConversationTurn turn) {
+        ArrayDeque<ConversationTurn> history = into.computeIfAbsent(key, ignored -> new ArrayDeque<>());
         synchronized (history) {
             while (history.size() >= MAX_RECENT_TURNS) {
                 history.removeFirst();

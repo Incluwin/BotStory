@@ -116,7 +116,7 @@ public final class AgentSocialDialogueRuntime {
         AgentSocialDialogueRequestFactory.PreparedDialogue prepared;
         try {
             prepared = REQUESTS.prepare(
-                    entry, speakerId, speakerName, message, counterpartyType, nowMs);
+                    entry, speakerId, speakerName, message, counterpartyType, nowMs, whispered(route));
         } catch (IllegalArgumentException ignored) {
             return;
         }
@@ -150,8 +150,14 @@ public final class AgentSocialDialogueRuntime {
                     prepared.speakerId(),
                     prepared.speakerTurn(),
                     agentTurn,
-                    repliedAtMs);
+                    repliedAtMs,
+                    whispered(route));
         });
+    }
+
+    /** A line whispered to the Agent: its exchange is kept apart from the public ones (whisper review P2). */
+    private static boolean whispered(AgentReplyRoute route) {
+        return route != null && route.channel() == AgentReplyChannel.WHISPER;
     }
 
     private static List<Styled> answer(AgentRuntimeEntry entry, Character speaker, String message,
@@ -199,6 +205,7 @@ public final class AgentSocialDialogueRuntime {
                 prepared.speakerTurn(),
                 new ConversationTurn(ConversationTurn.Role.AGENT, prepared.request().context().agentName(), said.toString(),
                         repliedAtMs),
-                repliedAtMs);
+                repliedAtMs,
+                anyMap);
     }
 }

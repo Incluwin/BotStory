@@ -31,8 +31,13 @@ public final class SocialMemoryPersistenceRuntime {
     }
 
     public static SocialMemorySnapshot snapshot(SocialRelationshipKey key, long nowMs) {
+        return snapshot(key, nowMs, false);
+    }
+
+    /** {@code whisper}: for a whispered reply ({@link SocialMemoryCache#snapshot(SocialRelationshipKey, long, boolean)}). */
+    public static SocialMemorySnapshot snapshot(SocialRelationshipKey key, long nowMs, boolean whisper) {
         ensureHydrated(key, nowMs);
-        return CACHE.snapshot(key, nowMs);
+        return CACHE.snapshot(key, nowMs, whisper);
     }
 
     public static void recordConversation(
@@ -42,9 +47,25 @@ public final class SocialMemoryPersistenceRuntime {
             ConversationTurn playerTurn,
             ConversationTurn agentTurn,
             long nowMs) {
+        recordConversation(key, sessionId, playerId, playerTurn, agentTurn, nowMs, false);
+    }
+
+    /**
+     * {@code whisper}: a whispered exchange, kept apart from the public turns in memory and never written with them
+     * (the turns a restart reads back are public), so nothing whispered reaches a public reply; its relationship counts.
+     */
+    public static void recordConversation(
+            SocialRelationshipKey key,
+            String sessionId,
+            int playerId,
+            ConversationTurn playerTurn,
+            ConversationTurn agentTurn,
+            long nowMs,
+            boolean whisper) {
         SocialRelationshipMemory relationship = CACHE.recordConversation(
-                key, playerTurn, agentTurn, nowMs);
-        submit(() -> persist(key, sessionId, playerId, playerTurn, agentTurn, relationship, nowMs));
+                key, playerTurn, agentTurn, nowMs, whisper);
+        submit(() -> persist(key, sessionId, playerId, whisper ? null : playerTurn, whisper ? null : agentTurn,
+                relationship, nowMs));
     }
 
     public static void clearAgentRuntimeState(int agentId) {
@@ -102,8 +123,10 @@ public final class SocialMemoryPersistenceRuntime {
             }
             long expiresAtMs = nowMs + TURN_RETENTION_MS;
             store.get().saveRelationship(relationship);
-            store.get().appendTurn(key, sessionId, playerTurn, playerId, expiresAtMs);
-            store.get().appendTurn(key, sessionId, agentTurn, key.agentId(), expiresAtMs);
+            if (playerTurn != null && agentTurn != null) { // null: a whispered exchange, its turns not kept
+                store.get().appendTurn(key, sessionId, playerTurn, playerId, expiresAtMs);
+                store.get().appendTurn(key, sessionId, agentTurn, key.agentId(), expiresAtMs);
+            }
             if ((writes.incrementAndGet() & 1023L) == 0L) {
                 store.get().deleteExpired(nowMs);
             }
