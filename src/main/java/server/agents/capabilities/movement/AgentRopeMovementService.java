@@ -172,6 +172,7 @@ public final class AgentRopeMovementService {
         AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, 0);
         AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
         AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setKnockbackFlight(entry, false);
         AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, position);
         AgentClimbStateRuntime.clearRopeEntry(entry);
         AgentMovementStateRuntime.setDownJumpPending(entry, false);

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import server.agents.capabilities.combat.AgentMobKnockbackPolicy;
 import server.agents.capabilities.mobcontrol.AgentMobPhysicsConfig;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.Foothold;
 import server.maps.FootholdTree;
@@ -270,6 +271,52 @@ class AgentAirbornePhysicsServiceTest {
         assertEquals(AgentAirborneStepResult.LANDED, result);
         assertEquals(new Point(-100, 262), position.get());
         assertFalse(AgentMovementStateRuntime.inAir(entry));
+    }
+
+    @Test
+    void knockbackOffTheMapsOutermostFloorLandsBackOnIt() {
+        // Live 2026-10-29, Agents fell below Wild Cargo's Area (105090301) at x -381 dozens of times a day: the
+        // 1,020 px drop to its bottom floor (y 1120, from x -387, its side wall only below it) deals fall damage,
+        // and the knockback flew past the floor's left end to the map edge (x -438) where nothing is below.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(105090301);
+        int tickMs = AgentMovementPhysicsConfig.configuredMovementTickMs();
+        float launchVelocityY = -AgentMobKnockbackPolicy.scaledOpenStoryStep(
+                AgentMobPhysicsConfig.cfg.KNOCKBACK_VFORCE, tickMs);
+        int knockbackVelocityX = -Math.round(AgentMobKnockbackPolicy.scaledOpenStoryStep(
+                AgentMobPhysicsConfig.cfg.KNOCKBACK_HSPEED, tickMs));
+
+        for (int launchX = -387; launchX <= -361; launchX++) {
+            AtomicReference<Point> position = new AtomicReference<>(new Point(launchX, 1120));
+            Character agent = trackedAgent(map, position);
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+            AgentKnockbackMovementService.beginKnockback(
+                    entry, agent, new Point(launchX, 1120), launchVelocityY, knockbackVelocityX);
+
+            AgentAirborneStepResult result = AgentAirborneStepResult.CONTINUE;
+            for (int tick = 1; tick <= 40 && AgentMovementStateRuntime.inAir(entry); tick++) {
+                result = AgentAirbornePhysicsService.stepAirborne(entry, agent);
+                assertTrue(position.get().y <= 1120 && position.get().x >= -387,
+                        "launch x=" + launchX + " left the floor on tick " + tick
+                                + " to " + position.get() + " (" + result + ")");
+            }
+
+            assertEquals(AgentAirborneStepResult.LANDED, result, "launch x=" + launchX);
+            assertEquals(1120, position.get().y, "launch x=" + launchX);
+            assertFalse(AgentMovementPhysicsStateRuntime.knockbackFlight(entry), "launch x=" + launchX);
+        }
+    }
+
+    @Test
+    void aJumpTheAgentMakesIsNotHeldToTheFootholds() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(105090301);
+        AtomicReference<Point> position = new AtomicReference<>(new Point(-387, 1100));
+        Character agent = trackedAgent(map, position);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentAirborneLaunchService.launchAirborne(entry, position.get(), -2f, -6, false);
+
+        AgentAirbornePhysicsService.stepAirborne(entry, agent);
+
+        assertTrue(position.get().x < -387, "a chosen jump keeps the map's own bounds: " + position.get());
     }
 
     /** Easy Balrog fight map 105100400: VR -117..1083 x -510..400 and its three floor footholds. */
