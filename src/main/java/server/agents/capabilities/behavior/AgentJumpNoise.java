@@ -37,9 +37,9 @@ public final class AgentJumpNoise {
     /** A landing this far below its launch is a miss (a real drop to a lower foothold). */
     static final int MISS_DROP_PX = 30;
     /** Draws tried before the exact launch is used instead. */
-    static final int REDRAWS = 4;
+    public static final int REDRAWS = 4;
     /** No press is ever this far off. */
-    static final int MAX_OFFSET_PX = 90;
+    public static final int MAX_OFFSET_PX = 90;
     /** A miss never drops this close to the fall-damage distance (measured from its apex, about a jump above the launch). */
     static final int SAFE_DROP_MARGIN_PX = 150;
 
@@ -47,6 +47,11 @@ public final class AgentJumpNoise {
     public interface Plan {
         /** The launch spread (one sigma, in pixels) for a jump taking off at height {@code launchY}; 0 = exact. */
         double sigmaAt(int launchY);
+
+        /** The launch spread for the jump taking off at {@code launch} (its edge's start); by its height unless told. */
+        default double sigmaAt(Point launch) {
+            return sigmaAt(launch.y);
+        }
 
         /**
          * The Agent fell below the map anyway: true when the host dealt with it (it logs the citizen off in front of a
@@ -158,7 +163,7 @@ public final class AgentJumpNoise {
             if (state.drawnEdge == edge) {
                 return state.drawnX;
             }
-            double sigma = Math.max(0.0d, plan.sigmaAt(edge.startPoint.y));
+            double sigma = Math.max(0.0d, plan.sigmaAt(edge.startPoint));
             MapleMap map = sigma > 0.0d ? AgentRuntimeIdentityRuntime.botMap(entry) : null; // only a draw needs them
             AgentMovementProfile profile = map != null ? AgentMovementStateRuntime.movementProfile(entry) : null;
             int tolerance = map != null ? launchTolerance(map, profile) : 0;
@@ -167,7 +172,11 @@ public final class AgentJumpNoise {
             for (int attempt = 0; attempt < REDRAWS && sigma > 0.0d && map != null; attempt++) {
                 int edgeMargin = from.maxX - from.minX > 2 * EDGE_MARGIN_PX ? EDGE_MARGIN_PX : 0;
                 int offset = (int) Math.round(Math.max(-MAX_OFFSET_PX, Math.min(MAX_OFFSET_PX, state.random.nextGaussian() * sigma)));
-                int candidate = Math.max(from.minX + edgeMargin, Math.min(from.maxX - edgeMargin, selectedX + offset));
+                // Never past navigation's own pick: a window inside the edge margin (100000202's r61->r60 is the last 4
+                // px of its platform) was clamped off itself on every draw, so each press there missed.
+                int low = Math.min(from.minX + edgeMargin, selectedX);
+                int high = Math.max(from.maxX - edgeMargin, selectedX);
+                int candidate = Math.max(low, Math.min(high, selectedX + offset));
                 if (candidate == selectedX // navigation's own pick: its rules as always; any other press is probed
                         || safeLaunch(entry, graph, map, profile, from, edge, candidate, tolerance)) {
                     x = candidate;
@@ -275,22 +284,40 @@ public final class AgentJumpNoise {
         Point target = AgentMoveTargetStateRuntime.moveTarget(entry);
         int targetRegion = target == null ? -1 : graph.findRegionId(map, target);
         // It takes off anywhere within the tolerance of the drawn x (readyAtDraw): every launch in that band must be
-        // safe, and where it stands a few ticks after landing (a landing near a platform's end can slide off) is what
-        // counts. Every pixel: one pixel past a window's end can be the one that clears the platform's lip or misses it
+        // safe. Every pixel: one pixel past a window's end can be the one that clears the platform's lip or misses it
         // into a void (101000101's r60->r59: -548 lands on r59, -547 falls off the map's left edge).
         for (int at = x - tolerance; at <= x + tolerance; at++) {
-            Point origin = from.pointAt(Math.max(from.minX, Math.min(from.maxX, at)));
-            AgentPostLandingJump landing = origin == null ? null
-                    : AgentJumpProbeService.simulateJumpLandingWithPostLandingTicks(map, origin, stepX, profile, POST_LANDING_TICKS);
-            if (landing == null || landing.landing() == null || landing.landing().foothold() == null || landing.lostGround()
-                    || landing.finalPoint().y - origin.y > AgentFallDamageCalculator.FALL_DIST_THRESHOLD_PX - SAFE_DROP_MARGIN_PX) {
-                return false;
-            }
-            int landedRegion = graph.findRegionId(map, landing.finalPoint());
-            if (landedRegion < 0 || targetRegion >= 0 && !graph.canReach(landedRegion, targetRegion)) {
+            if (!safePress(map, graph, profile, from, stepX, at, targetRegion)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * One take-off pixel of a moved press (safeLaunch; JumpQuestCourses calibrates on it): the probe lands it on a
+     * foothold of the map that can still reach {@code targetRegion} (-1: any), and where it stands a few ticks after
+     * landing (a landing near a platform's end can slide off) is what counts, no farther down than a fall that hurts.
+     */
+    public static boolean safePress(MapleMap map, AgentNavigationGraph graph, AgentMovementProfile profile,
+                                    AgentNavigationGraph.Region from, int stepX, int at, int targetRegion) {
+        Point origin = from.pointAt(Math.max(from.minX, Math.min(from.maxX, at)));
+        return origin != null && safeLanding(map, graph, origin, probe(map, origin, stepX, profile), targetRegion);
+    }
+
+    /** The jump probe's landing from {@code origin}, and where it stands POST_LANDING_TICKS later. */
+    public static AgentPostLandingJump probe(MapleMap map, Point origin, int stepX, AgentMovementProfile profile) {
+        return AgentJumpProbeService.simulateJumpLandingWithPostLandingTicks(map, origin, stepX, profile, POST_LANDING_TICKS);
+    }
+
+    /** safePress on a landing already probed from {@code origin}. */
+    public static boolean safeLanding(MapleMap map, AgentNavigationGraph graph, Point origin, AgentPostLandingJump landing,
+                                      int targetRegion) {
+        if (landing == null || landing.landing() == null || landing.landing().foothold() == null || landing.lostGround()
+                || landing.finalPoint().y - origin.y > AgentFallDamageCalculator.FALL_DIST_THRESHOLD_PX - SAFE_DROP_MARGIN_PX) {
+            return false;
+        }
+        int landedRegion = graph.findRegionId(map, landing.finalPoint());
+        return landedRegion >= 0 && (targetRegion < 0 || graph.canReach(landedRegion, targetRegion));
     }
 }

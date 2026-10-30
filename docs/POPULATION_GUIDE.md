@@ -397,19 +397,24 @@ so a bot would walk through it unharmed. Shumi's jump quest (103000900-909) come
 - A course is cut into stages along the navigation path (`JumpQuestCourses`): seven jumps, or fewer up to a rope's top
   (it stops on the small platform up there, as players do). The citizen climbs from checkpoint to checkpoint with its
   jumps' noise on (`AgentJumpNoise`): the launch x of each jump moves by a draw from N(0, sigma), sigma solved per stage
-  (`JumpWindows`) from the jump probe's real landing windows (a window that reaches the platform's end is open there: a
-  press past the end launches from it). A drawn press is taken on its x (a pixel either way), or at rest within half a
-  walk step of it (a precise approach to a jump coasts to rest on its launch), so the takeoff is the draw, as the
-  calibration asks. Taken at the first position near it, it came early every time (navigation looks every 100 ms) and
+  (`JumpWindows`) on what the noise itself does there: the jump probe's landing from every pixel a press can reach (a
+  one-pixel hole in a landing run costs only that pixel), the press kept on its platform but never moved past
+  navigation's own pick (a window in a platform's last pixels is still takeable), and a press the noise refuses drawn
+  again (below). Each jump takes its own stage's spread, even where two stages' heights overlap.
+  `JumpQuestRoutesTest` checks the noise's own draws against the calibration stage by stage; before, Pet-Walking Road
+  disagreed (0.98 cleared where 0.70 was asked, 0.00 where 0.78 was) and a 30% climber missed one road jump in
+  fourteen (now one in eight, what its stages ask; 40 seeds). A drawn press is taken on its x (a pixel either way), or
+  at rest within half a walk step of it (a precise approach to a jump coasts to rest on its launch), so the takeoff
+  is the draw, as the calibration asks. Taken at the first position near it, it came early every time (navigation looks every 100 ms) and
   a 70% citizen cleared about 30% of 101000100's stages. The skill is its chance on seven jumps, stable per citizen within
   `JQ_STAGE_SUCCESS_MIN`..`MAX` (30-70%), scaled to a shorter stage, plus `JQ_PRACTICE_STEP` for every stage it clears
   without a fall, this session. A narrow jump fails more often than a wide one.
 - A miss is a real drop: every drawn launch off the edge's window is probed first, pixel by pixel over the whole band
   the citizen may take off from (one pixel can be the one that misses a lip into a void, as 101000101's r60->r59 does
   at its window's end), and kept only if it lands on a foothold that can still reach the checkpoint and no farther down than a
-  fall that hurts (else it draws again, then jumps exactly). Presses stay 4 px inside a platform's ends, so walking to
-  one never steps off. A miss costs a climb, never HP. It lands lower, says "rip" or
-  "ugh" now and then (`jq.fall`), and climbs again. Noisy misses do not count against the edge's reliability, and the
+  fall that hurts (else it draws again, then jumps exactly). Presses stay 4 px inside a platform's ends (or at
+  navigation's pick, if that is nearer an end), so walking to one never steps off. A miss costs a climb, never HP. It
+  lands lower, says "rip" or "ugh" now and then (`jq.fall`), and climbs again. Noisy misses do not count against the edge's reliability, and the
   imperfections' town rope fumble (F8) stays off during an attempt, so falls are not counted twice.
 - After `JQ_FALLS_MAX` falls or `JQ_ATTEMPT_MAX_MS` it gives up (`jq.giveup`): on the road it walks off with its next
   plan; in the Forest it walks down to Shane (1032004, at every map's foot) and back to Ellinia. It never stands still

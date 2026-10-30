@@ -3,7 +3,6 @@ package server.living.population;
 import server.agents.capabilities.behavior.AgentJumpNoise;
 import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentJumpActionService;
-import server.agents.capabilities.movement.AgentJumpProbeService;
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.movement.AgentPostLandingJump;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
@@ -72,11 +71,33 @@ public final class JumpQuestCourses {
 
     /**
      * One leg cut into stages: the checkpoint each stage climbs to, its jumps (graph window and real landing window, for
-     * the noise's calibration) and the heights its jumps take off from.
+     * the noise's calibration), the heights its jumps take off from and each jump's take-off point (the edge's start).
      */
-    public record Stages(List<Point> checkpoints, List<JumpWindows.Jump[]> jumps, List<int[]> heights) {
+    public record Stages(List<Point> checkpoints, List<JumpWindows.Jump[]> jumps, List<int[]> heights,
+                         List<Point[]> launches) {
+        /** Stages known by height alone. */
+        public Stages(List<Point> checkpoints, List<JumpWindows.Jump[]> jumps, List<int[]> heights) {
+            this(checkpoints, jumps, heights, List.of());
+        }
+
         public int count() {
             return checkpoints.size();
+        }
+
+        /**
+         * The stage a jump taking off at {@code launch} belongs to: the stage that has that jump, else by height. Two
+         * stages' heights can overlap (Pet-Walking Road's zig-zags): by height alone 100000202's r38->r33, stage 4's
+         * first jump, took stage 3's spread, and a 30% climber cleared stage 4 at 0.70 where its calibration said 0.60.
+         */
+        public int stageAt(Point launch) {
+            for (int s = 0; s < launches.size(); s++) {
+                for (Point start : launches.get(s)) {
+                    if (start.equals(launch)) {
+                        return s;
+                    }
+                }
+            }
+            return stageAt(launch.y);
         }
 
         /** The stage a jump taking off at {@code launchY} belongs to: the one whose jumps take off nearest that height. */
@@ -207,29 +228,37 @@ public final class JumpQuestCourses {
         List<Point> checkpoints = new ArrayList<>();
         List<JumpWindows.Jump[]> jumps = new ArrayList<>();
         List<int[]> heights = new ArrayList<>();
+        List<Point[]> launches = new ArrayList<>();
         for (JumpGroup group : groups(leg, map)) {
             checkpoints.add(group.checkpoint());
             JumpWindows.Jump[] windows = new JumpWindows.Jump[group.jumps().size()];
+            Point[] starts = new Point[windows.length];
             int low = NO_HEIGHT;
             int high = NO_HEIGHT;
             for (int i = 0; i < windows.length; i++) {
                 AgentNavigationGraph.Edge edge = group.jumps().get(i);
-                windows[i] = jump(graph, map, graph.getRegion(edge.fromRegionId), edge);
+                windows[i] = jump(graph, map, graph.getRegion(edge.fromRegionId), edge, group.checkpoint());
+                starts[i] = new Point(edge.startPoint);
                 low = i == 0 ? edge.startPoint.y : Math.min(low, edge.startPoint.y);
                 high = i == 0 ? edge.startPoint.y : Math.max(high, edge.startPoint.y);
             }
             jumps.add(windows);
             heights.add(new int[]{low, high}); // a walk-only stage takes off nowhere: stageAt never picks it
+            launches.add(starts);
         }
-        return new Stages(List.copyOf(checkpoints), List.copyOf(jumps), List.copyOf(heights));
+        return new Stages(List.copyOf(checkpoints), List.copyOf(jumps), List.copyOf(heights), List.copyOf(launches));
     }
 
     /**
-     * A jump's windows: where navigation picks its launch (the graph window on its platform) and the run of launches
-     * around that pick which the jump probe lands on the target platform and keeps there, one pixel apart.
+     * A jump's windows: where navigation picks its launch (the graph window on its platform), where a press can go (the
+     * platform less the noise's edge margin), and for every press within MAX_OFFSET_PX of the picks whether the jump
+     * probe lands it on the target platform and keeps it there, and whether the noise would keep that press for a
+     * citizen climbing to {@code checkpoint} (AgentJumpNoise.safePress over its readiness band). Every pixel: a landing
+     * run can have a one-pixel hole (100000202's r105->r93 lands from -1743..-1681 and -1679..-1648, not -1680), and
+     * a run cut at the hole made the stage look harder than it is.
      */
     static JumpWindows.Jump jump(AgentNavigationGraph graph, MapleMap map, AgentNavigationGraph.Region region,
-                                 AgentNavigationGraph.Edge edge) {
+                                 AgentNavigationGraph.Edge edge, Point checkpoint) {
         int pickLow = Math.max(edge.launchMinX, region.minX);
         int pickHigh = Math.min(edge.launchMaxX, region.maxX);
         if (pickLow > pickHigh) {
@@ -238,31 +267,40 @@ public final class JumpQuestCourses {
         }
         AgentMovementProfile profile = AgentMovementProfile.base();
         int stepX = AgentJumpActionService.resolveAirVelocityX(map, profile, edge.launchStepX);
-        int center = (pickLow + pickHigh) / 2;
-        int okLow = center;
-        while (okLow - 1 >= region.minX && lands(graph, map, region, edge, okLow - 1, stepX, profile)) {
-            okLow--;
+        int edgeMargin = region.maxX - region.minX > 2 * AgentJumpNoise.EDGE_MARGIN_PX ? AgentJumpNoise.EDGE_MARGIN_PX : 0;
+        int first = Math.min(pickLow, Math.max(region.minX, pickLow - AgentJumpNoise.MAX_OFFSET_PX));
+        int last = Math.max(pickHigh, Math.min(region.maxX, pickHigh + AgentJumpNoise.MAX_OFFSET_PX));
+        int tolerance = AgentJumpNoise.launchTolerance(map, profile);
+        int targetRegion = checkpoint == null ? -1 : graph.findRegionId(map, checkpoint);
+        boolean[] lands = new boolean[last - first + 1];
+        boolean[] pixelSafe = new boolean[last - first + 1 + 2 * tolerance];
+        boolean picksLand = false;
+        for (int x = first - tolerance; x <= last + tolerance; x++) {
+            Point origin = region.pointAt(Math.max(region.minX, Math.min(region.maxX, x)));
+            AgentPostLandingJump landing = origin == null ? null : AgentJumpNoise.probe(map, origin, stepX, profile);
+            pixelSafe[x - first + tolerance] = origin != null
+                    && AgentJumpNoise.safeLanding(map, graph, origin, landing, targetRegion);
+            if (x >= first && x <= last) {
+                lands[x - first] = landing != null && landing.landing() != null && landing.landing().foothold() != null
+                        && !landing.lostGround() && graph.findRegionId(map, landing.finalPoint()) == edge.toRegionId;
+                picksLand |= lands[x - first] && x >= pickLow && x <= pickHigh;
+            }
         }
-        int okHigh = center;
-        while (okHigh + 1 <= region.maxX && lands(graph, map, region, edge, okHigh + 1, stepX, profile)) {
-            okHigh++;
+        if (!picksLand) {
+            for (int x = pickLow; x <= pickHigh; x++) {
+                lands[x - first] = true; // the probe disagrees with every pick: the graph's window, as navigation trusts it
+            }
         }
-        if (!lands(graph, map, region, edge, center, stepX, profile)) {
-            return new JumpWindows.Jump(pickLow, pickHigh, pickLow, pickHigh); // the probe disagrees: the graph's window
+        boolean[] safe = new boolean[lands.length];
+        for (int x = first; x <= last; x++) {
+            boolean all = true;
+            for (int at = x - tolerance; at <= x + tolerance && all; at++) {
+                all = pixelSafe[at - first + tolerance];
+            }
+            safe[x - first] = all;
         }
-        // A press past the platform's end launches from its end (AgentJumpNoise clamps): landing from there opens that side.
-        int margin = AgentJumpNoise.EDGE_MARGIN_PX; // a press goes no closer to the end than this
-        return new JumpWindows.Jump(pickLow, pickHigh, okLow <= region.minX + margin ? -JumpWindows.OPEN : okLow,
-                okHigh >= region.maxX - margin ? JumpWindows.OPEN : okHigh);
-    }
-
-    private static boolean lands(AgentNavigationGraph graph, MapleMap map, AgentNavigationGraph.Region region,
-                                 AgentNavigationGraph.Edge edge, int x, int stepX, AgentMovementProfile profile) {
-        Point origin = region.pointAt(x);
-        AgentPostLandingJump landing = origin == null ? null
-                : AgentJumpProbeService.simulateJumpLandingWithPostLandingTicks(map, origin, stepX, profile, 3);
-        return landing != null && landing.landing() != null && landing.landing().foothold() != null
-                && !landing.lostGround() && graph.findRegionId(map, landing.finalPoint()) == edge.toRegionId;
+        return new JumpWindows.Jump(pickLow, pickHigh, region.minX + edgeMargin, region.maxX - edgeMargin, first, lands,
+                safe);
     }
 
     private static Point ground(MapleMap map, Point at) {
