@@ -247,11 +247,17 @@ public class Expedition {
         return 0; //"You have registered for the expedition successfully!";
     }
 
+    /**
+     * Logs the day's entry of each member who goes in: those on the recruiting map, the ones the event registers and
+     * warps (EventInstanceManager.registerExpedition). A member elsewhere, even online, keeps the entry.
+     */
     private void registerExpeditionAttempt() {
         int channel = this.getRecruitingMap().getChannelServer().getId();
 
         for (Character chr : getActiveMembers()) {
-            ExpeditionBossLog.attemptBoss(chr.getId(), channel, this, true);
+            if (chr.getMapId() == startMap.getId()) {
+                ExpeditionBossLog.attemptBoss(chr.getId(), channel, this, true);
+            }
         }
     }
 
