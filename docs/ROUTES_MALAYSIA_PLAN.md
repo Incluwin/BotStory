@@ -56,14 +56,19 @@ with that road's quest (3500-3522) done, and no bot does those quests. Memory La
 
 ### 2.2 Still out of reach for agents (not in this branch)
 
+Closed on `fix/routes-2026-10-29`: Ereve (Kiriru/Kiru's sky ferries from Ellinia's in04 station and Orbis's Ereve
+platform, and rankRoom's two doors between the dock road and the town), Rien (Puro's whale from Lith Harbor, and
+enterPort down to the dock), the Mu Lung Dojo (the board in Mu Lung Temple; the exit lands where the board saved the
+rider, so the leg is planned back to Mu Lung Temple and the Dojo is never a way to Victoria), Happyville (Rooney in
+Ellinia and Rupi back; only Ellinia's Rooney is listed, where Rupi's way back lands with nothing saved), Maple Island
+(its road joins the world graph; Shanks sails Southperry -> Lith Harbor from level 7, nothing sails back), and the
+Temple of Time's roads and Mushroom Castle's inner gates as gated scripted portals (each road's quest; quest 30000
+taken, quest 2324 done): open to any agent that has done them, as to a player. No bot does those quests yet.
+
 | Where | Why |
 |---|---|
-| The Temple of Time's far roads | every road's forward portal (`timeQuest`) needs that road's quest (3500-3522); no bot does them, so routes stop at Memory Lane 1 |
-| Mushroom Castle past Mushroom Forest Field | inner gates `obstacle.js` (quest 30000 or a Poison Spore) and `gotocastle.js` (quest 2324); `fields.yaml` keeps capacity 0 there (user decision 2026-10-10) |
-| Cave of Life (Horntail) | `hontale_morph` scripted portals at 240040700 (the bossing work enters its own way) |
-| Twilight Perion, Arcane River | the guides back answer only through `repack_talk.js`; Arcane River is in no graph group |
-| Mu Lung Dojo, Happyville, Maple Island | NPC warps into instances or event maps, and the one-way ship from Maple Island |
-| Ereve, Rien | unchanged: their docks are not joined to their towns by plain portals |
+| Cave of Life (Horntail) | Keroben (2081005) lets in only a dragon-shaped rider (no `hontale_morph` script on this server) or a holder of item 4001086, level 100+: an item gate the leg format cannot state (the bossing work enters its own way) |
+| Twilight Perion, Arcane River | the guides back answer only through `repack_talk.js`, which the bot gateway's `runNpcScript` does not fall back to; Arcane River is in no graph group |
 
 ## 3. Regions and fields
 
@@ -84,7 +89,11 @@ Happyville, the Internet Cafe and the Exclusive Training Center are instances or
 spas, below 809050000) or `ludibrium` (the Maze), 926 -> `ariant` (Nett's Pyramid), 930 -> `ellin-forest` (the Forest of
 Poison Haze). None of the 809/926/930 maps that lack a forced return has a mob spawn, so none turns into a training
 suggestion. 910 (the Free Market and its hub maps, HPQ's Primrose Hill) and 925 (Mu Lung Dojo, three of whose maps
-have mobs and no forced return) stay null. Then `tools\knowledge-export.bat`.
+have mobs and no forced return) stay null. Then `tools\knowledge-export.bat`. Since `fix/routes-2026-10-29` the Free
+Market's entrance and rooms (910000000-910000022) are `victoria` and the Dojo's entrance, hall, exit and rooftop
+(925020000-925020003) `mu-lung`, so the Residents who live there know their home region; neither range has monsters.
+`travel.yaml` gains the Dojo board and exit, Rien's walk down to its dock (enterPort warps to two literal maps, so
+the export finds no exit there), Shanks's one-way ship and Rooney/Rupi (Ellinia only, as on the agent graph).
 
 ## 4. Shops and potions
 

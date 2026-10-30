@@ -43,8 +43,9 @@ public final class AgentTravelLegCatalog {
      * holding {@code ticket}, when there is one); lands on {@code toMapId} at once or after waiting on one of
      * {@code rideMapIds}. The NPC lets nobody below {@code minLevel} on (Jeff at Ice Valley II, 50). With
      * {@code savedLocation} the script lands the rider where that saved location points (Spinel's and Audrey's
-     * WORLDTOUR, Pison's FLORINA): {@code toMapId} is where it lands when nothing is saved, and every other landing
-     * counts as the ride done.
+     * WORLDTOUR, Pison's FLORINA, Rupi's HAPPYVILLE): {@code toMapId} is where it lands when nothing is saved, or for
+     * the Mu Lung Dojo's exit where the Dojo board saved it (Mu Lung Temple; Henesys with nothing saved), and every
+     * other landing counts as the ride done.
      */
     public record Leg(String id, int fromMapId, int npcId, List<Integer> selections, int toMapId, int fare,
                       List<Integer> rideMapIds, Ticket ticket, int minLevel, String savedLocation, String portal) {

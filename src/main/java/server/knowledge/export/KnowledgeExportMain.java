@@ -215,13 +215,22 @@ public final class KnowledgeExportMain {
     }
 
     /**
-     * Coarse area by id prefix; null for event, instance and GM maps, the Free Market and its hub maps (910) and Mu Lung
-     * Dojo (925). Amoria's Purplewood fields (670), Zipangu's spas and the Ludibrium Maze (809), Nett's Pyramid (926)
-     * and the Forest of Poison Haze (930) belong to the town they are entered from.
+     * Coarse area by id prefix; null for event, instance and GM maps, the rest of the 910 hub maps (HPQ's Primrose
+     * Hill...) and the Mu Lung Dojo's floors (925, three with monsters and no forced return). Amoria's Purplewood
+     * fields (670), Zipangu's spas and the Ludibrium Maze (809), Nett's Pyramid (926) and the Forest of Poison Haze
+     * (930) belong to the town they are entered from; so do the Free Market's entrance and rooms (Victoria's towns'
+     * market portals) and the Dojo's entrance, hall, exit and rooftop (the board in Mu Lung Temple), which have no
+     * monsters and Residents live in.
      */
     static String region(int mapId) {
         if (mapId < 100_000_000) {
             return "maple-island";
+        }
+        if (mapId >= 910_000_000 && mapId <= 910_000_022) {
+            return "victoria";
+        }
+        if (mapId >= 925_020_000 && mapId <= 925_020_003) {
+            return "mu-lung";
         }
         return switch (mapId / 1_000_000) {
             case 100, 101, 102, 103, 104, 105, 106, 107, 108 -> "victoria";

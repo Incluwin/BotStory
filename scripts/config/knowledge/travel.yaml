@@ -32,6 +32,9 @@ legs:
   - { from: 250000100, to: 200000141, npc: 2090005, kind: crane, cost: 1500, note: "Mu Lung -> Orbis" }
   - { from: 250000100, to: 251000000, npc: 2090005, kind: crane, cost: 500, note: "Mu Lung -> Herb Town" }
   - { from: 251000000, to: 250000100, npc: 2090005, kind: crane, cost: 500, note: "Herb Town -> Mu Lung" }
+  # Mu Lung Dojo: the board in Mu Lung Temple sends challengers in; the exit sends them back where the board saved them
+  - { from: 250000100, to: 925020000, npc: 2091006, kind: guide, cost: 0, note: "Mu Lung Temple -> Mu Lung Dojo (the Dojo board)" }
+  - { from: 925020000, to: 250000100, npc: 0, kind: guide, cost: 0, note: "Mu Lung Dojo exit -> back where the board sent you from (Mu Lung Temple; Henesys if nothing was saved)" }
   # Aquarium <-> Herb Town (the dolphin)
   - { from: 230000000, to: 251000100, npc: 2060009, kind: dolphin, cost: 10000, note: "Aquarium -> Herb Town" }
   - { from: 251000100, to: 230000000, npc: 2060009, kind: dolphin, cost: 10000, note: "Herb Town -> Aquarium" }
@@ -46,6 +49,11 @@ legs:
   # Rien (Puro at Lith Harbor)
   - { from: 104000000, to: 140020300, npc: 1200004, kind: boat, cost: 800, note: "Lith Harbor -> Rien" }
   - { from: 140020300, to: 104000000, npc: 1200003, kind: boat, cost: 800, note: "Rien -> Lith Harbor" }
+  # Rien's road reaches the dock through enterPort (its other warp is an Aran quest's fight, so the export misses it)
+  - { from: 140020200, to: 140020300, npc: 0, kind: guide, cost: 0, note: "Dangerous Forest -> Rien dock (enterPort)" }
+  # Maple Island: Shanks sails to Lith Harbor from level 7; nothing sails back
+  - { from: 2000000, to: 104000000, npc: 22000, kind: ship, cost: 150, note: "Southperry -> Lith Harbor (level 7 and up, one way)" }
+  - { from: 60000, to: 104000000, npc: 22000, kind: ship, cost: 150, note: "Maple Road: Southperry -> Lith Harbor (level 7 and up, one way)" }
   # Florina Beach (Pason at Lith Harbor; Pison sends you back where you came from, Lith by default)
   - { from: 104000000, to: 110000000, npc: 1002002, kind: boat, cost: 1500, note: "Lith Harbor -> Florina Beach" }
   - { from: 110000000, to: 104000000, npc: 1081001, kind: boat, cost: 0, note: "Florina Beach -> Lith Harbor" }
@@ -74,6 +82,10 @@ legs:
   # Amoria (Thomas Swift in Henesys and in Amoria)
   - { from: 100000000, to: 680000000, npc: 9201022, kind: guide, cost: 0, note: "Henesys -> Amoria" }
   - { from: 680000000, to: 100000000, npc: 9201022, kind: guide, cost: 0, note: "Amoria -> Henesys" }
+  # Happyville: Rooney (in every town) sends you in, Rupi back where you came from (Ellinia if nothing was saved). Only
+  # Ellinia's Rooney is listed: from another town the pair would read as a shortcut to Ellinia.
+  - { from: 101000000, to: 209000000, npc: 1022101, kind: guide, cost: 0, note: "Ellinia -> Happyville (Rooney)" }
+  - { from: 209000000, to: 101000000, npc: 2002000, kind: guide, cost: 0, note: "Happyville -> back where you came from (Ellinia by default)" }
   # Kerning Square: the train from the subway's ticket reader; back through Kerning Square Station's exit portal
   - { from: 103000100, to: 103000310, npc: 1052007, kind: subway, cost: 0, note: "Kerning subway -> Kerning Square Station" }
   - { from: 103000310, to: 103000100, npc: 0, kind: subway, cost: 0, note: "Kerning Square Station -> Kerning subway" }

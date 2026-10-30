@@ -48,9 +48,20 @@ class AgentCareerShopCatalogTest {
         AgentCareerBuildBundle warrior = AgentCareerBuildBundleRepository.defaultRepository()
                 .find("warrior-standard-v1").orElseThrow();
 
-        // KPQ's first stage has no portal out, and Ereve's shop lies behind scripted portals.
+        // KPQ's first stage has no portal out.
         assertNull(AgentCareerShopCatalog.forSupply(warrior, AgentResourceCategory.HP_POTION, 103000800));
-        assertNull(AgentCareerShopCatalog.forSupply(warrior, AgentResourceCategory.MP_POTION, 130000000));
+    }
+
+    @Test
+    void ereveWalksThroughTheRankRoomDoorToItsShopAtTheCrossroads() {
+        AgentCareerBuildBundle warrior = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("warrior-standard-v1").orElseThrow();
+
+        AgentCareerShopCatalog.ShopStop stop = AgentCareerShopCatalog.forSupply(
+                warrior, AgentResourceCategory.MP_POTION, 130000000);
+
+        assertEquals(130000200, stop.mapId());
+        assertEquals(1100002, stop.npcId());
     }
 
     @Test

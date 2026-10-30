@@ -223,12 +223,24 @@ class AgentRideTravelRuntimeTest {
     }
 
     @Test
-    void withoutTheMesosForTheTicketThereIsNoRide() {
+    void withoutTheMesosForAnyWayThereIsNoRide() {
         mapId = ELLINIA_STATION;
-        when(agent.getMeso()).thenReturn(4_999);
+        when(agent.getMeso()).thenReturn(1_999); // the Ereve sky ferries round to Orbis cost 1,000 each
 
         assertEquals(AgentVictoriaRouteRuntime.Status.NO_ROUTE, travel(ORBIS, 1_000L).status());
         verify(gateway, never()).runNpcScript(any(), anyInt(), any(int[].class));
+    }
+
+    @Test
+    void shortOfTheBoatTicketItGoesRoundByTheEreveSkyFerries() {
+        mapId = ELLINIA_STATION;
+        when(agent.getMeso()).thenReturn(4_999);
+
+        AgentVictoriaRouteRuntime.TravelOutcome outcome = travel(ORBIS, 1_000L);
+
+        assertEquals(AgentVictoriaRouteRuntime.Status.MOVING, outcome.status());
+        assertEquals(101000000, outcome.nextMapId(), "back into Ellinia, for its sky ferry station");
+        verify(gateway, never()).runNpcScript(any(), anyInt(), any(int[].class)); // no 5,000-meso ticket from Joel
     }
 
     @Test
