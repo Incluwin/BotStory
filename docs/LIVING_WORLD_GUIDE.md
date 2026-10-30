@@ -462,7 +462,8 @@ its HP wins (`Monster.damageBy`, the player's own damage counts for neither); sh
 points are even. A rival who walks off forfeits, and the foe still has to fall. Once the foe is down the race is
 settled: leaving before the outcome lines still completes it, and it is never run twice. Both bonds get
 `story.rivalry.<a>-<b>` and its outcome flag, and the numbers go in a `story.race` row. Who counts as rivals is
-`StoryRivals.rivals` (17 relationship kinds, either side); only an authored race is ever offered.
+`StoryRivals.rivals`: either side's relationship reads RIVAL in the crew ties' `TieKind.of` (17 kinds);
+only an authored race is ever offered.
 
 **Attended job errands (F6.3).** Before its 3rd or 4th job a companion asks its owner in a yes/no window to come
 along (`errand.attend.ask.<3|4>` lines in its story, else stock ones). Yes: it stays in the party and follows them
