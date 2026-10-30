@@ -836,6 +836,16 @@ public final class Market {
             session.shopping = null;
             return;
         }
+        if (!roomForGear(agent)) {
+            // it could not carry the piece: it sells its loot first (live 10-29, all 9 citizens who gave up on a stall
+            // had full equip bags, and 145 of the 204 full bags were on gear errands)
+            session.shopping = null;
+            if (population.presence().sellSoon(session, now)) {
+                log.info("citizen {} has no room in its equip bag for its errand's piece; it goes to sell its loot first",
+                        session.name());
+            }
+            return;
+        }
         ErrandStall stall = errandStall(agent.getMapId(), roomShops(session.channel), view -> errandOffer(agent, view),
                 agent.getMeso(), this::buysFrom, agent.getId(), previous);
         if (stall == null) {
@@ -859,6 +869,12 @@ public final class Market {
             log.info("citizen {} walks to {}'s stall for {}", session.name(), stall.ownerName(), itemName(stall.itemId()));
         }
         AgentMovementCommandRuntime.moveTo(session.entry, besideStall(agent.getMap(), stall.position()), true);
+    }
+
+    /** Whether its equip bag has a free slot for a bought piece (a test's mocked character has no bag: room). */
+    private static boolean roomForGear(Character agent) {
+        client.inventory.Inventory bag = agent.getInventory(InventoryType.EQUIP);
+        return bag == null || bag.getNumFreeSlot() > 0;
     }
 
     /** The trip to {@code stall}: one more try at the same stall, a first at another, abandoned after SHOP_WALK_TRIES. */
