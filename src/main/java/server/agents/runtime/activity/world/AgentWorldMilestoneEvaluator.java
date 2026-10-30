@@ -42,14 +42,21 @@ public final class AgentWorldMilestoneEvaluator {
                         : AgentWorldMilestoneStatus.NOT_ACHIEVED,
                 "level=" + context.level());
 
-        boolean foundationComplete = "COMPLETE".equals(context.careerStage());
+        // A career run's first stage on an Agent that already has its job is stale: the run never started, and the job
+        // came from shaping, a GM or its owner (found 2026-10-01: Lv30+ warriors read "not achieved" for ever). Its
+        // foundation is then what the snapshot shows: a job and level 15.
+        boolean staleCheckpoint = firstJob && "WAITING_FOR_MAPLE_ISLAND".equals(context.careerStage());
+        boolean foundationComplete = "COMPLETE".equals(context.careerStage())
+                || staleCheckpoint && context.level() >= 15;
         AgentWorldMilestoneStatus foundationStatus = foundationComplete
                 ? AgentWorldMilestoneStatus.ACHIEVED
                 : context.careerStage().isBlank() ? AgentWorldMilestoneStatus.UNKNOWN
                 : AgentWorldMilestoneStatus.NOT_ACHIEVED;
         put(statuses, evidence, AgentWorldMilestone.LEVEL_15_FOUNDATION_COMPLETE,
-                foundationStatus, context.careerStage().isBlank()
-                        ? "no career checkpoint is active" : "careerStage=" + context.careerStage());
+                foundationStatus, context.careerStage().isBlank() ? "no career checkpoint is active"
+                        : staleCheckpoint ? "careerStage=" + context.careerStage() + " is stale: job=" + context.jobId()
+                        + ", level=" + context.level()
+                        : "careerStage=" + context.careerStage());
 
         put(statuses, evidence, AgentWorldMilestone.LEVEL_25_REACHED,
                 context.level() >= 25 ? AgentWorldMilestoneStatus.ACHIEVED
