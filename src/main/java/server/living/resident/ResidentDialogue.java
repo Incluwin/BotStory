@@ -170,7 +170,8 @@ public final class ResidentDialogue {
     private static final Pattern RELEASE = Pattern.compile("^(release|fire|let go) (\\w+)$");
     private static final Pattern EVERYONE_BENCH = Pattern.compile("^(everyone|all|everybody) (bench|rest|go to camp)$");
     private static final Pattern EVERYONE_PARK = Pattern.compile("^(park|park (everyone|all|everybody)|(everyone|all|everybody) park)$");
-    private static final Pattern CALL_USUAL = Pattern.compile("^(call|bring) (the usual|everyone|all|everybody)$");
+    private static final Pattern CALL_USUAL = Pattern.compile(
+            "^(call|summon|bring) (the usual|everyone|all|everybody|the crew|my crew)$");
     private static final Pattern EVERYONE_KEYSTONE = Pattern.compile("^((everyone|all|everybody) )?get (your |a |the )?keystones$");
     private static final Pattern EVERYONE_TICKET = Pattern.compile("^((everyone|all|everybody) )?get (your |a |the )?(entrance )?tickets$");
     private static final Pattern FARM_ITEM = Pattern.compile("^farm (\\d+ )?(.+?)( x?(\\d+))?$");
@@ -860,9 +861,9 @@ public final class ResidentDialogue {
             return true;
         }
         Matcher m = CALL.matcher(normalized);
-        if (m.matches()) {
-            return owned(owner, m.group(2), persona -> verbs.say(owner, "roster.call",
-                    () -> RosterVoice.line(persona, world.roster().call(owner, persona))));
+        if (m.matches() && owned(owner, m.group(2), persona -> verbs.say(owner, "roster.call",
+                () -> RosterVoice.line(persona, world.roster().call(owner, persona))))) {
+            return true; // no companion of that name ("call everyone", found live 10-03): the crew-wide call takes it
         }
         m = BENCH.matcher(normalized);
         if (m.matches()) {
