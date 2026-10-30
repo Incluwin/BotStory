@@ -302,6 +302,10 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             }
         }
         stands.put(id, new Stand(part.getObjectId(), new Point(part.getPosition()), stand, nowMs));
+        if (held == null || !stand.equals(held.at())) {
+            log.info("Boss fight stand: boss={} member={} part={} at={},{} from={},{}", key, member.getName(),
+                    part.getId(), stand.x, stand.y, foot.x, foot.y);
+        }
         anchor(gateway, entry, stand, part, preferences);
         return true;
     }
