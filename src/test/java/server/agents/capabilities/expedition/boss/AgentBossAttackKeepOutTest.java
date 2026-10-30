@@ -14,6 +14,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,6 +59,9 @@ class AgentBossAttackKeepOutTest {
     private float ownAlert = 0.7f;
     private final List<Float> alerts = new ArrayList<>();
     private int maxHp = 19_776;
+    /** A Magic Guard member's own max HP, which an MP-burning attack meets (attackMaxHp); 0: as maxHp. */
+    private int ownMaxHp;
+    private final Set<BossAction.OrdinaryAttack> burnsMp = new HashSet<>();
     private AgentBossPriorityFight fight;
 
     @BeforeEach
@@ -116,6 +120,11 @@ class AgentBossAttackKeepOutTest {
             @Override
             public double attackDamage(Character member, Monster monster, BossAction.OrdinaryAttack attack) {
                 return hits.getOrDefault(attack, 0.0d);
+            }
+
+            @Override
+            public int attackMaxHp(Character member, Monster monster, BossAction.OrdinaryAttack attack) {
+                return burnsMp.contains(attack) && ownMaxHp > 0 ? ownMaxHp : maxHp;
             }
 
             @Override
@@ -276,6 +285,43 @@ class AgentBossAttackKeepOutTest {
         assertArrayEquals(new int[] {450 + 1 + 120, Integer.MAX_VALUE},
                 fight.band(battle, member(11, new Point(720, 161)), rules, true, null),
                 "58% of a warrior's 19,776 without Hyper Body: it still fights at his feet");
+    }
+
+    @Test
+    void anAttackThatBurnsMpKeepsOutAMageItsMagicGuardWouldNotSave() {
+        // 2026-10-30 (P19 run 7): Bodyguard B's attack2 burns 50,000 MP over 290 px each side, and a hit with an MP
+        // attack goes past Magic Guard. Against a mage's Magic Guard (about 25,000) it looked small; it meets her own
+        // 5,288 HP, and both mages died in the same instant with Bodyguard B up.
+        BossAction.OrdinaryAttack burn = attack(3, false, new Point(-290, -88), new Point(281, -2));
+        attacks = List.of(burn);
+        hits.put(burn, 6_000.0d);
+        burnsMp.add(burn);
+        maxHp = 25_000;
+        ownMaxHp = 5_288;
+
+        assertArrayEquals(new int[] {701 + 1 + 30, Integer.MAX_VALUE},
+                fight.touchBand(battle, member(10, new Point(720, 161)), null, List.of(BODYGUARD_A)),
+                "6,000 is 113% of her 5,288: the burn's edge (701) bounds her, not only the touch's (450)");
+        burnsMp.clear();
+        assertArrayEquals(new int[] {450 + 1 + 30, Integer.MAX_VALUE},
+                fight.touchBand(battle, member(11, new Point(720, 161)), null, List.of(BODYGUARD_A)),
+                "a hit with no MP attack meets her Magic Guard: 6,000 is 24% of 25,000");
+    }
+
+    @Test
+    void anAttackThatBurnsMpRaisesAMagesPotionFloorByHerOwnHp() {
+        BossAction.OrdinaryAttack burn = attack(3, false, new Point(-290, -88), new Point(281, -2));
+        attacks = List.of(burn);
+        hits.put(burn, 4_000.0d);
+        burnsMp.add(burn);
+        maxHp = 60_000;
+        ownMaxHp = 5_288;
+        entries.put(10, mock(AgentRuntimeEntry.class));
+
+        fight.tick(List.of(member(10, new Point(100, 161))), event, 0L);
+
+        assertEquals(List.of(0.87f), alerts.stream().map(alert -> Math.round(alert * 100) / 100f).toList(),
+                "4,000 x 1.15 is 87% of 5,288; against 60,000 it would be 8% and the touch 32%, under her own 70%");
     }
 
     @Test
