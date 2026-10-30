@@ -3,6 +3,7 @@ package server.agents.capabilities.shop;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
+import server.agents.capabilities.contracts.AgentResourceCategory;
 
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.shop.AgentShopAmmoPolicy;
@@ -72,6 +73,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntPredicate;
 import java.util.function.IntToDoubleFunction;
 
 public final class AgentShopService {
@@ -246,6 +248,41 @@ public final class AgentShopService {
         }
         NPC npc = findNpcNear(bot, npcPos);
         return npc == null ? 0 : npc.getId();
+    }
+
+    /**
+     * True when the shopkeeper of the pending visit stocks what a supply trip of {@code category} is for: a potion of
+     * that kind the visit would buy ({@link #findPotionItem}), arrows or bolts for sale, throwing stars or bullets for
+     * sale or a stack the Agent carries that the shop refills (any shop recharges). Any other category: true. False
+     * with no visit or no shop.
+     */
+    public static boolean pendingVisitStocks(AgentRuntimeEntry entry, Character bot, AgentResourceCategory category) {
+        int npcId = pendingVisitNpcId(entry, bot);
+        Shop shop = npcId == 0 ? null : AgentShopGatewayRuntime.shop().findForNpc(npcId);
+        if (shop == null) {
+            return false;
+        }
+        return switch (category) {
+            case HP_POTION -> findPotionItem(shop, bot, true) != null;
+            case MP_POTION -> findPotionItem(shop, bot, false) != null;
+            case ARROW -> firstShopItem(shop, ItemConstants::isArrowForBow) != null;
+            case CROSSBOW_BOLT -> firstShopItem(shop, ItemConstants::isArrowForCrossBow) != null;
+            case THROWING_STAR, BULLET -> firstShopItem(shop, category == AgentResourceCategory.BULLET
+                    ? ItemConstants::isBullet : ItemConstants::isThrowingStar) != null
+                    || needsRechargeForShop(bot, AgentAttackExecutionProvider.getEquippedWeaponType(bot),
+                    Integer.MAX_VALUE, AgentInventoryGatewayRuntime.inventory());
+            default -> true;
+        };
+    }
+
+    /** The first item {@code shop} sells for mesos whose id {@code kind} accepts, or null. */
+    private static ShopItem firstShopItem(Shop shop, IntPredicate kind) {
+        for (ShopItem item : shop.getItems()) {
+            if (item.getPrice() > 0 && kind.test(item.getItemId())) {
+                return item;
+            }
+        }
+        return null;
     }
 
     public static void requestSellTrashVisit(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {

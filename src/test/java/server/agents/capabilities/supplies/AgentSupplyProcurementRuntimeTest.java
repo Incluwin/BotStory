@@ -309,6 +309,7 @@ class AgentSupplyProcurementRuntimeTest {
             shops.when(() -> AgentShopService.onMapChange(any(), any(), any()))
                     .thenAnswer(call -> AgentShopService.requestVisitAtNpc(entry, agent, shopkeeper));
             shops.when(() -> AgentShopService.tickShopVisit(any(), any(), any())).thenReturn(true);
+            shops.when(() -> AgentShopService.pendingVisitStocks(any(), any(), any())).thenReturn(true); // HP potions
 
             assertTrue(AgentSupplyProcurementRuntime.begin(entry, agent, request, execution, 20L));
             assertTrue(execution.shopRequested());
@@ -326,6 +327,67 @@ class AgentSupplyProcurementRuntimeTest {
             assertFalse(execution.abandoned(), execution.abandonedReason());
             assertTrue(execution.shopRequested());
             assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
+        }
+    }
+
+    @Test
+    void aVisitItsMapOpenedAtAShopThatSellsNoneIsNotTheTripsSupplier() {
+        // live 10-26..29: Gikoel and HaaTheMage, training on 101010102, began MP potion trips there; the visit
+        // onMapChange had opened at El Moth 1032103 (a scroll seller: the stars it carried wanted a refill, which any
+        // shop does) was adopted, bought no potion, and the trip was given up and taken again every six minutes
+        int field = 101010102;
+        int elMoth = 1032103;
+        NPC npc = mock(NPC.class);
+        when(npc.getId()).thenReturn(elMoth);
+        when(npc.getPosition()).thenReturn(new Point(-179, 1844));
+        when(npc.hasShop()).thenReturn(true);
+        MapleMap map = mock(MapleMap.class);
+        when(map.getMapObjectsInRange(any(Point.class), anyDouble(), any())).thenReturn(List.of(npc));
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(97);
+        when(agent.getName()).thenReturn("Gikoel");
+        when(agent.getMapId()).thenReturn(field);
+        when(agent.getMap()).thenReturn(map);
+        when(agent.getChair()).thenReturn(-1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        entry.capabilityStates().require(AgentCareerProgressionState.STATE_KEY).assign(
+                AgentCareerBuildBundleRepository.defaultRepository().find("warrior-standard-v1").orElseThrow());
+        AgentObjectiveDefinition training = new AgentObjectiveDefinition(
+                "victoria:training:97:30", "progression.victoria-training", 80,
+                Long.MAX_VALUE, 5, AgentObjectiveSource.PROGRESSION_POLICY,
+                "victoria-v1", "97:level-30");
+        AgentObjectiveKernel.start(entry, training, 10L);
+        AgentProcurementRequest request = new AgentProcurementRequest(
+                "supply:MP_POTION:97", AgentResourceCategory.MP_POTION, 20, Long.MAX_VALUE,
+                List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.EMPTY,
+                training.objectiveId(), Long.MAX_VALUE);
+        entry.capabilityStates().require(AgentResourcePlanningState.STATE_KEY).update(new AgentSupplyNeed(
+                AgentResourceCategory.MP_POTION, 0, 20, AgentSupplyUrgency.EMPTY, training.objectiveId(), 15L), request);
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+        Shop scrolls = mock(Shop.class);
+        server.ShopItem scroll = mock(server.ShopItem.class);
+        when(scroll.getItemId()).thenReturn(2040000);
+        when(scroll.getPrice()).thenReturn(35000);
+        when(scrolls.getItems()).thenReturn(List.of(scroll));
+
+        try (MockedStatic<AgentShopService> shops = mockStatic(AgentShopService.class, CALLS_REAL_METHODS);
+             MockedStatic<ShopFactory> shopData = mockStatic(ShopFactory.class);
+             MockedStatic<server.agents.capabilities.inventory.AgentUseItemClassificationPolicy> items =
+                     mockStatic(server.agents.capabilities.inventory.AgentUseItemClassificationPolicy.class)) {
+            ShopFactory factory = mock(ShopFactory.class);
+            shopData.when(ShopFactory::getInstance).thenReturn(factory);
+            when(factory.getShopForNPC(elMoth)).thenReturn(scrolls); // a scroll is no potion (its effect: none)
+            shops.when(() -> AgentShopService.onMapChange(any(), any(), any()))
+                    .thenAnswer(call -> AgentShopService.requestVisitAtNpc(entry, agent, elMoth));
+
+            assertTrue(AgentSupplyProcurementRuntime.begin(entry, agent, request, execution, 20L));
+
+            assertFalse(AgentShopStateRuntime.shopVisitPending(entry), "the scroll seller's visit was let go");
+            assertTrue(execution.supplierNpcId() != elMoth && execution.supplierMapId() != field,
+                    () -> "supplier " + execution.supplierNpcId() + " on " + execution.supplierMapId());
+            assertEquals(AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, execution.phase());
+            assertFalse(execution.shopRequested());
         }
     }
 

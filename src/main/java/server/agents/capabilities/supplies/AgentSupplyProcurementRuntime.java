@@ -408,6 +408,17 @@ public final class AgentSupplyProcurementRuntime {
                          AgentSupplyProcurementState execution,
                          long nowMs) {
         AgentShopService.onMapChange(entry, agent, AgentInventoryGatewayRuntime.inventory());
+        if (AgentShopStateRuntime.shopVisitPending(entry)
+                && !AgentShopService.pendingVisitStocks(entry, agent, request.category())) {
+            // A visit its own map opened for something else (stars to refill, any shop recharges) is no supplier of
+            // this trip's: live 10-26..29, Gikoel and HaaTheMage adopted one at El Moth 1032103 on 101010102, a scroll
+            // seller, for MP potions every six minutes, bought none, gave up and suppressed, and came back. The trip
+            // walks to a shop that sells them, whose visit refills too.
+            log.info("Agent '{}' passes NPC {} on map {} for its {} resupply: that shop sells none",
+                    agent.getName(), AgentShopService.pendingVisitNpcId(entry, agent), agent.getMapId(),
+                    request.category());
+            AgentShopService.cancelShopVisit(entry);
+        }
         int supplierMapId = agent.getMapId();
         int supplierNpcId = 0;
         AgentSupplyProcurementState.Phase phase = AgentSupplyProcurementState.Phase.SHOPPING;
