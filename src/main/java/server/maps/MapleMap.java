@@ -3631,11 +3631,16 @@ public class MapleMap {
         return getAllMonsters().stream().anyMatch(Monster::hasActiveRuntimeState);
     }
 
-    private void restoreDormantMonsterState() {
+    void restoreDormantMonsterState() {
         for (Monster monster : getAllMonsters()) {
             monster.setMp(monster.getMaxMp());
         }
-        respawn();
+        // An event instance map is never dormant (isActiveForMaintenance) and its event script owns every spawn after
+        // resetPQ: a respawn here filled the map's whole spawn list on the first entry, on top of the script's own
+        // spawn (PPQ's side rooms 925100202/302 held 34 mobs instead of their 17).
+        if (event == null) {
+            respawn();
+        }
     }
 
     public boolean hasAgentCharacter() {
