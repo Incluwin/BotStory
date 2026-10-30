@@ -36,6 +36,15 @@ import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
 import server.living.config.Content.Strength;
 import server.living.config.Content.Terms;
+import server.living.config.Content.Scene;
+import server.living.config.Content.SceneBeat;
+import server.living.config.Content.SceneFoe;
+import server.living.config.Content.SceneSpawn;
+import server.living.config.Content.Story;
+import server.living.config.Content.StoryChapter;
+import server.living.config.Content.StoryChoice;
+import server.living.config.Content.StoryOption;
+import server.living.config.Content.StoryRival;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -128,11 +137,21 @@ public final class ContentLoader {
                 portraitNpcIds.put(entry.getKey(), entry.getValue().integer());
             }
         }
+        Map<String, Story> stories = new LinkedHashMap<>(); // personal story arcs and their scenes (F6)
+        for (Node node : documents(root.resolve("stories"))) {
+            Story story = story(node);
+            putUnique(stories, story.id(), story, node);
+        }
+        Map<String, Scene> scenes = new LinkedHashMap<>();
+        for (Node node : documents(root.resolve("scenes"))) {
+            Scene scene = scene(node);
+            putUnique(scenes, scene.id(), scene, node);
+        }
         LivingContent content = new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds,
-                portraitNpcIds, personaKnows, warnings);
+                portraitNpcIds, personaKnows, stories, scenes, warnings);
         warnings.addAll(ContentLint.check(content));
         return new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, portraitNpcIds,
-                personaKnows, warnings);
+                personaKnows, stories, scenes, warnings);
     }
 
     public static final String QUEST_LOG_IDS_FILE = "quest-log-ids.yaml";
@@ -333,7 +352,8 @@ public final class ContentLoader {
                 dropRule,
                 node.get("with").string(null),
                 takeStack,
-                node.get("label").string(null));
+                node.get("label").string(null),
+                node.get("scene").string(null));
         switch (type) {
             case KILL_MOBS, HUNT_WITH, KILL_BOSS -> {
                 if (step.mobIds().isEmpty()) {
@@ -378,6 +398,11 @@ public final class ContentLoader {
             case WAIT -> {
                 if (step.hours() <= 0) {
                     throw new ContentException(node.path() + ": WAIT needs hours");
+                }
+            }
+            case SCENE -> {
+                if (step.scene() == null) {
+                    throw new ContentException(node.path() + ": SCENE needs scene");
                 }
             }
             default -> { }
@@ -499,6 +524,84 @@ public final class ContentLoader {
             throw new ContentException(node.path() + ": an arc needs chapters");
         }
         return new Arc(node.get("id").string(), node.get("persona").string(), chapters, node.path());
+    }
+
+    // ---- personal story arcs and scenes (F6) ----------------------------------------------
+
+    static Story story(Node node) {
+        List<StoryChapter> chapters = new ArrayList<>();
+        for (Node chapter : node.get("chapters").items()) {
+            chapters.add(new StoryChapter(
+                    chapter.get("id").string(),
+                    chapter.get("friendship").integer(0),
+                    chapter.get("quest").string(),
+                    chapter.get("logId").integer(0),
+                    chapter.get("nudge").strings(),
+                    chapter.get("talk").strings(),
+                    choice(chapter.get("choice"))));
+        }
+        if (chapters.isEmpty()) {
+            throw new ContentException(node.path() + ": a story needs chapters");
+        }
+        Node rivalNode = node.get("rival");
+        StoryRival rival = rivalNode.isMissing() ? null : new StoryRival(
+                rivalNode.get("persona").string(),
+                rivalNode.get("friendship").integer(0),
+                rivalNode.get("after").string(null),
+                rivalNode.get("quest").string(),
+                rivalNode.get("logId").integer(0),
+                rivalNode.get("nudge").strings(),
+                rivalNode.get("talk").strings());
+        Map<String, List<String>> lines = new LinkedHashMap<>();
+        for (Map.Entry<String, Node> entry : node.get("lines").entries().entrySet()) {
+            lines.put(entry.getKey(), entry.getValue().strings());
+        }
+        return new Story(node.get("id").string(), node.get("persona").string(), chapters, rival, lines, node.path());
+    }
+
+    private static StoryChoice choice(Node node) {
+        if (node.isMissing()) {
+            return null;
+        }
+        List<StoryOption> options = new ArrayList<>();
+        for (Node option : node.get("options").items()) {
+            options.add(new StoryOption(option.get("label").string(), option.get("flag").string(null),
+                    option.get("reply").strings()));
+        }
+        return new StoryChoice(node.get("prompt").string(""), options);
+    }
+
+    static Scene scene(Node node) {
+        List<SceneFoe> foes = new ArrayList<>();
+        for (Node foe : node.get("foes").items()) {
+            foes.add(new SceneFoe(foe.get("maxLevel").integer(200), foe.get("mob").integer()));
+        }
+        Map<String, List<SceneBeat>> outcome = new LinkedHashMap<>();
+        for (Map.Entry<String, Node> entry : node.get("outcome").entries().entrySet()) {
+            outcome.put(entry.getKey(), beats(entry.getValue()));
+        }
+        Node at = node.get("at");
+        List<SceneBeat> beats = beats(node.get("beats"));
+        if (beats.isEmpty()) {
+            throw new ContentException(node.path() + ": a scene needs beats");
+        }
+        return new Scene(node.get("id").string(), node.get("map").integer(), at.get("x").integer(0), at.get("y").integer(0),
+                node.get("cast").strings(), beats, node.get("maxMinutes").integer(10), foes, outcome, node.path());
+    }
+
+    private static List<SceneBeat> beats(Node list) {
+        List<SceneBeat> beats = new ArrayList<>();
+        for (Node beat : list.items()) {
+            List<SceneSpawn> spawn = new ArrayList<>();
+            for (Node mob : beat.get("spawn").items()) {
+                spawn.add(new SceneSpawn(mob.get("mob").integer(), mob.get("count").integer(1), mob.get("x").integer(0),
+                        mob.get("y").integer(0)));
+            }
+            beats.add(new SceneBeat(beat.get("by").string(null), beat.get("line").string(null),
+                    beat.get("ifPresent").string(null), beat.get("effect").string(null), beat.get("item").integer(0),
+                    beat.get("text").string(null), beat.get("seconds").integer(0), spawn, beat.get("race").bool(false)));
+        }
+        return beats;
     }
 
     // ---- rumors --------------------------------------------------------------------------

@@ -12,7 +12,7 @@ import java.util.Locale;
  * "jobBack", "jobThanks"): in a player's words, never the system's. {tier}, {instructor}, {town} and {job} are filled in
  * (lower case, as typed in chat).
  */
-final class JobErrandLines {
+public final class JobErrandLines {
     /** Leaving its owner for its instructor. */
     static final List<String> GO = List.of(
             "{tier} job time! off to see {instructor} in {town}. back soon",
@@ -29,7 +29,7 @@ final class JobErrandLines {
     private JobErrandLines() {
     }
 
-    static String fill(String line, Job job, JobInstructors.Instructor instructor) {
+    public static String fill(String line, Job job, JobInstructors.Instructor instructor) {
         return line.replace("{tier}", JobInstructors.tier(job))
                 .replace("{instructor}", instructor.name().toLowerCase(Locale.ROOT))
                 .replace("{town}", instructor.town().toLowerCase(Locale.ROOT))

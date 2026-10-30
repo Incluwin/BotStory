@@ -415,6 +415,81 @@ its newest mentor row; `!mentor offer <player>` opens a test character's offer a
 `mentor.pending|offered|accepted|declined|graduated|ended`, `mentor.tip`, `mentor.muted`, `mentor.pick`;
 `apprentice.adopted|pick|build|graduated`.
 
+### Personal story arcs
+
+Two switches, both off until their live checks pass (docs/BOT_CONCEPT_PLAN.md F6.1-F6.3 and F6.6, decisions D14
+and D15): `living_world.PERSONAL_ARCS_ENABLED` (the arcs, their scenes and the race) and
+`living_world.JOB_ERRAND_ATTEND_ENABLED` (attended job errands, which change every Resident companion's 3rd and 4th
+job errand, not only the pilots'). Code in `server.living.story`; content in `scripts/config/living-world/stories/`,
+`scenes/` and `quests/stories-henesys.yaml`.
+
+**What a player sees.** A recruited Resident with a story tells it to the player who has it on their roster, one
+chapter at friendship Lv 3, 6 and 9 (World arcs, above, are one story for the whole server; these are per player and
+companion). When a chapter opens (its friendship level reached, or at the owner's login), the companion says its
+`nudge` line once in party chat at a calm moment (both on one open map, no window waiting, a town or no monster within
+`STORY_CALM_RANGE_PX`) and a pink hint follows ("Fenna wants a word. Double-click her."); it never says it again. Its
+card then has "Something on your mind?": the chapter's pages in its NPC window, the player's pick of two replies (each
+sets a bond flag and gets its own answer), and "Go on." starts the chapter's quest. Chapters 1 and 2 are talk only.
+The third ends in a scene ("I'm ready. Let's go."). A chapter is offered by nothing else: its quest is in no persona's
+`questLines`, so the Resident's own window never lists it and nobody else sees it. Released and recruited again, a
+companion picks up where it was; another owner starts at chapter 1.
+
+**Scenes (the SCENE step).** A quest step `{ type: SCENE, scene: <id> }` plays a scene from `scenes/*.yaml`: the owner
+and the companions in its `cast` who are out with them go into a private copy of a stock map (`SceneInstance`, an
+event instance with no script, on the channel's no-op event manager). Lines are map-chat balloons, paced by length.
+Effects come from the safe list only. `spawn` beats wait until every monster is down. An `ifPresent` line is skipped
+when that companion did not come. Leaving (a return scroll, a warp, a death: the revive lands at the exit), a
+disconnect, the lead companion lost for 12 s, `maxMinutes` (at most `STORY_SCENE_MAX_MINUTES`) or the switch going off
+ends it early: everyone is set down where the owner started, the companion says its `scene.abort` line, and the step
+stays on SCENE, to be played again. Finished, everyone is set down the same way and the step's closing window opens
+once the owner has landed and no window is open. Each character is unregistered from the instance before its warp
+out, so it lands on the channel's map, and the copy is let go. A boss killed on a stage pays no boss friendship.
+
+**The safe effects** (`SceneEffect`, each a packet stock play already sends): `clear` (the party-quest clear),
+`fail` (the party-quest miss), `banner` (a weather banner of narration; item 5120016, 5120024 or 5120027, as the
+stock dojang and rescue scripts), `jobAura` (the job-advance aura on the speaking companion), `questClear` (the
+quest-clear sparkle on the owner), `tremble` (the screen shake) and `clock` (a countdown). **Never in a scene:** the
+QuestAlert avatar effect and any `showInfo` / `showIntro` / `showForeignInfo` path (they crash the v83 client; Quest
+markers, above), a second NPC window while one is open (it disconnects the client; every scene and chapter window
+opens only as the answer to a click or through LivingTalk's guard), NPC talk speaker bit 0x04 (it crashes the
+client), music changes and temporary NPCs. The lint rejects any other effect name. Every map, mob and NPC must
+already exist in the stock client (the client patch is on hold).
+
+**The race (F6.6, D14).** Two authored rivals on one owner's roster, each at friendship Lv 6 or more, once the story's
+chapter 2 is done: either rival's card offers "About you and Dorran..." (the story's `rival` block). The race scene
+brings one foe, picked from the scene's `foes` by the two racers' average level. Whoever dealt the larger share of
+its HP wins (`Monster.damageBy`, the player's own damage counts for neither); shares within `STORY_RACE_EVEN_PERCENT`
+points are even. A rival who walks off forfeits, and the foe still has to fall. Once the foe is down the race is
+settled: leaving before the outcome lines still completes it, and it is never run twice. Both bonds get
+`story.rivalry.<a>-<b>` and its outcome flag, and the numbers go in a `story.race` row. Who counts as rivals is
+`StoryRivals.rivals` (17 relationship kinds, either side); only an authored race is ever offered.
+
+**Attended job errands (F6.3).** Before its 3rd or 4th job a companion asks its owner in a yes/no window to come
+along (`errand.attend.ask.<3|4>` lines in its story, else stock ones). Yes: it stays in the party and follows them
+(ships included), saying once per town where the way goes on. In the instructor's town (El Nath, Leafre, Ereve,
+Rien) it leads the last stretch with the mentor's lead: through two-way doors first, waiting beyond; Leafre's `in00`
+gate its owner takes first. It walks up to its instructor, says its arrive line, advances in front of them (the stock
+job-advance effect) and thanks them. At friendship Lv 9, its story's last chapter opens right after. No, a window
+closed unanswered, no moment to ask (`JOB_ERRAND_ATTEND_ASK_TRIES` x `_ASK_RETRY_MS`), not in town within
+`JOB_ERRAND_ATTEND_MAX_MINUTES`, a logout, a lead not followed or the switch going off: it goes alone, as before.
+
+**The pilots (D15, for review in game).** Henesys, Fenna, Dorran and Ilse. Quest-log ids 31600-31609 are reserved
+in the story files; the client's quest log shows them only once the client patch ships.
+
+| Story | Chapter 1 (Lv 3) | Chapter 2 (Lv 6) | Chapter 3 (Lv 9, scene) |
+|---|---|---|---|
+| Fenna, `fenna-long-road` | Why she keeps the boar road (her father's cart) | The shot she missed at twelve | `fenna-old-blind`: the ridge, Land of Wild Boar 101040001, 6 Wild Boars; Dorran's line if he comes |
+| Dorran, `dorran-eleven-names` | The eleven names on the banner | The night of the fire: he had the watch | `dorran-last-grove`: the guild's last hunt, Field South of Ellinia 100050000, 8 Zombie Mushrooms; Ilse's lines if she comes |
+| Ilse, `ilse-house-calls` | Why she never sends a bill | Callo, the guildsman she lost | `ilse-forest-call`: a hurt hunter, Forest of Evil I 100040105, Evil Eyes then Curse Eyes; Dorran's lines if he comes |
+
+The race: `rivals-fenna-dorran`, "The Bet", Iron Boar Land 101040003; the foe by level band is Stumpy (to Lv 40),
+Faust (60), Mushmom (80), Jr. Balrog (120) and Griffey. Each chapter's reward is bond points and its done flag.
+
+`!story <player>` (GM 5) shows each story's chapter stages for a player, their race, a running scene and an attended
+errand. `!world bond <player> <persona> <points>` sets friendship for a test. Rows: `story.nudge`, `story.chapter`,
+`story.scene.start|finish|abort`, `story.race`, `story.capstone.errand`; `job.attend.ask`, `job.attend`,
+`job.attend.end`, `job.attend.done`.
+
 ### The in-game quest log
 
 Living quests can appear in the client's quest log next to the stock quests (In Progress and

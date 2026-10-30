@@ -245,6 +245,9 @@ public final class JobErrands implements AgentJobPath.Rule {
         if (step == null || instructor == null) {
             return;
         }
+        if (world.stories() != null && world.stories().errands().offer(owner, persona, bot, step, instructor)) {
+            return; // F6.3: it asked its owner to come along (or they are on their way); "no" sends it from here later
+        }
         long etaMs = RecallTravel.etaMs(bot.getMapId(), instructor.mapId(), world.config().RECALL_MAX_ETA_MS);
         String line = line(persona, "jobErrand", JobErrandLines.GO, owner.getId(), step, instructor);
         RosterResult left = world.roster().leaveOnErrand(owner, persona, line);
@@ -255,6 +258,24 @@ public final class JobErrands implements AgentJobPath.Rule {
         world.store().setWorldFlag(flag(owner.getId(), persona.id()), owner.getId());
         world.store().event(owner.getId(), persona.id(), "job.errand",
                 step + " from " + instructor.name() + " at map " + instructor.mapId() + ", eta " + etaMs + " ms");
+    }
+
+    /**
+     * F6.3: an attended errand's job change, at its instructor in front of its owner (ErrandAttend), with the visit's
+     * own change; true when it holds {@code target} afterwards. Refused, it waits COMPANION_JOB_ERRAND_RETRY_MS before
+     * it is due again, as an errand alone does.
+     */
+    public boolean advanceAttended(Character bot, String personaId, int ownerId, Job target,
+                                   JobInstructors.Instructor instructor) {
+        AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+        if (runtime == null || !Boolean.TRUE.equals(advance.apply(runtime, target))) {
+            notBeforeMs.put(personaId, clock.getAsLong() + world.config().COMPANION_JOB_ERRAND_RETRY_MS);
+            world.store().event(ownerId, personaId, "job.errand.end", "not advanced: the attended job change was refused");
+            return false;
+        }
+        world.store().event(ownerId, personaId, "job.advanced",
+                target + " from " + instructor.name() + " at map " + instructor.mapId() + " (attended)");
+        return true;
     }
 
     /** Free to go: no run or event, alive, following its owner, not on its way anywhere, not held at a GM level. */

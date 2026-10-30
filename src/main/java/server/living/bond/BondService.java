@@ -83,6 +83,9 @@ public final class BondService {
         }
         if (level > was && level > 1) {
             chr.dropMessage(5, "Friendship with " + persona.name() + ": Lv " + level + " " + Friendship.label(level) + ".");
+            if (world.stories() != null) {
+                world.stories().friendshipRose(chr.getId(), persona.id()); // a story chapter may have opened (F6)
+            }
         } else if (level < was) {
             chr.dropMessage(5, "Friendship with " + persona.name() + " fell to Lv " + level + " " + Friendship.label(level) + ".");
         }

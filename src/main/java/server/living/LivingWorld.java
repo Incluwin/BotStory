@@ -108,6 +108,7 @@ public final class LivingWorld {
     private final server.living.roster.CompanionRoles roles;
     private final server.living.mentor.Mentorship mentors;
     private final server.living.mentor.Apprentices apprentices;
+    private final server.living.story.StoryArcs stories;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -170,6 +171,7 @@ public final class LivingWorld {
         this.roles = new server.living.roster.CompanionRoles(this); // F4: mentors and apprentices among the hires
         this.mentors = new server.living.mentor.Mentorship(this);
         this.apprentices = new server.living.mentor.Apprentices(this);
+        this.stories = new server.living.story.StoryArcs(this); // F6: companions' personal story arcs and scenes
     }
 
     public static LivingWorld get() {
@@ -335,6 +337,12 @@ public final class LivingWorld {
                 world.executor.submit("mentor.sweep", world.mentors::tick);
             }
         }, server.living.mentor.Mentorship.SWEEP_MS, server.living.mentor.Mentorship.SWEEP_MS));
+        // personal story arcs (F6): chapter nudges, scenes and attended job errands; nothing handed over while none waits
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            if (world.stories.any()) {
+                world.executor.submit("story.sweep", world.stories::tick);
+            }
+        }, server.living.story.StoryArcs.SWEEP_MS, server.living.story.StoryArcs.SWEEP_MS));
         // loans of companions to friends end on time, with their friend or owner gone, or with the switch off
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             if (world.loans.any()) {
@@ -660,6 +668,11 @@ public final class LivingWorld {
     /** F4.5: the apprentices players adopt. */
     public server.living.mentor.Apprentices apprentices() {
         return apprentices;
+    }
+
+    /** F6: companions' personal story arcs, their scenes and attended job errands. */
+    public server.living.story.StoryArcs stories() {
+        return stories;
     }
 
     /** Companions earning their own Crimsonwood Keystone (2026-10-19): the errands out. */

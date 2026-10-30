@@ -1,0 +1,211 @@
+# Personal story arcs (docs/BOT_CONCEPT_PLAN.md F6): the three pilots for the user's review (D15). Each companion tells
+# the player who has it on their roster its own story, a chapter at friendship Lv 3, 6 and 9; the last one is a scene.
+# Fenna and Dorran are authored rivals: once both are on one roster they race (F6.6). Lines: nudge (party chat, once,
+# when a chapter opens), talk (NPC window pages), choice (the player's reply and the companion's answer). Each chapter's
+# logId is its client quest-log id, reserved in F6's 31600-31999 and mirrored only once the client patch ships.
+
+- id: fenna-long-road
+  persona: fenna
+  lines:
+    scene.ready: ["it's not far. stay close and keep your weapon out."]
+    scene.abort: ["another day, then. the ridge isn't going anywhere."]
+    rival.call: ["go get Dorran. i'm not settling this without him."]
+    errand.attend.ask.3: ["third job's in El Nath. come with me? i'd rather not go alone."]
+    errand.attend.arrive.3: ["here. the chief's house. watch the door for me."]
+    errand.attend.after.3: ["...ranger. huh. Marrow would laugh. thanks for coming."]
+    errand.attend.ask.4: ["fourth job. Leafre. come with me? Marrow never got this far."]
+    errand.attend.arrive.4: ["the priest's forest. stay where i can see you."]
+    errand.attend.after.4: ["bowmaster. i think my father would have liked that."]
+  chapters:
+    - id: one
+      friendship: 3
+      quest: fenna-story-1
+      logId: 31600
+      nudge: ["got a minute later? not here. somewhere the boars can't hear."]
+      talk:
+        - "you ever wonder why i keep the boar road? nobody pays me. the town barely notices."
+        - "my father ran a cart between Perion and Henesys. salt one way, hides the other. the road was his."
+        - "one spring the wild boars came down off the ridge, a whole drift of them. the cart went over. so did he."
+      choice:
+        prompt: "i don't tell people that. so. say something, or don't."
+        options:
+          - label: "I'm sorry."
+            flag: story.fenna.sorry
+            reply:
+              - "don't be. he'd have laughed at me for getting soft about it."
+              - "anyway. that's why the road. somebody has to keep it open."
+          - label: "So you keep it open for him."
+            flag: story.fenna.for-him
+            reply:
+              - "for him. for the next cart. for me, mostly. it's quieter when it's mine."
+              - "...you listen better than most."
+    - id: two
+      friendship: 6
+      quest: fenna-story-2
+      logId: 31601
+      nudge: ["remember what i told you about the road? there's a part i left out."]
+      talk:
+        - "the day it happened, i was there. twelve. my first bow, a cheap thing Marrow strung for me."
+        - "i had a shot. the big one leading them down. i saw it as clear as i see you. i loosed... and missed."
+        - "Marrow says a miss is an arrow that hasn't found its lesson yet. Marrow says a lot of things."
+      choice:
+        prompt: "i still see it when i close my eyes."
+        options:
+          - label: "You were twelve. It wasn't on you."
+            flag: story.fenna.not-on-you
+            reply:
+              - "...maybe. i've been telling myself the other thing for a long time."
+              - "huh. it sounds different when someone else says it."
+          - label: "What would you do differently?"
+            flag: story.fenna.differently
+            reply:
+              - "breathe out before i loose. every time. i learned that one the hard way."
+              - "and stand where they come to me, not where i can see them best."
+    - id: three
+      friendship: 9
+      quest: fenna-story-3
+      logId: 31602
+      nudge: ["there's a place on the boar road i want you to see. when you're ready."]
+      talk:
+        - "the ridge where it happened is still there. the old blind, my father called it. rocks above the road."
+        - "i've walked past it a hundred times and never stopped. i'd like to stop. with you."
+  rival:
+    persona: dorran
+    friendship: 6
+    after: two
+    quest: rivals-fenna-dorran
+    logId: 31609
+    nudge: ["there's a bet that needs settling. you'll want to be there for it."]
+    talk:
+      - "you've heard us go at it. who's the better hunter, the bow or the blade."
+      - "so here's the bet. one beast, both of us on it, and whoever brings down more of it wins."
+      - "you come too. somebody honest has to watch."
+
+- id: dorran-eleven-names
+  persona: dorran
+  lines:
+    scene.ready: ["stay close. when i say the names, let me say them."]
+    scene.abort: ["...another day. the grove can wait. it's good at waiting."]
+    errand.attend.ask.3: ["El Nath. third job. come watch an old man get promoted?"]
+    errand.attend.arrive.3: ["the chief's house. stand where i can see you."]
+    errand.attend.after.3: ["crusader. the guild never had one. it has now."]
+    errand.attend.ask.4: ["Leafre, for the fourth. come along? the crest should see this."]
+    errand.attend.arrive.4: ["Harmonia's grove. stand with me."]
+    errand.attend.after.4: ["hero. eleven names, and one of them made it. thank you."]
+  chapters:
+    - id: one
+      friendship: 3
+      quest: dorran-story-1
+      logId: 31603
+      nudge: ["you. when it's quiet. i want to tell you about the names."]
+      talk:
+        - "eleven names on the banner. you've seen it. you've never asked."
+        - "Hale, Brisk, Old Tomas, the twins... the rest i say in my head. every morning, on that bench."
+      choice:
+        prompt: "go on. ask the thing everyone asks."
+        options:
+          - label: "What happened in the fire?"
+            flag: story.dorran.fire
+            reply:
+              - "the hall went up in the night. ten of us inside. i was not."
+              - "that's the part i don't tell. not yet."
+          - label: "Where was Marrow?"
+            flag: story.dorran.marrow
+            reply:
+              - "gone a month before. took his bow and his share and walked."
+              - "i blamed him for years. still do, some mornings."
+    - id: two
+      friendship: 6
+      quest: dorran-story-2
+      logId: 31604
+      nudge: ["the part i don't tell. i think i'll tell you. not here."]
+      talk:
+        - "the night of the fire, i had the watch. i was the watch."
+        - "i'd been drinking with the Perion boys. walked back late. smelled the smoke from the bridge."
+        - "by the time i got there it was done. i stood outside that door all night. nobody came out."
+      choice:
+        prompt: "so. now you know what the last Sable Hunter is."
+        options:
+          - label: "You'd have died with them."
+            flag: story.dorran.died
+            reply:
+              - "...Ilse said that, once. i told her she was wrong. i'm not sure she was."
+              - "maybe the crest kept me for something."
+          - label: "You're still here. That counts."
+            flag: story.dorran.counts
+            reply:
+              - "counts for what? ...no. i know. it counts."
+              - "huh. you sound like Ilse. don't tell her."
+    - id: three
+      friendship: 9
+      quest: dorran-story-3
+      logId: 31605
+      nudge: ["there's a grove past the Ellinia road. our last hunt. come with me."]
+      talk:
+        - "our last hunt before the fire was a grove south of Ellinia. caps as far as you could see."
+        - "we said we'd go back when the season turned. eleven of us. i'd like to keep that. one of us, and you."
+
+- id: ilse-house-calls
+  persona: ilse
+  lines:
+    scene.ready: ["stay between me and them. i'll be quick, i promise."]
+    scene.abort: ["let's regroup. a healer who rushes makes two patients."]
+    errand.attend.ask.3: ["the priest in El Nath wants to see me! will you come? i'm nervous."]
+    errand.attend.arrive.3: ["this is it. okay. hold my bag?"]
+    errand.attend.after.3: ["priest! me! now drink some water, you look pale."]
+    errand.attend.ask.4: ["Leafre! my fourth job. please come? i'll bring snacks."]
+    errand.attend.arrive.4: ["okay. it's just a forest. hold my bag again?"]
+    errand.attend.after.4: ["bishop! now sit down, you walked all of Leafre."]
+  chapters:
+    - id: one
+      friendship: 3
+      quest: ilse-story-1
+      logId: 31606
+      nudge: ["oh! when we're somewhere quiet, ask me about the bills. i mean it."]
+      talk:
+        - "people ask why i never send a bill. honestly? i tried once. wrote it all out and everything."
+        - "it was for a boy from Perion with a boar gash this long. i looked at the number, then at his mother."
+        - "i tore it up. after that it got easy. you can't put a price on someone walking home."
+      choice:
+        prompt: "you think i'm soft, don't you."
+        options:
+          - label: "I think you're kind."
+            flag: story.ilse.kind
+            reply:
+              - "oh, stop. ...okay, don't stop."
+              - "kind doesn't buy bandages, but it helps."
+          - label: "Who pays for the salve?"
+            flag: story.ilse.salve
+            reply:
+              - "you, apparently! the salve stock was your doing."
+              - "and the hunters who remember. they leave things on the rooftop."
+    - id: two
+      friendship: 6
+      quest: ilse-story-2
+      logId: 31607
+      nudge: ["can we talk later? it's about Dorran's people. the guild."]
+      talk:
+        - "i patched the Sable Hunters for years. scrapes, burns, one very stupid arrow."
+        - "the night of the fire they brought me Callo. he was still breathing. i worked until sunrise."
+        - "i lost him. Dorran sat outside the whole time. he's never said a word about it. neither have i."
+      choice:
+        prompt: "i still think i missed something. a herb. a minute."
+        options:
+          - label: "You did everything you could."
+            flag: story.ilse.everything
+            reply:
+              - "that's what i tell the families. it's strange to hear it back."
+              - "...thank you. really."
+          - label: "Does Dorran know you feel this way?"
+            flag: story.ilse.tell-dorran
+            reply:
+              - "no. he carries enough. i worry about him, you know."
+              - "maybe one day. not today."
+    - id: three
+      friendship: 9
+      quest: ilse-story-3
+      logId: 31608
+      nudge: ["someone's hurt past the forest road. i need a second pair of hands."]
+      talk:
+        - "a runner came from Ellinia. a hunter's down in the Forest of Evil, eyes all around him."
+        - "i can close the wound, but not with things biting at me. keep them off me. that's all i ask."

@@ -56,11 +56,13 @@ public final class LivingWorldHooks {
                 Set<Integer> attackers = Set.copyOf(attackerIds);
                 world.killLane().execute(() -> credit(world, mobId, attackers, map));
             }
-            if (monster.isBoss() && !inCompanionBossRun(map)) {
+            // a story scene's foe pays no boss friendship (F6); only a boss's map is looked at on the killing thread
+            boolean scene = monster.isBoss() && server.living.story.StoryScenes.onStage(map);
+            if (monster.isBoss() && !scene && !inCompanionBossRun(map)) {
                 java.util.Set<Integer> attackers = new java.util.HashSet<>(attackerIds);
                 world.executor().submit("friendship.boss " + monster.getId(),
                         () -> world.friendship().onBossKilled(monster.getId(), attackers, map));
-            } else if (monster.isBoss() && world.bossRuns() != null) {
+            } else if (monster.isBoss() && !scene && world.bossRuns() != null) {
                 world.bossRuns().bossKilledInRun(map, attackerIds);
             }
             server.living.population.PopulationHooks.mobKilled(monster, attackerIds, map);
@@ -310,6 +312,9 @@ public final class LivingWorldHooks {
             if (world.mentors() != null) {
                 world.mentors().loggedIn(chr); // a first login's mentor offer, or its mentor back (F4)
                 world.apprentices().loggedIn(chr); // an apprentice's open job pick (F4.5)
+            }
+            if (world.stories() != null) { // a companion's chapter opened while they were away (F6), on companion-ops
+                world.executor().submit("story.login " + chr.getId(), () -> world.stories().loggedIn(chr));
             }
         } catch (RuntimeException failure) {
             log.warn("living world login hook failed", failure);

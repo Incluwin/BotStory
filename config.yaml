@@ -862,6 +862,30 @@ living_world:
     APPRENTICE_ADOPT_MIN_OWNER_LEVEL: 30
     APPRENTICE_NEEDS_MAX: 2
     APPRENTICE_NEED_CHANCE: 0.1
+    # Personal story arcs (docs/BOT_CONCEPT_PLAN.md F6.1, F6.2, F6.6; pilots Fenna, Dorran, Ilse): a companion tells its
+    # owner its own story in chapters that open at friendship Lv 3, 6 and 9 (it says so once in party chat; its card
+    # then has "Something on your mind?"), and the last chapter is a scene the owner attends in a private copy of a
+    # map. Two authored rivals on one roster race to bring a foe down. CALM_RANGE_PX: no monster this close for the
+    # party line; LINE_MIN_MS: a scene line's least time on screen; SCENE_MAX_MINUTES: a scene ends after this;
+    # RACE_EVEN_PERCENT: shares this close are even. PERSONAL_ARCS_ENABLED is the kill switch (false: nothing offered).
+    # Technical: server.living.story (StoryArcs, StoryState, StoryScenes); state is living_bond.flags story.* plus the
+    # chapter quests' rows; a scene is a SceneInstance (an EventInstanceManager on the no-op 0_EXAMPLE manager, no JS).
+    PERSONAL_ARCS_ENABLED: false
+    STORY_CALM_RANGE_PX: 400
+    STORY_LINE_MIN_MS: 1800
+    STORY_SCENE_MAX_MINUTES: 15
+    STORY_RACE_EVEN_PERCENT: 10
+    # Attendable job errands (F6.3): before its 3rd or 4th job a companion asks its owner "come with me?"; yes, it
+    # stays in the party, follows them to the instructor's town (El Nath, Leafre), leads them the last stretch and
+    # advances in front of them, and at friendship Lv 9 its story's last chapter follows. No, or no answer: it goes
+    # alone as before. MAX_MINUTES: not in that town by then, it goes alone; ASK_TRIES / ASK_RETRY_MS: the window
+    # waits for another to close. JOB_ERRAND_ATTEND_ENABLED is the kill switch (false: every errand goes alone).
+    # Technical: server.living.story.ErrandAttend at JobErrands.leave; the lead is MentorLead per leg (ErrandHands) on
+    # the story sweep, off follow via CompanionFollowGuard; the advance is JobErrands.advanceAttended (changeJob).
+    JOB_ERRAND_ATTEND_ENABLED: false
+    JOB_ERRAND_ATTEND_MAX_MINUTES: 60
+    JOB_ERRAND_ATTEND_ASK_TRIES: 6
+    JOB_ERRAND_ATTEND_ASK_RETRY_MS: 5000
     # Decision 18: Residents one friend may keep at once (0 = none), and the days a friend may stay away before
     # their Residents go home (0 = never).
     RESIDENT_CAP_PER_OWNER: 5
