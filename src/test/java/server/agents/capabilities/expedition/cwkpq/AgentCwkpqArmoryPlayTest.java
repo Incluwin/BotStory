@@ -2,6 +2,7 @@ package server.agents.capabilities.expedition.cwkpq;
 
 import client.Character;
 import client.Job;
+import client.inventory.Item;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
@@ -12,6 +13,7 @@ import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.Portal;
 import server.maps.Reactor;
+import testutil.LogLines;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -203,8 +205,18 @@ class AgentCwkpqArmoryPlayTest {
         verify(gateway, never()).lootItem(any(), anyInt(), anyInt());
 
         positions.put(10, new Point(205, 336));
-        AgentCwkpqArmoryPlay.tick(ports, List.of(orrin), event, run, 3_000L);
-        verify(gateway).lootItem(orrin, 900, AgentCwkpqArmoryPlay.LOOT_REACH_PX);
+        when(loot.getItemId()).thenReturn(2_022_179);
+        Item piece = mock(Item.class);
+        when(piece.getQuantity()).thenReturn((short) 3);
+        when(loot.getItem()).thenReturn(piece);
+        when(gateway.lootItem(orrin, 900, AgentCwkpqArmoryPlay.LOOT_REACH_PX)).thenReturn(true);
+        try (LogLines lines = new LogLines(AgentCwkpqArmoryPlay.class)) {
+            AgentCwkpqArmoryPlay.tick(ports, List.of(orrin), event, run, 3_000L);
+
+            verify(gateway).lootItem(orrin, 900, AgentCwkpqArmoryPlay.LOOT_REACH_PX);
+            assertEquals(List.of("CWKPQ armory loot: Orrin (10) took item=2022179 quantity=3 meso=0"),
+                    lines.startingWith("CWKPQ armory loot:"), "what it took is logged");
+        }
     }
 
     @Test

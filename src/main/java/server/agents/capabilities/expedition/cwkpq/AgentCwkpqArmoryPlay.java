@@ -1,6 +1,8 @@
 package server.agents.capabilities.expedition.cwkpq;
 
 import client.Character;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.MapItem;
@@ -25,6 +27,7 @@ import java.util.Set;
  * come first along the shelves, and a companion breaks only its own, then picks up what the loot rules let it.
  */
 final class AgentCwkpqArmoryPlay {
+    private static final Logger log = LoggerFactory.getLogger(AgentCwkpqArmoryPlay.class);
     static final int COUNCIL_HALL_MAP_ID = 610_030_600;
     static final int SECRET_CHAMBER_MAP_ID = 610_030_700;
     static final int ARMORY_MAP_ID = 610_030_800;
@@ -118,9 +121,18 @@ final class AgentCwkpqArmoryPlay {
                 Point ground = ports.gateway().groundPoint(map, drop.getPosition());
                 if (AgentCwkpqStagePlays.standAt(ports, entry, member,
                         ground != null ? ground : new Point(drop.getPosition()), LOOT_REACH_PX)) {
-                    ports.gateway().lootItem(member, drop.getObjectId(), LOOT_REACH_PX);
+                    loot(ports, member, drop);
                 }
             }
+        }
+    }
+
+    /** Picks up {@code drop}; each piece a companion takes is one line, so a run's Armory haul can be read back. */
+    private static void loot(AgentCwkpqPorts ports, Character member, MapItem drop) {
+        int quantity = drop.getItem() == null ? 0 : drop.getItem().getQuantity();
+        if (ports.gateway().lootItem(member, drop.getObjectId(), LOOT_REACH_PX)) {
+            log.info("CWKPQ armory loot: {} ({}) took item={} quantity={} meso={}", member.getName(), member.getId(),
+                    drop.getItemId(), quantity, drop.getMeso());
         }
     }
 
