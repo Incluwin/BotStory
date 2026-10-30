@@ -98,6 +98,8 @@ public final class AgentBossPriorityFight implements AgentBossFight {
     private final Ports ports;
     /** Fighter id -> the stand point it fights its preferred part from ({@link #reachStand}). */
     private final Map<Integer, Stand> stands = new HashMap<>();
+    /** Fighter id -> the focus-step ledge it grinds from now, and on which map: {x, y, mapId} ({@link #keepsLedge}). */
+    private final Map<Integer, int[]> focusLedges = new HashMap<>();
     /** Fighter id -> when it last took the stage portal. */
     private final Map<Integer, Long> portalTries = new HashMap<>();
     /** Fighter id -> the band its horizontal boundary holds now, and on which map: {minX, maxX, mapId}. */
@@ -506,20 +508,74 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 usable.add(anchor);
             }
         }
+        if (keepsLedge(gateway, entry, member, map, step, usable, preferences)) {
+            return;
+        }
         if (!usable.isEmpty()) {
             AgentBossRules.Anchor anchor = usable.get(Math.floorMod(ordinal, usable.size()));
             Point ground = gateway.groundPoint(map, new Point(anchor.x(), anchor.y()));
             if (ground != null) {
                 Set<Integer> reach = new LinkedHashSet<>(anchor.mobIds());
                 reach.retainAll(preferences.preferred());
-                Set<Integer> fallback = new LinkedHashSet<>(preferences.preferred());
-                fallback.removeAll(reach);
-                fallback.addAll(preferences.fallback());
-                gateway.grindFromAnchor(entry, ground, reach, fallback);
+                fromLedge(gateway, entry, member, map, ground, reach, preferences);
                 return;
             }
         }
+        focusLedges.remove(member.getId());
         gateway.grind(entry, preferences.preferred(), preferences.fallback());
+    }
+
+    /**
+     * 2026-10-29 (P18 open item 18): a member on a ledge of this {@code step} that names no live part any more (its
+     * head fell) keeps grinding from it while its attacks reach a live part of the step from there
+     * ({@link Ports#reaches}), instead of walking to a ledge that names one; true when it does. The Horntail run that
+     * cleared (2026-10-15) had seven members down on the altar floor a minute after the right head fell, on their way
+     * from its ledge (325,-160) to the middle head's (-55,-280), while a bow or claw shot from (325,-160) or (-235,-160)
+     * still reaches the middle head; a 150 px swing does not, so melee still moves.
+     */
+    private boolean keepsLedge(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member,
+                               MapleMap map, AgentBossRules.Focus step, List<AgentBossRules.Anchor> usable,
+                               AgentBossRules.Preferences preferences) {
+        int[] was = focusLedges.get(member.getId());
+        if (was == null || was[2] != map.getId()) {
+            return false;
+        }
+        Point ledge = new Point(was[0], was[1]);
+        boolean ofThisStep = false;
+        for (AgentBossRules.Anchor anchor : step.anchors()) {
+            Point ground = gateway.groundPoint(map, new Point(anchor.x(), anchor.y()));
+            if (ledge.equals(ground)) {
+                ofThisStep = true;
+                if (usable.contains(anchor)) {
+                    return false;
+                }
+            }
+        }
+        if (!ofThisStep) {
+            return false;
+        }
+        Set<Integer> reach = new LinkedHashSet<>();
+        for (Monster part : ports.monsters(map)) {
+            if (part.isAlive() && preferences.preferred().contains(part.getId())
+                    && ports.reaches(member, part, ledge)) {
+                reach.add(part.getId());
+            }
+        }
+        if (reach.isEmpty()) {
+            return false;
+        }
+        fromLedge(gateway, entry, member, map, ledge, reach, preferences);
+        return true;
+    }
+
+    /** Grinds {@code reach} from {@code ground}, the rest of the step's parts and the boss's adds the fallback. */
+    private void fromLedge(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member, MapleMap map,
+                           Point ground, Set<Integer> reach, AgentBossRules.Preferences preferences) {
+        Set<Integer> fallback = new LinkedHashSet<>(preferences.preferred());
+        fallback.removeAll(reach);
+        fallback.addAll(preferences.fallback());
+        focusLedges.put(member.getId(), new int[] {ground.x, ground.y, map.getId()});
+        gateway.grindFromAnchor(entry, ground, reach, fallback);
     }
 
     /** The member's place among the fighters on its map, by character id: what spreads them over a step's ledges. */
