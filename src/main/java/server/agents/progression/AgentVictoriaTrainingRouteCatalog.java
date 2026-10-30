@@ -188,6 +188,11 @@ final class AgentVictoriaTrainingRouteCatalog {
         return OUTSIDE_VICTORIA.contains(mapId);
     }
 
+    /** The maps a portal (or a scripted edge) of mapId leads to. */
+    static Set<Integer> adjacentMaps(int mapId) {
+        return EDGES.getOrDefault(mapId, Set.of());
+    }
+
     static long edgeKey(int source, int destination) {
         return ((long) source << 32) ^ (destination & 0xffffffffL);
     }

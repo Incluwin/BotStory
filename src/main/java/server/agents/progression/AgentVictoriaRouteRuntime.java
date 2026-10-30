@@ -127,7 +127,21 @@ public final class AgentVictoriaRouteRuntime {
         Integer portalId = AgentVictoriaTrainingRouteCatalog.scriptedPortalId(sourceMapId, nextMap);
         boolean scriptedPortal = portalId != null;
         if (portalId == null) {
-            portalId = reachablePortalTo(entry, agent, nextMap, gateway, state);
+            PortalChoice choice = reachablePortalTo(entry, agent, nextMap, destinationMapId, blockedEdges, gateway,
+                    state);
+            Integer around = choice.trapped()
+                    ? hopAround(entry, agent, nextMap, destinationMapId, blockedEdges, gateway) : null;
+            if (around != null) {
+                nextMap = around;
+                portalId = AgentVictoriaTrainingRouteCatalog.scriptedPortalId(sourceMapId, nextMap);
+                scriptedPortal = portalId != null;
+                if (portalId == null) {
+                    choice = reachablePortalTo(entry, agent, nextMap, destinationMapId, blockedEdges, gateway, state);
+                }
+            }
+            if (portalId == null) {
+                portalId = choice.portalId();
+            }
         }
         if (portalId == null) {
             state.clearActiveTravel();
@@ -161,29 +175,49 @@ public final class AgentVictoriaRouteRuntime {
      * 105090100, west00, stands on the top floor that nothing below climbs to; four companions arriving at under00 on
      * the bottom floor held still there for 8+ minutes, while west01 on the middle floor is two climbs away. The choice
      * is kept because canReach cannot rule anything out while the Agent is in the air (a jump to the rope), and a new
-     * target mid-jump would send it back toward the first portal. It looks one hop ahead only: whether the landing on
-     * the next map reaches the portal after it is not checked.
+     * target mid-jump would send it back toward the first portal. Of the portals it can walk to, one that does not
+     * strand it on the next map comes first: on The Tunnel That Lost Light II (105090100) both portals lead to Another
+     * Entrance, but east01 sets the Agent down on its middle floor, which never reaches east00 to 105090300 on the top
+     * floor; east00 sets it down there.
      */
-    private static Integer reachablePortalTo(AgentRuntimeEntry entry,
-                                             Character agent,
-                                             int nextMapId,
-                                             PrimitiveCapabilityGateway gateway,
-                                             AgentVictoriaRouteState state) {
+    private static PortalChoice reachablePortalTo(AgentRuntimeEntry entry,
+                                                  Character agent,
+                                                  int nextMapId,
+                                                  int destinationMapId,
+                                                  Set<Long> blockedEdges,
+                                                  PrimitiveCapabilityGateway gateway,
+                                                  AgentVictoriaRouteState state) {
         List<Integer> portalIds = gateway.directPortalIdsTo(agent, nextMapId);
         if (portalIds.isEmpty()) {
-            return gateway.directPortalIdTo(agent, nextMapId);
+            return new PortalChoice(gateway.directPortalIdTo(agent, nextMapId), false);
         }
         Integer kept = state.keptPortal(nextMapId);
-        if (kept != null && portalIds.contains(kept) && notRuledOut(entry, agent, kept, gateway)) {
-            return kept;
+        if (kept != null && portalIds.contains(kept) && notRuledOut(entry, agent, kept, gateway)
+                && !strands(entry, agent, kept, nextMapId, destinationMapId, blockedEdges, gateway)) {
+            return new PortalChoice(kept, false);
         }
+        Integer stranding = null;
         for (Integer portalId : portalIds) {
-            if (notRuledOut(entry, agent, portalId, gateway)) {
+            if (!notRuledOut(entry, agent, portalId, gateway)) {
+                continue;
+            }
+            if (!strands(entry, agent, portalId, nextMapId, destinationMapId, blockedEdges, gateway)) {
                 state.keepPortal(nextMapId, portalId);
-                return portalId;
+                return new PortalChoice(portalId, false);
+            }
+            if (stranding == null) {
+                stranding = portalId;
             }
         }
-        return portalIds.get(0);
+        if (stranding != null) {
+            state.keepPortal(nextMapId, stranding);
+            return new PortalChoice(stranding, true);
+        }
+        return new PortalChoice(portalIds.get(0), true);
+    }
+
+    /** The portal travelStatus walks to, and whether no portal to that map gets the Agent through it. */
+    private record PortalChoice(Integer portalId, boolean trapped) {
     }
 
     private static boolean notRuledOut(AgentRuntimeEntry entry,
@@ -191,7 +225,91 @@ public final class AgentVictoriaRouteRuntime {
                                        int portalId,
                                        PrimitiveCapabilityGateway gateway) {
         Point portal = gateway.portalPosition(agent, portalId);
-        return portal != null && gateway.canReach(entry, agent, portal);
+        return portal != null && gateway.canReach(entry, agent, portal)
+                && !gateway.unwalkablePortal(entry, agent, portalId);
+    }
+
+    /**
+     * For a hop the Agent can walk to none of the portals of from here, or every one it can strands it there: the next
+     * hop of a route around it, when one is walkable, else null. Live 2026-10-25 to 10-29, 1,579 resupply
+     * walks stalled 300 s on a map without reaching its portal; 698 stood on hops like these. Crimsonwood Mountain's
+     * shortest way down (610020002/3/5) is its pit portals, which no walk reaches, and 610010004's portal to
+     * 610010005 stands on a ledge nothing climbs to (513); Another Entrance (105090200) reached on its middle or
+     * bottom floor has its only portal to 105090300 on the top floor (185). canReach ignores movement-skill edges, so
+     * this only prefers a hop that is walkable over one that looks trapped: with no walkable alternative the hop stays
+     * as before, and the trip's no-progress watchdog ends a walk that reaches no portal.
+     */
+    private static Integer hopAround(AgentRuntimeEntry entry,
+                                     Character agent,
+                                     int nextMapId,
+                                     int destinationMapId,
+                                     Set<Long> blockedEdges,
+                                     PrimitiveCapabilityGateway gateway) {
+        int sourceMapId = agent.getMapId();
+        Set<Long> passed = new HashSet<>(blockedEdges);
+        Integer hop = nextMapId;
+        while (hop != null && hop != sourceMapId) {
+            passed.add(AgentVictoriaTrainingRouteCatalog.edgeKey(sourceMapId, hop));
+            hop = AgentVictoriaTrainingRouteCatalog.nextHop(sourceMapId, destinationMapId, passed);
+            if (hop != null && walkable(entry, agent, hop, destinationMapId, blockedEdges, gateway) == Boolean.TRUE) {
+                return hop;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * TRUE when a portal to hop is authored or one the Agent can walk to does not strand it there, FALSE when the
+     * portals to hop are known and none does, null when the gateway lists none.
+     */
+    private static Boolean walkable(AgentRuntimeEntry entry,
+                                    Character agent,
+                                    int hop,
+                                    int destinationMapId,
+                                    Set<Long> blockedEdges,
+                                    PrimitiveCapabilityGateway gateway) {
+        if (AgentVictoriaTrainingRouteCatalog.scriptedPortalId(agent.getMapId(), hop) != null) {
+            return Boolean.TRUE;
+        }
+        List<Integer> portalIds = gateway.directPortalIdsTo(agent, hop);
+        if (portalIds.isEmpty()) {
+            return null;
+        }
+        for (Integer portalId : portalIds) {
+            if (notRuledOut(entry, agent, portalId, gateway)
+                    && !strands(entry, agent, portalId, hop, destinationMapId, blockedEdges, gateway)) {
+                return Boolean.TRUE;
+            }
+        }
+        return Boolean.FALSE;
+    }
+
+    /**
+     * True when the gateway knows which maps the Agent walks on to from where portalId sets it down on hop, and none
+     * of them leads on to the destination: every way on from hop leaves by a portal it cannot walk to from there.
+     * Authored scripted portals on hop count as walkable.
+     */
+    private static boolean strands(AgentRuntimeEntry entry,
+                                   Character agent,
+                                   int portalId,
+                                   int hop,
+                                   int destinationMapId,
+                                   Set<Long> blockedEdges,
+                                   PrimitiveCapabilityGateway gateway) {
+        if (hop == destinationMapId) {
+            return false;
+        }
+        Set<Integer> exits = gateway.landingExits(entry, agent, portalId);
+        if (exits == null || exits.isEmpty()) {
+            return false;
+        }
+        Set<Long> unwalked = new HashSet<>(blockedEdges);
+        for (int next : AgentVictoriaTrainingRouteCatalog.adjacentMaps(hop)) {
+            if (!exits.contains(next) && AgentVictoriaTrainingRouteCatalog.scriptedPortalId(hop, next) == null) {
+                unwalked.add(AgentVictoriaTrainingRouteCatalog.edgeKey(hop, next));
+            }
+        }
+        return AgentVictoriaTrainingRouteCatalog.nextHop(hop, destinationMapId, unwalked) == null;
     }
 
     /**

@@ -202,6 +202,23 @@ public interface PrimitiveCapabilityGateway {
         return true;
     }
 
+    /**
+     * True when this Agent stands in a region of its navigation graph and the portal has no ground or rope under it:
+     * a pit portal, entered by falling into it, as Crimsonwood Mountain's along the bottom of each map. No walk the
+     * graph plans reaches one. False while the graph is not built or the Agent is in the air.
+     */
+    default boolean unwalkablePortal(AgentRuntimeEntry entry, Character agent, int portalId) {
+        return false;
+    }
+
+    /**
+     * The maps the portals of the map behind {@code portalId} lead to that this Agent walks to from where the portal
+     * sets it down, by its navigation graph there. Empty when that cannot be told: the map or its graph not loaded.
+     */
+    default Set<Integer> landingExits(AgentRuntimeEntry entry, Character agent, int portalId) {
+        return Set.of();
+    }
+
     /** Where a character stands: on a foothold, on a rope or ladder, or in the air. */
     enum Footing { GROUND, ROPE, AIR }
 
