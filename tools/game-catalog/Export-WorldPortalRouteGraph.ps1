@@ -18,6 +18,9 @@ param(
 # way to Southperry, where Shanks (22000, a travel leg) sails to Lith Harbor; nothing sails back. Mu Lung Dojo is its
 # entrance hall and So Gong's hall (925020000-925020001): the Dojo board in Mu Lung Temple (2091006) and the hall's exit
 # (dojang_exit) are travel legs; the floors behind So Gong are instances and stay out.
+# Arcane River (450xxxxxx, Community Repack maps) joins nothing on foot: the Temple Keeper at Three Doors (2140000) and
+# each town's guide back (repack_talk.js) are travel legs. Twilight Perion (273xxxxxx) is already inside Ossyria's
+# range; it has no portal back to Three Doors either, only its guide Claudine.
 
 $ErrorActionPreference = "Stop"
 
@@ -32,6 +35,7 @@ $groups = @(
     [ordered]@{ id = "masteria"; firstMapId = 682000000; endMapId = 682000001 },
     [ordered]@{ id = "amoria"; firstMapId = 670000000; endMapId = 670010001 },
     [ordered]@{ id = "amoria"; firstMapId = 680000000; endMapId = 680100000 },
+    [ordered]@{ id = "arcane-river"; firstMapId = 450000000; endMapId = 451000000 },
     [ordered]@{ id = "zipangu"; firstMapId = 800000000; endMapId = 810000000 },
     [ordered]@{ id = "mu-lung-dojo"; firstMapId = 925020000; endMapId = 925020002 }
 )
@@ -48,7 +52,9 @@ $excludedRanges = @(
 # Temple of Time; the way back is the Temple's out00, 200090500's minar00 and Leafre Station's own exit west00.
 # Ereve's docks and town are joined only through rankRoom's two doors into 130000100 (from the Crossroads and from the
 # town), and Ellinia reaches its sky ferry station by in04 (inERShip). Rien's road reaches its dock by enterPort, which
-# sends only an Aran on quest 21301 (no bot takes it) to the Thief Crow instead. Mushroom Castle's inner gates and the
+# sends only an Aran on quest 21301 (no bot takes it) to the Thief Crow instead. The Cave of Life Entrance (240040700)
+# is left only by out00 (hontale_morph2, back to the Peak of the Big Nest); Keroben (2081005, a travel leg) lets a
+# holder of 4001086 into the cave, whose first map walks back to the entrance. Mushroom Castle's inner gates and the
 # Temple of Time's roads are gated as their scripts are: obstacle.js (quest 30000 taken; its Poison Spore way is left
 # out), gotocastle.js (2324 done), and each road's timeQuest exit (that road's quest done; without it the script sends
 # the traveller back to the lane's start).
@@ -64,6 +70,7 @@ $scriptedPortals = @(
     [ordered]@{ sourceMapId = 130000200; destinationMapId = 130000100; portalName = "east00"; script = "rankRoom" },
     [ordered]@{ sourceMapId = 130000000; destinationMapId = 130000100; portalName = "west00"; script = "rankRoom" },
     [ordered]@{ sourceMapId = 140020200; destinationMapId = 140020300; portalName = "east00"; script = "enterPort" },
+    [ordered]@{ sourceMapId = 240040700; destinationMapId = 240040600; portalName = "out00"; script = "hontale_morph2" },
     [ordered]@{ sourceMapId = 106020300; destinationMapId = 106020400; portalName = "obstacle"; script = "obstacle";
         gate = [ordered]@{ activeAny = @(30000) } },
     [ordered]@{ sourceMapId = 106020400; destinationMapId = 106020501; portalName = "right00"; script = "gotocastle";

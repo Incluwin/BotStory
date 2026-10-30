@@ -41,18 +41,20 @@ public final class AgentTravelLegCatalog {
      * Boards at {@code fromMapId} by talking to {@code npcId} with {@code selections} (or, with {@code portal} and NPC 0,
      * by walking into that portal: Kerning Square Station's way back to the subway), paying {@code fare} there (and
      * holding {@code ticket}, when there is one); lands on {@code toMapId} at once or after waiting on one of
-     * {@code rideMapIds}. The NPC lets nobody below {@code minLevel} on (Jeff at Ice Valley II, 50). With
-     * {@code savedLocation} the script lands the rider where that saved location points (Spinel's and Audrey's
-     * WORLDTOUR, Pison's FLORINA, Rupi's HAPPYVILLE): {@code toMapId} is where it lands when nothing is saved, or for
-     * the Mu Lung Dojo's exit where the Dojo board saved it (Mu Lung Temple; Henesys with nothing saved), and every
-     * other landing counts as the ride done.
+     * {@code rideMapIds}. The NPC lets nobody below {@code minLevel} on (Jeff at Ice Valley II, 50), and with
+     * {@code heldItemId} only a rider holding that item, which the rider keeps (Keroben at the Cave of Life: the
+     * Certificate of the Dragon Squad). With {@code savedLocation} the script lands the rider where that saved
+     * location points (Spinel's and Audrey's WORLDTOUR, Pison's FLORINA, Rupi's HAPPYVILLE): {@code toMapId} is where
+     * it lands when nothing is saved, or for the Mu Lung Dojo's exit where the Dojo board saved it (Mu Lung Temple;
+     * Henesys with nothing saved), and every other landing counts as the ride done.
      */
     public record Leg(String id, int fromMapId, int npcId, List<Integer> selections, int toMapId, int fare,
-                      List<Integer> rideMapIds, Ticket ticket, int minLevel, String savedLocation, String portal) {
+                      List<Integer> rideMapIds, Ticket ticket, int minLevel, String savedLocation, String portal,
+                      int heldItemId) {
         public Leg {
             boolean byPortal = portal != null && !portal.isBlank();
             if (id == null || id.isBlank() || fromMapId <= 0 || (byPortal ? npcId != 0 : npcId <= 0) || toMapId <= 0
-                    || fromMapId == toMapId || fare < 0 || minLevel < 0) {
+                    || fromMapId == toMapId || fare < 0 || minLevel < 0 || heldItemId < 0) {
                 throw new IllegalArgumentException("a travel leg needs an id, two maps, an NPC or a portal and a fare");
             }
             if (byPortal && (ticket != null || selections != null && !selections.isEmpty())) {

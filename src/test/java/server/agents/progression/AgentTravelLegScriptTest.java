@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import server.mods.RepackGuide;
 import server.mods.RepackMaps;
 import server.mods.ServerMods;
 
@@ -26,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -103,6 +105,9 @@ public class AgentTravelLegScriptTest {
             if (leg.ticket() != null) {
                 cm.items.put(leg.ticket().itemId(), 1);
             }
+            if (leg.heldItemId() > 0) {
+                cm.items.put(leg.heldItemId(), 1);
+            }
             if (leg.savedLocation() != null) {
                 cm.saved.put(leg.savedLocation(), leg.toMapId()); // as the way in saved it (the Dojo board: MIRROR)
             }
@@ -117,6 +122,9 @@ public class AgentTravelLegScriptTest {
             assertEquals(PURSE - leg.fare(), cm.mesos, () -> leg.id() + ": pays its fare");
             if (leg.ticket() != null) {
                 assertEquals(0, cm.count(leg.ticket().itemId()), () -> leg.id() + ": hands in its ticket");
+            }
+            if (leg.heldItemId() > 0) {
+                assertEquals(1, cm.count(leg.heldItemId()), () -> leg.id() + ": shows the item it needs and keeps it");
             }
         }
     }
@@ -264,6 +272,46 @@ public class AgentTravelLegScriptTest {
         assertEquals(rupi.toMapId(), home.warpedTo, "with nothing saved Rupi sends you to Ellinia, Rooney's own town");
     }
 
+    @Test
+    void kerobenLetsOnlyACertificateHolderFromLevelOneHundredIntoTheCaveOfLife() throws Exception {
+        AgentTravelLegCatalog.Leg leg = leg("cave-of-life-entrance-to-the-cave");
+        assertEquals(100, leg.minLevel());
+        assertEquals(4001086, leg.heldItemId(), "the Certificate of the Dragon Squad");
+
+        Conversation outsider = new Conversation(leg.fromMapId(), PURSE, "true");
+        run(leg.npcId(), outsider, leg.selections());
+        assertNull(outsider.warpedTo, "no certificate (and no dragon shape): get lost");
+
+        Conversation young = new Conversation(leg.fromMapId(), PURSE, "true");
+        young.items.put(leg.heldItemId(), 1);
+        young.level = 99;
+        run(leg.npcId(), young, leg.selections());
+        assertNull(young.warpedTo, "a level 99 holder stays at the entrance");
+
+        Conversation member = new Conversation(leg.fromMapId(), PURSE, "true");
+        member.items.put(leg.heldItemId(), 1);
+        member.level = 100;
+        run(leg.npcId(), member, leg.selections());
+        assertEquals(leg.toMapId(), member.warpedTo);
+        assertEquals(PURSE, member.mesos, "selection 2 goes in; 1 would buy his potions");
+    }
+
+    @Test
+    void theTempleKeeperOpensTwilightPerionAndEveryArcaneTownAndEachTownsGuideLeadsBack() throws Exception {
+        Map<Integer, Integer> guides = Map.of(273000000, 2142107, 450001000, 3003111, 450002000, 3003150,
+                450003000, 3003202, 450005000, 3003324, 450006130, 3003467, 450007040, 3003533, 450009050, 3003570,
+                450011120, 3003799, 450012000, 3003952);
+        guides.forEach((town, guide) -> {
+            assertTrue(AgentTravelLegCatalog.legs().stream().anyMatch(leg -> leg.fromMapId() == 270000000
+                    && leg.npcId() == 2140000 && leg.toMapId() == town), () -> "the Temple Keeper's door to " + town);
+            assertTrue(AgentTravelLegCatalog.legs().stream().anyMatch(leg -> leg.fromMapId() == town
+                    && leg.npcId() == guide && leg.toMapId() == 270000000), () -> town + "'s guide back");
+            assertTrue(RepackMaps.listed(town) && RepackGuide.offersWayBack(town, guide), () -> town + ": " + guide);
+            assertFalse(Files.exists(Path.of("scripts", "npc", guide + ".js")),
+                    () -> guide + " has no script: it answers through repack_talk.js");
+        });
+    }
+
     private static AgentTravelLegCatalog.Leg leg(String id) {
         return AgentTravelLegCatalog.legs().stream().filter(leg -> leg.id().equals(id)).findFirst().orElseThrow();
     }
@@ -335,9 +383,10 @@ public class AgentTravelLegScriptTest {
     }
 
     /**
-     * As NPCScriptManager and the headless gateway do: start, then one action(1, 0, selection) per advance. A bot is no
-     * Agent operator (Shanks offers operators an administration menu first), so AgentAuthorityService answers no for
-     * the stub player, which is no Character.
+     * As NPCScriptManager and the headless gateway do: start, then one action(1, 0, selection) per advance. An NPC of
+     * the Community Repack's maps with no script of its own talks through repack_talk.js, as the gateway falls back
+     * for it (none of the legs' NPCs keeps a shop). A bot is no Agent operator (Shanks offers operators an
+     * administration menu first), so AgentAuthorityService answers no for the stub player, which is no Character.
      */
     private static void run(int npcId, Conversation cm, List<Integer> selections) throws Exception {
         ScriptEngine engine = engines().getEngineByName("graal.js");
@@ -348,7 +397,12 @@ public class AgentTravelLegScriptTest {
         engine.eval("var hostType = Java.type; Java.type = function (name) { return name === "
                 + "'server.agents.auth.AgentAuthorityService' ? { mayOperate: function () { return false; } }"
                 + " : hostType(name); };");
-        engine.eval(Files.readString(Path.of("scripts", "npc", npcId + ".js")));
+        Path file = Path.of("scripts", "npc", npcId + ".js");
+        if (!Files.exists(file) && RepackMaps.listed(cm.getMapId())) {
+            file = Path.of("scripts", "npc", "repack_talk.js");
+        }
+        cm.npc = npcId;
+        engine.eval(Files.readString(file));
         Invocable script = (Invocable) engine;
         script.invokeFunction("start");
         for (int advance = 0; !cm.disposed && advance < MAX_ADVANCES; advance++) {
@@ -396,6 +450,7 @@ public class AgentTravelLegScriptTest {
         final String entry;
         int mesos;
         int level = 120;
+        int npc;
         boolean disposed;
         Integer warpedTo;
         String startedEvent;
@@ -417,6 +472,10 @@ public class AgentTravelLegScriptTest {
 
         public int getMapId() {
             return player.getMapId();
+        }
+
+        public int getNpc() {
+            return npc;
         }
 
         public Object getClient() {
@@ -576,6 +635,11 @@ public class AgentTravelLegScriptTest {
         public int getSavedLocation(String type) {
             Integer map = cm.saved.remove(type);
             return map == null ? -1 : map;
+        }
+
+        /** No buff: a rider in the Dragon Elixir's dragon shape (Keroben's other way in) is never planned for. */
+        public int getBuffSource(Object stat) {
+            return -1;
         }
     }
 

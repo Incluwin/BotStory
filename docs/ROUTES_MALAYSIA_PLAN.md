@@ -40,7 +40,9 @@ with that road's quest (3500-3522) done, and no bot does those quests. Memory La
   at that level or above, as the NPC would refuse it otherwise); `savedLocation` (the script lands the rider where
   that saved location points, `toMapId` when none; the router plans with `toMapId` and, when the rider lands on
   another walkable map, takes the ride as done and plans on from where it stands, instead of counting a refusal);
-  `portal` (board by walking into this portal on `fromMapId` instead of talking to an NPC).
+  `portal` (board by walking into this portal on `fromMapId` instead of talking to an NPC); `heldItemId` (since
+  `fix/routes2-2026-10-30`: the router takes the leg only for an agent holding that item, which the NPC checks and
+  leaves with the rider: Keroben's Certificate of the Dragon Squad).
 - **Scripted portals in the world graph.** `Export-WorldPortalRouteGraph.ps1` gains an authored list of scripted
   portals (source, destination, portal name and id, script, optional quest gate) written into the catalog;
   `AgentWorldPortalRouteGraphFreshnessTest` checks each against WZ (the portal exists, carries that script, and the
@@ -65,10 +67,21 @@ Ellinia and Rupi back; only Ellinia's Rooney is listed, where Rupi's way back la
 Temple of Time's roads and Mushroom Castle's inner gates as gated scripted portals (each road's quest; quest 30000
 taken, quest 2324 done): open to any agent that has done them, as to a player. No bot does those quests yet.
 
-| Where | Why |
-|---|---|
-| Cave of Life (Horntail) | Keroben (2081005) lets in only a dragon-shaped rider (no `hontale_morph` script on this server) or a holder of item 4001086, level 100+: an item gate the leg format cannot state (the bossing work enters its own way) |
-| Twilight Perion, Arcane River | the guides back answer only through `repack_talk.js`, which the bot gateway's `runNpcScript` does not fall back to; Arcane River is in no graph group |
+Closed on `fix/routes2-2026-10-30`: Twilight Perion and Arcane River. The bot gateway now falls back to `repack_talk.js`
+for an unscripted NPC without a shop on a Repack map, as `NPCTalkHandler` does for a player, so the town guides' way back
+to Three Doors works for a bot; the Temple Keeper's doors (Twilight Perion and the nine Arcane River towns) and each
+guide back are travel legs, and Arcane River (450xxxxxx) is the world graph's `arcane-river` group. Twilight Perion was
+reachable on foot before (the Gate to the Future's door, then its roads through 271010500 to 273010000), and its walk
+back (seven maps to Three Doors) is still cheaper than Claudine at the usual ride weight.
+
+Also on `fix/routes2-2026-10-30`: the Cave of Life. Keroben (2081005) lets in a rider in the Dragon Elixir's dragon
+shape (morph source 2210003) or a holder of the Certificate of the Dragon Squad (4001086), from level 100. The leg
+`cave-of-life-entrance-to-the-cave` (selection 2, `minLevel` 100, `heldItemId` 4001086) takes a certificate holder in;
+no leg plans for the dragon shape (a bot would have to drink the elixir first). The entrance's `out00`
+(`hontale_morph2`) back up to the Peak of the Big Nest is a scripted portal in the world graph, so an agent that walks
+down to Moira or Keroben is no longer stranded there. `hontale_morph` (the six collision portals `cs00`-`cs05` on the
+entrance's floor) is missing from stock Cosmic too and is not in the Community Repack (WZ files only); a missing
+portal script does nothing, so it blocks no player: Keroben's own script is the gate.
 
 ## 3. Regions and fields
 
