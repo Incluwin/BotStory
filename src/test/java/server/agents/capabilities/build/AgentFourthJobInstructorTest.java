@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyByte;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -50,6 +51,48 @@ class AgentFourthJobInstructorTest {
         Map<Integer, Set<Integer>> table = new HashMap<>();
         AgentFourthJobInstructor.TAUGHT.forEach((job, skills) -> table.put(job, new LinkedHashSet<>(skills)));
         assertEquals(scripts, table);
+    }
+
+    /**
+     * 2026-10-29: each instructor hands every 4th job [Skill Book] Maple Warrior at the advancement, and Item.wz's book
+     * teaches each table job's own Maple Warrior at master level 10.
+     */
+    @Test
+    void everyInstructorHandsOutTheMapleWarriorBookThatTeachesEachJobsMapleWarrior() throws IOException {
+        for (int npc : new int[]{2081100, 2081200, 2081300, 2081400, 2081500}) {
+            String script = Files.readString(Path.of("scripts/npc/" + npc + ".js"));
+            String handsOut = "cm.gainItem(" + AgentFourthJobInstructor.MAPLE_WARRIOR_BOOK + ", 1)";
+            assertTrue(script.contains(handsOut), "" + npc);
+        }
+        String consume = Files.readString(Path.of("wz/Item.wz/Consume/0228.img.xml"));
+        int at = consume.indexOf("<imgdir name=\"0" + AgentFourthJobInstructor.MAPLE_WARRIOR_BOOK + "\">");
+        String book = consume.substring(at, consume.indexOf("<imgdir name=\"02280004\">", at));
+        assertTrue(book.contains("<int name=\"masterLevel\" value=\"10\"/>"), book);
+        Set<Integer> teaches = new LinkedHashSet<>();
+        Matcher skill = Pattern.compile("<int name=\"\\d+\" value=\"(\\d+)\"/>")
+                .matcher(book.substring(book.indexOf("<imgdir name=\"skill\">")));
+        while (skill.find()) {
+            teaches.add(Integer.parseInt(skill.group(1)));
+        }
+        for (int job : AgentFourthJobInstructor.TAUGHT.keySet()) {
+            assertTrue(teaches.contains(AgentFourthJobInstructor.mapleWarrior(job)), "job " + job + ": " + teaches);
+        }
+    }
+
+    @Test
+    void aNightLordKnowsMapleWarriorAtMasterTenButNotTripleThrowWhichABossDropTeaches() {
+        SkillGateway skills = mock(SkillGateway.class);
+        Skill mapleWarrior = mock(Skill.class);
+        Skill tripleThrow = mock(Skill.class);
+        when(skills.getSkill(4_121_000)).thenReturn(mapleWarrior);
+        when(skills.getSkill(4_121_007)).thenReturn(tripleThrow);
+        Character nightLord = mock(Character.class);
+        when(nightLord.getJob()).thenReturn(Job.NIGHTLORD);
+        when(nightLord.changeSkillLevel(any(), anyByte(), anyInt(), anyLong())).thenReturn(true);
+
+        assertEquals(1, AgentFourthJobInstructor.teach(nightLord, skills));
+        verify(nightLord).changeSkillLevel(mapleWarrior, (byte) 0, 10, -1);
+        verify(nightLord, never()).changeSkillLevel(eq(tripleThrow), anyByte(), anyInt(), anyLong());
     }
 
     @Test

@@ -4,6 +4,7 @@ import client.Character;
 import client.Skill;
 import server.agents.integration.SkillGateway;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -14,9 +15,17 @@ import java.util.Map;
  * SP spending caps a 4th-job skill at its master level, which stayed 0 (Jevelopers, Lv130 Shadower, had none). Before
  * an Agent spends SP it now knows the instructor's skills as a player does. Nothing else changes: no mastery book is
  * implied, and a higher master level (the skill probe's 30) stays.
+ *
+ * <p>2026-10-29: the advancement also hands the player [Skill Book] Maple Warrior ({@link #MAPLE_WARRIOR_BOOK},
+ * {@code cm.gainItem(2280003, 1)} in each script; Item.wz: master level 10, success 100, the twelve Explorer Maple
+ * Warriors), which an Agent never got: Maple Warrior, which every Explorer 4th-job SP profile plans, stayed at master
+ * 0, and its mastery books waited on it forever (Thane's book-need line on 2026-10-16 said his Maple Warrior book had
+ * to wait). An Agent now knows its job's Maple Warrior at master level 10 too, as a player who reads that book does.</p>
  */
 public final class AgentFourthJobInstructor {
     static final int MASTER_LEVEL = 10;
+    /** The skill book every 4th-job instructor hands out at the advancement: Maple Warrior at master level 10. */
+    static final int MAPLE_WARRIOR_BOOK = 2_280_003;
 
     /** 4th job id -> the skills its instructor teaches, both talks (AgentFourthJobInstructorTest checks the scripts). */
     static final Map<Integer, List<Integer>> TAUGHT = Map.ofEntries(
@@ -37,14 +46,22 @@ public final class AgentFourthJobInstructor {
     private AgentFourthJobInstructor() {
     }
 
-    /** Raises each skill the Agent's 4th-job instructor teaches to master level 10, keeping its level. Returns how many. */
+    /** The Maple Warrior of 4th job {@code jobId} (1121000 for a Hero), which {@link #MAPLE_WARRIOR_BOOK} teaches. */
+    static int mapleWarrior(int jobId) {
+        return jobId * 10_000 + 1_000;
+    }
+
+    /**
+     * Raises each skill the Agent's 4th-job instructor teaches, and its job's Maple Warrior, to master level 10,
+     * keeping its level. Returns how many.
+     */
     static int teach(Character bot, SkillGateway skills) {
         List<Integer> taught = bot == null || bot.getJob() == null ? null : TAUGHT.get(bot.getJob().getId());
         if (taught == null) {
             return 0;
         }
         int raised = 0;
-        for (int skillId : taught) {
+        for (int skillId : concat(taught, mapleWarrior(bot.getJob().getId()))) {
             Skill skill = skills.getSkill(skillId);
             if (skill != null && bot.getMasterLevel(skill) < MASTER_LEVEL
                     && bot.changeSkillLevel(skill, bot.getSkillLevel(skill), MASTER_LEVEL, -1)) {
@@ -52,5 +69,11 @@ public final class AgentFourthJobInstructor {
             }
         }
         return raised;
+    }
+
+    private static List<Integer> concat(List<Integer> taught, int skillId) {
+        List<Integer> all = new ArrayList<>(taught);
+        all.add(skillId);
+        return all;
     }
 }
