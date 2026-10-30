@@ -24,6 +24,8 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.life.MobAttackInfo;
+import server.life.MobAttackInfoFactory;
 import server.life.Monster;
 import server.life.MonsterStats;
 import server.life.autonomy.BossAction;
@@ -670,8 +672,8 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             }
             areas.add(new long[] {area.x, (long) area.x + area.width - 1, ports.mobile(monster) ? 1 : 0});
         }
-        double attackLimit = ports.maxHp(member)
-                * (double) (attackKeepOutHpPercent > 0 ? attackKeepOutHpPercent : attackKeepOutHpPercent()) / 100.0d;
+        double attackPercent =
+                (attackKeepOutHpPercent > 0 ? attackKeepOutHpPercent : attackKeepOutHpPercent()) / 100.0d;
         for (Monster monster : attackParts.isEmpty() ? List.<Monster>of() : ports.monsters(map)) {
             Point origin = monster.isAlive() && attackParts.contains(monster.getId()) ? monster.getPosition() : null;
             if (origin == null) {
@@ -680,7 +682,8 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             for (BossAction.OrdinaryAttack attack : ports.attacks(monster)) {
                 Rectangle area = attack.deadly() ? null : attackArea(origin, ports.facesLeft(monster), attack);
                 if (area == null || area.y > foot.y || area.y + area.height <= foot.y - sweep
-                        || ports.attackDamage(member, monster, attack) < attackLimit) {
+                        || ports.attackDamage(member, monster, attack)
+                        < ports.attackMaxHp(member, monster, attack) * attackPercent) {
                     continue;
                 }
                 areas.add(new long[] {area.x, (long) area.x + area.width - 1, ports.mobile(monster) ? 1 : 0});
@@ -779,18 +782,17 @@ public final class AgentBossPriorityFight implements AgentBossFight {
 
     /**
      * 2026-10-15 (P19): while a live monster on the member's map could hit it for more than its autopot alert leaves
-     * it ({@link #worstHit}), its HP alert rises to that hit plus HP_FLOOR_EXTRA_PERCENT of it, as a share of its
-     * max HP, at most HP_FLOOR_MAX_PERCENT, so the member drinks before one hit can find it low: Showa's Bodyguard A
-     * touches for about 16,800, and a Hero with 19,776 HP who drinks at 70% died to one touch. Its own alert comes
-     * back once no such monster lives (the 45 s autopot setup restores it too). A member with no HP potion key
-     * (alert 0) is left alone; {@code map} null (the run cleared) restores the alert.
+     * it ({@link #worstShare}), its HP alert rises to that hit plus HP_FLOOR_EXTRA_PERCENT of it, as a share of
+     * the max HP it meets, at most HP_FLOOR_MAX_PERCENT, so the member drinks before one hit can find it low: Showa's
+     * Bodyguard A touches for about 16,800, and a Hero with 19,776 HP who drinks at 70% died to one touch. Its own
+     * alert comes back once no such monster lives (the 45 s autopot setup restores it too). A member with no HP potion
+     * key (alert 0) is left alone; {@code map} null (the run cleared) restores the alert.
      */
     private void guardHp(Character member, MapleMap map, AgentBossRules.Boss rules) {
         int id = member.getId();
         float base = ports.baseHpAlert(member);
-        double worst = map == null || rules == null ? 0 : worstHit(map, member, rules.attackKeepOut());
-        float floor = (float) Math.min(hpFloorMaxPercent() / 100.0d,
-                worst * (100 + hpFloorExtraPercent()) / 100.0d / Math.max(1, ports.maxHp(member)));
+        double worst = map == null || rules == null ? 0 : worstShare(map, member, rules.attackKeepOut());
+        float floor = (float) Math.min(hpFloorMaxPercent() / 100.0d, worst * (100 + hpFloorExtraPercent()) / 100.0d);
         if (base > 0 && floor > base) {
             raisedAlerts.put(id, base);
             ports.setHpAlert(member, floor);
@@ -800,10 +802,11 @@ public final class AgentBossPriorityFight implements AgentBossFight {
     }
 
     /**
-     * The biggest mean hit a live monster on {@code map} could deal the member now: a touch whose area reaches its
-     * floor, or a non-deadly attack of a part in {@code attackParts}; 0 for none.
+     * The biggest mean hit a live monster on {@code map} could deal the member now, as a share of the max HP it meets
+     * ({@link Ports#maxHp}; {@link Ports#attackMaxHp} for an attack): a touch whose area reaches its floor, or a
+     * non-deadly attack of a part in {@code attackParts}; 0 for none.
      */
-    double worstHit(MapleMap map, Character member, List<Integer> attackParts) {
+    double worstShare(MapleMap map, Character member, List<Integer> attackParts) {
         Point at = member.getPosition();
         if (at == null) {
             return 0;
@@ -818,12 +821,13 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             }
             Rectangle area = ports.touchArea(monster);
             if (area != null && area.y <= foot.y && area.y + area.height > foot.y - sweep) {
-                worst = Math.max(worst, ports.touchDamage(member, monster));
+                worst = Math.max(worst, ports.touchDamage(member, monster) / Math.max(1, ports.maxHp(member)));
             }
             if (attackParts.contains(monster.getId())) {
                 for (BossAction.OrdinaryAttack attack : ports.attacks(monster)) {
                     if (!attack.deadly()) {
-                        worst = Math.max(worst, ports.attackDamage(member, monster, attack));
+                        worst = Math.max(worst, ports.attackDamage(member, monster, attack)
+                                / Math.max(1, ports.attackMaxHp(member, monster, attack)));
                     }
                 }
             }
@@ -1084,6 +1088,17 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return Math.max(1, member.getMaxHp());
         }
 
+        /**
+         * 2026-10-30 (P19): the member's max HP as {@code attack} of {@code monster} meets it: {@link #maxHp}, but its
+         * own max HP for an attack that burns MP, which Magic Guard does not take a share of (ServerMobDamageService
+         * and TakeDamageHandler guard only a hit with no MP attack). Showa's Bodyguard B's attack2 burns 50,000 MP over
+         * 290 px each side; in run 7 both mages (5,288 HP) died in the same instant with Bodyguard B up, while
+         * the keep-out and the potion floor weighed its hit against their Magic Guard's 25,000 or so.
+         */
+        default int attackMaxHp(Character member, Monster monster, BossAction.OrdinaryAttack attack) {
+            return maxHp(member);
+        }
+
         /** How far up from its feet a touch reaches an Agent (MOB_TOUCH_SWEEP_HEIGHT). */
         default int touchSweepPx() {
             return 50;
@@ -1260,6 +1275,12 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             @Override
             public int maxHp(Character member) {
                 return AgentDefenseDataProvider.effectiveMaximumHp(member);
+            }
+
+            @Override
+            public int attackMaxHp(Character member, Monster monster, BossAction.OrdinaryAttack attack) {
+                MobAttackInfo info = MobAttackInfoFactory.getMobAttackInfo(monster, attack.attackIndex());
+                return info != null && info.getMpBurn() > 0 ? Math.max(1, member.getCurrentMaxHp()) : maxHp(member);
             }
 
             @Override

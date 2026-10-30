@@ -6,9 +6,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.capabilities.combat.AgentCombatConfig;
+import server.agents.capabilities.combat.AgentCombatDamageRuntime;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.capabilities.movement.AgentMovementTimers;
+import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -24,7 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Disabled states in companion boss scope (P12 G5). Agents read only SEAL and ZOMBIFY elsewhere; here a member also
  * feels what a player feels:
  * <ul>
- * <li>STUN: it stands still and does nothing (on the ground; in the air it falls first).</li>
+ * <li>STUN: it stands still and does nothing (on the ground; in the air it falls first), but its autopot still drinks
+ * back up to its alert, as a stunned player's pet does.</li>
  * <li>SEDUCE: it walks toward the boss that seduced it. The caster is not kept, so the nearest live boss part on the
  * map stands in for it. One that knows Hero's Will casts it instead whenever it is off cooldown (2026-10-15), as a
  * player presses it; so does a confused one.</li>
@@ -95,7 +100,21 @@ public final class AgentBossDisabledState {
         switch (state) {
             case STUN -> {
                 AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
-                return AgentMovementStateRuntime.grounded(entry);
+                boolean held = AgentMovementStateRuntime.grounded(entry);
+                if (held) {
+                    // 2026-10-30: the held tick skips the common systems, so a stunned member also took no touch
+                    // damage; a stunned player standing in a mob still gets hit. A touch that kills hands the tick
+                    // back, so the common systems put it in its dead state.
+                    int hpBefore = agent.getHp();
+                    AgentCombatDamageRuntime.tickMobDamage(entry, agent, AgentCombatConfig.cfg,
+                            AgentMovementTimers::tickDown);
+                    if (hpBefore > 0 && agent.getHp() <= 0) {
+                        return false;
+                    }
+                    // 2026-10-29: the held tick skips the potion check, and a stunned player's pet still drinks
+                    AgentPotionService.tickLowTopUp(entry, agent, System.currentTimeMillis());
+                }
+                return held;
             }
             case SEDUCE, CONFUSE -> {
                 if (AgentPrimitiveCapabilityGatewayRuntime.gateway().castHerosWill(entry, agent)) {

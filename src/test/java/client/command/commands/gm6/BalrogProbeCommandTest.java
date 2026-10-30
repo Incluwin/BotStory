@@ -39,7 +39,7 @@ class BalrogProbeCommandTest {
 
     @AfterEach
     void restoreTheDefaultSwitch() {
-        EasyBalrogBodyBehavior.setTelegraphSkillActions(false);
+        EasyBalrogBodyBehavior.setTelegraphSkillActions(true);
     }
 
     /** T-T1: the body at 49% is exactly the HP that ServerMobAutonomyServiceTest's 145 cast tests use. */
@@ -143,7 +143,7 @@ class BalrogProbeCommandTest {
         run("hp", "-5", Integer.toString(BODY));
         run("hp", "half");
 
-        assertFalse(EasyBalrogBodyBehavior.telegraphSkillActions());
+        assertTrue(EasyBalrogBodyBehavior.telegraphSkillActions());
         assertEquals(3_210_000L, body.getHp());
         verify(gm, times(3)).yellowMessage(BalrogProbeCommand.USAGE);
     }
