@@ -4,6 +4,8 @@ import client.BotClient;
 import client.Character;
 import client.Client;
 import scripting.npc.NPCScriptManager;
+import server.ShopFactory;
+import server.mods.RepackMaps;
 
 import javax.script.ScriptEngine;
 
@@ -37,7 +39,8 @@ final class CosmicHeadlessNpcScriptGateway {
         try {
             synchronized (scripts) {
                 client.removeClickedNPC();
-                if (!scripts.start(client, npcId, npcObjectId, agent, prepared)) {
+                if (!scripts.start(client, npcId, npcObjectId, agent, prepared)
+                        && !startRepackTalk(scripts, client, agent, npcId, npcObjectId)) {
                     return false;
                 }
                 int advances = 0;
@@ -56,5 +59,17 @@ final class CosmicHeadlessNpcScriptGateway {
         } finally {
             engines.recordRun(prepared != null, System.nanoTime() - startedNs);
         }
+    }
+
+    /**
+     * As NPCTalkHandler answers a player's click: an NPC of the Community Repack's maps with no script of its own and no
+     * shop talks through npc/repack_talk.js (one of its String.wz lines; a town guide also offers the way back to Three
+     * Doors, server.mods.RepackGuide). Every other NPC without a script still fails as before.
+     */
+    private static boolean startRepackTalk(NPCScriptManager scripts, Client client, Character agent, int npcId,
+                                           int npcObjectId) {
+        return RepackMaps.listed(agent.getMapId())
+                && ShopFactory.getInstance().getShopForNPC(npcId) == null
+                && scripts.start(client, npcId, npcObjectId, "repack_talk", agent);
     }
 }

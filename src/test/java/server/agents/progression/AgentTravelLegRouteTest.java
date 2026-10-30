@@ -229,6 +229,46 @@ class AgentTravelLegRouteTest {
     }
 
     @Test
+    void everyArcaneRiverTownIsATempleKeepersDoorAndItsGuideLeadsBackToThreeDoors() {
+        Map<Integer, String> towns = Map.of(450001000, "Nameless Town", 450002000, "Chu Chu Village",
+                450003000, "Lachelein", 450005000, "Arcana", 450006130, "Trueffet Square",
+                450007040, "Esfera's Base Camp", 450009050, "Moonbridge's Outpost",
+                450011120, "the Labyrinth's Crash Site", 450012000, "World's Sorrow");
+        towns.forEach((town, name) -> {
+            List<String> there = legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                    100000000, town, Set.of(), leg -> true, RIDE_HOP_COST));
+            assertFalse(there.isEmpty(), () -> "Henesys reaches " + name);
+            assertTrue(there.get(there.size() - 1).startsWith("three-doors-to-"),
+                    () -> name + " is the last door the Temple Keeper opens: " + there);
+            List<String> back = legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                    town, 100000000, Set.of(), leg -> true, RIDE_HOP_COST));
+            assertFalse(back.isEmpty(), () -> name + " reaches Henesys");
+            assertTrue(back.get(0).endsWith("-to-three-doors"), () -> name + "'s guide leads back first: " + back);
+        });
+        assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(100000000, 450001000, Set.of(),
+                leg -> leg.npcId() != 2140000, RIDE_HOP_COST), "no portal leads into Arcane River");
+    }
+
+    @Test
+    void twilightPerionIsTheTempleKeepersDoorAndClaudineTheWayBackToThreeDoors() {
+        List<String> there = legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                100000000, 273050000, Set.of(), leg -> true, RIDE_HOP_COST));
+        assertEquals(List.of("leafre-station-to-the-temple-flight", "three-doors-to-twilight-perion"),
+                there.subList(there.size() - 2, there.size()),
+                "to the Tribal Refugee Camp by the Temple Keeper's door, not the Gate to the Future's roads");
+        assertFalse(AgentVictoriaTrainingRouteCatalog.ridePath(273050000, 100000000, Set.of(), leg -> true,
+                RIDE_HOP_COST).isEmpty(), "the camp reaches Henesys");
+
+        assertEquals(7, AgentVictoriaTrainingRouteCatalog.distance(273000000, 270000000),
+                "on foot the way back is the Gate to the Future's roads");
+        assertEquals(List.of("twilight-perion-to-three-doors"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                273000000, 270000000, Set.of(), leg -> true, 1)), "Claudine sends the rider straight to Three Doors");
+        assertEquals(List.of("twilight-perion-to-three-doors"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                273000000, 270000000, Set.of(AgentVictoriaTrainingRouteCatalog.edgeKey(273000000, 273010000)),
+                leg -> true, RIDE_HOP_COST)), "and with the road out shut she is the only way");
+    }
+
+    @Test
     void theTempleOfTimesRoadsOpenOneQuestAtATimeAsTheirPortalsDo() {
         Character newcomer = mock(Character.class);
         Set<Long> shut = AgentVictoriaRouteRuntime.withGates(Set.of(), newcomer);

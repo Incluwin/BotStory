@@ -18,6 +18,9 @@ param(
 # way to Southperry, where Shanks (22000, a travel leg) sails to Lith Harbor; nothing sails back. Mu Lung Dojo is its
 # entrance hall and So Gong's hall (925020000-925020001): the Dojo board in Mu Lung Temple (2091006) and the hall's exit
 # (dojang_exit) are travel legs; the floors behind So Gong are instances and stay out.
+# Arcane River (450xxxxxx, Community Repack maps) joins nothing on foot: the Temple Keeper at Three Doors (2140000) and
+# each town's guide back (repack_talk.js) are travel legs. Twilight Perion (273xxxxxx) is already inside Ossyria's
+# range; it has no portal back to Three Doors either, only its guide Claudine.
 
 $ErrorActionPreference = "Stop"
 
@@ -32,6 +35,7 @@ $groups = @(
     [ordered]@{ id = "masteria"; firstMapId = 682000000; endMapId = 682000001 },
     [ordered]@{ id = "amoria"; firstMapId = 670000000; endMapId = 670010001 },
     [ordered]@{ id = "amoria"; firstMapId = 680000000; endMapId = 680100000 },
+    [ordered]@{ id = "arcane-river"; firstMapId = 450000000; endMapId = 451000000 },
     [ordered]@{ id = "zipangu"; firstMapId = 800000000; endMapId = 810000000 },
     [ordered]@{ id = "mu-lung-dojo"; firstMapId = 925020000; endMapId = 925020002 }
 )

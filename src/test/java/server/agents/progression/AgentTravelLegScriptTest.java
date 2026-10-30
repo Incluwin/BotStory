@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import server.mods.RepackGuide;
 import server.mods.RepackMaps;
 import server.mods.ServerMods;
 
@@ -26,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -264,6 +266,22 @@ public class AgentTravelLegScriptTest {
         assertEquals(rupi.toMapId(), home.warpedTo, "with nothing saved Rupi sends you to Ellinia, Rooney's own town");
     }
 
+    @Test
+    void theTempleKeeperOpensTwilightPerionAndEveryArcaneTownAndEachTownsGuideLeadsBack() throws Exception {
+        Map<Integer, Integer> guides = Map.of(273000000, 2142107, 450001000, 3003111, 450002000, 3003150,
+                450003000, 3003202, 450005000, 3003324, 450006130, 3003467, 450007040, 3003533, 450009050, 3003570,
+                450011120, 3003799, 450012000, 3003952);
+        guides.forEach((town, guide) -> {
+            assertTrue(AgentTravelLegCatalog.legs().stream().anyMatch(leg -> leg.fromMapId() == 270000000
+                    && leg.npcId() == 2140000 && leg.toMapId() == town), () -> "the Temple Keeper's door to " + town);
+            assertTrue(AgentTravelLegCatalog.legs().stream().anyMatch(leg -> leg.fromMapId() == town
+                    && leg.npcId() == guide && leg.toMapId() == 270000000), () -> town + "'s guide back");
+            assertTrue(RepackMaps.listed(town) && RepackGuide.offersWayBack(town, guide), () -> town + ": " + guide);
+            assertFalse(Files.exists(Path.of("scripts", "npc", guide + ".js")),
+                    () -> guide + " has no script: it answers through repack_talk.js");
+        });
+    }
+
     private static AgentTravelLegCatalog.Leg leg(String id) {
         return AgentTravelLegCatalog.legs().stream().filter(leg -> leg.id().equals(id)).findFirst().orElseThrow();
     }
@@ -335,9 +353,10 @@ public class AgentTravelLegScriptTest {
     }
 
     /**
-     * As NPCScriptManager and the headless gateway do: start, then one action(1, 0, selection) per advance. A bot is no
-     * Agent operator (Shanks offers operators an administration menu first), so AgentAuthorityService answers no for
-     * the stub player, which is no Character.
+     * As NPCScriptManager and the headless gateway do: start, then one action(1, 0, selection) per advance. An NPC of
+     * the Community Repack's maps with no script of its own talks through repack_talk.js, as the gateway falls back
+     * for it (none of the legs' NPCs keeps a shop). A bot is no Agent operator (Shanks offers operators an
+     * administration menu first), so AgentAuthorityService answers no for the stub player, which is no Character.
      */
     private static void run(int npcId, Conversation cm, List<Integer> selections) throws Exception {
         ScriptEngine engine = engines().getEngineByName("graal.js");
@@ -348,7 +367,12 @@ public class AgentTravelLegScriptTest {
         engine.eval("var hostType = Java.type; Java.type = function (name) { return name === "
                 + "'server.agents.auth.AgentAuthorityService' ? { mayOperate: function () { return false; } }"
                 + " : hostType(name); };");
-        engine.eval(Files.readString(Path.of("scripts", "npc", npcId + ".js")));
+        Path file = Path.of("scripts", "npc", npcId + ".js");
+        if (!Files.exists(file) && RepackMaps.listed(cm.getMapId())) {
+            file = Path.of("scripts", "npc", "repack_talk.js");
+        }
+        cm.npc = npcId;
+        engine.eval(Files.readString(file));
         Invocable script = (Invocable) engine;
         script.invokeFunction("start");
         for (int advance = 0; !cm.disposed && advance < MAX_ADVANCES; advance++) {
@@ -396,6 +420,7 @@ public class AgentTravelLegScriptTest {
         final String entry;
         int mesos;
         int level = 120;
+        int npc;
         boolean disposed;
         Integer warpedTo;
         String startedEvent;
@@ -417,6 +442,10 @@ public class AgentTravelLegScriptTest {
 
         public int getMapId() {
             return player.getMapId();
+        }
+
+        public int getNpc() {
+            return npc;
         }
 
         public Object getClient() {

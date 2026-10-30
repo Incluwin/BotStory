@@ -65,10 +65,16 @@ Ellinia and Rupi back; only Ellinia's Rooney is listed, where Rupi's way back la
 Temple of Time's roads and Mushroom Castle's inner gates as gated scripted portals (each road's quest; quest 30000
 taken, quest 2324 done): open to any agent that has done them, as to a player. No bot does those quests yet.
 
+Closed on `fix/routes2-2026-10-30`: Twilight Perion and Arcane River. The bot gateway now falls back to `repack_talk.js`
+for an unscripted NPC without a shop on a Repack map, as `NPCTalkHandler` does for a player, so the town guides' way back
+to Three Doors works for a bot; the Temple Keeper's doors (Twilight Perion and the nine Arcane River towns) and each
+guide back are travel legs, and Arcane River (450xxxxxx) is the world graph's `arcane-river` group. Twilight Perion was
+reachable on foot before (the Gate to the Future's door, then its roads through 271010500 to 273010000), and its walk
+back (seven maps to Three Doors) is still cheaper than Claudine at the usual ride weight.
+
 | Where | Why |
 |---|---|
 | Cave of Life (Horntail) | Keroben (2081005) lets in only a dragon-shaped rider (no `hontale_morph` script on this server) or a holder of item 4001086, level 100+: an item gate the leg format cannot state (the bossing work enters its own way) |
-| Twilight Perion, Arcane River | the guides back answer only through `repack_talk.js`, which the bot gateway's `runNpcScript` does not fall back to; Arcane River is in no graph group |
 
 ## 3. Regions and fields
 
