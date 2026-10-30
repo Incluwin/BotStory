@@ -26,9 +26,11 @@ import server.life.Element;
 
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Skill {
     private final int id;
@@ -154,6 +156,22 @@ public class Skill {
 
     public void setAfterimageBox(String weaponAfterimage, Rectangle box) {
         afterimageBoxes.put(weaponAfterimage, new Rectangle(box));
+    }
+
+    private final Map<Integer, Set<Integer>> finalAttacks = new HashMap<>();
+
+    /**
+     * 2026-10-30: the Final Attacks this skill sets off, each with the weapon types it needs (item id / 10000 % 100,
+     * e.g. 31 a one-handed axe), as Skill.wz lists them under {@code finalAttack}: Power Strike lists 1100003 for 31
+     * and 41. A v83 client follows such a skill with that Final Attack, at its prop, when the attacker has it and holds
+     * one of those weapons, and follows no other attack with one. Empty for a skill that lists none.
+     */
+    public Map<Integer, Set<Integer>> getFinalAttacks() {
+        return Collections.unmodifiableMap(finalAttacks);
+    }
+
+    public void setFinalAttack(int finalAttackId, Set<Integer> weaponTypes) {
+        finalAttacks.put(finalAttackId, Set.copyOf(weaponTypes));
     }
 
     public void setAnimationTime(int time) {
