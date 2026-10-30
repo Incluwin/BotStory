@@ -37,8 +37,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * An Agent at (100,200) on a map of plain monsters (Mob.wz 100100, the snail) whose attacks go through the real
- * AgentCombatAttackRuntime with only the packet route, the delayed-action scheduler and the alert stance stubbed.
- * Every attack the route is handed is kept, in order, and every delayed action waits to be run.
+ * AgentCombatAttackRuntime with only the packet route, the delayed-action scheduler, the alert stance and the Final
+ * Attack roll stubbed. Every attack the route is handed is kept, in order, and every delayed action waits to be run.
  */
 final class AgentProcFixture {
     static final int Y = 200;
@@ -58,6 +58,7 @@ final class AgentProcFixture {
     final AgentRuntimeEntry entry;
     private final Map<Integer, Integer> skills = new HashMap<>();
     private final WeaponType weaponType;
+    private double chance = 0.0;
 
     AgentProcFixture(Job job, int weaponItemId, WeaponType weaponType) {
         this.weaponType = weaponType;
@@ -108,6 +109,12 @@ final class AgentProcFixture {
         return this;
     }
 
+    /** The roll every Final Attack of this fixture makes against its prop. */
+    AgentProcFixture chance(double chance) {
+        this.chance = chance;
+        return this;
+    }
+
     /** A live snail standing at {@code x} on the Agent's floor. */
     Monster monster(int objectId, int x) {
         Monster mob = mock(Monster.class);
@@ -149,7 +156,9 @@ final class AgentProcFixture {
                      Mockito.mockStatic(AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS);
              MockedStatic<AgentSchedulerRuntime> scheduler =
                      Mockito.mockStatic(AgentSchedulerRuntime.class, Mockito.CALLS_REAL_METHODS);
-             MockedStatic<AgentCombatAlertRuntime> alert = Mockito.mockStatic(AgentCombatAlertRuntime.class)) {
+             MockedStatic<AgentCombatAlertRuntime> alert = Mockito.mockStatic(AgentCombatAlertRuntime.class);
+             MockedStatic<AgentFinalAttackProc> finalAttack =
+                     Mockito.mockStatic(AgentFinalAttackProc.class, Mockito.CALLS_REAL_METHODS)) {
             attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(weaponType);
             attacks.when(() -> AgentAttackExecutionProvider.applyAttackRoute(
                             any(AgentAttackRoute.class), any(AbstractDealDamageHandler.AttackInfo.class), eq(bot)))
@@ -165,6 +174,7 @@ final class AgentProcFixture {
                         scheduled.add(new Scheduled(invocation.getArgument(1), invocation.getArgument(2)));
                         return later;
                     });
+            finalAttack.when(AgentFinalAttackProc::chance).thenReturn(chance);
             return body.get();
         }
     }

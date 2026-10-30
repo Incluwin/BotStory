@@ -274,6 +274,46 @@ public final class AgentAttackExecutionProvider {
         return sampleAttackAction(drawnActions, drawnActions.get(0));
     }
 
+    public record FinalAttackSwing(String action, int bodyActionId, int hitDelayMs, int animationMs) {
+    }
+
+    /**
+     * 2026-10-30: the swing a v83 client draws a warrior's Final Attack with: the final ("F") form of one of the
+     * weapon's basic swings that the weapon's sprite has (a one-handed axe's stabO1-2 and swingO1-3 give stabOF and
+     * swingOF; a real client's 15 Final Attacks after Power Strike were 10 swingOF and 5 stabOF), at the weapon's attack
+     * speed, with that swing's own hit frame and length. Null when the weapon has no final swing: a bow or crossbow.
+     */
+    public static FinalAttackSwing finalAttackSwing(Character bot) {
+        AgentAttackDataProvider.NormalAttackProfile profile = bot == null ? null : equippedNormalAttackProfile(bot);
+        if (profile == null) {
+            return null;
+        }
+        WeaponType weaponType = getEquippedWeaponType(bot);
+        AgentAttackDataProvider provider = AgentAttackDataProvider.getInstance();
+        List<String> finalSwings = new ArrayList<>();
+        for (String action : resolveAttackActions(provider.getBasicAttackSpec(profile.getAttack(), weaponType),
+                profile.getSourceActions())) {
+            String finalSwing = finalFormOf(action);
+            if (finalSwing != null && profile.getSourceActions().contains(finalSwing)) {
+                finalSwings.add(finalSwing);
+            }
+        }
+        if (finalSwings.isEmpty()) {
+            return null;
+        }
+        String action = sampleAttackAction(finalSwings, finalSwings.get(0));
+        SkillAttackTiming timing = resolveSkillAttackTiming(action, profile, 0, resolveWeaponAttackSpeed(bot),
+                defaultHitDelayMs(0), 0);
+        return new FinalAttackSwing(action, bodyActionId(action, null, weaponType), timing.hitDelayMs(),
+                timing.cooldownMs());
+    }
+
+    /** The final form of a basic swing ("swingO1" to "swingOF", "stabT2" to "stabTF"); null for a shot or a cast. */
+    static String finalFormOf(String action) {
+        return action != null && action.matches("(swing|stab)[OTP]\\d")
+                ? action.substring(0, action.length() - 1) + "F" : null;
+    }
+
     static String equippedWeaponAfterimage(Character bot) {
         AgentAttackDataProvider.NormalAttackProfile profile = bot != null ? equippedNormalAttackProfile(bot) : null;
         return profile != null ? profile.getAfterImage() : null;

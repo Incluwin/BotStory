@@ -189,8 +189,9 @@ public final class AgentCombatAttackRuntime {
         AgentAranCombo.countHits(bot, attackPlan.skillId, (int) attack.targets.values().stream()
                 .filter(target -> target.damageLines().stream().anyMatch(damage -> damage > 0)).count());
         AgentCombatAlertRuntime.markAlerted(entry);
-        // what a v83 client sends on its own after this swing: a Spark
+        // what a v83 client sends on its own after this swing: a Spark now, a Final Attack once the swing is done
         AgentSparkProc.afterSwing(entry, bot, attackPlan, primaryTarget);
+        AgentFinalAttackProc.afterSwing(entry, bot, attackPlan);
         return AgentAttackTransactionResult.committed(
                 bot.getMapId(),
                 attackPlan.skillId,
@@ -201,11 +202,11 @@ public final class AgentCombatAttackRuntime {
     }
 
     /**
-     * 2026-10-30: sends {@code followUp}, an attack a v83 client sends on its own after a swing (AgentSparkProc), at its
-     * targets as listed (none is fine: the client sends it so too), the n-th target's lines {@code delaysMs[n]} after.
-     * No readiness gate: the swing that set it off was the decision and holds the attack lock. The same handler, damage
-     * and boss scaling as a swing; the skill usage histogram counts it under its own id, and the learner does not hear
-     * of it.
+     * 2026-10-30: sends {@code followUp}, an attack a v83 client sends on its own after a swing (AgentSparkProc,
+     * AgentFinalAttackProc), at its targets as listed (none is fine: the client sends it so too), the n-th target's
+     * lines {@code delaysMs[n]} after. No readiness gate: the swing that set it off was the decision and holds the
+     * attack lock. The same handler, damage and boss scaling as a swing; the skill usage histogram counts it under its
+     * own id, and the learner does not hear of it.
      */
     static AgentAttackTransactionResult commitFollowUp(AgentRuntimeEntry entry, Character bot,
                                                        AgentAttackPlan followUp, List<Integer> delaysMs) {

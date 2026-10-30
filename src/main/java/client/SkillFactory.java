@@ -86,8 +86,10 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SkillFactory {
     private static volatile Map<Integer, Skill> skills = new HashMap<>();
@@ -418,6 +420,16 @@ public class SkillFactory {
                 if (box != null) {
                     ret.setAfterimageBox(weaponAfterimage.getName(), box);
                 }
+            }
+        }
+        Data finalAttack = data.getChildByPath("finalAttack");
+        if (finalAttack != null) {
+            for (Data finalAttackSkill : finalAttack) {
+                Set<Integer> weaponTypes = new HashSet<>();
+                for (Data weaponType : finalAttackSkill) {
+                    weaponTypes.add(DataTool.getInt(weaponType, 0));
+                }
+                ret.setFinalAttack(Integer.parseInt(finalAttackSkill.getName()), weaponTypes);
             }
         }
         ret.setSummonAttack(loadSummonAttack(data.getChildByPath("summon/attack1")));
