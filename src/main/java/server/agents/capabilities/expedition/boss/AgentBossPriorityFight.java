@@ -74,11 +74,30 @@ import java.util.function.Supplier;
  *
  * <p>2026-10-16: a melee member whose attacks cannot reach its preferred part from the floor grinds it from one of the
  * boss's {@code ledges} that names it, when they reach from there ({@link #ledge}: Pink Bean's Hugin and Munin).</p>
+ *
+ * <p>2026-10-29: any member whose attacks cannot reach its preferred part from where it stands grinds it from the
+ * nearest point around the part from which they do, when that point lies off its own platform ({@link #reachStand}:
+ * CWKPQ's Margana on her throne, a part no ledge names).</p>
  */
 public final class AgentBossPriorityFight implements AgentBossFight {
     private static final Logger log = LoggerFactory.getLogger(AgentBossPriorityFight.class);
+    /** {@link #standCandidates}: how far beside a part's body, and how far apart, stand points are sought. */
+    static final int STAND_SPAN_PX = 400;
+    static final int STAND_STEP_PX = 20;
+    /** {@link #standCandidates}: from this far above the body's top down to this far below its bottom. */
+    static final int STAND_ABOVE_PX = 100;
+    static final int STAND_BELOW_PX = 300;
+    /** {@link #standCandidates}: the most platforms one column holds, and the least height between two of them. */
+    static final int STAND_LAYERS = 6;
+    static final int STAND_LAYER_GAP_PX = 30;
+    /** {@link #reachStand}: a part that moved this far from where its stand was chosen gets a new one. */
+    static final int STAND_DRIFT_PX = 80;
+    /** {@link #reachStand}: after finding no stand point to use, a member looks again this much later. */
+    static final long STAND_RETRY_MS = 3_000L;
     private final String key;
     private final Ports ports;
+    /** Fighter id -> the stand point it fights its preferred part from ({@link #reachStand}). */
+    private final Map<Integer, Stand> stands = new HashMap<>();
     /** Fighter id -> when it last took the stage portal. */
     private final Map<Integer, Long> portalTries = new HashMap<>();
     /** Fighter id -> the band its horizontal boundary holds now, and on which map: {minX, maxX, mapId}. */
@@ -140,9 +159,10 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             boolean melee = ports.melee(member);
             Set<Integer> live = cleared ? Set.of() : liveByMap.computeIfAbsent(map, this::liveIds);
             AgentBossRules.Focus step = cleared ? null : AgentBossRules.focusStep(rules, live);
+            int[] band = null;
             if (cleared || rules == null) {
                 release(gateway, entry, member.getId());
-            } else if (keepOut(gateway, entry, member, map, band(map, member, rules, melee, step))) {
+            } else if (keepOut(gateway, entry, member, map, band = band(map, member, rules, melee, step))) {
                 continue;
             }
             if (step != null) {
@@ -152,9 +172,11 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             AgentBossRules.Preferences preferences = cleared ? null
                     : AgentBossRules.preferences(rules, live, melee);
             if (preferences == null || preferences.isEmpty()) {
+                stands.remove(member.getId());
                 gateway.stop(entry);
-            } else if (!melee || !ledge(gateway, entry, member, map, rules, preferences,
-                    ordinal(fighters, member, map))) {
+            } else if (!(melee && ledge(gateway, entry, member, map, rules, preferences,
+                    ordinal(fighters, member, map)))
+                    && !reachStand(gateway, entry, member, map, preferences, band, nowMs)) {
                 gateway.grind(entry, preferences.preferred(), preferences.fallback());
             }
         }
@@ -210,6 +232,170 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         }
         Rectangle body = ports.body(part);
         return gateway.groundPoint(map, new Point(body == null ? origin.x : (int) body.getCenterX(), origin.y));
+    }
+
+    /** A stand point chosen for part {@code partOid} while it stood at {@code partAt}; {@code at} null: none used. */
+    private record Stand(int partOid, Point partAt, Point at, long chosenMs) {
+    }
+
+    /**
+     * 2026-10-29: a member whose attacks cannot reach its one preferred part from anywhere on its own platform
+     * ({@link Ports#reaches}) grinds it from the nearest stand point off it that does ({@link #reachingStands}), the
+     * rest of its preferences the fallback; true when it does. A member that reaches from where it stands, or from a
+     * point of its own platform (the grind walks it along its floor), grinds as before; with no such point anywhere it
+     * looks again after STAND_RETRY_MS. Once sent, it keeps to that point while the part lives near where it stood, so
+     * standing there (from where it now reaches) does not hand it back to a grind that takes the nearest monster below.
+     *
+     * <p>CWKPQ C9 run 2 (2026-10-23): Margana (9400590), first in the cwkpq target priority because she heals the
+     * council within 800 px, stood on the throne platform (y=1) for eight minutes at 98% to 87% while every member on
+     * the hall floor (y=276) killed Rellik and Red Nirg beside it; no box reaches 280 px up, so the grind took the
+     * nearest master. A player party climbs to her first. Pink Bean's Hugin and Munin are the same case for a member
+     * no ledge serves.</p>
+     */
+    private boolean reachStand(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member,
+                               MapleMap map, AgentBossRules.Preferences preferences, int[] band, long nowMs) {
+        int id = member.getId();
+        Point at = member.getPosition();
+        Monster part = preferences.preferred().size() != 1 || at == null ? null
+                : nearestLive(map, preferences.preferred().iterator().next(), at);
+        Stand held = stands.get(id);
+        if (part == null || part.getPosition() == null) {
+            stands.remove(id);
+            return false;
+        }
+        if (held != null && held.partOid() != part.getObjectId()) {
+            held = null;
+        }
+        Point ground = gateway.groundPoint(map, at);
+        Point foot = ground != null ? ground : at;
+        Point stand;
+        if (held != null && held.at() != null) {
+            boolean stayed = held.partAt().distanceSq(part.getPosition()) <= (long) STAND_DRIFT_PX * STAND_DRIFT_PX;
+            if (stayed && inBand(band, held.at().x) && ports.reaches(member, part, held.at())) {
+                anchor(gateway, entry, held.at(), part, preferences);
+                return true;
+            }
+            // the part moved, or the point no longer serves: a new one, from where it stands when that reaches
+            if (inBand(band, foot.x) && ports.reaches(member, part, foot)) {
+                stand = foot;
+            } else {
+                Point[] found = reachingStands(gateway, entry, member, map, part, foot, band, true);
+                stand = found == null ? null : found[0] != null ? found[0] : found[1];
+            }
+            if (stand == null) {
+                stands.remove(id);
+                return false;
+            }
+        } else {
+            if (held != null && nowMs - held.chosenMs() < STAND_RETRY_MS) {
+                return false;
+            }
+            if (ports.reaches(member, part, foot)) {
+                stands.remove(id);
+                return false;
+            }
+            Point[] found = reachingStands(gateway, entry, member, map, part, foot, band, false);
+            stand = found == null || found[0] != null ? null : found[1];
+            if (stand == null) {
+                stands.put(id, new Stand(part.getObjectId(), new Point(part.getPosition()), null, nowMs));
+                return false;
+            }
+        }
+        stands.put(id, new Stand(part.getObjectId(), new Point(part.getPosition()), stand, nowMs));
+        anchor(gateway, entry, stand, part, preferences);
+        return true;
+    }
+
+    private static void anchor(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Point stand, Monster part,
+                               AgentBossRules.Preferences preferences) {
+        gateway.grindFromAnchor(entry, stand, Set.of(part.getId()), preferences.fallback());
+    }
+
+    /** The live monster with id {@code mobId} on {@code map} nearest {@code at}; null with none. */
+    private Monster nearestLive(MapleMap map, int mobId, Point at) {
+        Monster nearest = null;
+        for (Monster monster : ports.monsters(map)) {
+            if (monster.isAlive() && monster.getId() == mobId && monster.getPosition() != null && (nearest == null
+                    || at.distanceSq(monster.getPosition()) < at.distanceSq(nearest.getPosition()))) {
+                nearest = monster;
+            }
+        }
+        return nearest;
+    }
+
+    /**
+     * The stand points ({@link #standCandidates}) inside {@code band} (null: anywhere) nearest {@code foot} from which
+     * the member's attacks reach {@code part}: {on its own platform, off it and walkable to
+     * ({@link PrimitiveCapabilityGateway#canReach})}, either null when none. The second is sought only without the
+     * first, unless {@code both}. Null when the part has no body box to aim at.
+     */
+    private Point[] reachingStands(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member,
+                                   MapleMap map, Monster part, Point foot, int[] band, boolean both) {
+        Rectangle body = ports.body(part);
+        if (body == null) {
+            return null;
+        }
+        List<Point> candidates = standCandidates(gateway, map, body);
+        candidates.sort(Comparator.comparingDouble(foot::distanceSq));
+        List<Point> others = new ArrayList<>();
+        Point own = null;
+        for (Point candidate : candidates) {
+            if (!inBand(band, candidate.x)) {
+                continue;
+            }
+            if (!samePlatform(member, map, foot, candidate)) {
+                others.add(candidate);
+            } else if (own == null && ports.reaches(member, part, candidate)) {
+                own = candidate;
+            }
+        }
+        Point other = null;
+        for (int i = 0; other == null && (own == null || both) && i < others.size(); i++) {
+            Point candidate = others.get(i);
+            if (ports.reaches(member, part, candidate) && gateway.canReach(entry, member, candidate)) {
+                other = candidate;
+            }
+        }
+        return new Point[] {own, other};
+    }
+
+    /**
+     * Ground points around {@code body}: every platform under each column STAND_STEP_PX apart from STAND_SPAN_PX left
+     * of the body to STAND_SPAN_PX right of it, from STAND_ABOVE_PX above its top down to STAND_BELOW_PX below its
+     * bottom (at most STAND_LAYERS a column, STAND_LAYER_GAP_PX apart at least), as
+     * {@link PrimitiveCapabilityGateway#groundPoint} finds them.
+     */
+    static List<Point> standCandidates(PrimitiveCapabilityGateway gateway, MapleMap map, Rectangle body) {
+        List<Point> candidates = new ArrayList<>();
+        Set<Point> seen = new HashSet<>();
+        int lowest = body.y + body.height + STAND_BELOW_PX;
+        for (int x = body.x - STAND_SPAN_PX; x <= body.x + body.width + STAND_SPAN_PX; x += STAND_STEP_PX) {
+            int from = body.y - STAND_ABOVE_PX;
+            for (int layer = 0; layer < STAND_LAYERS; layer++) {
+                Point ground = gateway.groundPoint(map, new Point(x, from));
+                if (ground == null || ground.y > lowest || ground.y < from - STAND_LAYER_GAP_PX) {
+                    break;
+                }
+                if (seen.add(ground)) {
+                    candidates.add(ground);
+                }
+                from = ground.y + STAND_LAYER_GAP_PX;
+            }
+        }
+        return candidates;
+    }
+
+    private static boolean inBand(int[] band, int x) {
+        return band == null || (x >= band[0] && x <= band[1]);
+    }
+
+    /** True when {@code stand} lies on the platform under {@code foot}: in its region's span, or at its height. */
+    private boolean samePlatform(Character member, MapleMap map, Point foot, Point stand) {
+        if (Math.abs(stand.y - foot.y) > STAND_LAYER_GAP_PX) {
+            return false;
+        }
+        int[] span = ports.floorSpan(member, map, foot);
+        return span == null ? stand.y == foot.y : stand.x >= span[0] && stand.x <= span[1];
     }
 
     @Override

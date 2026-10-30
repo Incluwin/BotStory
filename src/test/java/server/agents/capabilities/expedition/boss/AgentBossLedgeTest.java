@@ -17,13 +17,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.combat.AgentCombatReach;
 import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.InventoryGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.integration.cosmic.CosmicPrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
 import server.life.MonsterStats;
@@ -39,6 +42,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
@@ -55,6 +60,10 @@ import static org.mockito.Mockito.when;
  * loadouts as the database held them on 2026-10-16 (sword 1302081 for the Heroes and the Paladin, spear 1432038 for
  * the Dark Knights). The birds' bodies hang 99 px above the floor. Orrin, the Paladin, swung 0-3 times a minute against
  * Hugin on the floor and 25-55 on the y=-99 ledge beside him, where no rule sent him; the Heroes reach with Brandish.
+ *
+ * <p>2026-10-29: on the real battle map's footholds (Map.wz 270050100), a member that no ledge serves goes to the
+ * nearest point from which it reaches the bird (AgentBossPriorityFight.reachStand), and one that reaches from its own
+ * floor walks in as before.</p>
  */
 class AgentBossLedgeTest {
     private static final int BATTLE = 270_050_100;
@@ -83,9 +92,12 @@ class AgentBossLedgeTest {
     private MockedStatic<AgentInventoryGatewayRuntime> inventory;
     private AgentBossPriorityFight fight;
 
+    private static MapleMap footholds;
+
     @BeforeAll
     static void loadSkills() {
         SkillFactory.loadAllSkills();
+        footholds = AgentNavigationMapLoader.loadMapGeometry(BATTLE);
     }
 
     @BeforeEach
@@ -97,11 +109,10 @@ class AgentBossLedgeTest {
         inventory = mockStatic(AgentInventoryGatewayRuntime.class);
         inventory.when(AgentInventoryGatewayRuntime::inventory).thenReturn(items);
         when(battle.getId()).thenReturn(BATTLE);
-        // the floor lies at y=-42 under every point the fight asks about below the ledges
-        when(gateway.groundPoint(any(), any())).thenAnswer(call -> {
-            Point at = call.getArgument(1);
-            return at.y < -90 ? new Point(at) : new Point(at.x, -42);
-        });
+        // the battle map's own footholds: the floor at y=-42, the ledges beside the birds
+        when(gateway.groundPoint(any(), any())).thenAnswer(call ->
+                CosmicPrimitiveCapabilityGateway.INSTANCE.groundPoint(footholds, call.getArgument(1)));
+        when(gateway.canReach(any(), any(), any())).thenReturn(true);
         fight = new AgentBossPriorityFight("pinkbean", new AgentBossPriorityFight.Ports() {
             @Override
             public PrimitiveCapabilityGateway gateway() {
@@ -191,26 +202,50 @@ class AgentBossLedgeTest {
     }
 
     @Test
-    void aRangedMemberIsNeverSentToALedge() {
+    void aRangedMemberIsSentToNoLedgeButToTheNearestPointFromWhichItReaches() {
         mobs(HUGIN, PINK_BEAN);
         AgentRuntimeEntry notMelee = member(10, Job.PALADIN, SWORD, PALADIN, false);
 
         tick(10);
 
-        verify(gateway).grind(notMelee, Set.of(HUGIN), Set.of(PINK_BEAN));
-        verify(gateway, never()).grindFromAnchor(any(), any(), anySet(), anySet());
+        Point stand = anchorOf(notMelee);
+        assertNotEquals(HUGIN_LEDGE, stand);
+        assertTrue(AgentCombatReach.reachesFrom(characters.get(10), PALADIN, monsters.getFirst(), stand), "" + stand);
+        verify(gateway).grindFromAnchor(notMelee, stand, Set.of(HUGIN), Set.of(PINK_BEAN));
+        verify(gateway, never()).grind(eq(notMelee), anySet(), anySet());
     }
 
     @Test
-    void aLedgeFromWhichTheMemberStillCannotReachIsNotUsed() {
+    void aLedgeFromWhichTheMemberStillCannotReachGivesWayToAPointFromWhichItDoes() {
         rules(List.of(new AgentBossRules.Anchor(-560, -99, List.of(HUGIN))));
         mobs(HUGIN);
         AgentRuntimeEntry orrin = member(10, Job.PALADIN, SWORD, PALADIN, true);
 
         tick(10);
 
-        verify(gateway).grind(orrin, Set.of(HUGIN), Set.of());
+        Point stand = anchorOf(orrin);
+        assertNotEquals(new Point(-560, -99), stand);
+        assertTrue(stand.y < -42, "off the floor: " + stand);
+        assertTrue(AgentCombatReach.reachesFrom(characters.get(10), PALADIN, monsters.getFirst(), stand), "" + stand);
+        verify(gateway, never()).grind(eq(orrin), anySet(), anySet());
+    }
+
+    @Test
+    void aMemberThatCanReachFromItsOwnFloorWalksInAsBefore() {
+        mobs(HUGIN);
+        AgentRuntimeEntry garrick = member(11, Job.HERO, SWORD, HERO, true);
+        when(characters.get(11).getPosition()).thenReturn(new Point(700, -42));   // far along the floor
+
+        tick(11);
+
+        verify(gateway).grind(garrick, Set.of(HUGIN), Set.of());
         verify(gateway, never()).grindFromAnchor(any(), any(), anySet(), anySet());
+    }
+
+    private Point anchorOf(AgentRuntimeEntry entry) {
+        ArgumentCaptor<Point> stand = ArgumentCaptor.forClass(Point.class);
+        verify(gateway).grindFromAnchor(eq(entry), stand.capture(), anySet(), anySet());
+        return stand.getValue();
     }
 
     @Test
