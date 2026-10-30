@@ -32,6 +32,8 @@ import server.agents.plans.AgentScriptItemActionService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.simulation.AgentSimulationState;
+import server.agents.capabilities.supplies.AgentPotionService;
+import org.mockito.Mockito;
 import server.life.Monster;
 import server.maps.FootholdTree;
 import server.maps.MapItem;
@@ -49,6 +51,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -128,6 +132,11 @@ final class LpqTickFixture implements AutoCloseable {
         loot = open(AgentGrindLootStateRuntime.class);
         lootInhibit = open(AgentInventoryStateRuntime.class);
         dialogue = open(AgentLpqDialogue.class);
+        // Stage 9's dry rester asks its party through the generic potion share, which reads runtime state these
+        // mocked entries don't carry; its own tests cover it. Everything else in AgentPotionService runs for real.
+        MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class, Mockito.CALLS_REAL_METHODS);
+        statics.add(potions);
+        potions.when(() -> AgentPotionService.requestPotShareAt(any(), any(), anyBoolean(), anyLong())).thenReturn(false);
         when(event.getName()).thenReturn("LudiPQ_test");
         when(event.getMapInstance(anyInt())).thenAnswer(call -> map(call.getArgument(0)));
         when(event.isTimerStarted()).thenReturn(true);
