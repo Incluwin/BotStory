@@ -14,6 +14,7 @@ import server.agents.capabilities.supplies.AgentPotionRecoveryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSkillConsumablePolicy;
 import server.agents.capabilities.supplies.AgentSupplyConfig;
+import server.agents.capabilities.supplies.AgentSupplyProcurementRuntime;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 
 import client.Character;
@@ -141,6 +142,12 @@ public final class AgentShopService {
     public static void onMapChange(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
         clearShopState(entry);
         if (bot == null || bot.getMap() == null) {
+            return;
+        }
+        if (AgentSupplyProcurementRuntime.travellingPast(entry, bot.getMapId())) {
+            // on its way to its supplier: a shop it passes is not its stop. Live 10-25..29, supply trips to Ludibrium's
+            // potion shop 221000200 stopped at the Gumball Machine on 221021600, whose counter no walk reaches, and
+            // timed out there ("never reached the shop NPC") before walking on
             return;
         }
 
