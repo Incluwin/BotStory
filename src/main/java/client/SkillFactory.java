@@ -82,6 +82,8 @@ import provider.wz.WZFiles;
 import server.StatEffect;
 import server.life.Element;
 
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -405,14 +407,32 @@ public class SkillFactory {
         if (afterimage != null) {
             for (Data weaponAfterimage : afterimage) {
                 List<String> actions = new ArrayList<>();
+                Rectangle box = null;
                 for (Data action : weaponAfterimage) {
                     actions.add(action.getName());
+                    if (box == null) {
+                        box = afterimageBox(action);
+                    }
                 }
                 ret.setAfterimageActions(weaponAfterimage.getName(), actions);
+                if (box != null) {
+                    ret.setAfterimageBox(weaponAfterimage.getName(), box);
+                }
             }
         }
         ret.setSummonAttack(loadSummonAttack(data.getChildByPath("summon/attack1")));
         return ret;
+    }
+
+    /** The lt/rb box under one afterimage action node, as stored (facing left); null without both. */
+    static Rectangle afterimageBox(Data action) {
+        Data lt = action.getChildByPath("lt");
+        Data rb = action.getChildByPath("rb");
+        if (lt == null || rb == null || !(lt.getData() instanceof Point l) || !(rb.getData() instanceof Point r)
+                || r.x <= l.x || r.y <= l.y) {
+            return null;
+        }
+        return new Rectangle(l.x, l.y, r.x - l.x, r.y - l.y);
     }
 
     private static Skill.SummonAttack loadSummonAttack(Data attack) {

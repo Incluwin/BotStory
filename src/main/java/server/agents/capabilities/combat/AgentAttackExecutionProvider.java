@@ -274,7 +274,7 @@ public final class AgentAttackExecutionProvider {
         return sampleAttackAction(drawnActions, drawnActions.get(0));
     }
 
-    private static String equippedWeaponAfterimage(Character bot) {
+    static String equippedWeaponAfterimage(Character bot) {
         AgentAttackDataProvider.NormalAttackProfile profile = bot != null ? equippedNormalAttackProfile(bot) : null;
         return profile != null ? profile.getAfterImage() : null;
     }
