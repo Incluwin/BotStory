@@ -113,6 +113,28 @@ class CompanionPartyQuestServiceTest {
         }
     }
 
+    /** Found 2026-10-02: Lakelis kept seating Garrick, who held no weapon he could fight with, so he never hit. */
+    @Test
+    void aCompanionWithNoWeaponItCanFightWithWaitsOutside() {
+        fx.ready();
+        fx.service.armedCheck(bot -> bot.getId() != 902);
+
+        assertEquals(List.of(new LineupPlan.Waiting(902, "SilentSin", DeskLines.NO_WEAPON)), waiting());
+
+        fx.service.armedCheck(bot -> true);
+        assertEquals(List.of(), waiting(), "armed again: it goes in");
+    }
+
+    @Test
+    void aBareWeaponSlotIsNoWeaponToFightWith() {
+        Character bare = mock(Character.class);
+        client.inventory.Inventory equipped = mock(client.inventory.Inventory.class);
+        when(bare.getInventory(client.inventory.InventoryType.EQUIPPED)).thenReturn(equipped);
+
+        assertFalse(CompanionPartyQuestService.armed(bare));
+        assertTrue(CompanionPartyQuestService.armed(mock(Character.class)), "equipment it cannot read counts as armed");
+    }
+
     // ---- ammo: the desk counts it, the companion's own restock buys it (user 2026-10-07) -----
 
     @Test
