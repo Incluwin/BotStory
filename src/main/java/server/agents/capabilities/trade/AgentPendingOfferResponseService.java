@@ -78,9 +78,13 @@ public final class AgentPendingOfferResponseService {
         return false;
     }
 
+    /**
+     * A reply to an offer and nothing else, as one bot's offer takes it ({@link AgentOfferService#isPendingOfferResponse}).
+     * Found 2026-09-23: with two bots offering loot, any line with a yes or no word in it ("ok follow me", "no stop")
+     * got this question instead of reaching the bots.
+     */
     static boolean looksLikeConfirmation(String message) {
-        String normalized = message.trim().toLowerCase();
-        return normalized.matches(".*\\b(yes|yep|yeah|yea|y|ok|sure|confirm|no|nope|nah|nvm|never\\s*mind|dont|don't|not\\s+now|skip)\\b.*");
+        return AgentOfferService.isPendingOfferResponse(message);
     }
 
 }
