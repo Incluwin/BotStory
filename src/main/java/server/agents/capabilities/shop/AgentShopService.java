@@ -12,6 +12,7 @@ import server.agents.capabilities.shop.AgentShopPotionPolicy;
 import server.agents.capabilities.supplies.AgentBuffConsumableSupplyPolicy;
 import server.agents.capabilities.supplies.AgentPotionInventoryPolicy;
 import server.agents.capabilities.supplies.AgentPotionRecoveryPolicy;
+import server.agents.capabilities.supplies.AgentPotionReserve;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSkillConsumablePolicy;
 import server.agents.capabilities.supplies.AgentSupplyConfig;
@@ -2022,8 +2023,20 @@ public final class AgentShopService {
         current = appendBuyReport(current, report, "MP pots", quiet);
         bought[0] = hpBought;
         bought[1] = mpBought;
+        // What the counter left, as an ordinary trip judges it (AgentPotionReserve): its reserve met, the carry limit
+        // or the visit's allowance bought. Live 10-29, 10 of 54 ordinary trips were given up "still short of the
+        // restock target" by a potion or two (Neus 8700/8748 MP, Bevaka 26700/27204): low on MP, it drank one the
+        // moment it had them (AgentPotionService low top-up), before its trip looked. The trip counts this, not what
+        // is left.
+        AgentShopStateRuntime.notePotionsRestoredAtCounter(sequence.entry(),
+                restoredAtCounter(bot, AgentResourceCategory.HP_POTION, hpBought),
+                restoredAtCounter(bot, AgentResourceCategory.MP_POTION, mpBought));
         // Last, with what is left, a duty holder tops up toward its buy target (BUY_TO_PERCENT of the standard).
         return buyReadinessFloor(current, shop, hpPotion, mpPotion, minimumMesoReserve, bought, true);
+    }
+
+    private static boolean restoredAtCounter(Character bot, AgentResourceCategory kind, int boughtThisVisit) {
+        return AgentPotionReserve.of(bot, kind).met() || AgentPotionPurchasePolicy.visitLimitReached(boughtThisVisit);
     }
 
     /**
@@ -2612,15 +2625,16 @@ public final class AgentShopService {
         }
         int[] counts = AgentPotionService.countPotions(bot);
         int carriedQuantity = forHp ? counts[0] : counts[1];
+        int maxStat = forHp ? bot.getCurrentMaxHp() : bot.getCurrentMaxMp();
         int quantity = AgentPotionPurchasePolicy.quantityToTarget(
                 potionRecoveryCapacity(bot, forHp),
                 carriedQuantity,
                 potion.recovery.primary(),
-                forHp ? bot.getCurrentMaxHp() : bot.getCurrentMaxMp(),
+                maxStat,
                 reserveBars,
                 alreadyBoughtThisVisit,
                 applyMinimumPurchase);
-        return buyFixedCostItem(
+        AgentShopBuyReport report = buyFixedCostItem(
                 bot,
                 shop,
                 potion,
@@ -2628,6 +2642,29 @@ public final class AgentShopService {
                 100,
                 minimumMesoReserve,
                 maximumSpend);
+        logPotionStop(bot, potion, forHp, reserveBars, maxStat, quantity, room, report);
+        return report;
+    }
+
+    /**
+     * Logs why a reserve-bar potion purchase stopped while the reserve is still short (none once it is met): the
+     * shop refused the rest for mesos, Use room or another cause, the Use room the visit keeps beside the run's
+     * slot, or the per-visit or carry limit.
+     */
+    private static void logPotionStop(Character bot, ShopSlotItem potion, boolean forHp, double reserveBars,
+                                      int maxStat, int wanted, int room, AgentShopBuyReport report) {
+        long capacity = potionRecoveryCapacity(bot, forHp);
+        if (maxStat <= 0 || !AgentPotionPurchasePolicy.belowReserve(capacity, maxStat, reserveBars)) {
+            return;
+        }
+        long target = Math.round(maxStat * reserveBars);
+        String why = report.reason() == AgentShopShortfallReason.NO_MESO ? "its purse or budget"
+                : report.reason() == AgentShopShortfallReason.NO_SPACE ? "a full Use tab"
+                : report.reason() == AgentShopShortfallReason.OTHER ? "the shop refused"
+                : wanted > room ? "the Use room it keeps" : "the carry or per-visit limit";
+        log.info("Agent '{}' stopped buying {} potions {} at {} of the {} its {}-bar reserve wants ({}/{}): {}",
+                bot.getName(), forHp ? "HP" : "MP", potion.shopItem.getItemId(), report.quantity(), wanted, reserveBars,
+                capacity, target, why);
     }
 
     private static boolean needsPotionTarget(

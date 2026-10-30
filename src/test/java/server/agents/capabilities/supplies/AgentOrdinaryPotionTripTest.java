@@ -136,6 +136,26 @@ class AgentOrdinaryPotionTripTest {
     }
 
     @Test
+    void aVisitWhoseCounterRestoredTheReserveIsRestoredThoughItDrankOneSince() {
+        // Neus at Perion 10-29: MP 0 -> 29 (reserve 8700/8748), given up and suppressed: it bought 30 and, low on MP,
+        // drank one before its trip looked
+        Character agent = agent(605, "Neus", 2_000, 729);
+        AgentRuntimeEntry entry = entry(agent);
+        carry(agent, BLUE_MP, 0);
+        planCritical(entry, AgentResourceCategory.MP_POTION, 0);
+        startTrip(entry, AgentResourceCategory.MP_POTION, 0);
+
+        shopCompletes(entry, false, true); // the counter left 30: 9,000 of the 8,748 it buys to
+        carry(agent, BLUE_MP, 29);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+
+        AgentSupplyProcurementState execution = execution(entry);
+        assertEquals(AgentSupplyProcurementOutcome.Status.RESTORED, execution.lastOutcome().status());
+        assertFalse(execution.abandoned());
+        assertFalse(execution.suppressed(AgentResourceCategory.MP_POTION, 200L));
+    }
+
+    @Test
     void aVisitThatRanOutOfMesosShortOfTheReserveIsStillGivenUp() {
         Character agent = agent(604, "Brokeish", 2_900, 1_000);
         purse = 3_000;
@@ -274,8 +294,14 @@ class AgentOrdinaryPotionTripTest {
 
     /** The shop visit ran to its end; the test then sets what it left in the Use tab. */
     private static void shopCompletes(AgentRuntimeEntry entry) {
+        shopCompletes(entry, false, false);
+    }
+
+    /** As above, with what its potion step noted at the counter (AgentShopService.buyPotionExtras). */
+    private static void shopCompletes(AgentRuntimeEntry entry, boolean hpRestored, boolean mpRestored) {
         AgentShopStateRuntime.startShopVisit(entry, new Point(-297, -79), new Point(-297, -78), 0, 100L);
         AgentShopStateRuntime.workflow(entry).transition(AgentShopWorkflowPhase.TRANSACTING, "buying", 120L);
+        AgentShopStateRuntime.notePotionsRestoredAtCounter(entry, hpRestored, mpRestored);
         AgentShopStateRuntime.completeWorkflow(entry, "bought", 150L);
         AgentShopStateRuntime.clearShopState(entry);
     }

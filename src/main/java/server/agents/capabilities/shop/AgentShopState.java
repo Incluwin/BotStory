@@ -31,6 +31,9 @@ public final class AgentShopState {
     /** The map whose owner-opened shop it last looked at; outlives a visit, reset on each arrival (onArrival). */
     private int ownerShopSaleMapId = 0;
     private boolean saleOnArrival = false;
+    /** Whether this visit's potion step left each kind (HP, MP) restored at the counter; outlives a clear. */
+    private volatile boolean hpRestoredAtCounter = false;
+    private volatile boolean mpRestoredAtCounter = false;
     private int minimumMesoReserve = 0;
     private int requiredItemId = 0;
     private int requiredItemCount = 0;
@@ -174,6 +177,19 @@ public final class AgentShopState {
         saleOnArrival = pending;
     }
 
+    /**
+     * Whether the potion step of the visit that opened last left this kind restored at the counter (its reserve met,
+     * the carry limit or the visit's allowance bought), before anything it drank since. False until a potion step ran.
+     */
+    public boolean restoredAtCounter(boolean forHp) {
+        return forHp ? hpRestoredAtCounter : mpRestoredAtCounter;
+    }
+
+    public void noteRestoredAtCounter(boolean hp, boolean mp) {
+        hpRestoredAtCounter = hp;
+        mpRestoredAtCounter = mp;
+    }
+
     public int minimumMesoReserve() {
         return minimumMesoReserve;
     }
@@ -249,6 +265,8 @@ public final class AgentShopState {
         }
         if (!visitPending) {
             visitGeneration.incrementAndGet(); // a new visit: a step scheduled after the last one ended is not its own
+            hpRestoredAtCounter = false;
+            mpRestoredAtCounter = false;
         }
         visitPending = true;
         // a trip or "sell junk" that reaches a sale-only visit buys and speaks as any visit; its sale stays

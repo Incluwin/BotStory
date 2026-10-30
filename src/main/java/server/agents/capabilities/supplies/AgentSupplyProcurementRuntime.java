@@ -701,7 +701,10 @@ public final class AgentSupplyProcurementRuntime {
                     AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION),
                     AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.MP_POTION),
                     execution.mesosBefore(), Math.max(0, agent.getMeso()));
-            boolean restored = reserve == null ? after >= target : reserve.restoredSince(execution.quantityBefore());
+            // what the counter left counts, not what it drank since (low on MP, it drinks one the moment it has them)
+            boolean restored = reserve == null ? after >= target : reserve.restoredSince(execution.quantityBefore())
+                    || AgentShopStateRuntime.potionsRestoredAtCounter(entry,
+                    execution.category() == AgentResourceCategory.HP_POTION);
             int unaffordable = reserve != null && !restored && after <= execution.quantityBefore()
                     ? unaffordablePrice(execution, agent) : 0;
             AgentSupplyProcurementOutcome outcome = AgentSupplyReadinessRuntime.judged(entry, agent, execution,

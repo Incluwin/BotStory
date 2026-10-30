@@ -93,6 +93,18 @@ public final class AgentShopStateRuntime {
         entry.shopState().setSaleOnArrival(pending);
     }
 
+    /**
+     * Whether the last visit's potion step left this kind restored at the counter (AgentShopService.buyPotionExtras),
+     * before any it drank since: a supply trip judged after the visit counts what it bought, not what it drank.
+     */
+    public static boolean potionsRestoredAtCounter(AgentRuntimeEntry entry, boolean forHp) {
+        return entry.shopState().restoredAtCounter(forHp);
+    }
+
+    public static void notePotionsRestoredAtCounter(AgentRuntimeEntry entry, boolean hp, boolean mp) {
+        entry.shopState().noteRestoredAtCounter(hp, mp);
+    }
+
     /** True, once, when a sale-only visit waited for this arrival. */
     public static boolean takeShopSaleOnArrival(AgentRuntimeEntry entry) {
         boolean pending = entry.shopState().saleOnArrival();
