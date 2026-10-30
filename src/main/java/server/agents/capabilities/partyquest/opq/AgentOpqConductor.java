@@ -127,7 +127,10 @@ final class AgentOpqConductor {
         }
         for (Need need : needs) {
             boolean there = need.room() != null && leader.getMapId() == AgentOpqDefinition.roomMap(need.room());
-            if (there) continue;
+            if (there) {
+                readyLine(session, need, leader);
+                continue;
+            }
             String key = need.room() == null ? "call-statue" : "call-" + need.room().name().toLowerCase(
                     java.util.Locale.ROOT);
             if (!session.claimLineWindow(key, nowMs, CALL_REPEAT_MS)) continue;
@@ -136,6 +139,25 @@ final class AgentOpqConductor {
                 logCall(session, key, need.speaker(), leader);
             }
             return;
+        }
+    }
+
+    /**
+     * The leader stands in a puzzle room whose holders stand as the next guess (the sealed room's platforms, the way up's
+     * levers): its worker says so in map chat, once per guess ('ready-sealed-N' / 'ready-on_way_up-N', N his checks so
+     * far). 2026-10-25 live (run 6): the calls went only to a leader on another map, so in the room he had to watch the
+     * holders to know a guess stood; the way up's second pair waited about five minutes for his check.
+     */
+    private static void readyLine(AgentOpqSession session, Need need, Character leader) {
+        int checks = switch (need.room()) {
+            case SEALED -> session.sealedAttempt();
+            case ON_WAY_UP -> session.leverChecks();
+            default -> -1;
+        };
+        if (checks < 0) return;
+        String key = "ready-" + need.room().name().toLowerCase(java.util.Locale.ROOT) + "-" + checks;
+        if (AgentOpqDialogue.narrate(session, key, need.speaker(), leader, AgentOpqCompanionPlay.ready(need.room()))) {
+            logCall(session, key, need.speaker(), leader);
         }
     }
 

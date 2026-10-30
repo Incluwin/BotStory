@@ -319,6 +319,73 @@ class AgentOpqHumanLedRoomsTest {
         verify(run.party).sendPartyChat(hal, "one lever's right. trying another pair.");
     }
 
+    /**
+     * 2026-10-25 live (run 6): Ben checked the first pair at Eak and stayed in the room; Hal set the next pair, but the
+     * calls went only to a leader on another map, so the second check came five minutes later.
+     */
+    @Test
+    void inTheRoomTheWayUpRunnerTellsHimOnceEachPairIsSet() {
+        AgentOpqCoordinator.tickSession(session, 10_000L);
+        stand(hal, AgentOpqDefinition.ON_WAY_UP_MAP, -49, -4_980);
+        stand(ben, AgentOpqDefinition.ON_WAY_UP_MAP, 40, -878);
+        List<Reactor> levers = new ArrayList<>(List.of(lever("1", true), lever("2", true), lever("3", false),
+                lever("4", false), lever("5", false)));
+        when(run.actions.reactors(hal)).thenReturn(levers);
+        String ready = "levers are set. talk to eak.";
+        try (OpqLogLines lines = new OpqLogLines(AgentOpqConductor.class)) {
+            AgentOpqCoordinator.tickSession(session, 11_000L);
+            AgentOpqCoordinator.tickSession(session, 11_000L + AgentOpqConductor.CALL_REPEAT_MS);
+            assertEquals(List.of("OPQ call: session=" + session.sessionId() + " key=ready-on_way_up-0 speaker=Hal"
+                    + " leaderMap=" + AgentOpqDefinition.ON_WAY_UP_MAP), lines.startingWith("OPQ call:"));
+        }
+        verify(packets, times(1)).broadcastChatText(hal, ready, false, 0);
+        verify(run.party, never()).sendPartyChat(any(), anyString());
+
+        AgentOpqSessionRegistry.recordWayUpVerdict(ben.getId(), true, "11000");
+        AgentOpqCoordinator.tickSession(session, 12_000L + AgentOpqConductor.CALL_REPEAT_MS);
+        verify(packets, times(1)).broadcastChatText(hal, ready, false, 0); // 10100 is not set yet
+        levers.clear();
+        levers.addAll(List.of(lever("1", true), lever("2", false), lever("3", true), lever("4", false),
+                lever("5", false)));
+
+        AgentOpqCoordinator.tickSession(session, 13_000L + AgentOpqConductor.CALL_REPEAT_MS);
+
+        verify(packets, times(2)).broadcastChatText(hal, ready, false, 0);
+    }
+
+    @Test
+    void inTheRoomTheSealedHoldersTellHimOnceEachGuessStands() {
+        AgentOpqCoordinator.tickSession(session, 10_000L);
+        completeRooms(AgentOpqDefinition.Room.WALKWAY, AgentOpqDefinition.Room.STORAGE, AgentOpqDefinition.Room.LOBBY);
+        AgentOpqCoordinator.tickSession(session, 11_000L);
+        stand(ben, AgentOpqDefinition.SEALED_MAP, -251, -900);
+        standOnPlatforms();
+        String ready = "we're set. talk to eak.";
+
+        AgentOpqCoordinator.tickSession(session, 12_000L);
+        AgentOpqCoordinator.tickSession(session, 13_000L);
+        verify(packets, times(1)).broadcastChatText(mira, ready, false, 0);
+
+        String stood = session.sealedGuess().key();
+        AgentOpqSessionRegistry.recordSealedVerdict(ben.getId(), false, stood); // all wrong: the holders move
+        AgentOpqCoordinator.tickSession(session, 14_000L);
+        verify(packets, times(1)).broadcastChatText(mira, ready, false, 0);
+        standOnPlatforms();
+
+        AgentOpqCoordinator.tickSession(session, 15_000L);
+
+        verify(packets, times(2)).broadcastChatText(mira, ready, false, 0);
+    }
+
+    /** Mira, Kes and Pel stand on the platforms the current guess gives them. */
+    private void standOnPlatforms() {
+        Point[] platforms = {new Point(-162, -808), new Point(-40, -919), new Point(78, -813)};
+        for (int holder : List.of(2, 3, 4)) {
+            Point spot = platforms[session.member(holder).assignedPlatform()];
+            stand(run.characters.findOnlineCharacterById(holder), AgentOpqDefinition.SEALED_MAP, spot.x, spot.y);
+        }
+    }
+
     @Test
     void aStatuePieceHeDropsInTheCentreIsPickedUpByACompanionThere() {
         AgentOpqCoordinator.tickSession(session, 10_000L);

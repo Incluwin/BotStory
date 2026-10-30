@@ -45,6 +45,7 @@ class AgentOpqLinesLintTest {
         }
         for (AgentOpqDefinition.Room room : AgentOpqDefinition.Room.values()) {
             lines.add(AgentOpqCompanionPlay.call(room, LEADER));
+            lines.add(AgentOpqCompanionPlay.ready(room));
         }
         return lines;
     }
