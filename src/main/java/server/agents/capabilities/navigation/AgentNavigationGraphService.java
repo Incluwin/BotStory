@@ -501,6 +501,7 @@ public final class AgentNavigationGraphService {
                                                        GraphCacheKey key) {
         AgentNavigationGraph cached = loadGraph(key);
         if (cached != null && !cached.regions.isEmpty() && satisfiesScopedMovementRequirements(cached)) {
+            discardSlidingRopeJumpExits(cached, map);
             return cached;
         }
         requireFootholds(map);
@@ -1957,6 +1958,9 @@ public final class AgentNavigationGraphService {
                 if (toRegion == null || toRegion.isRopeRegion) {
                     continue;
                 }
+                if (slidesOffAfterRopeJump(map, ropePoint, stepX, movementProfile)) {
+                    continue;
+                }
 
                 int cost = AgentJumpProbeService.estimateRopeJumpLandingTimeMs(map, ropePoint, stepX, movementProfile);
                 addRopeEdge(ropeRegion.id, toRegion.id,
@@ -1993,6 +1997,32 @@ public final class AgentNavigationGraphService {
                         ropePoint, ropeGrab, launchDir, cost, rope, outgoing, edgeKeys);
             }
         }
+    }
+
+    /**
+     * A jump off a rope that lands in its platform's last pixels: it lands with the speed it flew and slides off before
+     * it can stop (101000102's rope x -361: a jump right from y -650 lands on -332, the end of r96, and slides to -328 and
+     * down 840 px, so the Forest of Patience climb looped from its first rope forever). Like a ground jump that does not
+     * hold (JUMP_POST_LANDING_STABILITY_TICKS), it is no edge; the rope's top step-off still is.
+     */
+    static boolean slidesOffAfterRopeJump(MapleMap map, Point ropePoint, int stepX, AgentMovementProfile movementProfile) {
+        AgentPostLandingJump settled = AgentJumpProbeService.simulateRopeJumpLandingAtRest(
+                map, ropePoint, stepX, movementProfile, JUMP_POST_LANDING_STABILITY_TICKS);
+        return settled != null && settled.lostGround();
+    }
+
+    /** A rope jump-off edge of {@code graph} (not the top step-off, not a rope-to-rope transfer). */
+    private static boolean isRopeJumpExit(AgentNavigationGraph graph, AgentNavigationGraph.Edge edge) {
+        AgentNavigationGraph.Region from = graph.getRegion(edge.fromRegionId);
+        AgentNavigationGraph.Region to = graph.getRegion(edge.toRegionId);
+        return edge.type == AgentNavigationGraph.EdgeType.CLIMB && edge.launchStepX != 0
+                && from != null && from.isRopeRegion && to != null && !to.isRopeRegion;
+    }
+
+    /** A cached graph built before the rule above: its sliding rope jump-offs go, so the cache files stand. */
+    static int discardSlidingRopeJumpExits(AgentNavigationGraph graph, MapleMap map) {
+        return graph.discardEdges(edge -> isRopeJumpExit(graph, edge)
+                && slidesOffAfterRopeJump(map, edge.startPoint, edge.launchStepX, graph.movementProfile));
     }
 
     private static void addTopStepOffEdge(AgentNavigationGraph.Region ropeRegion,

@@ -93,6 +93,22 @@ class AgentJumpNoiseTest {
         assertEquals(1, AgentJumpNoise.counts(entry).misses());
     }
 
+    /** Forest of Patience B (101000102) jumps 360-420 px down off each rope's top: nine of them counted as falls. */
+    @Test
+    void aJumpPlannedDownIsAMissOnlyBelowItsPlannedLanding() {
+        AgentNavigationGraph.Edge down = new AgentNavigationGraph.Edge(1, 2, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(100, 200), new Point(160, 620), 90, 110, 6, -1, 0, 0, 0, 10);
+        AgentJumpNoise.install(entry, plan(0.0d), 7L);
+        AgentJumpNoise.launchX(entry, graph, down, 104);
+        AgentJumpNoise.launched(entry, down, new Point(104, 200));
+        AgentJumpNoise.landed(entry, new Point(160, 620)); // where it was meant to land
+        assertEquals(new AgentJumpNoise.Counts(1, 0, 0), AgentJumpNoise.counts(entry));
+        AgentJumpNoise.launchX(entry, graph, down, 104);
+        AgentJumpNoise.launched(entry, down, new Point(104, 200));
+        AgentJumpNoise.landed(entry, new Point(170, 620 + AgentJumpNoise.MISS_DROP_PX + 30)); // past it, a platform down
+        assertEquals(new AgentJumpNoise.Counts(2, 1, 0), AgentJumpNoise.counts(entry));
+    }
+
     @Test
     void theAttemptsHostDecidesAFallBelowTheMapOnlyWhileItsPlanIsOn() {
         AgentJumpNoise.install(entry, plan(5.0d), 7L);

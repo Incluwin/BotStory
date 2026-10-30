@@ -34,7 +34,7 @@ public final class AgentJumpNoise {
     public static final int EDGE_MARGIN_PX = 4;
     /** Ticks after a probed landing that it must still stand on its foothold. */
     static final int POST_LANDING_TICKS = 3;
-    /** A landing this far below its launch is a miss (a real drop to a lower foothold). */
+    /** A landing this far below its launch (or a planned jump down's landing) is a miss (a drop to a lower foothold). */
     static final int MISS_DROP_PX = 30;
     /** Draws tried before the exact launch is used instead. */
     public static final int REDRAWS = 4;
@@ -245,13 +245,15 @@ public final class AgentJumpNoise {
         synchronized (state) {
             if (state.drawnEdge == edge) {
                 state.jumps++;
-                state.pendingLaunchY = position.y;
+                // A jump planned down to a lower platform is no fall: Forest of Patience B's first map (101000102)
+                // jumps 360-420 px down off each rope's top, and nine such hits counted as falls (JQ_FALLS_MAX 8).
+                state.pendingLaunchY = Math.max(position.y, edge.endPoint.y);
                 state.drawnEdge = null; // the next try at this edge draws again
             }
         }
     }
 
-    /** The Agent landed at {@code position}: a drawn jump that came down well below its launch was a miss. */
+    /** The Agent landed at {@code position}: a drawn jump that came down well below its launch (or planned landing) missed. */
     public static void landed(AgentRuntimeEntry entry, Point position) {
         State state = entry == null || position == null ? null : entry.capabilityStates().find(State.STATE_KEY).orElse(null);
         if (state == null) {

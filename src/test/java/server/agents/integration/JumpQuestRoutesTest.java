@@ -53,17 +53,15 @@ class JumpQuestRoutesTest {
     private static final int TELEPORT_PX = 150;
 
     /**
-     * Every leg but course B's first: on 101000102 the bot climbs the first rope and stops on its top, then loses the
-     * zig-zag (a jump down off each rope's top to the next rope) and loops back on the start's rope. Course B is left
-     * out of JQ_COURSES until it climbs (the rest of B is proven here).
+     * Every leg of every course. Course B's first (101000102) once looped from its first rope: the jump right off rope
+     * x -361 landed on the last pixel of the 56 px platform on top and slid off it (AgentNavigationRopeJumpExitTest);
+     * it now steps off each rope's top. Course B stays out of JQ_COURSES until its noisy climbs are checked live.
      */
     static Stream<Arguments> legs() {
         List<Arguments> out = new ArrayList<>();
         for (Course course : JumpQuestCourses.SHIPPED) {
             for (int leg = 0; leg < course.legs().size(); leg++) {
-                if (!(course.key().equals("fop_b") && leg == 0)) {
-                    out.add(Arguments.of(course.key(), leg));
-                }
+                out.add(Arguments.of(course.key(), leg));
             }
         }
         return out.stream();

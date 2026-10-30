@@ -453,10 +453,15 @@ public final class AgentNavigationGraph implements Serializable {
     }
 
     int discardImpossibleDropEdges() {
+        return discardEdges(AgentNavigationGraph::isImpossibleDrop);
+    }
+
+    /** Removes every edge {@code discard} matches (a rule a cached graph predates); returns how many. */
+    int discardEdges(java.util.function.Predicate<Edge> discard) {
         int removed = 0;
         for (List<Edge> edges : outgoingByRegionId.values()) {
             int before = edges.size();
-            edges.removeIf(AgentNavigationGraph::isImpossibleDrop);
+            edges.removeIf(discard);
             removed += before - edges.size();
         }
         if (removed > 0) {

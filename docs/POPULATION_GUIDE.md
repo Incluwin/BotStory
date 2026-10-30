@@ -386,8 +386,12 @@ reached from `LivingWorldHooks.whisper` after the Residents and the roster decli
 *Jump quests* (decision D11). A cohort weight `JQ` sends a Victoria citizen up Pet-Walking Road (100000202, any level)
 or, from Lv25 with Shane's 5000 mesos and `JQ_FEE_RESERVE` left over, into the Forest of Patience: course A
 (101000100-101, Lv25-49). Course B (101000102-104, Lv50+, quest 2051) is built but left out of `JQ_COURSES`: its
-first map is a zig-zag of ropes with a jump off each rope's top, and offline the bot loses that line after the first
-rope (`JumpQuestRoutesTest` proves B's other five legs). Breath of Lava stays out: its fire hurts only on the client,
+first map is a zig-zag of ropes, each topped by a 56 px platform, then a jump down to the next rope. Its jumps off
+each rope used to land in the platform's last pixel and slide off (a rope jump-off that slides off its landing is no
+navigation edge now; the rope's top step-off is), and each planned jump down counted as a fall. `JumpQuestRoutesTest`
+climbs all six legs exactly; noisy climbs offline reach every top, but a deep miss on 101000102's second leg or
+101000104's later legs falls back to an earlier leg, whose in-map portal the offline lab cannot take, so B waits for
+a live check. Breath of Lava stays out: its fire hurts only on the client,
 so a bot would walk through it unharmed. Shumi's jump quest (103000900-909) comes later.
 - Rewards come from the stock NPCs. Frod at the road's top pays only someone with a pet out (pet closeness), which no
   bot has, so citizens climb the road for fun and leave by its own portal. The Forest's pile (1043000, 1043001) gives
