@@ -5,9 +5,12 @@ import client.Skill;
 import client.SkillFactory;
 import client.inventory.WeaponType;
 import constants.skills.Archer;
+import constants.skills.Bishop;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.StatEffect;
+import server.life.Element;
+import server.life.ElementalEffectiveness;
 import server.life.Monster;
 
 import java.util.List;
@@ -16,6 +19,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -96,6 +100,35 @@ class AgentCombatPlanRuntimeTest {
             assertTrue(AgentCombatPlanRuntime.basicShotAllowed(bot, WeaponType.BOW, List.of(Archer.DOUBLE_SHOT)));
         }
         assertTrue(AgentCombatPlanRuntime.basicShotAllowed(bot, WeaponType.BOW, List.of()), "no attack skill yet");
+    }
+
+    /**
+     * 2026-10-29: CWKPQ's Margana, Rellik and Hsalf and Pink Bean's Ariel are holy-immune (Mob.wz elemAttr H1). A Bishop
+     * casts Big Bang (no element) at them, not Angel Ray (holy); with nothing else to cast it still casts, and against
+     * a target its element hurts it chooses as before.
+     */
+    @Test
+    void aSkillOfAnElementTheTargetIsImmuneToGivesWayToOneThatHurtsIt() {
+        Monster margana = mock(Monster.class);
+        Monster redNirg = mock(Monster.class);
+        when(margana.getElementalEffectiveness(any())).thenReturn(ElementalEffectiveness.STRONG);
+        when(margana.getElementalEffectiveness(Element.HOLY)).thenReturn(ElementalEffectiveness.IMMUNE);
+        when(redNirg.getElementalEffectiveness(any())).thenReturn(ElementalEffectiveness.NORMAL);
+        Skill angelRay = mock(Skill.class);
+        Skill bigBang = mock(Skill.class);
+        when(angelRay.getElement()).thenReturn(Element.HOLY);
+        when(bigBang.getElement()).thenReturn(Element.NEUTRAL);
+        AgentAttackPlan ray = plan(Bishop.ANGEL_RAY, AgentAttackRoute.MAGIC);
+        AgentAttackPlan bang = plan(Bishop.BIG_BANG, AgentAttackRoute.MAGIC);
+
+        try (MockedStatic<SkillFactory> skillFactory = mockStatic(SkillFactory.class)) {
+            skillFactory.when(() -> SkillFactory.getSkill(Bishop.ANGEL_RAY)).thenReturn(angelRay);
+            skillFactory.when(() -> SkillFactory.getSkill(Bishop.BIG_BANG)).thenReturn(bigBang);
+
+            assertEquals(List.of(bang), AgentCombatPlanRuntime.skipImmuneElements(margana, List.of(ray, bang)));
+            assertEquals(List.of(ray), AgentCombatPlanRuntime.skipImmuneElements(margana, List.of(ray)));
+            assertEquals(List.of(ray, bang), AgentCombatPlanRuntime.skipImmuneElements(redNirg, List.of(ray, bang)));
+        }
     }
 
     @Test
