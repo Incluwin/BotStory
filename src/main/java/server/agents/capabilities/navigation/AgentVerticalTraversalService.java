@@ -126,10 +126,10 @@ public final class AgentVerticalTraversalService {
         } else if (state.ropeAttachmentObserved() && currentRegionId == exitEdge.toRegionId) {
             if (!state.groundedExitObserved()) {
                 state.observeGroundedExit();
-                return directive(state, null, true);
+                return groundedExitHold(state, exitEdge);
             }
             if (!runAiTick) {
-                return directive(state, null, true);
+                return groundedExitHold(state, exitEdge);
             }
             state.complete(System.currentTimeMillis(), POST_EXIT_REENTRY_BLOCK_MS, POST_EXIT_NUDGE_PX);
             return null;
@@ -217,6 +217,19 @@ public final class AgentVerticalTraversalService {
                                                 boolean holdGroundedExit) {
         return new TraversalDirective(
                 edge, state.targetPosition(), state.targetRegionId(), holdGroundedExit);
+    }
+
+    /**
+     * The grounded hand-off's steering: toward the crossing's target when it lies on the ground the exit landed on,
+     * else at the exit's landing, where the next edge is planned from. Steered at a target on other ground, a landing on
+     * a short ledge walked off its end before the next AI tick: a background tick moves five substeps (2026-10-25 live,
+     * OPQ walkway 920010200: Vex off the ledge at x -5 after the rope at x -49 for five minutes, not the jump up to the
+     * platform at y -396).
+     */
+    private static TraversalDirective groundedExitHold(AgentVerticalTraversalState state,
+                                                       AgentNavigationGraph.Edge exitEdge) {
+        Point hold = state.targetRegionId() == exitEdge.toRegionId ? state.targetPosition() : exitEdge.endPoint;
+        return new TraversalDirective(null, hold, state.targetRegionId(), true);
     }
 
     /**
