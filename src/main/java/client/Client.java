@@ -459,12 +459,22 @@ public class Client extends ChannelInboundHandlerAdapter {
         return lastPacket;
     }
 
+    /**
+     * A connection refused in channelActive (the server not online yet, e.g. the restart script's port probe) never
+     * got an ioChannel, and its channelInactive still closes the session; so does a client with no connection.
+     */
     public void closeSession() {
-        ioChannel.close();
+        io.netty.channel.Channel channel = ioChannel;
+        if (channel != null) {
+            channel.close();
+        }
     }
 
     public void disconnectSession() {
-        ioChannel.disconnect();
+        io.netty.channel.Channel channel = ioChannel;
+        if (channel != null) {
+            channel.disconnect();
+        }
     }
 
     public Hwid getHwid() {
