@@ -343,7 +343,7 @@ public final class AgentPotionService {
      * into a boss fight) never drank and fell to the first hit. At most every LOW_TOP_UP_INTERVAL_MS, an Agent with
      * an autopot key whose HP (or MP) is at or below its alert drinks as a loss would make it.
      */
-    static void tickLowTopUp(AgentRuntimeEntry entry, Character bot, long nowMs) {
+    public static void tickLowTopUp(AgentRuntimeEntry entry, Character bot, long nowMs) {
         if (entry == null || bot == null || !bot.isAlive() || bot.isChangingMaps()) {
             return;
         }

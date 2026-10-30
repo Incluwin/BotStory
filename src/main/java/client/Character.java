@@ -338,6 +338,8 @@ public class Character extends AbstractCharacterObject {
     private transient volatile int agentMushroomYetiPityVariant;
     private boolean usedSafetyCharm = false;
     private float autopotHpAlert, autopotMpAlert;
+    /** The HP drinks an Agent's autopot takes for one loss while it stays under its alert. */
+    private static final int AGENT_HP_DRINKS_PER_LOSS = 3;
     private int linkedLevel = 0;
     private String linkedName = null;
     private boolean finishedDojoTutorial;
@@ -10896,7 +10898,7 @@ public class Character extends AbstractCharacterObject {
                     if (agentChoice != null) {
                         // F8.2: a citizen's or companion's drink may wait a beat while it is safe; it drinks when due
                         if (!CosmicAgentPotionCheckRequestBridge.holdsHpDrink(this)) {
-                            runAutopotAction(agentChoice.position(), agentChoice.itemId());
+                            runAgentHpDrinks(agentChoice, autohpAlert);
                             server.agents.capabilities.behavior.AgentTellProbe.potionPoint(Math.round(autohpAlert * 100));
                         }
                     } else if (autohpItem != null) {
@@ -10936,6 +10938,25 @@ public class Character extends AbstractCharacterObject {
 
     private void runAutopotAction(short slot, int itemId) {
         PetAutopotProcessor.runAutopotAction(client, slot, itemId);
+    }
+
+    /**
+     * An Agent's HP autopot: the chosen potion, then the next one chosen while HP is still under the alert, at
+     * most AGENT_HP_DRINKS_PER_LOSS. The autopot drinks one item id until the alert; when that item runs short (one
+     * Elixir left for a 70% gap) the Agent stayed low, and its next drink came only with the next hit, after its
+     * damage: a deadly hit (HP to 1) and a second hit killed warriors with full bags (Pink Bean, P20). A player whose
+     * pet runs out of one potion sees the bar and presses the next. 2026-10-29.
+     */
+    private void runAgentHpDrinks(CosmicAgentPotionCheckRequestBridge.AutopotSelection first, float alert) {
+        var choice = first;
+        for (int drink = 0; choice != null && drink < AGENT_HP_DRINKS_PER_LOSS; drink++) {
+            int before = getHp();
+            runAutopotAction(choice.position(), choice.itemId());
+            if (!isAlive() || getHp() <= before || getHp() >= alert * getCurrentMaxHp()) {
+                return; // nothing went down, or it reached the alert the compulsory autopot drinks up to
+            }
+            choice = CosmicAgentPotionCheckRequestBridge.selectAutopotForCurrentDeficit(this, true);
+        }
     }
 
     public void setInventory(InventoryType type, Inventory inv) {

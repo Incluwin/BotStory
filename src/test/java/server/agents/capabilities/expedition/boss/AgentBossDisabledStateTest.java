@@ -2,6 +2,7 @@ package server.agents.capabilities.expedition.boss;
 
 import client.Character;
 import client.Disease;
+import client.keybind.KeyBinding;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import server.maps.MapleMap;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -85,6 +87,24 @@ class AgentBossDisabledStateTest {
         assertTrue(AgentBossDisabledState.holds(entry, thane));
         verify(gateway).stop(entry);
         assertTrue(AgentBossDisabledState.disabled(thane));
+    }
+
+    /**
+     * 2026-10-29 (P20): the held tick skips the potion check, so a stunned member under its alert (Solomon's deadly
+     * stun) did not drink back up until the stun wore off. A stunned player's pet still drinks.
+     */
+    @Test
+    void aStunnedMemberUnderItsAlertStillDrinksOnItsHeldTick() {
+        Character thane = inside(THANE, new Point(0, 0), Disease.STUN);
+        when(thane.isAlive()).thenReturn(true);
+        when(thane.getKeymap()).thenReturn(Map.of(91, new KeyBinding(7, 2_022_000)));
+        when(thane.getAutopotHpAlert()).thenReturn(0.7f);
+        when(thane.getCurrentMaxHp()).thenReturn(20_000);
+        when(thane.getHp()).thenReturn(9_000);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+
+        assertTrue(AgentBossDisabledState.holds(entry, thane));
+        verify(thane).triggerAutopotWhileLow(true, false);
     }
 
     @Test
