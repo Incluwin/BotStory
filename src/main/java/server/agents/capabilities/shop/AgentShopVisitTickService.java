@@ -37,6 +37,9 @@ public final class AgentShopVisitTickService {
                                                 Character agent,
                                                 boolean runAiTick,
                                                 Hooks hooks) {
+        // a following companion whose owner opened a shop window on its map walks over to sell its junk there
+        // (AgentJunkSale); field reads until its owner has a shop open
+        AgentShopService.tickOwnerShopping(entry, agent, System.currentTimeMillis());
         if (!AgentShopStateRuntime.shopVisitPending(entry)) {
             return new Result(false, null);
         }

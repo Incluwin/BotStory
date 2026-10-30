@@ -468,7 +468,9 @@ public final class AgentShopService {
             // the whole allowance (visitTimedOut).
             AgentShopStateRuntime.noteShopApproach(entry, manhattan(botPos, target), SHOP_STUCK_MOVE_TOLERANCE_PX, now);
             if (AgentShopStateRuntime.shopApproachStalled(entry, now, SHOP_VISIT_TIMEOUT_MS)) {
-                AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
+                if (!AgentShopStateRuntime.shopSaleOnly(entry)) { // a visit nobody asked for gives up quietly
+                    AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
+                }
                 logShopFailure(entry, bot, "visit timeout (never reached the shop NPC: no closer in "
                         + SHOP_VISIT_TIMEOUT_MS + " ms)");
                 clearShopState(entry);

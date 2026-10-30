@@ -1120,6 +1120,15 @@ living_world:
     # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,
     # the stock 200 ms whisper spam gate and Residents nobody owns stay silent, as before. 0 = answer every one.
     COMPANION_WHISPER_REFUSAL_GAP_MS: 5000
+    # Companions sell their junk at every shop visit (user decision 2026-10-10): a companion out with its owner sells
+    # its junk gear quietly whenever it trades at a shop counter (its own restock, a trip, an item errand) and when its
+    # owner opens a shop window on its map; the money stays in its purse. Never what it wears, its upgrades or what its
+    # build wants, a quest item, or anything inside a party quest, an event or a boss run. A live TRAIN bench slice
+    # keeps all it picks up: with BENCH_SELL_FREE_EQUIP_SLOTS free Equip slots or fewer and junk to sell it ends, and
+    # its next slice sells at the nearest potion shop its camp walks to. false = sales only on its own supply trip or
+    # "sell junk", as before.
+    COMPANION_SELL_JUNK_EVERY_VISIT: true
+    BENCH_SELL_FREE_EQUIP_SLOTS: 4
 
 # Populated server: generated citizens with schedules, progression, chatter, guilds, conversation and
 # market participation (docs/POPULATED_SERVER_PLAN.md). Runs inside the living world. ASCII only.

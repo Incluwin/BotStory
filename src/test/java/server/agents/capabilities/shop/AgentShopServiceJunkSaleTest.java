@@ -603,6 +603,43 @@ class AgentShopServiceJunkSaleTest {
         assertEquals(npcPosition, AgentShopStateRuntime.shopNpcPosition(entry));
     }
 
+    @Test
+    void theAgentsShopPhaseLooksAtItsOwnersShopOnEveryTick() {
+        // the owner trigger is run by the shop phase of every Agent tick (AgentLiveModeTickRuntime), visit or none
+        carryJunk(1);
+        botPosition.setLocation(-2_000, 50);
+        AgentShopVisitTickService.Hooks idle = new AgentShopVisitTickService.Hooks(
+                (visitEntry, visitAgent) -> false, (moveEntry, target, runAi) -> { }, (holdEntry, holdAgent) -> { });
+
+        AgentShopVisitTickService.tickShopVisitIfPending(entry, bot, true, idle);
+        assertFalse(AgentShopStateRuntime.shopVisitPending(entry), "no shop window open");
+
+        when(owner.getShop()).thenReturn(ownerShop);
+        AgentShopVisitTickService.Result result = AgentShopVisitTickService.tickShopVisitIfPending(entry, bot, true, idle);
+
+        assertTrue(AgentShopStateRuntime.shopVisitPending(entry), "its owner opened the shop: it goes to sell");
+        assertTrue(AgentShopStateRuntime.shopSaleOnly(entry));
+        assertTrue(result.consumedTick(), "the visit walks it from this tick on");
+    }
+
+    @Test
+    void aSaleOnlyVisitThatComesNoCloserGivesUpQuietly() {
+        // the no-progress give-up (fix/economy 10-29) said "couldn't reach the shop" for a visit nobody asked for
+        carryJunk(1);
+        botPosition.setLocation(-2_000, 50);
+        when(owner.getShop()).thenReturn(ownerShop);
+        AgentShopService.tickOwnerShopping(entry, bot, now);
+        AgentShopStateRuntime.setShopApproachDelayMs(entry, 0);
+        AgentShopStateRuntime.extendShopVisit(entry, 600_000L); // a long walk: only the no-progress rule ends it
+
+        for (long at = now; at <= now + 120_000L && AgentShopStateRuntime.shopVisitPending(entry); at += 1_000L) {
+            AgentShopService.tickShopVisit(entry, bot, inventoryGateway, at); // it never comes any closer
+        }
+
+        assertFalse(AgentShopStateRuntime.shopVisitPending(entry), "the stuck walk was given up");
+        assertEquals(List.of(), spoken);
+    }
+
     // ---- harness ------------------------------------------------------------------------------------
 
     private void carryJunk(int pieces) {

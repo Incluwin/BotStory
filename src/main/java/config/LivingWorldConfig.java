@@ -635,6 +635,19 @@ public class LivingWorldConfig {
      */
     public int COMPANION_WHISPER_REFUSAL_GAP_MS = 5000;
 
+    // Companions sell their junk at every shop visit (user decision 2026-10-10)
+    /**
+     * A companion out with its owner sells its junk gear quietly at every shop visit (its own, and the shop window its
+     * owner opens on its map), and the money stays in its purse; a live TRAIN bench slice too. false = the kill switch:
+     * it sells only on its own supply trip or when told "sell junk", as before, and no bench slice ends to sell.
+     */
+    public boolean COMPANION_SELL_JUNK_EVERY_VISIT = true;
+    /**
+     * A live TRAIN bench slice with this many free Equip slots or fewer, carrying junk, ends, and its next slice sells
+     * its junk at the nearest potion shop its camp walks to. 0 = only a full Equip tab.
+     */
+    public int BENCH_SELL_FREE_EQUIP_SLOTS = 4;
+
     /** True when CREW_WINDOW_NATIVE lets a character use the native Crew window: "all", or "gm" for a GM (any case). */
     public boolean crewWindowNative(boolean gm) {
         String mode = CREW_WINDOW_NATIVE == null ? "" : CREW_WINDOW_NATIVE.trim();
@@ -1102,6 +1115,9 @@ public class LivingWorldConfig {
         }
         if (COMPANION_WHISPER_REFUSAL_GAP_MS < 0) {
             throw new IllegalArgumentException("living_world.COMPANION_WHISPER_REFUSAL_GAP_MS must be >= 0");
+        }
+        if (BENCH_SELL_FREE_EQUIP_SLOTS < 0) {
+            throw new IllegalArgumentException("living_world.BENCH_SELL_FREE_EQUIP_SLOTS must be >= 0");
         }
     }
 
