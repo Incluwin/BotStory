@@ -24,6 +24,7 @@ package client;
 import server.StatEffect;
 import server.life.Element;
 
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -136,6 +137,23 @@ public class Skill {
 
     public void setAfterimageActions(String weaponAfterimage, List<String> actions) {
         afterimageActions.put(weaponAfterimage, List.copyOf(actions));
+    }
+
+    private final Map<String, Rectangle> afterimageBoxes = new HashMap<>();
+
+    /**
+     * 2026-10-16: the box the skill's own afterimage strikes, wielding a weapon of the given afterimage
+     * type, as Skill.wz stores it ({@code afterimage/<weapon>/<action>/lt,rb}, facing left: x from lt.x to
+     * rb.x, y from lt.y to rb.y); null when it stores none. Blast has no level lt/rb, and this is its reach
+     * (150 px ahead, 60 px up), not the weapon's own swing.
+     */
+    public Rectangle getAfterimageBox(String weaponAfterimage) {
+        Rectangle box = afterimageBoxes.get(weaponAfterimage);
+        return box == null ? null : new Rectangle(box);
+    }
+
+    public void setAfterimageBox(String weaponAfterimage, Rectangle box) {
+        afterimageBoxes.put(weaponAfterimage, new Rectangle(box));
     }
 
     public void setAnimationTime(int time) {

@@ -1,12 +1,14 @@
 package server.agents.capabilities.combat;
 
 import client.Character;
+import client.Skill;
 import constants.skills.Crossbowman;
 import constants.skills.Hermit;
 import constants.skills.Hunter;
 import constants.skills.Brawler;
 import constants.skills.NightWalker;
 import server.StatEffect;
+import server.agents.integration.AgentSkillGatewayRuntime;
 import server.life.Monster;
 
 import java.awt.Point;
@@ -63,6 +65,23 @@ public final class AgentCombatSkillHitboxPolicy {
         return STRIKE_POINT_ANCHORED_AOE_SKILL_IDS.contains(skillId);
     }
 
+    /**
+     * 2026-10-16 (P20, Orrin): a close-range skill with no level lt/rb that stores its own afterimage box for the
+     * wielded weapon ({@link Skill#getAfterimageBox}) strikes that box, as the client draws it, not the weapon's own
+     * swing; null when it stores none. Blast reaches 150 px ahead and 60 px up. Its stand-in, the sword's swing
+     * (106 px, 58 px up), ended a row short of Solomon's and Rex's bodies, which start 58 px above the floor (they
+     * stand 2 px above it), so a Paladin on the floor at Pink Bean planned nothing and swung 5 times a minute.
+     */
+    static Rectangle skillAfterimageHitBox(Skill skill, String weaponAfterimage, Point at, boolean facingLeft) {
+        Rectangle box = skill == null || weaponAfterimage == null || at == null
+                ? null : skill.getAfterimageBox(weaponAfterimage);
+        if (box == null) {
+            return null;
+        }
+        int left = facingLeft ? box.x : -(box.x + box.width);
+        return new Rectangle(at.x + left, at.y + box.y, box.width, box.height);
+    }
+
     public static Rectangle fallbackCloseRangeSkillHitBox(StatEffect effect, Character agent, String action,
                                                           boolean facingLeft) {
         if (effect == null || agent == null) {
@@ -85,7 +104,10 @@ public final class AgentCombatSkillHitboxPolicy {
     public static Rectangle fallbackSkillHitBox(StatEffect effect, Character agent, boolean facingLeft,
                                                 AgentAttackRoute route, int skillId, String action) {
         if (route == AgentAttackRoute.CLOSE) {
-            return fallbackCloseRangeSkillHitBox(effect, agent, action, facingLeft);
+            Rectangle own = effect == null || agent == null ? null : skillAfterimageHitBox(
+                    AgentSkillGatewayRuntime.skills().getSkill(skillId),
+                    AgentAttackExecutionProvider.equippedWeaponAfterimage(agent), agent.getPosition(), facingLeft);
+            return own != null ? own : fallbackCloseRangeSkillHitBox(effect, agent, action, facingLeft);
         }
         if (effect == null || agent == null) {
             return null;

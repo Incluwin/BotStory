@@ -10,6 +10,8 @@ import server.agents.capabilities.combat.rotation.AgentCombatRotationRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.monitoring.AgentPerformanceMonitor;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.life.Element;
+import server.life.ElementalEffectiveness;
 import server.life.Monster;
 
 import java.util.ArrayList;
@@ -43,7 +45,8 @@ public final class AgentCombatPlanRuntime {
                     candidates.add(basicAttack);
                 }
             }
-            List<AgentAttackPlan> eligible = preferRangedBossCandidates(target, weaponType, candidates);
+            List<AgentAttackPlan> eligible = skipImmuneElements(target,
+                    preferRangedBossCandidates(target, weaponType, candidates));
             // Filming: rotate through the skills instead of repeating the best one.
             AgentAttackPlan shown = AgentSkillShowcase.pick(entry, eligible);
             if (shown != null) {
@@ -78,7 +81,30 @@ public final class AgentCombatPlanRuntime {
         List<AgentAttackPlan> candidates = skillAttackCandidates(entry, bot, target, config);
         WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
         return AgentAttackPlanScoringPolicy.selectBestAttackPlan(
-                bot, preferRangedBossCandidates(target, weaponType, candidates));
+                bot, skipImmuneElements(target, preferRangedBossCandidates(target, weaponType, candidates)));
+    }
+
+    /**
+     * 2026-10-29: the plans left once those whose skill element {@code target} is immune to (Mob.wz elemAttr 1) are
+     * dropped, while another plan remains, before the learned policy, a rotation or the scorer chooses. The damage
+     * estimate (CombatFormulaProvider) counts a weak and a strong element but not an immune one, and the learned
+     * policies key on target count only, so a Bishop's pick between Angel Ray (holy) and Big Bang (no element) took
+     * no account of CWKPQ's Margana, Rellik and Hsalf or Pink Bean's Ariel being holy-immune; a player casts Big Bang.
+     */
+    static List<AgentAttackPlan> skipImmuneElements(Monster target, List<AgentAttackPlan> candidates) {
+        if (target == null || candidates.size() < 2) {
+            return candidates;
+        }
+        List<AgentAttackPlan> hurting = new ArrayList<>(candidates.size());
+        for (AgentAttackPlan candidate : candidates) {
+            Skill skill = candidate.skillId > 0 ? AgentSkillGatewayRuntime.skills().getSkill(candidate.skillId) : null;
+            Element element = skill == null ? null : skill.getElement();
+            if (element == null || element == Element.NEUTRAL
+                    || target.getElementalEffectiveness(element) != ElementalEffectiveness.IMMUNE) {
+                hurting.add(candidate);
+            }
+        }
+        return hurting.isEmpty() || hurting.size() == candidates.size() ? candidates : hurting;
     }
 
     private static List<AgentAttackPlan> skillAttackCandidates(

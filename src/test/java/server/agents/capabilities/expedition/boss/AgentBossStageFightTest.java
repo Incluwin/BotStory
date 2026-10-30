@@ -63,6 +63,8 @@ class AgentBossStageFightTest {
     private final Set<Integer> melee = new HashSet<>();
     private final List<Integer> portalTries = new ArrayList<>();
     private final Set<Integer> guardDown = new HashSet<>();
+    /** Members whose attacks reach no part from anywhere (Ports.reaches); every other member reaches all. */
+    private final Set<Integer> outOfReach = new HashSet<>();
     private final EventInstanceManager event = mock(EventInstanceManager.class);
     private AgentBossPriorityFight fight;
 
@@ -108,6 +110,11 @@ class AgentBossStageFightTest {
             @Override
             public boolean castSurvivalBuff(Character member) {
                 return guardDown.remove(member.getId());
+            }
+
+            @Override
+            public boolean reaches(Character member, Monster part, Point stand) {
+                return !outOfReach.contains(member.getId());
             }
         });
     }
@@ -293,6 +300,32 @@ class AgentBossStageFightTest {
     }
 
     /** The gateway grounds a point on its own spot, as on a ledge's foothold. */
+
+    /**
+     * 2026-10-29 (P18 open item 18): once its head fell, a member on that head's ledge keeps shooting a live head from
+     * there while it reaches one (a bow or claw from (-235,-160) reaches the middle head); a member that does not
+     * reach from there goes to a ledge that names a live head, as before.
+     */
+    @Test
+    void aMemberWhoseHeadFellKeepsItsLedgeWhileItStillReachesALiveHead() {
+        mobs(ALTAR, HEAD_A, HEAD_B, HEAD_C);
+        groundAtAnchors();
+        AgentRuntimeEntry shooter = entry(10);
+        AgentRuntimeEntry swinger = entry(13);
+        List<Character> crew = List.of(member(10, ALTAR, new Point(-300, 260)), member(11, ALTAR, new Point(-300, 260)),
+                member(12, ALTAR, new Point(-300, 260)), member(13, ALTAR, new Point(-300, 260)));
+        fight.tick(crew, event, 0L);
+        verify(gateway).grindFromAnchor(shooter, new Point(-235, -160), Set.of(HEAD_A), Set.of(HEAD_B, HEAD_C));
+        verify(gateway).grindFromAnchor(swinger, new Point(-235, -160), Set.of(HEAD_A), Set.of(HEAD_B, HEAD_C));
+
+        mobs(ALTAR, HEAD_B, HEAD_C);
+        outOfReach.add(13);
+        fight.tick(crew, event, 1L);
+
+        verify(gateway).grindFromAnchor(shooter, new Point(-235, -160), Set.of(HEAD_B, HEAD_C), Set.of());
+        verify(gateway).grindFromAnchor(swinger, new Point(325, -160), Set.of(HEAD_C), Set.of(HEAD_B));
+    }
+
     private void groundAtAnchors() {
         when(gateway.groundPoint(any(), any())).thenAnswer(call -> new Point((Point) call.getArgument(1)));
     }
