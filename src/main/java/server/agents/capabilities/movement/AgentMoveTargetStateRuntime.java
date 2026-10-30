@@ -1,7 +1,5 @@
 package server.agents.capabilities.movement;
 
-import server.agents.capabilities.navigation.AgentNavigationGraph;
-import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.Foothold;
@@ -14,8 +12,6 @@ import java.awt.Point;
  * Agent-owned adapter for AgentRuntimeEntry-backed explicit movement targets.
  */
 public final class AgentMoveTargetStateRuntime {
-    private static final int PRECISE_ARRIVAL_PX = 8;
-
     private AgentMoveTargetStateRuntime() {
     }
 
@@ -73,9 +69,10 @@ public final class AgentMoveTargetStateRuntime {
      * geometry or a navigation graph the box alone decides, as before.
      */
     public static boolean standsAtPreciseTarget(AgentRuntimeEntry entry, Point position, Point target) {
+        int box = 8; // the precise box hasReachedMoveTarget has always used
         if (position == null || target == null
-                || Math.abs(position.x - target.x) > PRECISE_ARRIVAL_PX
-                || Math.abs(position.y - target.y) > PRECISE_ARRIVAL_PX) {
+                || Math.abs(position.x - target.x) > box
+                || Math.abs(position.y - target.y) > box) {
             return false;
         }
         if (AgentMovementStateRuntime.inAir(entry)) {
@@ -86,23 +83,17 @@ public final class AgentMoveTargetStateRuntime {
             return true;
         }
         Point targetGround = AgentGroundingService.findGroundPoint(map, target);
-        boolean groundTarget = targetGround != null && Math.abs(targetGround.y - target.y) <= PRECISE_ARRIVAL_PX;
+        boolean groundTarget = targetGround != null && Math.abs(targetGround.y - target.y) <= box;
         if (AgentClimbStateRuntime.climbing(entry)) {
             Rope rope = AgentClimbStateRuntime.climbRope(entry);
-            return !groundTarget && (rope == null || Math.abs(rope.x() - target.x) <= PRECISE_ARRIVAL_PX);
+            return !groundTarget && (rope == null || Math.abs(rope.x() - target.x) <= box);
         }
         Foothold standing = AgentGroundingService.findGroundFoothold(map, position);
         Foothold under = groundTarget ? AgentGroundingService.findGroundFoothold(map, target) : null;
         if (standing == null || under == null || standing.getId() == under.getId()) {
             return true;
         }
-        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(
-                map, AgentMovementStateRuntime.movementProfile(entry));
-        if (graph == null) {
-            return true;
-        }
-        int standingRegion = graph.regionIdByFootholdId.getOrDefault(standing.getId(), -1);
-        return standingRegion >= 0
-                && standingRegion == graph.regionIdByFootholdId.getOrDefault(under.getId(), -1);
+        Boolean sameRegion = AgentGroundCollisionService.sameWalkRegion(map, standing, under);
+        return sameRegion == null || sameRegion;
     }
 }

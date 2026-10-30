@@ -149,6 +149,23 @@ public final class AgentGroundCollisionService {
         return lookup.regionIdByFootholdId().getOrDefault(foothold.getId(), -1) >= 0;
     }
 
+    /**
+     * Whether two footholds lie in one walk region of the map's navigation graph; null when no graph is loaded to
+     * say (a precise move target's arrival check then trusts its box).
+     */
+    static Boolean sameWalkRegion(MapleMap map, Foothold first, Foothold second) {
+        if (map == null || first == null || second == null) {
+            return null;
+        }
+        AgentNavigationWalkRegionLookupService.WalkRegionLookup lookup =
+                AgentNavigationWalkRegionLookupService.resolveWalkRegionLookup(map);
+        if (lookup == null) {
+            return null;
+        }
+        int region = lookup.regionIdByFootholdId().getOrDefault(first.getId(), -1);
+        return region >= 0 && region == lookup.regionIdByFootholdId().getOrDefault(second.getId(), -1);
+    }
+
     private static boolean isChainStep(Foothold foothold, int candidateFootholdId) {
         return candidateFootholdId == foothold.getId()
                 || candidateFootholdId == foothold.getNext()
