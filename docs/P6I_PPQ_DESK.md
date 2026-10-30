@@ -70,12 +70,12 @@ flips "ppq" after the live checks.
 
 ## Deviations from the plan
 
-1. **Tap-out without the walk to Guon on 925100700 (plan 9.2, R18 not built).**
-   - Instead, the departure pass asks the host for the tap-out as it hands the companion back. The
-     host's hold moves the companion to 251010404, next to the owner's last spot or a portal, the
-     same place Guon's own exit script would send it.
-   - The companion respawns alone on 925100700. Only players who already left could see it
-     teleport.
+1. **Tap-out after the walk to Guon on 925100700 (plan 9.2, R18, built 2026-10-29).**
+   - A companion the run let go respawns on 925100700. `tickMember` walks it to Guon (2094002) and
+     runs his script, which warps it to 251010404 as it does a player. The departure pass then asks
+     the host for the tap-out there, so the host's hold does not move it.
+   - `AgentPpqCoordinator.GUON_EXIT_TIMEOUT_MS` (30 s) bounds the walk. Past it the companion departs
+     from 925100700 and the host's hold moves it to 251010404, as before R18.
    - There is no REQUEST_TAP_OUT/KEEP_DEPARTED verdict. A refused tap-out is the old hand-back.
 2. **Plan 9 test names merged.** AgentPpqDeathPolicyTest, AgentPpqLeaderDownTest and
    AgentPpqCompanionFailTest are folded into `AgentPpqLeaderAndFailTest`, alongside
@@ -148,12 +148,11 @@ Never use `!warp` or `!warpto` inside the PQ. Grep for: `PPQ phase:`, `PPQ stage
 **Watch first:**
 
 - L0's pace warm (the profile parses Map.wz and Mob.wz on companion-ops).
-- In L6/L7, where a tapped-out companion appears. It is moved from 925100700 to 251010404 by the
-  host's hold, with no walk to Guon on the exit map (deviation 1).
+- In L6/L7, where a tapped-out companion appears. It walks to Guon on 925100700 and his exit takes
+  it to 251010404 before the tap-out (deviation 1).
 
 ## Open items
 
-- R18: the walk to Guon 2094002 on 925100700 before the tap-out.
 - Step 0 live smoke results are unknown. Every pace prior is a guess; recalibrate from Step 0 and
   L8, and bump PACE_EPOCH if the model changes.
 - `scripts/config/knowledge/server-knowledge.json` is not regenerated here. KnowledgeLintTest and
@@ -174,6 +173,7 @@ Never use `!warp` or `!warpto` inside the PQ. Grep for: `PPQ phase:`, `PPQ stage
 | AgentPpqCoordinator.EXIT_WAIT_RADIUS_PX (new) | 150 |
 | AgentPpqCoordinator.COMPANION_AFTER_CLEAR_WAIT_MS (new) | 180000 |
 | AgentPpqCoordinator.MEDAL_DYING_HP_PERCENT (new) | 25 |
+| AgentPpqCoordinator.GUON_EXIT_TIMEOUT_MS (R18) | 30000 |
 | AgentPpqRuntime.COORDINATOR_LEASE_MS | 3000 |
 | AgentPpqSession.MIN_LEASE_MS | 250 |
 | AgentPpqTestService.SPAWN_STAGGER_MS | 500 |

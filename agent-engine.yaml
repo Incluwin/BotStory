@@ -1856,6 +1856,10 @@ tuning:
     # Purpose: Below this share of its HP, a PPQ companion with no HP potion left drops the wave's medals at its feet, so its death does not delete them, and gathers no more until it is better.
     # Technical: AgentPpqCompanionPlay.dying (hp * 100 <= this * currentMaxHp and hpPotionCount 0) on 925100100 in companion runs; the stack is a companion drop, so the nudge and the re-collect of AgentPpqMedalHandOver bring it on to the leader ('PPQ medals left:', line M6 once a wave).
     server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.MEDAL_DYING_HP_PERCENT: '25'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, several times the walk from the respawn point to Guon.
+    # Purpose: How long a PPQ companion the run let go may take to walk to Guon on the exit map and leave by his exit, as a player does, before it is tapped out from where it stands.
+    # Technical: AgentPpqCoordinator.walkingOutByGuon (companion runs, before the clear, plan 9.2 R18): an Agent off the event and alive on 925100700 is not departed while this has not passed since AgentPpqSession.onExitMapSince first saw it there; tickMember walks it to 2094002 and runs his script (warp to 251010404), and the departure pass then taps it out on 251010404. Past the bound it departs on 925100700 and the host's hold moves it to 251010404.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.GUON_EXIT_TIMEOUT_MS: '30000'
     # Values: 10000-300000 milliseconds. Recommended: 45000, EPQ's member recovery timeout.
     # Purpose: How long a PPQ companion run waits for one of its companions to load back in before it lets that companion go and carries on without it.
     # Technical: AgentPpqCompanionRun.verdicts (companion runs, before the clear): an Agent member with no character online (AgentPpqMemberVerdicts MISSING) for this long since first seen so leaves the run as a departed one does (AgentPpqCoordinator.departMissing: tap-out, hand-back); its last Agent releases the run with the humans carrying on.

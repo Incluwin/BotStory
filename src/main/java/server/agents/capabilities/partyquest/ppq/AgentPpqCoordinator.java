@@ -56,6 +56,8 @@ public final class AgentPpqCoordinator {
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.COMPANION_AFTER_CLEAR_WAIT_MS");
     static final int MEDAL_DYING_HP_PERCENT = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.MEDAL_DYING_HP_PERCENT");
+    static final long GUON_EXIT_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.GUON_EXIT_TIMEOUT_MS");
 
     private AgentPpqCoordinator() { }
 
@@ -177,7 +179,8 @@ public final class AgentPpqCoordinator {
     /**
      * An Agent the bound event held and no longer holds, and that stands off the PPQ maps (its death gate let it go and
      * the respawn took it to 925100700, or it walked out), has left the run: it leaves the session and is handed back to
-     * its owner at once ('PPQ departed:'). A dead Agent the event still holds has not left (its gate holds it), nor has
+     * its owner at once ('PPQ departed:'); a companion run's first takes Guon's exit off 925100700 (walkingOutByGuon).
+     * A dead Agent the event still holds has not left (its gate holds it), nor has
      * one between two PPQ maps. Before the clear only: clearPQ's warp unregisters everyone.
      */
     private static void observeDepartures(AgentPpqSession session, long nowMs) {
@@ -197,6 +200,9 @@ public final class AgentPpqCoordinator {
                     || !(session.seenHeld(id) || entryOver)) continue;
             Character agent = character(id);
             if (agent != null && AgentPpqDefinition.isEventMap(agent.getMapId())) continue;
+            // R18 (plan 9.2): a companion run's companion let go onto Guon's exit map first walks to him and takes his
+            // exit to his ship (tickMember), as a player does, and departs from there.
+            if (session.companionAdopted() && walkingOutByGuon(session, agent, nowMs)) continue;
             if (session.companionAdopted() && session.lastAgent(id)) {
                 // A human-led run needs no Agent to go on: its last companion goes home with the release.
                 log.info("PPQ departed: session={} member={} map={} registered={} companionRun=true last=true",
@@ -211,6 +217,16 @@ public final class AgentPpqCoordinator {
             session.pace().markDeparted(id);
             if (session.companionAdopted() && agent != null) session.queueDeparted(agent.getName());
         }
+    }
+
+    /**
+     * Whether this departing Agent still stands, alive, on Guon's exit map 925100700 (where the respawn of one its gate
+     * let go puts it) within GUON_EXIT_TIMEOUT_MS of first being seen there: it is on its way to his exit. Past the
+     * bound it departs from where it stands, and the host's hold takes it to his ship as before.
+     */
+    static boolean walkingOutByGuon(AgentPpqSession session, Character agent, long nowMs) {
+        if (agent == null || agent.getMapId() != AgentPpqDefinition.EXIT_MAP || agent.getHp() <= 0) return false;
+        return nowMs - session.onExitMapSince(agent.getId(), nowMs) < GUON_EXIT_TIMEOUT_MS;
     }
 
     /**
@@ -368,6 +384,12 @@ public final class AgentPpqCoordinator {
         }
         if (mapId == AgentPpqDefinition.SIDE_ONE_MAP || mapId == AgentPpqDefinition.SIDE_TWO_MAP) {
             sideRoom(session, entry, agent, member, nowMs); return;
+        }
+        if (mapId == AgentPpqDefinition.EXIT_MAP && companionRun) {
+            // R18: let go onto Guon's exit map, it walks to him and his exit takes it to his ship (2094002.js), where
+            // the departure pass taps it out.
+            if (runNpc(entry, agent, AgentPpqDefinition.GUIDE_NPC)) member.deferUntil(nowMs + RETRY_MS);
+            return;
         }
         actions().stop(entry);
     }

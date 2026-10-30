@@ -87,6 +87,8 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Long> downSinceMs = new HashMap<>();
     /** Companion runs: when each Agent member was first seen unloaded (id -> ms). */
     private final Map<Integer, Long> missingSinceMs = new HashMap<>();
+    /** Companion runs: when each departing Agent was first seen on Guon's exit map 925100700 (id -> ms). */
+    private final Map<Integer, Long> onExitMapSinceMs = new HashMap<>();
     /** Companion runs: the names of members who left the run, for the next pass's line (said only if the run goes on). */
     private final List<String> departedNames = new java.util.ArrayList<>();
     /** Companion runs: one-shot log keys, apart from the lines'. */
@@ -414,6 +416,12 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     }
 
     synchronized void clearMissing(int id) { missingSinceMs.remove(id); }
+
+    /** When this departing Agent was first seen on Guon's exit map, recording {@code nowMs} on the first call. */
+    synchronized long onExitMapSince(int id, long nowMs) {
+        Long since = onExitMapSinceMs.putIfAbsent(id, nowMs);
+        return since == null ? nowMs : since;
+    }
 
     /** A member left the run: its name waits for the next pass, which says it only if the run is still going. */
     synchronized void queueDeparted(String name) {
