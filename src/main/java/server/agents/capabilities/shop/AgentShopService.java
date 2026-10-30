@@ -2873,6 +2873,18 @@ public final class AgentShopService {
         clearShopState(entry);
     }
 
+    /**
+     * True when the pending visit has outrun its own budget, which the visit's next tick ends it for: its walk to the
+     * shopkeeper (SHOP_VISIT_TIMEOUT_MS past its approach delay and route) or its open transaction
+     * (SHOP_SEQUENCE_TIMEOUT_MS plus each planned sale's allowance and the time the scheduler ran its steps late).
+     * False with no visit.
+     */
+    public static boolean visitOutOfTime(AgentRuntimeEntry entry, long nowMs) {
+        return entry != null && AgentShopStateRuntime.shopVisitPending(entry)
+                && (AgentShopStateRuntime.visitTimedOut(entry, nowMs, SHOP_VISIT_TIMEOUT_MS)
+                || AgentShopStateRuntime.sequenceTimedOut(entry, nowMs, SHOP_SEQUENCE_TIMEOUT_MS));
+    }
+
     // Abort the shop visit and tell the owner why. Player commands cancel via
     // cancelShopVisit (which clears shopVisitPending) and scheduleShopStep guards on
     // that flag, so a cleared flag here means a concurrent player cancel — stay silent. A visit opened only to sell

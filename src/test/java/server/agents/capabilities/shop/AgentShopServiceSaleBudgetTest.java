@@ -234,9 +234,42 @@ class AgentShopServiceSaleBudgetTest {
 
         supplyTrip();
         now += 200_000L;
+        assertTrue(AgentShopService.visitOutOfTime(entry, now), "outran its own budget: its next tick ends it");
         AgentShopService.tickShopVisit(entry, bot, inventoryGateway, now);
 
         assertTrue(spoken.contains(AgentDialogueCatalog.shopSequenceTimeoutReply()), () -> "spoke " + spoken);
+    }
+
+    /**
+     * A citizen's sell trip waited 5 minutes at most for its sale (CitizenSellTrips.VISIT_TIMEOUT_MS) and then went on
+     * with its day mid-sale; it now waits as long as the visit's own budget allows (visitOutOfTime), and a full bag sold
+     * at a slow scheduler's pace runs past those 5 minutes within that budget.
+     */
+    @Test
+    void aFullBagSoldPastFiveMinutesAtASlowPaceIsNeverOutOfItsOwnTime() {
+        carry(0, 90);
+        lateMs = 3_000L;
+        long startedAt = System.currentTimeMillis();
+        now = startedAt;
+        AgentShopStateRuntime.setShopSellTrashPending(entry, true);
+        assertTrue(AgentShopService.requestVisitAtNpc(entry, bot, NPC_ID, 0));
+        boolean everOutOfTime = false;
+        while (AgentShopStateRuntime.shopVisitPending(entry) && !AgentShopStateRuntime.shopSequenceActive(entry)) {
+            AgentShopService.tickShopVisit(entry, bot, inventoryGateway, now);
+            now += APPROACH_TICK_MS;
+        }
+        while (!steps.isEmpty()) {
+            Step step = steps.poll();
+            now = Math.max(now, step.atMs() + lateMs);
+            everOutOfTime |= AgentShopService.visitOutOfTime(entry, now);
+            AgentShopService.tickShopVisit(entry, bot, inventoryGateway, now);
+            step.action().run();
+        }
+
+        assertTrue(now - startedAt > 5 * 60_000L, "the sale ran " + (now - startedAt) + " ms");
+        assertFalse(everOutOfTime, "within its own budget all along");
+        assertTrue(equips.list().isEmpty(), "every piece sold");
+        assertEquals(AgentShopWorkflowPhase.COMPLETED, AgentShopStateRuntime.workflow(entry).phase());
     }
 
     @Test
