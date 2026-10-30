@@ -113,13 +113,17 @@ final class AgentOpqHandOver {
         return total + lyingStacks(session, roomMap, itemId).stream().mapToInt(AgentOpqHandOver::stackSize).sum();
     }
 
-    /** The stacks of this kind the run's Agents dropped on {@code map}, still lying. */
+    /**
+     * The stacks of this kind the run's Agents dropped on {@code map}, still lying, and a Root of Life the leader dropped
+     * there: only he can take it through the garden's exit, and left lying it expires (ITEM_EXPIRE_TIME).
+     */
     static List<MapItem> lyingStacks(AgentOpqSession session, MapleMap map, int itemId) {
         if (map == null) return List.of();
         return AgentMapPerception.items(map).stream()
                 .filter(drop -> drop != null && !drop.isPickedUp() && drop.isPlayerDrop()
                         && drop.getItemId() == itemId && drop.getPosition() != null)
-                .filter(drop -> session.agentOfRun(drop.getOwnerId()))
+                .filter(drop -> session.agentOfRun(drop.getOwnerId()) || itemId == AgentOpqDefinition.ROOT_OF_LIFE
+                        && drop.getOwnerId() == session.eventLeaderId())
                 .toList();
     }
 

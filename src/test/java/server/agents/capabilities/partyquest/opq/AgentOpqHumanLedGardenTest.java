@@ -305,6 +305,29 @@ class AgentOpqHumanLedGardenTest {
         verify(mira).pickupItem(root);
     }
 
+    @Test
+    void aRootBenDropsInTheGardenIsPickedBackUpBeforeItExpiresAndHandedBackToHim() {
+        // Only Ben can take the Root through the garden's exit; one he dropped there lay for no one and would expire.
+        AgentOpqSession session = benLeads(AgentOpqSession.Phase.GARDEN);
+        AgentOpqCoordinator.tickSession(session, 10_000L);
+        stand(mira, AgentOpqDefinition.GARDEN_MAP, 450, 516);
+        stand(ben, AgentOpqDefinition.GARDEN_MAP, 430, 516);
+        MapItem root = drop(42, ROOT, ben.getId(), true, new Point(430, 516), 20_000L);
+        assertFalse(AgentOpqSessionRegistry.canLootExclusive(mira, root), "his drop: only its claimer takes it");
+
+        tick(mira, 20_000L + AgentOpqHandOver.RECOLLECT_MS);
+
+        assertEquals(mira.getId(), session.claimerOf(root.getObjectId()));
+        verify(mira).pickupItem(root);
+
+        lying.remove(root);
+        holds(mira, ROOT, 1);
+        session.member(2).deferUntil(0L);
+        tick(mira, 21_000L + AgentOpqHandOver.RECOLLECT_MS);
+        verify(inventory).dropItem(mira, InventoryType.ETC, (short) 1, (short) 1);
+        verify(packets).broadcastChatText(mira, "picked the root back up so it doesn't vanish. here it is.", false, 0);
+    }
+
     // ---- the centre --------------------------------------------------------------------------------------------
 
     @Test
