@@ -2377,6 +2377,10 @@ tuning:
     # Purpose: Controls the distance or margin used for maximum formation distance. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "formation command service" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
     server.agents.capabilities.movement.AgentFormationCommandService.MAX_FORMATION_DISTANCE_PX: '10000'
+    # Values: a positive integer; unit: footholds. Recommended: 32-128 around the tested baseline 64; the longest chain these probes follow on Drake's Nest, a cliff at 105090310 x -2, is nine wall segments.
+    # Purpose: How many footholds a ground step or a landing probe follows along a floor's or a wall's chain before it stops, so a chain that loops back on itself cannot stall a movement tick.
+    # Technical: AgentGroundCollisionService.endsAtRisingWall and wallRisesOver, AgentJumpProbeService.floorChainAt and AgentWallCollisionPolicy.groundSide stop after this many prev/next hops; a probe that runs out treats the chain as ending there (no rising wall, no floor under the fall, no floor capping the wall).
+    server.agents.capabilities.movement.AgentGroundCollisionService.CHAIN_WALK_LIMIT: '64'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 1-4 around the tested baseline 2; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the positional leeway for region stitch gap. Higher values tolerate more separation before Agents correct course; lower values make them align sooner.
     # Technical: the "ground collision service" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.

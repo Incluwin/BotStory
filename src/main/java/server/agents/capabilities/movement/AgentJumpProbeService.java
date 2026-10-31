@@ -797,7 +797,7 @@ public final class AgentJumpProbeService {
                                          java.util.Map<Integer, Foothold> footholdsById,
                                          Foothold floor,
                                          int x) {
-        for (int hops = 0; floor != null && hops < 64; hops++) {
+        for (int hops = 0; floor != null && hops < AgentGroundCollisionService.CHAIN_WALK_LIMIT; hops++) {
             if (floor.isWall() || floor.getX1() >= floor.getX2()) {
                 return null;
             }
@@ -833,6 +833,11 @@ public final class AgentJumpProbeService {
         int yAtX = (int) Math.round(previousPos.y + (nextPos.y - previousPos.y) * progress);
         int floorY = (int) Math.floor(floor.getY1()
                 + (floor.getY2() - floor.getY1()) * (x - floor.getX1()) / (double) (floor.getX2() - floor.getX1()));
+        // The foothold tree's point on the floor is within a pixel of floorY; a floor below the Agent's height or the
+        // move's height here is the ordinary probes' case, and is not looked up again.
+        if (floorY - 1 > previousPos.y || floorY - 1 > yAtX) {
+            return AirCollision.none();
+        }
         Point probe = new Point(x, floorY - 2);
         Point ground = map.getPointBelow(probe);
         Foothold foothold = map.getFootholds().findBelow(probe);
@@ -919,9 +924,14 @@ public final class AgentJumpProbeService {
         // Starting on the wall's own x below its top, the move hits it when it heads into the ground the wall
         // bounds. Skipping that case let a knockback from a floor's first pixel fly west through the cliff rising
         // from it (105090312 x 1213) and fall under the ledge above to the bottom of the map. A move from the
-        // wall's top corner is on the floor capping it, not in the rock.
+        // wall's top corner is on the floor capping it, not in the rock, and a wall no more than a slope step over
+        // the Agent is one the ground walk passes (AgentGroundCollisionService.endsAtRisingWall): held there, the
+        // fall timed for a walk past a 16 px step on Kerning City's roofs (103000000 x 340) dropped straight down
+        // instead of under the floor beyond, as the walk itself does, and the graph's drop costs no longer matched.
         boolean startsOnWall = progress == 0.0
                 && previousPos.y > minY
+                && previousPos.y - AgentWallCollisionPolicy.topY(map, wall)
+                > AgentMovementPhysicsConfig.configuredMaxSlopeUp()
                 && dir == AgentWallCollisionPolicy.groundSide(map, wall);
         if ((progress <= 0.0 && !startsOnWall) || progress > 1.0) {
             return AirCollision.none();

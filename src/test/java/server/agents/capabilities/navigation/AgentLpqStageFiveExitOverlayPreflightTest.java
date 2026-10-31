@@ -46,7 +46,7 @@ class AgentLpqStageFiveExitOverlayPreflightTest {
             AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
             int startRegion = graph.findRegionId(map, spawn.getPosition());
             int targetRegion = graph.findRegionId(map, exit.getPosition());
-            assertEquals(60, graph.version);
+            assertEquals(61, graph.version);
             assertEquals(regionPath.getFirst(), startRegion);
             assertEquals(regionPath.getLast(), targetRegion);
             assertTrue(AgentNavigationRouteOverlayPolicy.applies(graph, targetRegion));

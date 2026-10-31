@@ -1,5 +1,6 @@
 package server.agents.physics;
 
+import server.agents.capabilities.movement.AgentGroundCollisionService;
 import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
@@ -65,30 +66,42 @@ public final class AgentWallCollisionPolicy {
             return 0;
         }
         int x = wall.getX1();
+        // The run's top, not a ledge branching off part-way up the wall (105090310 x -2, y -460).
+        int topY = topY(map, wall);
+        boolean west = false;
+        boolean east = false;
+        for (Foothold foothold : map.getFootholds().getAllFootholds()) {
+            if (!foothold.isWall() && foothold.getX1() < foothold.getX2()) {
+                west |= foothold.getX2() == x && foothold.getY2() == topY;
+                east |= foothold.getX1() == x && foothold.getY1() == topY;
+            }
+        }
+        return west == east ? 0 : west ? -1 : 1;
+    }
+
+    /** The top of the run of wall segments at a wall's x, followed up from that wall. */
+    public static int topY(MapleMap map, Foothold wall) {
+        int x = wall.getX1();
         int topY = Math.min(wall.getY1(), wall.getY2());
+        if (map == null || map.getFootholds() == null) {
+            return topY;
+        }
         java.util.List<Foothold> footholds = map.getFootholds().getAllFootholds();
-        for (int hops = 0; hops < 64; hops++) {
-            boolean west = false;
-            boolean east = false;
+        for (int hops = 0; hops < AgentGroundCollisionService.CHAIN_WALK_LIMIT; hops++) {
             Foothold above = null;
             for (Foothold foothold : footholds) {
-                if (foothold.isWall()) {
-                    if (foothold.getX1() == x && foothold.getY1() != foothold.getY2()
-                            && Math.max(foothold.getY1(), foothold.getY2()) == topY) {
-                        above = foothold;
-                    }
-                } else if (foothold.getX1() < foothold.getX2()) {
-                    west |= foothold.getX2() == x && foothold.getY2() == topY;
-                    east |= foothold.getX1() == x && foothold.getY1() == topY;
+                if (foothold.isWall() && foothold.getX1() == x && foothold.getY1() != foothold.getY2()
+                        && Math.max(foothold.getY1(), foothold.getY2()) == topY) {
+                    above = foothold;
+                    break;
                 }
             }
             if (above == null) {
-                return west == east ? 0 : west ? -1 : 1;
+                return topY;
             }
-            // A ledge branching off part-way up the wall (105090310 x -2, y -460) is not its cap.
             topY = Math.min(above.getY1(), above.getY2());
         }
-        return 0;
+        return topY;
     }
 
     private static int baseZMass(MapleMap map) {

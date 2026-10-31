@@ -15,7 +15,8 @@ import java.awt.Rectangle;
 public final class AgentGroundCollisionService {
     private static final int REGION_STITCH_GAP_PX = config.AgentTuning.intValue("server.agents.capabilities.movement.AgentGroundCollisionService.REGION_STITCH_GAP_PX");
     private static final int SYNTHETIC_MAP_BOUND_SIZE = 1 << 18;
-    private static final int CHAIN_WALK_LIMIT = 64;
+    public static final int CHAIN_WALK_LIMIT = config.AgentTuning.intValue(
+            "server.agents.capabilities.movement.AgentGroundCollisionService.CHAIN_WALK_LIMIT");
 
     private AgentGroundCollisionService() {
     }
