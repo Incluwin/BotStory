@@ -908,6 +908,8 @@ class BotMovementManagerTest {
 
         Character bot = mockBot(new Point(100, 100), map);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        // Its physics position starts at the bot's (an unsynced x 0 walked it off the floor's end at x 0)
+        server.agents.capabilities.movement.AgentMovementPoseService.resetMotion(entry, bot.getPosition());
         AgentModeStateRuntime.setFollowing(entry, true);
         AgentMovementStateRuntime.setMovementProfile(entry, new AgentMovementProfile(140, 100));
         AgentFidgetService.startFidget(entry, AgentFidgetMode.SPAM_SIDEWAYS, System.currentTimeMillis(), 3000);

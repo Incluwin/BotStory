@@ -641,8 +641,11 @@ class AgentPhysicsEngineTest {
         server.maps.FootholdTree footholds = map.getFootholds();
         Foothold platform = new Foothold(new Point(0, 10),    new Point(10, 10),   1);
         Foothold floating = new Foothold(new Point(-100, -16), new Point(100, -16), 2);
+        // A floor below the drop: a ledge with nothing below it out to the map's edge is a wall (2026-10-31)
+        Foothold below = new Foothold(new Point(0, 200), new Point(200, 200), 3);
         footholds.insert(platform);
         footholds.insert(floating);
+        footholds.insert(below);
 
         // Bot at (4, 10) on platform; physX advanced to 14 (past the ledge at X=10).
         Character bot = mockBot(new Point(4, 10), map);

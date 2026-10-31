@@ -83,6 +83,16 @@ public final class AgentGroundPhysicsService {
                     false);
         }
 
+        // A floor's end with no floor below it anywhere ahead, out to the map's edge, is a wall: walking off it only
+        // ends in a below-map recovery. Live 2026-10-31, Red Nose Pirate Den 3 (251010403): its lowest floor starts
+        // at x -1111 inside the map's edge (-1118) and Agents grinding there walked off it (knockback=false airVx=0
+        // lastFh=101). Any walk-off that a floor further along could catch, a planned drop among them, is unchanged.
+        if (step.lostGround() && noFloorBelowAhead(map, step.point(),
+                step.stepX() != 0 ? Integer.signum(step.stepX()) : desiredDirection)) {
+            step = new GroundStepResult(currentPosition, foothold, initialGroundTravelState(currentPosition),
+                    0, 0, false);
+        }
+
         if (step.lostGround()) {
             beginFall(entry, agent, step.point(), step.stepX());
             return new AgentGroundMotion(step.stepX(), true);
@@ -110,6 +120,27 @@ public final class AgentGroundPhysicsService {
         AgentMovementStateRuntime.setMovementVelocity(entry, step.velocityX(), 0);
         AgentMovementPoseService.syncCharacterState(entry);
         return new AgentGroundMotion(step.stepX(), false);
+    }
+
+    /**
+     * No floor (non-wall foothold) at or below {@code from}'s height reaches the strip from its x out to the map's
+     * edge. A floor at its own height counts, so a walk that only seems to lose its ground mid-floor still falls.
+     */
+    static boolean noFloorBelowAhead(MapleMap map, Point from, int direction) {
+        if (map == null || map.getFootholds() == null || direction == 0) {
+            return false;
+        }
+        for (Foothold foothold : map.getFootholds().getAllFootholds()) {
+            if (foothold.isWall() || Math.max(foothold.getY1(), foothold.getY2()) < from.y) {
+                continue;
+            }
+            int left = Math.min(foothold.getX1(), foothold.getX2());
+            int right = Math.max(foothold.getX1(), foothold.getX2());
+            if (direction < 0 ? left <= from.x : right >= from.x) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

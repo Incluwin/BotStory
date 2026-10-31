@@ -330,6 +330,19 @@ class AgentAirbornePhysicsServiceTest {
         assertWalkStaysOnFloor(251010403, new Point(-1080, 77), -1);
         assertWalkStaysOnFloor(251010403, new Point(540, 153), 1);
         assertWalkStaysOnFloor(251010403, new Point(540, 52), 1);
+        // Riki 13:31:51: knockback=false airVx=0 lastFh=101 peakY=159, recovered at x -1118: a walk west off the
+        // lowest floor's slanted left end (fh 101, x -1111 y 156)
+        assertWalkStaysOnFloor(251010403, new Point(-1080, 155), -1);
+    }
+
+    @Test
+    void onlyAFloorsEndWithNothingBelowAheadToTheMapsEdgeIsADeadEnd() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(251010403);
+
+        assertTrue(AgentGroundPhysicsService.noFloorBelowAhead(map, new Point(-1117, 156), -1),
+                "the lowest floor's west end: nothing below between it and the map's edge");
+        assertFalse(AgentGroundPhysicsService.noFloorBelowAhead(map, new Point(-706, 77), 1),
+                "the y 77 floor's east end: the y 153 floor runs on below it");
     }
 
     private static void assertWalkStaysOnFloor(int mapId, Point start, int direction) {
@@ -345,7 +358,8 @@ class AgentAirbornePhysicsServiceTest {
             assertFalse(AgentGroundPhysicsService.applyGroundMotion(entry, agent, foothold).lostGround(),
                     "map " + mapId + " from " + start + " walked off the floor at " + position.get() + " on tick " + tick);
         }
-        assertEquals(start.y, position.get().y, "map " + mapId + " from " + start + " ended at " + position.get());
+        assertTrue(Math.abs(position.get().y - start.y) <= 5,
+                "map " + mapId + " from " + start + " ended at " + position.get());
     }
 
     private static void assertKnockbacksLandAbove(int mapId, int fromX, int toX, int floorY, int direction, int maxY) {
