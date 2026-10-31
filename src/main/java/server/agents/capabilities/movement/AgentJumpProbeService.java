@@ -833,6 +833,11 @@ public final class AgentJumpProbeService {
         int yAtX = (int) Math.round(previousPos.y + (nextPos.y - previousPos.y) * progress);
         int floorY = (int) Math.floor(floor.getY1()
                 + (floor.getY2() - floor.getY1()) * (x - floor.getX1()) / (double) (floor.getX2() - floor.getX1()));
+        // The foothold tree's point on the floor is within a pixel of floorY; a floor below the Agent's height or the
+        // move's height here is the ordinary probes' case, and is not looked up again.
+        if (floorY - 1 > previousPos.y || floorY - 1 > yAtX) {
+            return AirCollision.none();
+        }
         Point probe = new Point(x, floorY - 2);
         Point ground = map.getPointBelow(probe);
         Foothold foothold = map.getFootholds().findBelow(probe);
