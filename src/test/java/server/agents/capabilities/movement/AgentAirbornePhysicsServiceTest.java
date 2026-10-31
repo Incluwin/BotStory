@@ -317,6 +317,60 @@ class AgentAirbornePhysicsServiceTest {
         assertKnockbacksOffTheLowestFloorLand(105090312, 1963, 1980, 1);
     }
 
+    @Test
+    void knockbackOffAHigherFloorThatReachesTheMapEdgeLandsOnAFloor() {
+        // Live 2026-10-31 13:08 after the fix above: two more falls at x -1118 on 251010403, from the higher floors
+        // whose left ends reach the map edge (y 77 from -1118, y -86 from -1116).
+        assertKnockbacksLandAbove(251010403, -1118, -1090, 77, -1, 160);
+        assertKnockbacksLandAbove(251010403, -1116, -1090, -86, -1, 160);
+    }
+
+    @Test
+    void aWalkToTheMapsEdgeAlongAFloorThatEndsThereStaysOnTheFloor() {
+        assertWalkStaysOnFloor(251010403, new Point(-1080, 77), -1);
+        assertWalkStaysOnFloor(251010403, new Point(540, 153), 1);
+        assertWalkStaysOnFloor(251010403, new Point(540, 52), 1);
+    }
+
+    private static void assertWalkStaysOnFloor(int mapId, Point start, int direction) {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
+        server.agents.capabilities.navigation.AgentNavigationGraphService.rebuildGraph(map);
+        AtomicReference<Point> position = new AtomicReference<>(new Point(start));
+        Character agent = trackedAgent(map, position);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentMovementPoseService.resetMotion(entry, position.get());
+        for (int tick = 0; tick < 60; tick++) {
+            Foothold foothold = AgentGroundPhysicsService.syncAndDetectGround(entry, agent);
+            AgentMovementStateRuntime.setMoveDirection(entry, direction);
+            assertFalse(AgentGroundPhysicsService.applyGroundMotion(entry, agent, foothold).lostGround(),
+                    "map " + mapId + " from " + start + " walked off the floor at " + position.get() + " on tick " + tick);
+        }
+        assertEquals(start.y, position.get().y, "map " + mapId + " from " + start + " ended at " + position.get());
+    }
+
+    private static void assertKnockbacksLandAbove(int mapId, int fromX, int toX, int floorY, int direction, int maxY) {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
+        int tickMs = AgentMovementPhysicsConfig.configuredMovementTickMs();
+        float launchVelocityY = -AgentMobKnockbackPolicy.scaledOpenStoryStep(
+                AgentMobPhysicsConfig.cfg.KNOCKBACK_VFORCE, tickMs);
+        int knockbackVelocityX = direction * Math.round(AgentMobKnockbackPolicy.scaledOpenStoryStep(
+                AgentMobPhysicsConfig.cfg.KNOCKBACK_HSPEED, tickMs));
+        for (int launchX = fromX; launchX <= toX; launchX++) {
+            AtomicReference<Point> position = new AtomicReference<>(new Point(launchX, floorY));
+            Character agent = trackedAgent(map, position);
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+            AgentKnockbackMovementService.beginKnockback(
+                    entry, agent, new Point(launchX, floorY), launchVelocityY, knockbackVelocityX);
+            AgentAirborneStepResult result = AgentAirborneStepResult.CONTINUE;
+            for (int tick = 1; tick <= 80 && AgentMovementStateRuntime.inAir(entry); tick++) {
+                result = AgentAirbornePhysicsService.stepAirborne(entry, agent);
+                assertTrue(position.get().y <= maxY, "map " + mapId + " launch (" + launchX + "," + floorY
+                        + ") fell to " + position.get() + " on tick " + tick + " (" + result + ")");
+            }
+            assertEquals(AgentAirborneStepResult.LANDED, result, "map " + mapId + " launch x=" + launchX);
+        }
+    }
+
     private static void assertKnockbacksOffTheLowestFloorLand(int mapId, int fromX, int toX, int direction) {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
         int tickMs = AgentMovementPhysicsConfig.configuredMovementTickMs();

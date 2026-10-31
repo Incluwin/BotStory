@@ -157,8 +157,18 @@ public final class AgentAirbornePhysicsService {
             AgentMovementStateRuntime.setInAir(entry, false);
             return AgentAirborneStepResult.CONTINUE;
         }
-        log.warn("Recovered Agent '{}' below map bounds map={} from={} to={}",
-                agent.getName(), agent.getMapId(), position, recoveryPoint);
+        // The flight's kind and where it left the ground, so a fall that is left explains itself (2026-10-31: two
+        // falls at 251010403's edge that no knockback or walk replayed offline).
+        log.warn("Recovered Agent '{}' below map bounds map={} from={} to={} knockback={} fixedArc={} airVx={} "
+                        + "steerVx={} lastFh={} peakY={}",
+                agent.getName(), agent.getMapId(), position, recoveryPoint,
+                AgentMovementPhysicsStateRuntime.knockbackFlight(entry),
+                AgentMovementPhysicsStateRuntime.fixedAirArc(entry),
+                Math.round(AgentMovementPhysicsStateRuntime.airVelocityX(entry)),
+                Math.round(AgentMovementPhysicsStateRuntime.airSteerVelocityX(entry)),
+                AgentMovementPhysicsStateRuntime.lastGroundFhId(entry),
+                AgentMovementPhysicsStateRuntime.hasFallPeakPhysicsY(entry)
+                        ? Math.round(AgentMovementPhysicsStateRuntime.fallPeakPhysicsY(entry)) : "none");
         AgentMovementPoseService.teleportTo(entry, agent, recoveryPoint);
         AgentOperationalEventPublisher.publish(entry,
                 objectiveId -> new AgentRecoveryPerformedEvent(
