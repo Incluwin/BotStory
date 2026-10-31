@@ -7,6 +7,7 @@ import client.Client;
 import client.Job;
 import client.Skill;
 import client.SkillFactory;
+import client.autoban.AutobanManager;
 import constants.skills.ThunderBreaker;
 import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
@@ -45,7 +46,9 @@ import static org.mockito.Mockito.when;
  * handler recast the buff for every proc and charged its 30 MP, so one with less MP lost the spark. A spark costs
  * nothing and leaves the buff as it is. Its targets jump on from the struck monster across the map (up to 1479 px from
  * the Thunder Breaker, 22 DISTANCE_HACK alerts in three minutes), so an Agent's spark raises no distance alert, and a
- * human's is checked on its first jump only: the nearest of its targets, 65-251 px out in every captured spark.
+ * human's is checked on its first jump only: the nearest of its targets, 65-251 px out in every captured spark. The
+ * client sent one spark after each basic swing that listed a monster and none after any other, so a spark needs such a
+ * swing of its own before it.
  */
 class SparkProcHandlerTest {
     private static final int AGENT_ID = 42_000_081;
@@ -76,7 +79,7 @@ class SparkProcHandlerTest {
 
     @Test
     void aSparkLandsWithoutTheBuffsMp() {
-        Character thunderBreaker = thunderBreaker(0);
+        Character thunderBreaker = afterItsSwing(thunderBreaker(0));
 
         assertTrue(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1),
                 "with 0 MP the spark still lands");
@@ -84,7 +87,7 @@ class SparkProcHandlerTest {
 
     @Test
     void aSparkNeitherChargesMpNorRecastsTheBuff() {
-        Character thunderBreaker = thunderBreaker(5_000);
+        Character thunderBreaker = afterItsSwing(thunderBreaker(5_000));
 
         assertTrue(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1));
 
@@ -94,11 +97,55 @@ class SparkProcHandlerTest {
 
     @Test
     void aSparkWithoutTheSparkBuffIsRefused() {
-        Character thunderBreaker = thunderBreaker(5_000);
+        Character thunderBreaker = afterItsSwing(thunderBreaker(5_000));
         when(thunderBreaker.getBuffedValue(BuffStat.SPARK)).thenReturn(null);
 
         assertFalse(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1),
                 "a client that sends a spark with no Spark buff gets no free attack");
+    }
+
+    @Test
+    void aSparkWithNoSwingBeforeItIsRefused() {
+        Character thunderBreaker = humanThunderBreakerAt(new Point(1_616, 215));
+        Monster target = targetOf(thunderBreaker, 0xCB5E, new Point(1_384, 215));
+
+        assertFalse(AbstractDealDamageHandler.applyAttack(spark(target), thunderBreaker, 1),
+                "a client that sends sparks on its own gets no free attacks");
+        verify(target, never()).aggroMonsterDamage(any(Character.class), anyInt());
+    }
+
+    @Test
+    void aSwingThatListsAMonsterAllowsOneSpark() {
+        Character thunderBreaker = thunderBreaker(5_000);
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(basicSwing(0xCA61), thunderBreaker, 1));
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1));
+        assertFalse(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1), "one spark a swing");
+    }
+
+    @Test
+    void aSwingThatListsNoMonsterAllowsNoSpark() {
+        Character thunderBreaker = thunderBreaker(5_000);
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(basicSwing(), thunderBreaker, 1));
+
+        assertFalse(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1),
+                "the capture: no swing that listed no monster was followed by a spark");
+    }
+
+    /** An Agent's swing and its spark take the handlers a human's packets take, in the order attackMonster sends them. */
+    @Test
+    void anAgentsSwingAllowsTheSparkItSendsRightAfterIt() {
+        Character agent = thunderBreaker(5_000);
+        BotClient client = new BotClient(0, 1);
+        client.setPlayer(agent);
+        when(agent.getClient()).thenReturn(client);
+        when(agent.getId()).thenReturn(AGENT_ID);
+
+        assertTrue(CloseRangeDamageHandler.applyCloseRangeEffects(basicSwing(0xCA61), agent, client));
+        assertTrue(RangedAttackHandler.applyAgentRangedAttackEffects(spark(), agent, client));
+        assertFalse(RangedAttackHandler.applyAgentRangedAttackEffects(spark(), agent, client), "one spark a swing");
     }
 
     @Test
@@ -128,7 +175,7 @@ class SparkProcHandlerTest {
     /** 13:19:20.406 in the capture: the Thunder Breaker at (1616,215) sparked monsters at 1384, 758 and 631. */
     @Test
     void aHumansSparkThatJumpsAcrossTheMapRaisesNoAlert() {
-        Character human = humanThunderBreakerAt(new Point(1_616, 215));
+        Character human = afterItsSwing(humanThunderBreakerAt(new Point(1_616, 215)));
         Monster first = targetOf(human, 0xCB5E, new Point(1_384, 215));
         Monster second = targetOf(human, 0xCA77, new Point(758, 215));
         Monster third = targetOf(human, 0xCA3D, new Point(631, 215));
@@ -145,7 +192,7 @@ class SparkProcHandlerTest {
 
     @Test
     void aHumansSparkWithNoTargetWithinReachIsFlaggedOnItsNearest() {
-        Character human = humanThunderBreakerAt(new Point(1_616, 215));
+        Character human = afterItsSwing(humanThunderBreakerAt(new Point(1_616, 215)));
         Monster nearest = targetOf(human, 1, new Point(616, 215));
         Monster farther = targetOf(human, 2, new Point(2_816, 215));
         Monster farthest = targetOf(human, 3, new Point(216, 215));
@@ -188,9 +235,33 @@ class SparkProcHandlerTest {
         return attack;
     }
 
+    /** A Thunder Breaker's basic knuckle swing (stabO1) listing {@code objectIds}, one line each. */
+    private static AbstractDealDamageHandler.AttackInfo basicSwing(int... objectIds) {
+        AbstractDealDamageHandler.AttackInfo attack = new AbstractDealDamageHandler.AttackInfo();
+        attack.numDamage = 1;
+        attack.numAttacked = objectIds.length;
+        attack.numAttackedAndDamage = objectIds.length << 4 | 1;
+        attack.display = 0x80;
+        attack.direction = 0x10;
+        attack.stance = 0x80;
+        attack.targets = new HashMap<>();
+        for (int objectId : objectIds) {
+            attack.targets.put(objectId,
+                    new AbstractDealDamageHandler.AttackTarget((short) 283, new ArrayList<>(List.of(50_000))));
+        }
+        return attack;
+    }
+
+    /** {@code thunderBreaker} once its basic swing listing a monster went through, the swing a spark follows. */
+    private static Character afterItsSwing(Character thunderBreaker) {
+        assertTrue(AbstractDealDamageHandler.applyAttack(basicSwing(0xCA61), thunderBreaker, 1));
+        return thunderBreaker;
+    }
+
     private static Character thunderBreaker(int mp) {
         MapleMap map = mock(MapleMap.class);
         Character chr = mock(Character.class);
+        when(chr.getAutobanManager()).thenReturn(new AutobanManager(chr));
         // Mockito answers 0 for an unstubbed Integer; the live API answers null for a buff that is absent
         when(chr.getBuffedValue(any(BuffStat.class))).thenReturn(null);
         when(chr.getBuffedValue(BuffStat.SPARK)).thenReturn(SPARK_LEVEL);
