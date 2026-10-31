@@ -1951,13 +1951,14 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * A boss part of a companion run died (LivingWorldHooks.mobKilled, inside its monitor: memory only): what each
-     * attacker dealt it goes toward the run's damage shares (RunDamage, F6.4), written with the run's records.
+     * attacker dealt it goes toward the run's damage shares (RunDamage, F6.4), written with the run's records. A citizen
+     * expedition's boss counts nothing: the population hosts that run, so no finish here would ever end its tally.
      */
     public void bossDamage(MapleMap map, server.life.Monster boss, Set<Integer> attackerIds) {
         EventInstanceManager event = map == null || boss == null ? null : map.getEventInstance();
         AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forEvent(event);
         RunDamage damage = damage();
-        if (session == null || attackerIds == null || damage == null) {
+        if (session == null || session.citizenRun() || attackerIds == null || damage == null) {
             return;
         }
         String key = damageKey(session.sessionId());

@@ -814,6 +814,48 @@ class CompanionBossRunsTest {
     }
 
     /**
+     * F6.4 damage shares: a companion run's boss adds what each attacker dealt it to the run's tally, which the run's end
+     * reads. A citizen expedition's boss (the population hosts that run, so its end never comes here) keeps no tally,
+     * else every citizen boss run would leave one behind for good.
+     */
+    @Test
+    void aCompanionRunsBossCountsTowardItsDamageSharesAndACitizenExpeditionsKeepsNoTally() {
+        CompanionRunRecorder records = new CompanionRunRecorder(game.world);
+        CompanionPartyQuestService quests = mock(CompanionPartyQuestService.class);
+        when(quests.records()).thenReturn(records);
+        when(game.world.partyQuests()).thenReturn(quests);
+        server.life.Monster boss = mock(server.life.Monster.class);
+        when(boss.damageBy(ISOLDE)).thenReturn(3_000L);
+        when(boss.damageBy(THANE)).thenReturn(1_000L);
+
+        killBossOf(session(SID, false), boss, ISOLDE, THANE);
+        killBossOf(session(8L, true), boss, ISOLDE, THANE);
+
+        Map<Integer, Double> shares = records.damage().end(CompanionBossRuns.damageKey(SID));
+        assertEquals(0.75d, shares.get(ISOLDE), 1e-9);
+        assertEquals(0.25d, shares.get(THANE), 1e-9);
+        assertTrue(records.damage().end(CompanionBossRuns.damageKey(8L)).isEmpty(), "the citizen run kept no tally");
+    }
+
+    private static AgentBossRunSession session(long sessionId, boolean citizens) {
+        AgentBossRunSession session = mock(AgentBossRunSession.class);
+        when(session.sessionId()).thenReturn(sessionId);
+        when(session.citizenRun()).thenReturn(citizens);
+        return session;
+    }
+
+    /** {@code boss} dies in {@code session}'s event to {@code attackerIds} (LivingWorldHooks.mobKilled's boss-run branch). */
+    private void killBossOf(AgentBossRunSession session, server.life.Monster boss, Integer... attackerIds) {
+        MapleMap battle = mock(MapleMap.class);
+        EventInstanceManager event = mock(EventInstanceManager.class);
+        when(battle.getEventInstance()).thenReturn(event);
+        try (MockedStatic<AgentBossRunRegistry> registry = mockStatic(AgentBossRunRegistry.class)) {
+            registry.when(() -> AgentBossRunRegistry.forEvent(event)).thenReturn(session);
+            runs.bossDamage(battle, boss, Set.of(attackerIds));
+        }
+    }
+
+    /**
      * Deploy review 2026-10-12: the party clause pays only a human who hit one of the run's bosses. Ann hit, so she is
      * befriended with Bob's Brannock in her party too; Bob, an owner who hit nothing, only with his own Brannock.
      */
