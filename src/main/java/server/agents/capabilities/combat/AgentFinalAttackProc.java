@@ -39,7 +39,7 @@ import java.util.function.Predicate;
  */
 public final class AgentFinalAttackProc {
     /** Where in the trigger's recovery (its hit to the end of its animation) the Final Attack starts. */
-    private static final double START_INTO_RECOVERY = 0.4;
+    private static final double START_INTO_RECOVERY = config.AgentTuning.doubleValue("server.agents.capabilities.combat.AgentFinalAttackProc.START_INTO_RECOVERY");
     /** The Final Attacks that are buffs (StatEffect.isCygnusFA): the client checks theirs is on. */
     private static final Set<Integer> BUFFED_FINAL_ATTACKS = Set.of(DawnWarrior.FINAL_ATTACK, WindArcher.FINAL_ATTACK);
 

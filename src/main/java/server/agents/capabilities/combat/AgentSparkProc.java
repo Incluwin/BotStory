@@ -38,8 +38,8 @@ public final class AgentSparkProc {
     /** The display bit a v83 client sets on a swing, and on the spark, while Spark is on. */
     static final int SPARK_DISPLAY = 0x80;
     private static final String SPARK_ACTION = "alert5";
-    private static final int DELAY_BASE_MS = 174;
-    private static final int DELAY_MS_PER_PX = 2;
+    private static final int DELAY_BASE_MS = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentSparkProc.DELAY_BASE_MS");
+    private static final int DELAY_MS_PER_PX = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentSparkProc.DELAY_MS_PER_PX");
 
     private AgentSparkProc() {
     }
