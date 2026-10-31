@@ -204,7 +204,7 @@ class AgentNavigationCommittedEdgeServiceTest {
     @Test
     void reuseCommittedEdgeRejectsCachedEdgeThatViolatesRouteOverlay() {
         AgentNavigationGraph graph = new AgentNavigationGraph(
-                120000000, 60, AgentMovementProfile.base(),
+                120000000, 61, AgentMovementProfile.base(),
                 List.of(), Map.of(), Map.of(), Map.of(), Set.of());
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
         AgentNavigationGraph.Edge staleEdge = edge(216, 250, AgentNavigationGraph.EdgeType.CLIMB,
@@ -224,7 +224,7 @@ class AgentNavigationCommittedEdgeServiceTest {
     @Test
     void reuseCommittedEdgeRejectsInverseEdgeAfterNautilusExitRegionIsReached() {
         AgentNavigationGraph graph = new AgentNavigationGraph(
-                120000000, 60, AgentMovementProfile.base(),
+                120000000, 61, AgentMovementProfile.base(),
                 List.of(), Map.of(), Map.of(), Map.of(), Set.of());
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
         AgentNavigationGraph.Edge inverseEdge = edge(191, 199, AgentNavigationGraph.EdgeType.DROP,
