@@ -205,24 +205,42 @@ public final class AgentGroundPhysicsService {
                 map, foothold, desiredDirection, state, profile, restX);
         int newX = (int) Math.round(displaced.physX());
         int stepX = newX - currentPosition.x;
-        AgentGroundCollisionService.GroundStepPreview preview =
-                AgentGroundCollisionService.previewGroundStep(map, currentPosition, foothold, newX);
+        // A step longer than a dash probe (a charge's slide covers half its distance in its first tick) is taken in
+        // probe-sized pieces, the way reachableSlide measured the slide. Previewed whole, only its far end was
+        // tested: a Corkscrew Blow up a steep bump read as running off the floor and dropped the Agent under the
+        // bump, and one along a floor's end went into the cliff past it (Drake's Nest 105090312, through the map).
+        Point from = currentPosition;
+        Foothold fromFoothold = foothold;
+        int pieceX = newX;
+        AgentGroundCollisionService.GroundStepPreview preview;
+        while (true) {
+            pieceX = Math.abs(newX - from.x) > AgentKnockbackMovementService.DASH_PROBE_STEP_PX
+                    ? from.x + Integer.signum(newX - from.x) * AgentKnockbackMovementService.DASH_PROBE_STEP_PX
+                    : newX;
+            preview = AgentGroundCollisionService.previewGroundStep(map, from, fromFoothold, pieceX);
+            if (preview == null || preview.blocked() || preview.lostGround() || pieceX == newX) {
+                break;
+            }
+            from = preview.point();
+            fromFoothold = preview.foothold() != null ? preview.foothold() : fromFoothold;
+        }
         if (preview == null) {
             return new GroundStepResult(currentPosition, foothold, state, 0, 0, true);
         }
 
         if (preview.blocked()) {
-            return new GroundStepResult(currentPosition, foothold, initialGroundTravelState(currentPosition), 0, 0, false);
+            return new GroundStepResult(from, fromFoothold, initialGroundTravelState(from),
+                    from.x - currentPosition.x, 0, false);
         }
 
         if (preview.lostGround()) {
-            return new GroundStepResult(new Point(newX, preview.baseY()), foothold, displaced,
+            return new GroundStepResult(new Point(pieceX, preview.baseY()), fromFoothold, displaced,
                     stepX, velocityFromDeltaX(displaced.physX() - currentPosition.x), true);
         }
 
         // At rest the continuous X keeps its subpixel offset from the rendered X; reporting that offset as a
         // velocity (e.g. -9 forever) also kept applyIdleOrInPlaceMotion from ever settling the Agent.
-        return new GroundStepResult(preview.point(), preview.foothold() != null ? preview.foothold() : foothold, displaced,
+        return new GroundStepResult(preview.point(), preview.foothold() != null ? preview.foothold() : fromFoothold, displaced,
                 stepX, displaced.hspeed() == 0.0 ? 0 : velocityFromDeltaX(displaced.physX() - currentPosition.x), false);
     }
 

@@ -15,6 +15,7 @@ import java.awt.Rectangle;
 public final class AgentGroundCollisionService {
     private static final int REGION_STITCH_GAP_PX = config.AgentTuning.intValue("server.agents.capabilities.movement.AgentGroundCollisionService.REGION_STITCH_GAP_PX");
     private static final int SYNTHETIC_MAP_BOUND_SIZE = 1 << 18;
+    private static final int CHAIN_WALK_LIMIT = 64;
 
     private AgentGroundCollisionService() {
     }
@@ -124,6 +125,9 @@ public final class AgentGroundCollisionService {
             snappedFoothold = snappedSample == null ? null : snappedSample.foothold();
             lostGround = snappedPoint == null
                     || snappedPoint.y > baseY + AgentMovementPhysicsConfig.configuredMaxSnapDrop();
+            if (lostGround && endsAtRisingWall(map, foothold, currentPos.x, nextX)) {
+                return new GroundStepPreview(baseY, currentPos, foothold, false, true);
+            }
         } else {
             int probeY = Math.max(currentPos.y, baseY + 1);
             snappedPoint = AgentGroundingService.findGroundPoint(map, new Point(nextX, probeY));
@@ -135,6 +139,51 @@ public final class AgentGroundCollisionService {
         }
 
         return new GroundStepPreview(baseY, snappedPoint, snappedFoothold, lostGround, false);
+    }
+
+    /**
+     * Whether the floor under a step that runs off its walk region, followed along its foothold chain toward
+     * {@code nextX}, ends at the foot of a wall rising over the Agent on that side. A walk region ends at a ledge
+     * or at a cliff: walls do not stop a region walk, so at Drake's Nest's cliffs (105090312 x 1213, 105090310
+     * x -2) the step went into the rock and the Agent fell through it below the map.
+     */
+    private static boolean endsAtRisingWall(MapleMap map, Foothold foothold, int fromX, int nextX) {
+        int dir = Integer.compare(nextX, fromX);
+        AgentNavigationWalkRegionLookupService.WalkRegionLookup lookup =
+                AgentNavigationWalkRegionLookupService.resolveWalkRegionLookup(map);
+        if (dir == 0 || foothold == null || lookup == null) {
+            return false;
+        }
+        java.util.Map<Integer, Foothold> footholdsById = lookup.footholdsById();
+        Foothold floor = foothold;
+        for (int hops = 0; floor != null && !floor.isWall() && hops < CHAIN_WALK_LIMIT; hops++) {
+            int endX = dir < 0 ? floor.getX1() : floor.getX2();
+            if ((nextX - endX) * dir <= 0) {
+                return false;
+            }
+            Foothold neighbour = footholdsById.get(dir < 0 ? floor.getPrev() : floor.getNext());
+            if (neighbour != null && neighbour.isWall()) {
+                return AgentWallCollisionPolicy.groundSide(map, neighbour) == dir
+                        && wallRisesOver(footholdsById, neighbour, dir);
+            }
+            floor = neighbour;
+        }
+        return false;
+    }
+
+    /** A wall chain at one x rising more than a slope step. */
+    private static boolean wallRisesOver(java.util.Map<Integer, Foothold> footholdsById, Foothold wall, int dir) {
+        int wallX = wall.getX1();
+        int rise = 0;
+        for (int hops = 0; wall != null && wall.isWall() && wall.getX1() == wallX && hops < CHAIN_WALK_LIMIT;
+             hops++) {
+            rise += Math.abs(wall.getY2() - wall.getY1());
+            if (rise > AgentMovementPhysicsConfig.configuredMaxSlopeUp()) {
+                return true;
+            }
+            wall = footholdsById.get(dir < 0 ? wall.getPrev() : wall.getNext());
+        }
+        return false;
     }
 
     private static boolean hasWalkRegion(MapleMap map, Foothold foothold) {

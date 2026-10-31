@@ -126,4 +126,63 @@ class AgentJumpProbeServiceTest {
         assertNull(AgentJumpProbeService.ropeGrabAfterTick(new Point(116, 52), new Point(104, 70), rope));
         assertNull(AgentJumpProbeService.ropeGrabAfterTick(new Point(104, -30), new Point(104, -2), rope));
     }
+
+    @Test
+    void aMoveFromACliffsFootIntoTheRockIsHeldButAJumpFromABlocksTopCornerIsNot() {
+        MapleMap map = new MapleMap(910000072, 0, 0, 910000072, 1.0f);
+        FootholdTree footholds = new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
+        // A cliff at x 0 (upper floor to the west), and a block whose west side is a wall at x 200.
+        Foothold upper = new Foothold(new Point(-100, 0), new Point(0, 0), 1);
+        Foothold cliff = new Foothold(new Point(0, 0), new Point(0, 80), 2);
+        Foothold lower = new Foothold(new Point(0, 80), new Point(150, 80), 3);
+        Foothold blockSide = new Foothold(new Point(200, 60), new Point(200, 20), 4);
+        Foothold blockTop = new Foothold(new Point(200, 20), new Point(260, 20), 5);
+        upper.setNext(2);
+        cliff.setPrev(1);
+        cliff.setNext(3);
+        lower.setPrev(2);
+        blockSide.setNext(5);
+        blockTop.setPrev(4);
+        for (Foothold foothold : new Foothold[]{upper, cliff, lower, blockSide, blockTop}) {
+            footholds.insert(foothold);
+        }
+        map.setFootholds(footholds);
+
+        AgentJumpProbeService.AirCollision intoCliff =
+                AgentJumpProbeService.resolveAirCollision(map, new Point(0, 80), new Point(-9, 60));
+        AgentJumpProbeService.AirCollision overBlock =
+                AgentJumpProbeService.resolveAirCollision(map, new Point(200, 20), new Point(206, 0));
+
+        assertEquals(AgentJumpProbeService.AirCollisionType.WALL, intoCliff.type());
+        assertEquals(1, intoCliff.point().x);
+        assertEquals(AgentJumpProbeService.AirCollisionType.NONE, overBlock.type());
+    }
+
+    @Test
+    void anArcReachingAFloorsEndOnTheTickItReachesTheWallLandsOnlyOnAFloorRunningBack() {
+        MapleMap map = new MapleMap(910000073, 0, 0, 910000073, 1.0f);
+        FootholdTree footholds = new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
+        // A block (top y 0, x 0..100) with walls running down from both ends.
+        Foothold west = new Foothold(new Point(0, 60), new Point(0, 0), 1);
+        Foothold top = new Foothold(new Point(0, 0), new Point(100, 0), 2);
+        Foothold east = new Foothold(new Point(100, 0), new Point(100, 60), 3);
+        west.setNext(2);
+        top.setPrev(1);
+        top.setNext(3);
+        east.setPrev(2);
+        for (Foothold foothold : new Foothold[]{west, top, east}) {
+            footholds.insert(foothold);
+        }
+        map.setFootholds(footholds);
+
+        AgentJumpProbeService.AirCollision westCorner =
+                AgentJumpProbeService.resolveAirCollision(map, new Point(4, -4), new Point(-4, 4));
+        AgentJumpProbeService.AirCollision eastCorner =
+                AgentJumpProbeService.resolveAirCollision(map, new Point(96, -4), new Point(104, 4));
+
+        assertEquals(AgentJumpProbeService.AirCollisionType.LAND, westCorner.type());
+        assertEquals(new Point(0, 0), westCorner.point());
+        assertEquals(AgentJumpProbeService.AirCollisionType.LAND, eastCorner.type());
+        assertEquals(new Point(100, 0), eastCorner.point());
+    }
 }
