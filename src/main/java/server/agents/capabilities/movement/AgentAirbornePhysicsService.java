@@ -51,7 +51,7 @@ public final class AgentAirbornePhysicsService {
         int boundedX = AgentHorizontalBoundaryStateRuntime.clampX(
                 entry, map == null ? -1 : map.getId(), nextPosition.x);
         if (AgentMovementPhysicsStateRuntime.knockbackFlight(entry)) {
-            boundedX = withinTerrain(map, boundedX);
+            boundedX = withinTerrain(map, boundedX, previousPosition.y);
         }
         if (boundedX != nextPosition.x) {
             return stepAgainstActivityBoundary(entry, agent, map, previousPosition,
@@ -111,16 +111,30 @@ public final class AgentAirbornePhysicsService {
      * from a floor whose side wall runs only below it, the knockback after a long drop's fall damage carried
      * Agents out past the map's last foothold, where nothing is below (Wild Cargo's Area 105090301,
      * about 50 falls a day at x -381). The navigation graph never plans a knockback, so it sees no change.
+     * Only floors at or below the Agent count (2026-10-31): Red Nose Pirate Den 3's lowest floor ends at x -1111
+     * and 578 while higher footholds reach -1118 and 579, and the old map-wide bounds held Agents knocked off that
+     * floor over nothing (43 falls in 2.7 h). With no floor below, the map's outermost footholds still bound it.
      */
-    static int withinTerrain(MapleMap map, int x) {
+    static int withinTerrain(MapleMap map, int x, int y) {
         if (map == null || map.getFootholds() == null) {
             return x;
         }
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
+        int floorMinX = Integer.MAX_VALUE;
+        int floorMaxX = Integer.MIN_VALUE;
         for (Foothold foothold : map.getFootholds().getAllFootholds()) {
-            minX = Math.min(minX, Math.min(foothold.getX1(), foothold.getX2()));
-            maxX = Math.max(maxX, Math.max(foothold.getX1(), foothold.getX2()));
+            int left = Math.min(foothold.getX1(), foothold.getX2());
+            int right = Math.max(foothold.getX1(), foothold.getX2());
+            minX = Math.min(minX, left);
+            maxX = Math.max(maxX, right);
+            if (left != right && Math.max(foothold.getY1(), foothold.getY2()) >= y) {
+                floorMinX = Math.min(floorMinX, left);
+                floorMaxX = Math.max(floorMaxX, right);
+            }
+        }
+        if (floorMinX <= floorMaxX) {
+            return Math.clamp(x, floorMinX, floorMaxX);
         }
         return minX > maxX ? x : Math.clamp(x, minX, maxX);
     }

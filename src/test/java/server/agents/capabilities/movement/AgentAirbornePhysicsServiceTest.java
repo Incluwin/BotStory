@@ -307,6 +307,60 @@ class AgentAirbornePhysicsServiceTest {
     }
 
     @Test
+    void knockbackOffAFloorThatEndsShortOfTheMapsOutermostFootholdLandsBackOnIt() {
+        // Live 2026-10-31, 43 falls below Red Nose Pirate Den 3 (251010403) at x -1118 and 579 in 2.7 h: its lowest
+        // floor runs x -1111..578 but higher footholds reach -1118 and 579, so a knockback held at the map's
+        // outermost footholds still flew past the floor's ends with nothing below. Drake's Nest's east edge
+        // (105090312: bottom floor to x 1980, an upper floor to 1982) is the same case.
+        assertKnockbacksOffTheLowestFloorLand(251010403, -1111, -1085, -1);
+        assertKnockbacksOffTheLowestFloorLand(251010403, 552, 578, 1);
+        assertKnockbacksOffTheLowestFloorLand(105090312, 1963, 1980, 1);
+    }
+
+    private static void assertKnockbacksOffTheLowestFloorLand(int mapId, int fromX, int toX, int direction) {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
+        int tickMs = AgentMovementPhysicsConfig.configuredMovementTickMs();
+        float launchVelocityY = -AgentMobKnockbackPolicy.scaledOpenStoryStep(
+                AgentMobPhysicsConfig.cfg.KNOCKBACK_VFORCE, tickMs);
+        int knockbackVelocityX = direction * Math.round(AgentMobKnockbackPolicy.scaledOpenStoryStep(
+                AgentMobPhysicsConfig.cfg.KNOCKBACK_HSPEED, tickMs));
+
+        for (int launchX = fromX; launchX <= toX; launchX++) {
+            int floorY = lowestFloorY(map, launchX);
+            AtomicReference<Point> position = new AtomicReference<>(new Point(launchX, floorY));
+            Character agent = trackedAgent(map, position);
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+            AgentKnockbackMovementService.beginKnockback(
+                    entry, agent, new Point(launchX, floorY), launchVelocityY, knockbackVelocityX);
+
+            AgentAirborneStepResult result = AgentAirborneStepResult.CONTINUE;
+            for (int tick = 1; tick <= 40 && AgentMovementStateRuntime.inAir(entry); tick++) {
+                result = AgentAirbornePhysicsService.stepAirborne(entry, agent);
+                assertTrue(position.get().y <= floorY + 5, "map " + mapId + " launch x=" + launchX
+                        + " fell past its floor on tick " + tick + " to " + position.get() + " (" + result + ")");
+            }
+
+            assertEquals(AgentAirborneStepResult.LANDED, result, "map " + mapId + " launch x=" + launchX);
+        }
+    }
+
+    /** The lowest floor (non-wall foothold) under x, as its y there. */
+    private static int lowestFloorY(MapleMap map, int x) {
+        int lowest = Integer.MIN_VALUE;
+        for (Foothold foothold : map.getFootholds().getAllFootholds()) {
+            int left = Math.min(foothold.getX1(), foothold.getX2());
+            int right = Math.max(foothold.getX1(), foothold.getX2());
+            if (left == right || x < left || x > right) {
+                continue;
+            }
+            double t = (x - foothold.getX1()) / (double) (foothold.getX2() - foothold.getX1());
+            lowest = Math.max(lowest, (int) Math.round(foothold.getY1() + t * (foothold.getY2() - foothold.getY1())));
+        }
+        assertTrue(lowest != Integer.MIN_VALUE, "no floor under x=" + x + " on map " + map.getId());
+        return lowest;
+    }
+
+    @Test
     void aJumpTheAgentMakesIsNotHeldToTheFootholds() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(105090301);
         AtomicReference<Point> position = new AtomicReference<>(new Point(-387, 1100));
