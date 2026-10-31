@@ -99,7 +99,13 @@ public final class AgentFallbackMovementService {
         }
         // Target must be sufficiently above bot. dy < 0 = target higher in MS coords.
         int dy = targetPos.y - botPos.y;
-        return dy < -Math.max(AgentMovementPhysicsConfig.configuredJumpYThreshold() * 2, 60);
+        if (dy < -Math.max(AgentMovementPhysicsConfig.configuredJumpYThreshold() * 2, 60)) {
+            return true;
+        }
+        // Right under a target less far above than that, no walk closes the distance: Aqua Road's top00 (230040000)
+        // stands 59 px over the floor beneath it, and Agents that came down on that floor stood there for 300 s.
+        return dy < -AgentMovementPhysicsConfig.configuredJumpYThreshold()
+                && Math.abs(targetPos.x - botPos.x) <= AgentMovementPhysicsConfig.configuredStopDist();
     }
 
     public static boolean shouldWalkOffLedge(AgentRuntimeEntry entry, Point botPos, Point targetPos, int stepX) {
