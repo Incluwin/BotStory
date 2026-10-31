@@ -10,6 +10,7 @@ import client.inventory.Item;
 import constants.skills.DawnWarrior;
 import constants.skills.WindArcher;
 import server.StatEffect;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
@@ -52,7 +53,7 @@ public final class AgentFinalAttackProc {
 
     /**
      * After a committed swing: when {@code swing} sets off a Final Attack the Agent has and the roll comes up, the Agent
-     * stays in the attack through it, and it is sent when due.
+     * stays in the attack through it, and it is sent when due, its damage credited to the swing's learner decision.
      */
     static void afterSwing(AgentRuntimeEntry entry, Character bot, AgentAttackPlan swing) {
         Rolled rolled = roll(bot, swing, chance());
@@ -60,7 +61,8 @@ public final class AgentFinalAttackProc {
             return;
         }
         AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, rolled.startMs() + rolled.swing().animationMs());
-        AgentCombatRuntime.afterDelay(entry, rolled.startMs(), () -> send(entry, bot, rolled));
+        long decision = AgentCombatLearner.decisions(entry);
+        AgentCombatRuntime.afterDelay(entry, rolled.startMs(), () -> send(entry, bot, rolled, decision));
     }
 
     /** The roll against a Final Attack's prop, 0 to 1. */
@@ -119,8 +121,11 @@ public final class AgentFinalAttackProc {
         return weapon == null ? 0 : weapon.getItemId() / 10000 % 100;
     }
 
-    /** Sends {@code rolled} when it is due: from where the Agent stands then, at whatever its final swing reaches. */
-    static void send(AgentRuntimeEntry entry, Character bot, Rolled rolled) {
+    /**
+     * Sends {@code rolled} when it is due: from where the Agent stands then, at whatever its final swing reaches.
+     * {@code decision} is the learner decision its trigger opened.
+     */
+    static void send(AgentRuntimeEntry entry, Character bot, Rolled rolled, long decision) {
         if (bot.getMapId() != rolled.mapId() || bot.getHp() <= 0 || bot.getSkillLevel(rolled.skillId()) <= 0) {
             return;
         }
@@ -141,7 +146,7 @@ public final class AgentFinalAttackProc {
                 swing.animationMs(), AgentCombatWeaponPolicy.damageWeaponTypeForAction(rolled.skillId(),
                 AgentAttackExecutionProvider.getEquippedWeaponType(bot), swing.action()));
         AgentCombatAttackRuntime.commitFollowUp(entry, bot, plan,
-                targets.stream().map(target -> swing.hitDelayMs()).toList());
+                targets.stream().map(target -> swing.hitDelayMs()).toList(), decision);
     }
 
     /** Up to {@code limit} eligible monsters inside {@code hitBox}, nearest to {@code origin} first. */

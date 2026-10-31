@@ -7,6 +7,7 @@ import client.SkillFactory;
 import constants.skills.ThunderBreaker;
 import server.StatEffect;
 import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
@@ -81,7 +82,8 @@ public final class AgentSparkProc {
                 AgentAttackRoute.RANGED, SPARK_DISPLAY, actionId, actionId, swing.stance & 0x80, swing.speed,
                 DELAY_BASE_MS, 0, null);
         AgentCombatAttackRuntime.commitFollowUp(entry, bot, plan,
-                delays(struck.getPosition(), targets.stream().map(Monster::getPosition).toList()));
+                delays(struck.getPosition(), targets.stream().map(Monster::getPosition).toList()),
+                AgentCombatLearner.decisions(entry));
     }
 
     /**

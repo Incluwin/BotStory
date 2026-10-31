@@ -14,6 +14,8 @@ import net.server.channel.handlers.AbstractDealDamageHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.combat.data.AgentAttackTiming;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
+import server.agents.capabilities.combat.learning.AgentCombatPolicyTable;
 import server.life.Monster;
 
 import java.awt.Rectangle;
@@ -79,6 +81,62 @@ class AgentFinalAttackProcTest {
         assertEquals(3, sent.speed);
         assertEquals(0x11, sent.numAttackedAndDamage, "one monster, one line");
         assertEquals(Set.of(5_000), sent.targets.keySet());
+    }
+
+    /**
+     * The combat learner weighs a Power Strike by what it dealt, and that is the Power Strike and the Final Attack it set
+     * off: the Final Attack's damage goes to the Power Strike's decision when it lands, beside the Power Strike's own.
+     */
+    @Test
+    void theFinalAttacksDamageIsCreditedToThePowerStrikeThatSetItOff() {
+        AgentProcFixture fight = fighter(ONE_HANDED_AXE, WeaponType.GENERAL1H_SWING).chance(0.0);
+        Monster struck = fight.monster(5_000, 140);
+        AgentAttackPlan powerStrike = powerStrike(struck);
+        AgentCombatPolicyTable table = fight.learning(powerStrike, struck);
+        try {
+            double expected = fight.stubbed(() ->
+                    AgentAttackPlanScoringPolicy.scoreAttackPlan(fight.bot, powerStrike).rawDamage());
+
+            assertTrue(fight.swing(powerStrike).committed());
+            fight.runScheduled();
+            fight.nextDecision(0);
+
+            assertEquals(2, fight.sent.size(), "the Power Strike, then its Final Attack");
+            long finalAttack = AgentProcFixture.dealt(fight.sent.get(1));
+            assertTrue(finalAttack > 0);
+            Map<String, Map<Integer, AgentCombatPolicyTable.Cell>> rows = table.snapshot();
+            assertEquals(1, rows.size());
+            String context = rows.keySet().iterator().next();
+            assertEquals(AgentProcFixture.ownReward(context, fight.sent.get(0), expected) + finalAttack,
+                    rows.get(context).get(Warrior.POWER_STRIKE).meanReward(), 1e-6);
+        } finally {
+            AgentCombatLearner.end(fight.entry);
+        }
+    }
+
+    /**
+     * A mob's hit can knock the Agent back during the Power Strike, which clears its attack lock, so a decision of its
+     * own can open before the Final Attack lands; the Final Attack's damage is not that decision's.
+     */
+    @Test
+    void aFinalAttackLandingAfterTheNextDecisionOpenedIsNotCreditedToIt() {
+        AgentProcFixture fight = fighter(ONE_HANDED_AXE, WeaponType.GENERAL1H_SWING).chance(0.0);
+        Monster struck = fight.monster(5_000, 140);
+        AgentAttackPlan powerStrike = powerStrike(struck);
+        AgentCombatPolicyTable table = fight.learning(powerStrike, struck);
+        try {
+            assertTrue(fight.swing(powerStrike).committed());
+            fight.nextDecision(1_234);
+            fight.runScheduled();
+            fight.nextDecision(0);
+
+            assertEquals(2, fight.sent.size());
+            assertTrue(AgentProcFixture.dealt(fight.sent.get(1)) > 0);
+            Map<Integer, AgentCombatPolicyTable.Cell> row = table.snapshot().values().iterator().next();
+            assertEquals(1_234, row.get(0).meanReward(), 1e-6, "the basic attack keeps its own damage only");
+        } finally {
+            AgentCombatLearner.end(fight.entry);
+        }
     }
 
     @Test

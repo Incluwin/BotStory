@@ -261,6 +261,8 @@ public final class AgentCombatLearner {
     /**
      * Damage the Agent caused without a cast of its own (a summon attacking) is credited to
      * whatever decision is running when it lands; the "summon up" situation carries the rest.
+     * So is a Spark or Final Attack a swing set off, while the swing's decision is still running
+     * (AgentCombatAttackRuntime.commitFollowUp checks {@link #decisions}).
      */
     public static void onPassiveDamage(AgentRuntimeEntry entry, long damage) {
         if (entry == null || damage <= 0) {
