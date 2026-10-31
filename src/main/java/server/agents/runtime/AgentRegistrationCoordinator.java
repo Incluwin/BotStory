@@ -1,6 +1,7 @@
 package server.agents.runtime;
 
 import client.Character;
+import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.progression.AgentCareerBuildBundleService;
@@ -29,6 +30,10 @@ public final class AgentRegistrationCoordinator {
     private static final Logger log = LoggerFactory.getLogger(AgentRegistrationCoordinator.class);
     private static final long WORLD_DIRECTOR_OBSERVE_INTERVAL_MS = config.AgentTuning.longValue(
             "server.agents.runtime.AgentRegistrationCoordinator.WORLD_DIRECTOR_OBSERVE_INTERVAL_MS");
+    private static final int LOGIN_REGEAR_MIN_MS = config.AgentTuning.intValue(
+            "server.agents.runtime.AgentRegistrationCoordinator.LOGIN_REGEAR_MIN_MS");
+    private static final int LOGIN_REGEAR_MAX_MS = config.AgentTuning.intValue(
+            "server.agents.runtime.AgentRegistrationCoordinator.LOGIN_REGEAR_MAX_MS");
     private static final AgentWorldDirectorModeRestoreRuntime WORLD_DIRECTOR_MODES =
             new AgentWorldDirectorModeRestoreRuntime(
                     AgentFileWorldDirectorSessionStore.runtimeDefault(),
@@ -106,6 +111,13 @@ public final class AgentRegistrationCoordinator {
         } else {
             log.warn("Agent '{}' registration paused by retained ownership reconciliation: {} {}",
                     agent.getName(), ownership.status(), ownership.reason());
+        }
+        // Auto-equip runs on loot, trades and commands only, so one idling in town kept a weapon its build cannot
+        // use (2026-10-31: Crusaders with sword skills holding axes in the Free Market); it re-gears at login.
+        if (!AgentEquipmentService.wearsUsableWeapon(agent)) {
+            log.info("Agent '{}' re-gears at login: its weapon does not fit its build", agent.getName());
+            AgentSchedulerRuntime.afterRandomDelay(entry, LOGIN_REGEAR_MIN_MS, LOGIN_REGEAR_MAX_MS,
+                    () -> AgentEquipmentService.autoEquip(agent, null, null, true));
         }
         return entry;
     }

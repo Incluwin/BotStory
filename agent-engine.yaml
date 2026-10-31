@@ -5761,6 +5761,14 @@ tuning:
     # Purpose: Restores persisted Observe or Shadow mode at registration without reading Director files on every Agent tick.
     # Technical: Live modes use the directive cadence; this interval only controls read-only World Director samples.
     server.agents.runtime.AgentRegistrationCoordinator.WORLD_DIRECTOR_OBSERVE_INTERVAL_MS: '5000'
+    # Values: 1000-30000 milliseconds, at most LOGIN_REGEAR_MAX_MS. Recommended: 2000.
+    # Purpose: Earliest moment after login that an Agent wearing a weapon its build cannot use re-runs auto-equip.
+    # Technical: Scheduled on the Agent's own mailbox after registration restores; only Agents whose equipped weapon fails AgentWeaponCompatibilityPolicy are scheduled, so a normal login costs one inventory read.
+    server.agents.runtime.AgentRegistrationCoordinator.LOGIN_REGEAR_MIN_MS: '2000'
+    # Values: 1000-60000 milliseconds, at least LOGIN_REGEAR_MIN_MS. Recommended: 6000 to spread a boot's logins.
+    # Purpose: Latest moment after login for that re-gear; the delay is drawn uniformly between the two.
+    # Technical: A server boot registers hundreds of Agents within seconds; the spread keeps their auto-equip passes from landing in one tick.
+    server.agents.runtime.AgentRegistrationCoordinator.LOGIN_REGEAR_MAX_MS: '6000'
     # Values: 250-5000 milliseconds. Recommended: 1000 so manual commands feel responsive without reading durable inbox files on movement ticks.
     # Purpose: Controls how often a live Agent checks for a pending World Director directive after its persisted mode authorizes execution.
     # Technical: The session-local poll state claims this cadence before any filesystem access; disabled and observation-only modes never poll the directive inbox.

@@ -141,6 +141,14 @@ public final class AgentEquipmentService {
         return AgentWeaponCompatibilityPolicy.isWeaponCompatible(agent, weaponType);
     }
 
+    /** It wears no weapon, or one its build can use. One whose equipment cannot be read counts as armed. */
+    public static boolean wearsUsableWeapon(Character agent) {
+        Inventory equipped = agent.getInventory(InventoryType.EQUIPPED);
+        Item weapon = equipped == null ? null : equipped.getItem((short) -11);
+        return weapon == null || isWeaponCompatible(agent,
+                AgentInventoryGatewayRuntime.inventory().getWeaponType(weapon.getItemId()));
+    }
+
     public static boolean isMageJob(Job job) {
         return AgentWeaponCompatibilityPolicy.isMageJob(job);
     }
