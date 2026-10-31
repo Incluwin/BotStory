@@ -250,8 +250,9 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
 
     /**
      * 2026-10-30: an Agent's Spark is exempt too. A real client's spark jumps on from the monster the swing struck to
-     * monsters anywhere on the map (up to 1479 px from the Thunder Breaker in a capture, which raised 20 alerts in
-     * three minutes for a human), and an Agent's sparks jump the same way (AgentSparkProc).
+     * monsters anywhere on the map (up to 1479 px from the Thunder Breaker in a capture, which raised 22 alerts in
+     * three minutes for a human), and an Agent's sparks jump the same way (AgentSparkProc). A human's spark is checked on
+     * its first jump only ({@link #sparkFirstJump}).
      */
     private static boolean isAgentSpark(AttackInfo attack, Character player) {
         return isSparkProc(attack) && player.getClient() instanceof BotClient;
@@ -264,6 +265,31 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
      */
     static boolean isSparkProc(AttackInfo attack) {
         return attack.skill == ThunderBreaker.SPARK;
+    }
+
+    /**
+     * 2026-10-30: the one target of {@code spark} the distance check reads, its first jump: the nearest of the monsters
+     * it lists, null when it lists none. A real client's spark jumps first to a monster beside the one its swing struck,
+     * then on to monsters anywhere on the map. In a human capture (24 sparks, 63 targets) every spark's nearest target
+     * stood 65-251 px from the Thunder Breaker, well inside the ranged reach (775 px), and its later jumps 789-1479 px
+     * out raised all 22 DISTANCE_HACK alerts of the run. No fixed reach fits jumps that cross the whole map, so they
+     * are not checked; a spark listing no monster within reach still is. The spark costs no MP and has no cooldown, so
+     * that check is what still flags a client sparking the map from out of everyone's reach.
+     */
+    private static Monster sparkFirstJump(AttackInfo spark, Character player, MapleMap map) {
+        Monster nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (Integer oid : spark.targets.keySet()) {
+            Monster monster = map.getMonsterByOid(oid);
+            if (monster != null) {
+                double distance = player.getPosition().distanceSq(monster.getPosition());
+                if (distance < nearestDistance) {
+                    nearest = monster;
+                    nearestDistance = distance;
+                }
+            }
+        }
+        return nearest;
     }
 
     /** The damage every line of {@code attack} reports, summed over its targets. */
@@ -360,10 +386,14 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                 removeExplodedMesos(map, attack);
             }
 
+            // taken before any of its damage lands, which may kill it
+            final Monster sparkFirstJump = isSparkProc(attack) ? sparkFirstJump(attack, player, map) : null;
             for (Map.Entry<Integer, AttackTarget> target : attack.targets.entrySet()) {
                 final Monster monster = map.getMonsterByOid(target.getKey());
                 if (monster != null) {
-                    checkAttackDistance(attack, player, monster);
+                    if (!isSparkProc(attack) || monster == sparkFirstJump) {
+                        checkAttackDistance(attack, player, monster);
+                    }
 
                     int totDamageToOneMonster = 0;
                     List<Integer> onedList = target.getValue().damageLines();
