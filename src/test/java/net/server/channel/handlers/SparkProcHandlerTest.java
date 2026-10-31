@@ -7,6 +7,7 @@ import client.Client;
 import client.Job;
 import client.Skill;
 import client.SkillFactory;
+import client.autoban.AutobanManager;
 import constants.skills.ThunderBreaker;
 import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +22,7 @@ import server.security.SecurityEvent;
 import server.security.SecurityEventRuntime;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -43,8 +45,10 @@ import static org.mockito.Mockito.when;
  * In a human capture (Lv255 Thunder Breaker, Spark 20) each of the 24 sparks re-broadcast the Spark cast effect: the
  * handler recast the buff for every proc and charged its 30 MP, so one with less MP lost the spark. A spark costs
  * nothing and leaves the buff as it is. Its targets jump on from the struck monster across the map (up to 1479 px from
- * the Thunder Breaker, 20 DISTANCE_HACK alerts in three minutes), so an Agent's spark raises no distance alert; a
- * human's is checked as before.
+ * the Thunder Breaker, 22 DISTANCE_HACK alerts in three minutes), so an Agent's spark raises no distance alert, and a
+ * human's is checked on its first jump only: the nearest of its targets, 65-251 px out in every captured spark. The
+ * client sent one spark after each basic swing that listed a monster and none after any other, so a spark needs such a
+ * swing of its own before it.
  */
 class SparkProcHandlerTest {
     private static final int AGENT_ID = 42_000_081;
@@ -75,7 +79,7 @@ class SparkProcHandlerTest {
 
     @Test
     void aSparkLandsWithoutTheBuffsMp() {
-        Character thunderBreaker = thunderBreaker(0);
+        Character thunderBreaker = afterItsSwing(thunderBreaker(0));
 
         assertTrue(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1),
                 "with 0 MP the spark still lands");
@@ -83,7 +87,7 @@ class SparkProcHandlerTest {
 
     @Test
     void aSparkNeitherChargesMpNorRecastsTheBuff() {
-        Character thunderBreaker = thunderBreaker(5_000);
+        Character thunderBreaker = afterItsSwing(thunderBreaker(5_000));
 
         assertTrue(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1));
 
@@ -93,11 +97,55 @@ class SparkProcHandlerTest {
 
     @Test
     void aSparkWithoutTheSparkBuffIsRefused() {
-        Character thunderBreaker = thunderBreaker(5_000);
+        Character thunderBreaker = afterItsSwing(thunderBreaker(5_000));
         when(thunderBreaker.getBuffedValue(BuffStat.SPARK)).thenReturn(null);
 
         assertFalse(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1),
                 "a client that sends a spark with no Spark buff gets no free attack");
+    }
+
+    @Test
+    void aSparkWithNoSwingBeforeItIsRefused() {
+        Character thunderBreaker = humanThunderBreakerAt(new Point(1_616, 215));
+        Monster target = targetOf(thunderBreaker, 0xCB5E, new Point(1_384, 215));
+
+        assertFalse(AbstractDealDamageHandler.applyAttack(spark(target), thunderBreaker, 1),
+                "a client that sends sparks on its own gets no free attacks");
+        verify(target, never()).aggroMonsterDamage(any(Character.class), anyInt());
+    }
+
+    @Test
+    void aSwingThatListsAMonsterAllowsOneSpark() {
+        Character thunderBreaker = thunderBreaker(5_000);
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(basicSwing(0xCA61), thunderBreaker, 1));
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1));
+        assertFalse(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1), "one spark a swing");
+    }
+
+    @Test
+    void aSwingThatListsNoMonsterAllowsNoSpark() {
+        Character thunderBreaker = thunderBreaker(5_000);
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(basicSwing(), thunderBreaker, 1));
+
+        assertFalse(AbstractDealDamageHandler.applyAttack(spark(), thunderBreaker, 1),
+                "the capture: no swing that listed no monster was followed by a spark");
+    }
+
+    /** An Agent's swing and its spark take the handlers a human's packets take, in the order attackMonster sends them. */
+    @Test
+    void anAgentsSwingAllowsTheSparkItSendsRightAfterIt() {
+        Character agent = thunderBreaker(5_000);
+        BotClient client = new BotClient(0, 1);
+        client.setPlayer(agent);
+        when(agent.getClient()).thenReturn(client);
+        when(agent.getId()).thenReturn(AGENT_ID);
+
+        assertTrue(CloseRangeDamageHandler.applyCloseRangeEffects(basicSwing(0xCA61), agent, client));
+        assertTrue(RangedAttackHandler.applyAgentRangedAttackEffects(spark(), agent, client));
+        assertFalse(RangedAttackHandler.applyAgentRangedAttackEffects(spark(), agent, client), "one spark a swing");
     }
 
     @Test
@@ -124,6 +172,42 @@ class SparkProcHandlerTest {
         verify(far).refreshMobPosition();
     }
 
+    /** 13:19:20.406 in the capture: the Thunder Breaker at (1616,215) sparked monsters at 1384, 758 and 631. */
+    @Test
+    void aHumansSparkThatJumpsAcrossTheMapRaisesNoAlert() {
+        Character human = afterItsSwing(humanThunderBreakerAt(new Point(1_616, 215)));
+        Monster first = targetOf(human, 0xCB5E, new Point(1_384, 215));
+        Monster second = targetOf(human, 0xCA77, new Point(758, 215));
+        Monster third = targetOf(human, 0xCA3D, new Point(631, 215));
+        long floor = latestSequence();
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(spark(first, second, third), human, 1));
+
+        assertEquals(List.of(), distanceAlertsSince(floor, HUMAN_ID),
+                "live, the jumps 858 and 985 px out raised two alerts");
+        verify(first, never()).refreshMobPosition();
+        verify(second, never()).refreshMobPosition();
+        verify(third, never()).refreshMobPosition();
+    }
+
+    @Test
+    void aHumansSparkWithNoTargetWithinReachIsFlaggedOnItsNearest() {
+        Character human = afterItsSwing(humanThunderBreakerAt(new Point(1_616, 215)));
+        Monster nearest = targetOf(human, 1, new Point(616, 215));
+        Monster farther = targetOf(human, 2, new Point(2_816, 215));
+        Monster farthest = targetOf(human, 3, new Point(216, 215));
+        long floor = latestSequence();
+
+        assertTrue(AbstractDealDamageHandler.applyAttack(spark(nearest, farther, farthest), human, 1));
+
+        List<String> alerts = distanceAlertsSince(floor, HUMAN_ID);
+        assertEquals(1, alerts.size(), "a spark is checked once, on its first jump: " + alerts);
+        assertTrue(alerts.getFirst().startsWith("Distance Sq to monster: 1000000.0 SID: 15111006"), alerts.getFirst());
+        verify(nearest).refreshMobPosition();
+        verify(farther, never()).refreshMobPosition();
+        verify(farthest, never()).refreshMobPosition();
+    }
+
     /** The spark a client sends after a swing that struck a monster which then died: no monster listed. */
     private static AbstractDealDamageHandler.AttackInfo spark() {
         AbstractDealDamageHandler.AttackInfo attack = new AbstractDealDamageHandler.AttackInfo();
@@ -139,9 +223,47 @@ class SparkProcHandlerTest {
         return attack;
     }
 
+    /** {@link #spark()} with one line on each of {@code targets}, in the order it jumps. */
+    private static AbstractDealDamageHandler.AttackInfo spark(Monster... targets) {
+        AbstractDealDamageHandler.AttackInfo attack = spark();
+        for (Monster target : targets) {
+            attack.targets.put(target.getObjectId(),
+                    new AbstractDealDamageHandler.AttackTarget((short) 400, new ArrayList<>(List.of(50_000))));
+        }
+        attack.numAttacked = targets.length;
+        attack.numAttackedAndDamage = targets.length << 4 | 1;
+        return attack;
+    }
+
+    /** A Thunder Breaker's basic knuckle swing (stabO1) listing {@code objectIds}, one line each. */
+    private static AbstractDealDamageHandler.AttackInfo basicSwing(int... objectIds) {
+        AbstractDealDamageHandler.AttackInfo attack = new AbstractDealDamageHandler.AttackInfo();
+        attack.numDamage = 1;
+        attack.numAttacked = objectIds.length;
+        attack.numAttackedAndDamage = objectIds.length << 4 | 1;
+        attack.display = 0x80;
+        attack.direction = 0x10;
+        attack.stance = 0x80;
+        attack.targets = new HashMap<>();
+        for (int objectId : objectIds) {
+            attack.targets.put(objectId,
+                    new AbstractDealDamageHandler.AttackTarget((short) 283, new ArrayList<>(List.of(50_000))));
+        }
+        return attack;
+    }
+
+    /** {@code thunderBreaker} once its basic swing listing a monster went through, the swing a spark follows. */
+    private static Character afterItsSwing(Character thunderBreaker) {
+        assertTrue(AbstractDealDamageHandler.applyAttack(basicSwing(0xCA61), thunderBreaker, 1));
+        return thunderBreaker;
+    }
+
     private static Character thunderBreaker(int mp) {
         MapleMap map = mock(MapleMap.class);
         Character chr = mock(Character.class);
+        when(chr.getAutobanManager()).thenReturn(new AutobanManager(chr));
+        // Mockito answers 0 for an unstubbed Integer; the live API answers null for a buff that is absent
+        when(chr.getBuffedValue(any(BuffStat.class))).thenReturn(null);
         when(chr.getBuffedValue(BuffStat.SPARK)).thenReturn(SPARK_LEVEL);
         when(chr.getMap()).thenReturn(map);
         when(chr.getJob()).thenReturn(Job.THUNDERBREAKER3);
@@ -152,6 +274,26 @@ class SparkProcHandlerTest {
         when(chr.getHp()).thenReturn(5_000);
         when(chr.isAlive()).thenReturn(true);
         return chr;
+    }
+
+    /** A human Thunder Breaker with Spark on, standing at {@code position}. */
+    private static Character humanThunderBreakerAt(Point position) {
+        Character chr = thunderBreaker(5_000);
+        Client client = Client.createMock();
+        client.setPlayer(chr);
+        when(chr.getClient()).thenReturn(client);
+        when(chr.getId()).thenReturn(HUMAN_ID);
+        when(chr.getName()).thenReturn("Bossfriend");
+        when(chr.getPosition()).thenReturn(position);
+        return chr;
+    }
+
+    /** A monster on {@code attacker}'s map with object id {@code objectId}, standing at {@code position}. */
+    private static Monster targetOf(Character attacker, int objectId, Point position) {
+        Monster monster = monsterAt(position);
+        when(monster.getObjectId()).thenReturn(objectId);
+        when(attacker.getMap().getMonsterByOid(objectId)).thenReturn(monster);
+        return monster;
     }
 
     private static Character attacker(int id, Client client) {

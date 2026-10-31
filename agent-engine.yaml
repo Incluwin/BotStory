@@ -6429,6 +6429,18 @@ tuning:
     # Purpose: How long a pirate is untouchable after Corkscrew Blow lands, as the client grants, so Corkscrew followed by quick attacks takes no touch or magic damage.
     # Technical: AgentClientSkillRules.invincible gates AgentCombatDamageRuntime.applyMobHit (touch damage) and ServerMobDamageService (server-driven mob attacks on Agents) for this long after a landed Corkscrew Blow.
     server.agents.capabilities.combat.AgentClientSkillRules.CORKSCREW_INVINCIBLE_MS: '2000'
+    # Values: a positive integer; unit: milliseconds. Recommended: 174, fitted with DELAY_MS_PER_PX to a real client's sparks (63 targets of 24 sparks, each within 55 ms).
+    # Purpose: How long after a Thunder Breaker Agent's swing its Spark's hit shows on a target before the spark has travelled any distance.
+    # Technical: AgentSparkProc.delays gives each spark target this base plus DELAY_MS_PER_PX per pixel of the spark's path to it; the result is the target's hit delay in the RANGED_ATTACK the shared handler broadcasts, so watching clients play the hits in the order the spark jumps.
+    server.agents.capabilities.combat.AgentSparkProc.DELAY_BASE_MS: '174'
+    # Values: a non-negative integer; unit: milliseconds per pixel. Recommended: 2, the real client's spark speed of half a pixel a millisecond.
+    # Purpose: How much later each Spark target shows the hit for every pixel the spark travels to it, so a far jump lands after a near one as in the client.
+    # Technical: AgentSparkProc.delays adds this times the summed length of the spark's path (from the struck monster through each target in jump order) to DELAY_BASE_MS for each target's hit delay; both were fitted on the same 63 captured targets.
+    server.agents.capabilities.combat.AgentSparkProc.DELAY_MS_PER_PX: '2'
+    # Values: 0.0-1.0, a share of the trigger's recovery. Recommended: 0.4, which starts it 478 and 430 ms after the trigger where a real client's came 480 and 420 ms after.
+    # Purpose: When a warrior Agent's Final Attack starts after the Power Strike or Slash Blast that set it off, as a share of the trigger's recovery.
+    # Technical: AgentFinalAttackProc.startMs starts the Final Attack at the trigger's hit delay plus this share of the time from that hit to the end of the trigger's animation; the Agent's attack lock holds until the Final Attack's own swing ends, and it is sent from the Agent's mailbox when due.
+    server.agents.capabilities.combat.AgentFinalAttackProc.START_INTO_RECOVERY: '0.4'
     # Values: true or false. Recommended: true; false only to compare a boss run with the old behaviour while diagnosing.
     # Purpose: Keeps companions from taking a boss part away from the player whose client moves it, such as a Zakum arm, and from raising false distance alerts on it.
     # Technical: AgentBossScope.guards covers the parts named by EXPEDITION_TYPES, BOSS_IDS and a GM trial map. ServerMobAutonomyService.blocksAgentPhysicsInstance then refuses Agent physics on an Agent's hit (no STOP to the human controller), and AbstractDealDamageHandler.checkAttackDistance raises no DISTANCE_HACK and no position resend for an Agent's far hit. Server-owned parts and parts an Agent already controls are never guarded.

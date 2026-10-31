@@ -23,6 +23,11 @@ public final class AgentCombatCooldownStateRuntime {
         entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).clearAttackCooldown();
     }
 
+    /** How many attack locks were cut short so far; a lock that is still the same one sees the same number. */
+    public static int attackLockClears(AgentRuntimeEntry entry) {
+        return entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).attackLockClears();
+    }
+
     public static void tickAttackCooldown(AgentRuntimeEntry entry, IntUnaryOperator tickDown) {
         entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).tickAttackCooldown(tickDown);
     }

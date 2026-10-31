@@ -8,11 +8,14 @@ import constants.skills.ThunderBreaker;
 import net.server.channel.handlers.AbstractDealDamageHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
+import server.agents.capabilities.combat.learning.AgentCombatPolicyTable;
 import server.life.Monster;
 
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -67,6 +70,37 @@ class AgentSparkProcTest {
         assertTrue(Set.of(5_002, 5_003, 5_004).containsAll(chain.subList(1, 3)), "then any others, however far");
         assertFalse(chain.contains(5_000), "never back to the struck monster");
         assertEquals(174 + 2 * 100, spark.attack().targets.get(5_001).delay());
+    }
+
+    /**
+     * The combat learner weighs a basic swing by what it dealt, and with Spark on that is the swing and its spark: the
+     * spark's damage goes to the swing's decision, beside the swing's own (its expected damage, calibrated).
+     */
+    @Test
+    void theSparksDamageIsCreditedToTheSwingThatSetItOff() {
+        AgentProcFixture fight = thunderBreaker().buff(BuffStat.SPARK, 1);
+        Monster struck = fight.monster(5_000, 140);
+        fight.monster(5_001, 240);
+        AgentAttackPlan swing = basicSwing(struck);
+        AgentCombatPolicyTable table = fight.learning(swing, struck);
+        try {
+            double expected = fight.stubbed(() ->
+                    AgentAttackPlanScoringPolicy.scoreAttackPlan(fight.bot, swing).rawDamage());
+
+            assertTrue(fight.swing(swing).committed());
+            fight.nextDecision(0);
+
+            assertEquals(2, fight.sent.size(), "the swing, then its spark");
+            long spark = AgentProcFixture.dealt(fight.sent.get(1));
+            assertTrue(spark > 0);
+            Map<String, Map<Integer, AgentCombatPolicyTable.Cell>> rows = table.snapshot();
+            assertEquals(1, rows.size());
+            String context = rows.keySet().iterator().next();
+            assertEquals(AgentProcFixture.ownReward(context, fight.sent.get(0), expected) + spark,
+                    rows.get(context).get(0).meanReward(), 1e-6);
+        } finally {
+            AgentCombatLearner.end(fight.entry);
+        }
     }
 
     @Test

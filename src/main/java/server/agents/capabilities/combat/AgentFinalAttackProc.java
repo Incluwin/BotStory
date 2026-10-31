@@ -10,6 +10,7 @@ import client.inventory.Item;
 import constants.skills.DawnWarrior;
 import constants.skills.WindArcher;
 import server.StatEffect;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
@@ -38,7 +39,7 @@ import java.util.function.Predicate;
  */
 public final class AgentFinalAttackProc {
     /** Where in the trigger's recovery (its hit to the end of its animation) the Final Attack starts. */
-    private static final double START_INTO_RECOVERY = 0.4;
+    private static final double START_INTO_RECOVERY = config.AgentTuning.doubleValue("server.agents.capabilities.combat.AgentFinalAttackProc.START_INTO_RECOVERY");
     /** The Final Attacks that are buffs (StatEffect.isCygnusFA): the client checks theirs is on. */
     private static final Set<Integer> BUFFED_FINAL_ATTACKS = Set.of(DawnWarrior.FINAL_ATTACK, WindArcher.FINAL_ATTACK);
 
@@ -52,7 +53,7 @@ public final class AgentFinalAttackProc {
 
     /**
      * After a committed swing: when {@code swing} sets off a Final Attack the Agent has and the roll comes up, the Agent
-     * stays in the attack through it, and it is sent when due.
+     * stays in the attack through it, and it is sent when due, its damage credited to the swing's learner decision.
      */
     static void afterSwing(AgentRuntimeEntry entry, Character bot, AgentAttackPlan swing) {
         Rolled rolled = roll(bot, swing, chance());
@@ -60,7 +61,9 @@ public final class AgentFinalAttackProc {
             return;
         }
         AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, rolled.startMs() + rolled.swing().animationMs());
-        AgentCombatRuntime.afterDelay(entry, rolled.startMs(), () -> send(entry, bot, rolled));
+        long decision = AgentCombatLearner.decisions(entry);
+        int lockClears = AgentCombatCooldownStateRuntime.attackLockClears(entry);
+        AgentCombatRuntime.afterDelay(entry, rolled.startMs(), () -> send(entry, bot, rolled, decision, lockClears));
     }
 
     /** The roll against a Final Attack's prop, 0 to 1. */
@@ -119,8 +122,18 @@ public final class AgentFinalAttackProc {
         return weapon == null ? 0 : weapon.getItemId() / 10000 % 100;
     }
 
-    /** Sends {@code rolled} when it is due: from where the Agent stands then, at whatever its final swing reaches. */
-    static void send(AgentRuntimeEntry entry, Character bot, Rolled rolled) {
+    /**
+     * Sends {@code rolled} when it is due: from where the Agent stands then, at whatever its final swing reaches.
+     * {@code decision} is the learner decision its trigger opened, {@code lockClears} the attack locks cut short before
+     * it. The Final Attack is part of its trigger's animation, which the trigger's attack lock stands for: once that
+     * lock is gone (a knockback, a death or a reset cleared it, or it ran out) the Final Attack goes with it, so it never
+     * lands after the Agent's next attack.
+     */
+    static void send(AgentRuntimeEntry entry, Character bot, Rolled rolled, long decision, int lockClears) {
+        if (!AgentCombatCooldownStateRuntime.hasAttackCooldown(entry)
+                || AgentCombatCooldownStateRuntime.attackLockClears(entry) != lockClears) {
+            return;
+        }
         if (bot.getMapId() != rolled.mapId() || bot.getHp() <= 0 || bot.getSkillLevel(rolled.skillId()) <= 0) {
             return;
         }
@@ -141,7 +154,7 @@ public final class AgentFinalAttackProc {
                 swing.animationMs(), AgentCombatWeaponPolicy.damageWeaponTypeForAction(rolled.skillId(),
                 AgentAttackExecutionProvider.getEquippedWeaponType(bot), swing.action()));
         AgentCombatAttackRuntime.commitFollowUp(entry, bot, plan,
-                targets.stream().map(target -> swing.hitDelayMs()).toList());
+                targets.stream().map(target -> swing.hitDelayMs()).toList(), decision);
     }
 
     /** Up to {@code limit} eligible monsters inside {@code hitBox}, nearest to {@code origin} first. */

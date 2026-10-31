@@ -30,6 +30,8 @@ public class AutobanManager {
     private final long[] spam = new long[20];
     private final int[] timestamp = new int[20];
     private final byte[] timestampcounter = new byte[20];
+    /** 2026-10-30: the last basic swing that listed a monster while Spark was on allows one spark not yet sent. */
+    private boolean sparkAllowed = false;
 
 
     public AutobanManager(Character chr) {
@@ -64,6 +66,18 @@ public class AutobanManager {
             // Lets log every single point too.
             AutobanSignals.log(log, chr, "Autoban - chr {} caused {} {}", Character.makeMapleReadable(chr.getName()), fac.name(), reason);
         }
+    }
+
+    /** A swing a real client follows with one Spark was applied (AbstractDealDamageHandler.allowsSpark). */
+    public synchronized void allowSpark() {
+        sparkAllowed = true;
+    }
+
+    /** Takes the spark the last such swing allowed: true once per swing, false when none is open. */
+    public synchronized boolean takeSparkAllowance() {
+        boolean allowed = sparkAllowed;
+        sparkAllowed = false;
+        return allowed;
     }
 
     public void addMiss() {

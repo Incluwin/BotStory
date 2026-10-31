@@ -13,6 +13,8 @@ import constants.game.CharacterStance;
 import net.server.channel.handlers.AbstractDealDamageHandler;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
+import server.agents.capabilities.combat.learning.AgentCombatPolicyTable;
 import server.agents.integration.CombatAttackApplicationResult;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentSchedulerRuntime;
@@ -137,6 +139,42 @@ final class AgentProcFixture {
 
     AgentAttackTransactionResult swing(AgentAttackPlan plan) {
         return stubbed(() -> AgentCombatAttackRuntime.attackMonster(entry, bot, plan));
+    }
+
+    /**
+     * Puts the Agent's combat learner in LEARN on a fresh table, with {@code plan} its pick at {@code target}; the
+     * caller ends it ({@code AgentCombatLearner.end}).
+     */
+    AgentCombatPolicyTable learning(AgentAttackPlan plan, Monster target) {
+        AgentCombatPolicyTable table = new AgentCombatPolicyTable();
+        AgentCombatLearner.begin(entry, AgentCombatLearner.Mode.LEARN, table, 0.0d, false);
+        stubbed(() -> AgentCombatLearner.choose(entry, bot, target, List.of(plan)));
+        return table;
+    }
+
+    /** The Agent's next decision, a basic attack that lands {@code damage}, a millisecond on: it closes the open one. */
+    void nextDecision(long damage) {
+        long now = System.currentTimeMillis();
+        while (System.currentTimeMillis() <= now) {
+            Thread.onSpinWait();
+        }
+        AgentCombatLearner.onAttackCommitted(entry, 0, damage, 0.0d);
+    }
+
+    /** Every line {@code sent} landed, summed. */
+    static long dealt(Sent sent) {
+        return sent.attack().targets.values().stream().flatMap(target -> target.damageLines().stream())
+                .mapToLong(Integer::longValue).sum();
+    }
+
+    /**
+     * What the learner credits {@code sent} with as its own on a table that has seen no cast of it in
+     * {@code context}: the damage the formula expected of it ({@code expected}), calibrated by what it landed.
+     */
+    static double ownReward(String context, Sent sent, double expected) {
+        return new AgentCombatPolicyTable().calibratedReward(context, sent.attack().skill, dealt(sent), expected,
+                config.AgentTuning.doubleValue(
+                        "server.agents.capabilities.combat.learning.AgentCombatLearner.CALIBRATION_WEIGHT"));
     }
 
     /** Runs the delayed actions waiting now, as the Agent's mailbox would once each is due. */

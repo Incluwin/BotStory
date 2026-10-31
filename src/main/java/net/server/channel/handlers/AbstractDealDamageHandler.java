@@ -28,6 +28,7 @@ import client.Job;
 import client.Skill;
 import client.SkillFactory;
 import client.autoban.AutobanFactory;
+import client.autoban.AutobanManager;
 import client.status.MonsterStatus;
 import client.status.MonsterStatusEffect;
 import config.YamlConfig;
@@ -250,8 +251,9 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
 
     /**
      * 2026-10-30: an Agent's Spark is exempt too. A real client's spark jumps on from the monster the swing struck to
-     * monsters anywhere on the map (up to 1479 px from the Thunder Breaker in a capture, which raised 20 alerts in
-     * three minutes for a human), and an Agent's sparks jump the same way (AgentSparkProc).
+     * monsters anywhere on the map (up to 1479 px from the Thunder Breaker in a capture, which raised 22 alerts in
+     * three minutes for a human), and an Agent's sparks jump the same way (AgentSparkProc). A human's spark is checked on
+     * its first jump only ({@link #sparkFirstJump}).
      */
     private static boolean isAgentSpark(AttackInfo attack, Character player) {
         return isSparkProc(attack) && player.getClient() instanceof BotClient;
@@ -264,6 +266,49 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
      */
     static boolean isSparkProc(AttackInfo attack) {
         return attack.skill == ThunderBreaker.SPARK;
+    }
+
+    /**
+     * 2026-10-30: whether {@code attack} is a swing a real client follows with one Spark: a basic close-range swing that
+     * lists a monster, made while the buff is on. In the capture every such swing (24 of 24) was followed by one spark
+     * 3-30 ms later on the same connection (three of those sparks listed no monster), and no swing that listed none was.
+     * A connection's packets are handled in order, and an Agent's swing comes through here before AgentSparkProc sends
+     * its spark in the same call, so neither can bring a spark before its swing.
+     */
+    private static boolean allowsSpark(AttackInfo attack, Character player) {
+        return attack.skill == 0 && !attack.ranged && !attack.magic && attack.numAttacked > 0
+                && player.getBuffedValue(BuffStat.SPARK) != null;
+    }
+
+    /** Takes the one spark the last such swing allowed: false when no swing allowed one since the last spark. */
+    private static boolean takeSpark(Character player) {
+        AutobanManager autoban = player.getAutobanManager();
+        return autoban != null && autoban.takeSparkAllowance();
+    }
+
+    /**
+     * 2026-10-30: the one target of {@code spark} the distance check reads, its first jump: the nearest of the monsters
+     * it lists, null when it lists none. A real client's spark jumps first to a monster beside the one its swing struck,
+     * then on to monsters anywhere on the map. In a human capture (24 sparks, 63 targets) every spark's nearest target
+     * stood 65-251 px from the Thunder Breaker, well inside the ranged reach (775 px), and its later jumps 789-1479 px
+     * out raised all 22 DISTANCE_HACK alerts of the run. No fixed reach fits jumps that cross the whole map, so they
+     * are not checked; a spark listing no monster within reach still is. The spark costs no MP, so that check is what
+     * still flags a client sparking the map, a spark a swing, from out of everyone's reach.
+     */
+    private static Monster sparkFirstJump(AttackInfo spark, Character player, MapleMap map) {
+        Monster nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (Integer oid : spark.targets.keySet()) {
+            Monster monster = map.getMonsterByOid(oid);
+            if (monster != null) {
+                double distance = player.getPosition().distanceSq(monster.getPosition());
+                if (distance < nearestDistance) {
+                    nearest = monster;
+                    nearestDistance = distance;
+                }
+            }
+        }
+        return nearest;
     }
 
     /** The damage every line of {@code attack} reports, summed over its targets. */
@@ -300,8 +345,9 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     return false;
                 }
 
-                if (isSparkProc(attack) && player.getBuffedValue(BuffStat.SPARK) == null) {
-                    // a spark is free only as the proc of a live Spark buff; without one it is a forged attack
+                if (isSparkProc(attack) && (player.getBuffedValue(BuffStat.SPARK) == null || !takeSpark(player))) {
+                    // a spark is free only as the proc of a live Spark buff, one per swing that allows it; any other
+                    // is a forged attack
                     player.sendPacket(PacketCreator.enableActions());
                     return false;
                 }
@@ -353,6 +399,9 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
             if (!player.isAlive()) {
                 return false;
             }
+            if (allowsSpark(attack, player) && player.getAutobanManager() != null) {
+                player.getAutobanManager().allowSpark();
+            }
 
             int totDamage = 0;
 
@@ -360,10 +409,14 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                 removeExplodedMesos(map, attack);
             }
 
+            // taken before any of its damage lands, which may kill it
+            final Monster sparkFirstJump = isSparkProc(attack) ? sparkFirstJump(attack, player, map) : null;
             for (Map.Entry<Integer, AttackTarget> target : attack.targets.entrySet()) {
                 final Monster monster = map.getMonsterByOid(target.getKey());
                 if (monster != null) {
-                    checkAttackDistance(attack, player, monster);
+                    if (!isSparkProc(attack) || monster == sparkFirstJump) {
+                        checkAttackDistance(attack, player, monster);
+                    }
 
                     int totDamageToOneMonster = 0;
                     List<Integer> onedList = target.getValue().damageLines();

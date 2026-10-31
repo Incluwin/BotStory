@@ -206,10 +206,12 @@ public final class AgentCombatAttackRuntime {
      * AgentFinalAttackProc), at its targets as listed (none is fine: the client sends it so too), the n-th target's
      * lines {@code delaysMs[n]} after. No readiness gate: the swing that set it off was the decision and holds the
      * attack lock. The same handler, damage and boss scaling as a swing; the skill usage histogram counts it under its
-     * own id, and the learner does not hear of it.
+     * own id. Its damage is part of what that swing was worth, so the learner credits it to the decision the swing
+     * opened, {@code decision} (AgentCombatLearner.decisions right after the swing), unless another has opened since.
      */
     static AgentAttackTransactionResult commitFollowUp(AgentRuntimeEntry entry, Character bot,
-                                                       AgentAttackPlan followUp, List<Integer> delaysMs) {
+                                                       AgentAttackPlan followUp, List<Integer> delaysMs,
+                                                       long decision) {
         MapleMap attackMap = bot.getMap();
         int numDamage = AgentAttackPacketPolicy.damageLineCount(followUp.numDamage);
         List<Monster> targets = authoritativeTargets(bot, followUp.targets,
@@ -250,6 +252,9 @@ public final class AgentCombatAttackRuntime {
                 .mapToLong(damage -> damage).sum();
         AgentCombatSkillUsageStateRuntime.record(entry, followUp.skillId, dealt);
         AgentBossClientLoad.memberAttack(bot, followUp.skillId, dealt);
+        if (AgentCombatLearner.decisions(entry) == decision) {
+            AgentCombatLearner.onPassiveDamage(entry, dealt);
+        }
         return AgentAttackTransactionResult.committed(bot.getMapId(), followUp.skillId,
                 targets.stream().map(Monster::getObjectId).toList(), hitLines, totalLines - hitLines,
                 System.currentTimeMillis());
