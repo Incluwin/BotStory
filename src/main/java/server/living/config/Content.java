@@ -21,9 +21,10 @@ public final class Content {
         }
     }
 
+    /** SCENE: a staged scene with the giver ({@code scene}, a {@link Scene} id; server.living.story.StoryScenes, F6.2). */
     public enum StepType {
         TALK, KILL_MOBS, COLLECT_ITEM, DELIVER, VISIT_MAP, TALK_TO, HEAR_RUMOR, ESCORT, HUNT_WITH,
-        PAY, GIVE_ITEM, REACH_LEVEL, WAIT, PARTY_QUEST_CLEAR, KILL_BOSS
+        PAY, GIVE_ITEM, REACH_LEVEL, WAIT, PARTY_QUEST_CLEAR, KILL_BOSS, SCENE
     }
 
     public enum QuestLength { SHORT, MEDIUM, LONG }
@@ -135,7 +136,15 @@ public final class Content {
                        DropRule dropFrom,
                        String with,
                        ItemStack take,
-                       String label) { }
+                       String label,
+                       String scene) {
+        public Step(String id, StepType type, List<String> say, int itemId, int count, List<Integer> mobIds,
+                    List<Integer> mapIds, String to, String persona, String rumorId, int meso, int level, int hours,
+                    DropRule dropFrom, String with, ItemStack take, String label) {
+            this(id, type, say, itemId, count, mobIds, mapIds, to, persona, rumorId, meso, level, hours, dropFrom, with,
+                    take, label, null);
+        }
+    }
 
     /** {@code gear}: equipment the giver scrolls for the player, scaled by friendship (server.living.quest.FriendForge). */
     public record Reward(int meso, int exp, List<ItemStack> items, int bondPoints, List<String> flags,
@@ -273,4 +282,75 @@ public final class Content {
 
     public record Phrase(String canonical, List<String> aliases, List<String> prefixes, List<String> tails,
                          Map<String, String> slots, String status, String reply) { }
+
+    // ---- personal story arcs (docs/BOT_CONCEPT_PLAN.md F6; server.living.story) ---------------
+
+    /**
+     * A companion's personal arc (F6.1): chapters it tells the player who has it on their roster, each unlocked by that
+     * player's friendship level with it and the chapter before. {@code rival} is the race chapter with an authored rival
+     * (F6.6), or null; {@code lines} its story intents (scene.ready, scene.abort, rival.call, errand.attend.*).
+     */
+    public record Story(String id, String persona, List<StoryChapter> chapters, StoryRival rival,
+                        Map<String, List<String>> lines, String file) {
+        public List<String> lines(String intent) {
+            List<String> found = lines.get(intent);
+            return found == null ? List.of() : found;
+        }
+
+        public StoryChapter chapter(String chapterId) {
+            for (StoryChapter chapter : chapters) {
+                if (chapter.id().equals(chapterId)) {
+                    return chapter;
+                }
+            }
+            return null;
+        }
+
+        public StoryChapter last() {
+            return chapters.get(chapters.size() - 1);
+        }
+    }
+
+    /**
+     * One chapter: its quest (offered only through the story, never in a questLines), the friendship level that unlocks
+     * it, the client quest-log id it keeps until the client patch ships ({@code logId}, 31600-31999; never in
+     * quest-log-ids.yaml before that), the party line that tells the owner it is open, and its conversation: the pages,
+     * then an optional choice of reply.
+     */
+    public record StoryChapter(String id, int friendship, String quest, int logId, List<String> nudge, List<String> talk,
+                               StoryChoice choice) { }
+
+    public record StoryChoice(String prompt, List<StoryOption> options) { }
+
+    /** A reply the player can pick: the bond flag it sets (or null) and what the companion says back. */
+    public record StoryOption(String label, String flag, List<String> reply) { }
+
+    /**
+     * The race chapter (F6.6, D14) with {@code persona}, an authored rival: open once both are on the owner's roster,
+     * the owner has {@code friendship} or more with each, and the arc's chapter {@code after} is done.
+     */
+    public record StoryRival(String persona, int friendship, String after, String quest, int logId, List<String> nudge,
+                             List<String> talk) { }
+
+    /**
+     * A SCENE step's stage (F6.2): a private copy of the stock map {@code mapId}, the owner set down at ({@code x},
+     * {@code y}) (both 0: the map's first spawn portal), the companions who speak in it ({@code cast}), its beats in
+     * order and how long it may run. A race scene picks its foe from {@code foes} by its racers' level and plays the
+     * {@code outcome} beats of its result (won.&lt;persona&gt;, even, forfeit.&lt;persona&gt;).
+     */
+    public record Scene(String id, int mapId, int x, int y, List<String> cast, List<SceneBeat> beats, int maxMinutes,
+                        List<SceneFoe> foes, Map<String, List<SceneBeat>> outcome, String file) { }
+
+    /**
+     * One beat: a line ({@code by} says {@code line}; skipped unless {@code ifPresent} names a companion that is in), an
+     * effect from the safe list ({@code effect}, with {@code itemId}/{@code text}/{@code seconds} where it takes them),
+     * monsters to defeat ({@code spawn}: the scene waits for every one), the race ({@code race}), or a pause.
+     */
+    public record SceneBeat(String by, String line, String ifPresent, String effect, int itemId, String text, int seconds,
+                            List<SceneSpawn> spawn, boolean race) { }
+
+    public record SceneSpawn(int mobId, int count, int x, int y) { }
+
+    /** A race foe for racers whose average level is at most {@code maxLevel} (the first band that fits). */
+    public record SceneFoe(int maxLevel, int mobId) { }
 }

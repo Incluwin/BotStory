@@ -190,6 +190,7 @@ public final class QuestLogExportMain {
             case REACH_LEVEL -> "Reach level " + step.level();
             case WAIT -> "Come back in " + step.hours() + " hour(s)";
             case PARTY_QUEST_CLEAR -> "Clear a party quest" + (step.to() == null ? "" : " (" + step.to() + ")");
+            case SCENE -> "Go with " + giver;
         };
     }
 

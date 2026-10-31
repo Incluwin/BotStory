@@ -68,7 +68,8 @@ final class CompanionQuestScreens {
             Quest quest = world.content().quest(state.questId());
             Step step = quest == null ? null : quest.step(state.stepIndex());
             boolean sentHere = step != null && step.type() == StepType.TALK_TO && persona.id().equals(step.persona());
-            if (quest != null && (quest.persona().equals(persona.id()) || sentHere)) {
+            boolean story = quest != null && world.content().storyOfQuest(quest.id()) != null; // its story's own entry
+            if (quest != null && !story && (quest.persona().equals(persona.id()) || sentHere)) {
                 out.add(state);
             }
         }

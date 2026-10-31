@@ -1905,6 +1905,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      */
     private void record(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken) {
         int durationS = (int) Math.max(0L, (ended.endedAtMs() - ended.startedAtMs()) / 1000L);
+        RunDamage damage = damage();
+        // each one's share of what was dealt to the run's bosses (F6.4); the tally ends with the run
+        Map<Integer, Double> shares = damage == null ? Map.of() : damage.end(damageKey(ended.sessionId()));
         for (MemberResult member : wentIn) {
             String personaId = personaId(taken.get(member.enlistedBy()), member.agentId());
             if (personaId == null) {
@@ -1912,7 +1915,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 continue;
             }
             CompanionRunRow row = new CompanionRunRow(member.enlistedBy(), member.agentId(), personaId,
-                    ended.bossKey(), outcome(member, ended.cleared()), durationS, member.deaths(), ended.partySize());
+                    ended.bossKey(), outcome(member, ended.cleared()), durationS, member.deaths(), ended.partySize(),
+                    shares.get(member.agentId()));
             CompanionPartyQuestService quests = world.partyQuests();
             if (quests != null) {
                 quests.records().save(row);
@@ -1943,6 +1947,36 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             long sessionId = session.sessionId();
             world.executor().submit("boss.hit " + sessionId, () -> hit(sessionId, humans));
         }
+    }
+
+    /**
+     * A boss part of a companion run died (LivingWorldHooks.mobKilled, inside its monitor: memory only): what each
+     * attacker dealt it goes toward the run's damage shares (RunDamage, F6.4), written with the run's records. A citizen
+     * expedition's boss counts nothing: the population hosts that run, so no finish here would ever end its tally.
+     */
+    public void bossDamage(MapleMap map, server.life.Monster boss, Set<Integer> attackerIds) {
+        EventInstanceManager event = map == null || boss == null ? null : map.getEventInstance();
+        AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forEvent(event);
+        RunDamage damage = damage();
+        if (session == null || session.citizenRun() || attackerIds == null || damage == null) {
+            return;
+        }
+        String key = damageKey(session.sessionId());
+        for (int attackerId : attackerIds) {
+            damage.add(key, attackerId, boss.damageBy(attackerId));
+        }
+    }
+
+    /** The run's key in the damage tallies (RunDamage). */
+    static String damageKey(long sessionId) {
+        return "boss:" + sessionId;
+    }
+
+    /** The runs' damage tallies, kept by the companions' records; null while there are none. */
+    private RunDamage damage() {
+        CompanionPartyQuestService quests = world.partyQuests();
+        CompanionRunRecorder records = quests == null ? null : quests.records();
+        return records == null ? null : records.damage();
     }
 
     /**

@@ -377,6 +377,29 @@ public class LivingWorldConfig {
     /** "Looking for a mentor" requests open at once, world-wide, and the chance a fitting citizen posts one. */
     public int APPRENTICE_NEEDS_MAX = 2;
     public double APPRENTICE_NEED_CHANCE = 0.1;
+    /**
+     * Personal story arcs (docs/BOT_CONCEPT_PLAN.md F6.1, F6.2, F6.6): a companion's chapters for its owner, its scenes
+     * in a private copy of a map and the race with an authored rival. False: no chapter is offered, no scene starts.
+     */
+    public boolean PERSONAL_ARCS_ENABLED = false;
+    /** A calm moment for a chapter's nudge: no monster within this many pixels of the owner or the companion. */
+    public int STORY_CALM_RANGE_PX = 400;
+    /** A scene line's least time on screen; typing time (per character) comes on top, up to 6 s in all. */
+    public long STORY_LINE_MIN_MS = 1800L;
+    /** A scene longer than this ends (its step waits for another try). */
+    public int STORY_SCENE_MAX_MINUTES = 15;
+    /** A race whose damage shares are this many points apart or closer is even. */
+    public int STORY_RACE_EVEN_PERCENT = 10;
+    /**
+     * Attendable job errands (F6.3): before its 3rd or 4th job a companion asks its owner to come along, leads them
+     * through the instructor's town and advances in front of them. False: it goes alone, as before.
+     */
+    public boolean JOB_ERRAND_ATTEND_ENABLED = false;
+    /** An attended errand the owner has not reached the instructor's town for in this many minutes: it goes alone. */
+    public int JOB_ERRAND_ATTEND_MAX_MINUTES = 60;
+    /** How often the "come with me?" window is tried while another window is open, and how far apart. */
+    public int JOB_ERRAND_ATTEND_ASK_TRIES = 6;
+    public long JOB_ERRAND_ATTEND_ASK_RETRY_MS = 5000L;
     /** Decision 18: Residents one friend may keep on their roster at once (0 = none). */
     public int RESIDENT_CAP_PER_OWNER = 5;
     /** Decision 18: a friend away this many days releases their Residents to go home (0 = never). */
@@ -647,6 +670,29 @@ public class LivingWorldConfig {
      * its junk at the nearest potion shop its camp walks to. 0 = only a full Equip tab.
      */
     public int BENCH_SELL_FREE_EQUIP_SLOTS = 4;
+
+    // Crew ties and banter (2026-10-28, docs/BOT_CONCEPT_PLAN.md F6.4; server.living.crew)
+    /**
+     * Kill switch: two of an owner's companions trade a call and an answer in party chat at calm moments. False: nothing
+     * is said or kept for banter (the ties themselves are a view read at each owner's login either way).
+     */
+    public boolean CREW_BANTER_ENABLED = false;
+    /** How often the banter looks at each online owner's crew (the tick hands nothing over while switched off). */
+    public long CREW_BANTER_TICK_MS = 20_000L;
+    /** At most one exchange per this many minutes of party time (two or more companions along, the owner moving). */
+    public int CREW_BANTER_GAP_MINUTES = 10;
+    /** Chance a calm town or walk tick past the gap starts an exchange (a clear's moment always does). */
+    public double CREW_BANTER_CHANCE = 0.25d;
+    /** A clear's moment waits this long for a calm spot off the instance, then lapses. */
+    public long CREW_BANTER_AFTER_CLEAR_WINDOW_MS = 300_000L;
+    /** Party time stops while the owner has not moved for this long (an AFK owner gets no crew chatting on a clock). */
+    public long CREW_BANTER_OWNER_IDLE_MS = 300_000L;
+    /** No exchange while a hostile mob is this close to the owner or a speaker. */
+    public int CREW_BANTER_CALM_RANGE_PX = 400;
+    /** Affinity two companions gain per clear they shared with their owner (living_clear). */
+    public int CREW_TIE_CLEAR_POINTS = 3;
+    /** A pair with nothing authored between them is FRIEND, not CREWMATE, from this affinity. */
+    public int CREW_TIE_FRIEND_AFFINITY = 40;
 
     /** True when CREW_WINDOW_NATIVE lets a character use the native Crew window: "all", or "gm" for a GM (any case). */
     public boolean crewWindowNative(boolean gm) {
@@ -990,6 +1036,15 @@ public class LivingWorldConfig {
             throw new IllegalArgumentException("living_world.APPRENTICE_ADOPT_MAX_LEVEL must be within 1..30,"
                     + " APPRENTICE_ADOPT_MIN_OWNER_LEVEL >= 1, APPRENTICE_NEEDS_MAX >= 0, APPRENTICE_NEED_CHANCE 0..1");
         }
+        if (STORY_CALM_RANGE_PX < 0 || STORY_LINE_MIN_MS < 500 || STORY_SCENE_MAX_MINUTES < 1 || STORY_SCENE_MAX_MINUTES > 60
+                || STORY_RACE_EVEN_PERCENT < 0 || STORY_RACE_EVEN_PERCENT > 50) {
+            throw new IllegalArgumentException("living_world.STORY_*: CALM_RANGE_PX >= 0, LINE_MIN_MS >= 500,"
+                    + " SCENE_MAX_MINUTES 1..60, RACE_EVEN_PERCENT 0..50");
+        }
+        if (JOB_ERRAND_ATTEND_MAX_MINUTES < 5 || JOB_ERRAND_ATTEND_ASK_TRIES < 1 || JOB_ERRAND_ATTEND_ASK_RETRY_MS < 1000) {
+            throw new IllegalArgumentException("living_world.JOB_ERRAND_ATTEND_*: MAX_MINUTES >= 5, ASK_TRIES >= 1,"
+                    + " ASK_RETRY_MS >= 1000");
+        }
         if (RESIDENT_CAP_PER_OWNER < 0 || RESIDENT_CAP_PER_OWNER > ROSTER_MAX) {
             throw new IllegalArgumentException("living_world.RESIDENT_CAP_PER_OWNER must be within 0..ROSTER_MAX");
         }
@@ -1118,6 +1173,14 @@ public class LivingWorldConfig {
         }
         if (BENCH_SELL_FREE_EQUIP_SLOTS < 0) {
             throw new IllegalArgumentException("living_world.BENCH_SELL_FREE_EQUIP_SLOTS must be >= 0");
+        }
+        if (CREW_BANTER_TICK_MS < 5000 || CREW_BANTER_GAP_MINUTES < 1 || !share(CREW_BANTER_CHANCE)
+                || CREW_BANTER_AFTER_CLEAR_WINDOW_MS < 0 || CREW_BANTER_OWNER_IDLE_MS < 60000
+                || CREW_BANTER_CALM_RANGE_PX < 100 || CREW_TIE_CLEAR_POINTS < 0 || CREW_TIE_CLEAR_POINTS > 100
+                || CREW_TIE_FRIEND_AFFINITY < 1 || CREW_TIE_FRIEND_AFFINITY > 100) {
+            throw new IllegalArgumentException("living_world.CREW_BANTER_*: TICK_MS >= 5000, GAP_MINUTES >= 1, CHANCE"
+                    + " within 0..1, AFTER_CLEAR_WINDOW_MS >= 0, OWNER_IDLE_MS >= 60000, CALM_RANGE_PX >= 100;"
+                    + " CREW_TIE_CLEAR_POINTS within 0..100 and CREW_TIE_FRIEND_AFFINITY within 1..100");
         }
     }
 

@@ -1,0 +1,86 @@
+# Scenes for the pilots' SCENE steps (docs/BOT_CONCEPT_PLAN.md F6.2). Each is played in a private copy of a stock map
+# (its own monsters cleared): the owner and the companions in its cast who are out with them go in, the companions
+# speak in map chat (70 characters at most; {owner} is the player's name), effects come from the safe list only
+# (server.living.story.SceneEffect: clear, fail, banner with item 5120016/5120024/5120027, jobAura, questClear, tremble,
+# clock), spawn beats wait until every monster is down, and an ifPresent line is skipped when that companion did not
+# come. A race beat (F6.6) brings one foe, picked by the racers' average level from foes; the larger share of its HP
+# wins ({mine}/{theirs} are the speaker's and the other racer's), and its outcome beats follow.
+
+- id: fenna-old-blind
+  map: 101040001            # Land of Wild Boar
+  cast: [fenna, dorran]
+  maxMinutes: 10
+  beats:
+    - { by: fenna, line: "this is it. the old blind. smaller than i remember." }
+    - { by: fenna, line: "he'd stop the cart right down there. right where you're standing." }
+    - { effect: banner, item: 5120016, text: "The ridge goes quiet. Something heavy moves in the brush." }
+    - { by: fenna, line: "hear that? they still come down this way. some things don't change." }
+    - { spawn: [{ mob: 2230102, count: 6 }] }
+    - { by: fenna, line: "...breathe out. every time." }
+    - { effect: clear }
+    - { by: fenna, line: "{owner}. i didn't miss. not one." }
+    - { by: dorran, ifPresent: dorran, line: "not bad, hunter. the guild would've had a place for you." }
+    - { by: fenna, line: "if i ever leave the road, it goes to you. i meant that." }
+
+- id: dorran-last-grove
+  map: 100050000            # The Field South of Ellinia
+  cast: [dorran, ilse]
+  maxMinutes: 10
+  beats:
+    - { by: dorran, line: "this is the place. the caps grew right down to the water." }
+    - { by: dorran, line: "Hale. Brisk. Old Tomas. Wren. Callo." }
+    - { by: dorran, line: "Mira. Joss. Sedge. Ada. Little Pell." }
+    - { by: dorran, line: "and me. eleven." }
+    - { effect: banner, item: 5120024, text: "The wind turns. Something stirs under the old caps." }
+    - { by: dorran, line: "dead caps, coming up. for the eleven, then." }
+    - { spawn: [{ mob: 2230101, count: 8 }] }
+    - { effect: clear }
+    - { by: dorran, line: "the grove's quiet. they'd have called that a good hunt." }
+    - { by: ilse, ifPresent: ilse, line: "you said all of them. i heard. that's good, Dorran." }
+    - { by: dorran, ifPresent: ilse, line: "...i owe you more than meso, Ilse. you know that." }
+
+- id: ilse-forest-call
+  map: 100040105            # The Forest of Evil I
+  cast: [ilse, dorran]
+  maxMinutes: 10
+  beats:
+    - { by: ilse, line: "there he is. okay. okay. i've got him." }
+    - { effect: banner, item: 5120027, text: "A hunter lies hurt in the leaves. Eyes open in the dark." }
+    - { by: ilse, line: "here they come. keep them off me!" }
+    - { spawn: [{ mob: 2230100, count: 6 }] }
+    - { by: ilse, line: "almost... hold on, friend. almost..." }
+    - { spawn: [{ mob: 3230100, count: 3 }] }
+    - { effect: questClear }
+    - { by: ilse, line: "he's breathing. he's walking home. {owner}, he's walking home." }
+    - { by: dorran, ifPresent: dorran, line: "you got this one out. i keep thinking about the last one." }
+    - { by: ilse, ifPresent: dorran, line: "so do i. come here, you big idiot." }
+    - { by: ilse, line: "no bill. obviously." }
+
+- id: fenna-dorran-bet
+  map: 101040003            # Iron Boar Land
+  cast: [fenna, dorran]
+  maxMinutes: 15
+  beats:
+    - { by: fenna, line: "rules. one beast, both of us on it. most of it wins." }
+    - { by: dorran, line: "and the loser buys at the Perion tavern. for a week." }
+    - { by: fenna, line: "fine. {owner} keeps count. no favourites." }
+    - { effect: banner, item: 5120016, text: "Something big is coming down the ridge." }
+    - { race: true }
+  foes:
+    - { maxLevel: 40, mob: 3220000 }    # Stumpy
+    - { maxLevel: 60, mob: 5220002 }    # Faust
+    - { maxLevel: 80, mob: 6130101 }    # Mushmom
+    - { maxLevel: 120, mob: 8130100 }   # Jr. Balrog
+    - { maxLevel: 200, mob: 8180001 }   # Griffey
+  outcome:
+    won.fenna:
+      - { by: fenna, line: "{mine} to {theirs}. pay up, old man." }
+      - { by: dorran, line: "hmph. luck. ...good shooting, hunter." }
+    won.dorran:
+      - { by: dorran, line: "{mine} to {theirs}. the crest still means something." }
+      - { by: fenna, line: "beginner's luck. next time, old man." }
+    even:
+      - { by: fenna, line: "{mine} and {theirs}? that's a tie and you know it." }
+      - { by: dorran, line: "then we both buy. Perion, tonight." }
+    forfeit.fenna:
+      - { by: fenna, line: "he walked off. i'll take that as a win." }

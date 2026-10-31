@@ -16,6 +16,7 @@ import server.living.config.Content.Requirements;
 import server.living.config.Content.Reward;
 import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
+import server.living.config.Content.Story;
 import server.living.config.LivingContent;
 import server.living.quest.QuestLedger;
 import server.living.resident.LivingTalk;
@@ -115,6 +116,17 @@ class CompanionQuestScreensTest {
         when(content.quest(other.id())).thenReturn(other);
         when(quests.available(owner, fenna)).thenReturn(List.of());
         when(quests.active(owner)).thenReturn(List.of(active(other)));
+
+        assertFalse(CompanionQuestScreens.any(world, owner, fenna));
+    }
+
+    @Test
+    void aStoryChapterInProgressIsLeftToItsOwnCardOption() {
+        Quest chapter = quest("fenna-story-3", "fenna", "The Long Road: The Old Blind", step(StepType.SCENE, null));
+        when(content.quest(chapter.id())).thenReturn(chapter);
+        when(content.storyOfQuest(chapter.id())).thenReturn(mock(Story.class)); // F6: the story offers and ends it
+        when(quests.available(owner, fenna)).thenReturn(List.of());
+        when(quests.active(owner)).thenReturn(List.of(active(chapter)));
 
         assertFalse(CompanionQuestScreens.any(world, owner, fenna));
     }

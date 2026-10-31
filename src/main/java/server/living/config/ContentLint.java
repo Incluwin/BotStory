@@ -123,8 +123,11 @@ public final class ContentLint {
             Persona giver = authored(content, quest.persona());
             if (giver == null) {
                 out.add("ERROR " + where + ": persona '" + quest.persona() + "' not found");
-            } else if (!giver.questLines().contains(quest.id())) {
+            } else if (!giver.questLines().contains(quest.id()) && content.storyOfQuest(quest.id()) == null) {
                 out.add("WARN " + where + ": not listed in " + giver.id() + ".questLines (never offered)");
+            }
+            if (content.storyOfQuest(quest.id()) != null) {
+                flagsRead.addAll(quest.rewards().flags()); // a story chapter's flags are read by its story (StoryState)
             }
             flagsRead.addAll(quest.requires().flags());
             flagsRead.addAll(quest.requires().notFlags());
@@ -336,7 +339,7 @@ public final class ContentLint {
         }
         if (!content.questLogIds().isEmpty()) {
             for (Quest quest : content.quests().values()) {
-                if (content.questLogId(quest.id()) == 0) {
+                if (content.questLogId(quest.id()) == 0 && content.storyLogId(quest.id()) == 0) { // a story's waits for the patch
                     out.add("WARN " + quest.file() + " quest " + quest.id() + ": no quest-log id; run tools/living-world-questlog.bat");
                 }
                 int tracked = QuestLogTargets.mobs(quest).size();
@@ -366,6 +369,7 @@ public final class ContentLint {
         if (knowledge != null) {
             knowledgeChecks(content, knowledge, out);
         }
+        StoryLint.check(content, knowledge, out); // personal story arcs and their scenes (F6)
         return out;
     }
 

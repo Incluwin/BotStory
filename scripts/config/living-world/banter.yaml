@@ -1,0 +1,390 @@
+# Crew banter (docs/BOT_CONCEPT_PLAN.md F6.4, server.living.crew): two of one owner's companions trade a call and an
+# answer in party chat at a calm moment (town, walking onto a new map, after leaving a cleared instance). Said only
+# while living_world.CREW_BANTER_ENABLED is on. ASCII, lower-case player voice; no digits anywhere: every number comes
+# from a slot filled with a real record, so a line can never invent one (BanterLint).
+#
+# ties.seeds: each tie's starting affinity 0-100 (priors; shared clears add CREW_TIE_CLEAR_POINTS each).
+# mute.ok / unmute.ok: one companion's answer when the owner asks for quiet or for talk again.
+# exchanges: one theme each, so any answer fits any call of it.
+#   ties:     who may say it, from the caller's side: spouse, rival, owes (the caller owes), owed, blames, blamed,
+#             friend, crewmate (no authored tie, under the friend mark).
+#   pair:     [caller, answerer] persona ids instead of ties: lines in those two Residents' own voices (preferred).
+#   moments:  town, walk, clear.
+#   stat:     level, record, deaths, best_time, damage: a rival number. The exchange is said only when that record
+#             exists for the two and the caller is ahead; {lead} is the caller's number, {trail} the answerer's.
+#   minAffinity / maxAffinity: the pair's affinity range (default 0..100). weight: default 10.
+#   styles:   a hire's citizen voice style -> its own call/answer lines (else the lines above, in its voice).
+# Slots: {caller} {answerer} {owner} names; clear moments only: {quest} {time}; with a stat: {act} the quest or boss,
+# {lead} {trail} the two numbers, {gap} their difference (level and deaths only).
+ties:
+  seeds: { spouse: 60, friend: 40, rival: 30, owes: 30, owed: 30, blames: 30, blamed: 30, crewmate: 0 }
+
+mute:
+  ok:
+    - "ok ok, we'll keep it down"
+    - "sorry. quiet now"
+    - "got it, less chatter"
+  unmute:
+    - "finally lol"
+    - "oh good, i had things to say"
+    - "about time"
+
+exchanges:
+  # ---- a crew still getting to know each other ----------------------------------------------------------------
+  - id: crewmate.new
+    ties: [crewmate]
+    moments: [town, walk]
+    maxAffinity: 20
+    call:
+      - "{answerer} right? still learning everyone's names"
+      - "how long have you been running with {owner}, {answerer}?"
+      - "so you're the new one"
+    answer:
+      - "yeah, pretty new"
+      - "not long. still learning the routine"
+      - "that's me. i'll keep up"
+    styles:
+      playful-social-v1:
+        call: ["ooh new face! hi {answerer}", "{answerer}!! u new?"]
+        answer: ["hiii yes new :D", "yep! hi hi"]
+      quiet-practical-v1:
+        call: ["you new?", "{answerer}, right"]
+        answer: ["yeah", "new. i'll keep up"]
+
+  - id: crew.plans
+    ties: [crewmate, friend, rival, spouse, owes, owed]
+    moments: [town]
+    call:
+      - "where are we heading after this?"
+      - "{owner} got a plan or are we just wandering"
+      - "what's next, any idea?"
+    answer:
+      - "wherever {owner} goes"
+      - "no clue, i just follow"
+      - "probably more training"
+      - "ask {owner}, not me"
+    styles:
+      playful-social-v1:
+        call: ["sooo where we going next?? :D", "{owner} has a plan right? right?"]
+        answer: ["adventure!! probably", "wherever {owner} goes lol"]
+
+  - id: crew.road
+    ties: [crewmate, friend, rival, owes, owed]
+    moments: [walk]
+    call:
+      - "this road takes forever"
+      - "i swear this map got longer"
+      - "are we there yet"
+    answer:
+      - "every time"
+      - "almost"
+      - "just keep walking"
+      - "it really did"
+
+  # ---- friends --------------------------------------------------------------------------------------------------
+  - id: friend.quiet
+    ties: [friend]
+    moments: [town]
+    call:
+      - "{answerer}, you still with us?"
+      - "you ok {answerer}? you're quiet"
+    answer:
+      - "yeah, just tired"
+      - "all good"
+      - "just thinking"
+      - "here, here"
+
+  - id: friend.keepup
+    ties: [friend]
+    moments: [walk]
+    call:
+      - "keep up {answerer}"
+      - "{answerer} you're so slow lol"
+    answer:
+      - "i'm right behind you"
+      - "go, go"
+      - "pacing myself"
+
+  - id: friend.sit
+    ties: [friend]
+    moments: [town]
+    minAffinity: 50
+    call:
+      - "{answerer}, good to have you along"
+      - "glad you're in this crew, {answerer}"
+    answer:
+      - "wouldn't be anywhere else"
+      - "someone has to watch your back"
+      - "same"
+
+  # ---- after a clear (the clear's real time) ----------------------------------------------------------------------
+  - id: clear.time
+    ties: [crewmate, friend, rival, spouse, owes, owed]
+    moments: [clear]
+    call:
+      - "{quest} in {time}. not bad"
+      - "{time} on that {quest}. i'll take it"
+      - "{quest} done. {time}"
+    answer:
+      - "i'll take it"
+      - "could be faster"
+      - "solid run"
+      - "nice one, everyone"
+
+  # ---- rivals: real numbers only ---------------------------------------------------------------------------------
+  - id: rival.level
+    ties: [rival]
+    moments: [town, walk]
+    stat: level
+    call:
+      - "level {lead} now. you're still {trail}, {answerer}?"
+      - "{gap} levels ahead of you, {answerer}. just saying"
+      - "how's level {trail} treating you, {answerer}?"
+    answer:
+      - "levels aren't everything"
+      - "i'll catch up"
+      - "{gap} levels is nothing"
+      - "enjoy it while it lasts"
+
+  - id: rival.record
+    ties: [rival]
+    moments: [town]
+    stat: record
+    call:
+      - "{act}: {lead} for me. you're on {trail}, {answerer}"
+      - "my {act} record is {lead}. yours is {trail}. just saying"
+    answer:
+      - "records are for people with nothing else"
+      - "i'll fix that next run"
+      - "keep counting"
+
+  - id: rival.deaths
+    ties: [rival]
+    moments: [clear, town]
+    stat: deaths
+    call:
+      - "you died {trail} times in that {act}, {answerer}. i had {lead}"
+      - "{trail} deaths in {act}? really, {answerer}?"
+    answer:
+      - "it was targeting me"
+      - "i was covering you"
+      - "don't start"
+      - "lag"
+
+  - id: rival.best
+    ties: [rival]
+    moments: [town]
+    stat: best_time
+    call:
+      - "my best {act} is {lead}. yours is {trail}, right?"
+      - "{act} in {lead}. beat that, {answerer}"
+    answer:
+      - "that was {owner} carrying you"
+      - "watch me"
+      - "give it a week"
+
+  - id: rival.damage
+    ties: [rival]
+    moments: [clear, town]
+    stat: damage
+    call:
+      - "{lead} of the damage in that {act}. you had {trail}, {answerer}"
+      - "{trail} of the damage, {answerer}? i did {lead}"
+    answer:
+      - "damage isn't everything"
+      - "next run, watch me"
+      - "your gear's just better"
+
+  - id: rival.dare
+    ties: [rival]
+    moments: [town, walk]
+    call:
+      - "{answerer}, still think you're better than me?"
+      - "race you to the next level, {answerer}"
+      - "bet i level before you do"
+    answer:
+      - "i know i am"
+      - "you're on"
+      - "you wish"
+      - "keep dreaming"
+
+  # ---- spouses ----------------------------------------------------------------------------------------------------
+  - id: spouse.food
+    ties: [spouse]
+    moments: [town]
+    call:
+      - "{answerer}, did you eat today?"
+      - "you eat anything today, {answerer}?"
+    answer:
+      - "yes, i ate"
+      - "a little"
+      - "stop worrying"
+      - "later, promise"
+
+  - id: spouse.proud
+    ties: [spouse]
+    moments: [town, clear]
+    call:
+      - "{answerer}, you're doing great, you know"
+      - "proud of you, {answerer}"
+    answer:
+      - "stop it"
+      - "you too"
+      - "we make a good team"
+
+  - id: spouse.close
+    ties: [spouse]
+    moments: [walk]
+    call:
+      - "{answerer}, stay where i can see you"
+      - "don't wander off, {answerer}"
+    answer:
+      - "i won't"
+      - "yes, yes"
+      - "you worry too much"
+
+  # ---- debts and grudges ------------------------------------------------------------------------------------------
+  - id: owes.debt
+    ties: [owes]
+    moments: [town, walk]
+    call:
+      - "{answerer}, i still owe you one. haven't forgotten"
+      - "still haven't paid you back, {answerer}"
+    answer:
+      - "i know. i keep count"
+      - "whenever you're ready"
+      - "don't worry about it"
+
+  - id: owed.debt
+    ties: [owed]
+    moments: [town]
+    call:
+      - "{answerer}, you still owe me. just saying"
+      - "when are you paying me back, {answerer}?"
+    answer:
+      - "i know, i know"
+      - "soon"
+      - "you never let me forget"
+
+  - id: blames.grudge
+    ties: [blames]
+    moments: [town]
+    call:
+      - "{answerer}. still not talking about it?"
+      - "i haven't forgotten, {answerer}"
+    answer:
+      - "not here"
+      - "drop it"
+      - "i know you haven't"
+
+  - id: blamed.grudge
+    ties: [blamed]
+    moments: [town]
+    call:
+      - "{answerer}, are we ever going to be fine again?"
+      - "you're still angry with me, {answerer}"
+    answer:
+      - "ask me another day"
+      - "yes"
+      - "not now"
+
+  # ---- the pilot rivals: Fenna (hunter) and Dorran (last of the Sable Hunters) ------------------------------------
+  - id: fenna-dorran.level
+    pair: [dorran, fenna]
+    moments: [town, walk]
+    stat: level
+    weight: 15
+    call:
+      - "{gap} levels, fenna. that bow won't close it"
+      - "level {lead}. you'll get there. slowly"
+    answer:
+      - "levels. you'd still miss a boar at ten paces"
+      - "keep counting, old man. i count arrows"
+
+  - id: fenna-dorran.deaths
+    pair: [fenna, dorran]
+    moments: [clear, town]
+    stat: deaths
+    weight: 15
+    call:
+      - "{trail} deaths in that {act}, dorran. i had {lead}. the treeline was right there"
+      - "you went down {trail} times. i counted. i always count"
+    answer:
+      - "i was holding the line. someone had to"
+      - "count your arrows instead"
+
+  - id: dorran-fenna.deaths
+    pair: [dorran, fenna]
+    moments: [clear, town]
+    stat: deaths
+    weight: 15
+    call:
+      - "you dropped {trail} times in that {act}. i dropped {lead}"
+      - "{trail} times, fenna. stay behind the blade"
+    answer:
+      - "you were standing in my line of fire"
+      - "next time i shoot first"
+
+  - id: fenna-dorran.damage
+    pair: [fenna, dorran]
+    moments: [clear, town]
+    stat: damage
+    weight: 15
+    call:
+      - "{lead} of the damage in that {act}. you had {trail}. who's carrying who?"
+    answer:
+      - "a blade does its work up close. you'll see"
+      - "don't"
+
+  - id: dorran-fenna.damage
+    pair: [dorran, fenna]
+    moments: [clear, town]
+    stat: damage
+    weight: 15
+    call:
+      - "{lead} of that {act}. you put in {trail}. arrows tickle"
+    answer:
+      - "tickled it to death, didn't i"
+      - "next run, watch the numbers"
+
+  - id: fenna-dorran.record
+    pair: [fenna, dorran]
+    moments: [town]
+    stat: record
+    weight: 15
+    call:
+      - "{act}: {lead}. you're on {trail}, dorran. the crest won't fix that"
+    answer:
+      - "the crest was never for fixing things"
+      - "the season's young"
+
+  - id: dorran-fenna.record
+    pair: [dorran, fenna]
+    moments: [town]
+    stat: record
+    weight: 15
+    call:
+      - "{act}: {lead}. yours reads {trail}, fenna"
+    answer:
+      - "the boars don't keep records. neither do i"
+      - "give me a month"
+
+  - id: fenna-dorran.aim
+    pair: [fenna, dorran]
+    moments: [town, walk]
+    call:
+      - "aim's steady today, dorran. yours?"
+      - "still polishing that crest?"
+    answer:
+      - "steady enough"
+      - "it doesn't shine anymore. i polish it anyway"
+
+  - id: dorran-fenna.treeline
+    pair: [dorran, fenna]
+    moments: [town, walk]
+    call:
+      - "the guild could've used your aim"
+      - "watch the treeline, fenna"
+    answer:
+      - "the guild could've used a lot of things"
+      - "always do. watch your own back"

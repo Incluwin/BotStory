@@ -862,6 +862,30 @@ living_world:
     APPRENTICE_ADOPT_MIN_OWNER_LEVEL: 30
     APPRENTICE_NEEDS_MAX: 2
     APPRENTICE_NEED_CHANCE: 0.1
+    # Personal story arcs (docs/BOT_CONCEPT_PLAN.md F6.1, F6.2, F6.6; pilots Fenna, Dorran, Ilse): a companion tells its
+    # owner its own story in chapters that open at friendship Lv 3, 6 and 9 (it says so once in party chat; its card
+    # then has "Something on your mind?"), and the last chapter is a scene the owner attends in a private copy of a
+    # map. Two authored rivals on one roster race to bring a foe down. CALM_RANGE_PX: no monster this close for the
+    # party line; LINE_MIN_MS: a scene line's least time on screen; SCENE_MAX_MINUTES: a scene ends after this;
+    # RACE_EVEN_PERCENT: shares this close are even. PERSONAL_ARCS_ENABLED is the kill switch (false: nothing offered).
+    # Technical: server.living.story (StoryArcs, StoryState, StoryScenes); state is living_bond.flags story.* plus the
+    # chapter quests' rows; a scene is a SceneInstance (an EventInstanceManager on the no-op 0_EXAMPLE manager, no JS).
+    PERSONAL_ARCS_ENABLED: false
+    STORY_CALM_RANGE_PX: 400
+    STORY_LINE_MIN_MS: 1800
+    STORY_SCENE_MAX_MINUTES: 15
+    STORY_RACE_EVEN_PERCENT: 10
+    # Attendable job errands (F6.3): before its 3rd or 4th job a companion asks its owner "come with me?"; yes, it
+    # stays in the party, follows them to the instructor's town (El Nath, Leafre), leads them the last stretch and
+    # advances in front of them, and at friendship Lv 9 its story's last chapter follows. No, or no answer: it goes
+    # alone as before. MAX_MINUTES: not in that town by then, it goes alone; ASK_TRIES / ASK_RETRY_MS: the window
+    # waits for another to close. JOB_ERRAND_ATTEND_ENABLED is the kill switch (false: every errand goes alone).
+    # Technical: server.living.story.ErrandAttend at JobErrands.leave; the lead is MentorLead per leg (ErrandHands) on
+    # the story sweep, off follow via CompanionFollowGuard; the advance is JobErrands.advanceAttended (changeJob).
+    JOB_ERRAND_ATTEND_ENABLED: false
+    JOB_ERRAND_ATTEND_MAX_MINUTES: 60
+    JOB_ERRAND_ATTEND_ASK_TRIES: 6
+    JOB_ERRAND_ATTEND_ASK_RETRY_MS: 5000
     # Decision 18: Residents one friend may keep at once (0 = none), and the days a friend may stay away before
     # their Residents go home (0 = never).
     RESIDENT_CAP_PER_OWNER: 5
@@ -1129,6 +1153,41 @@ living_world:
     # "sell junk", as before.
     COMPANION_SELL_JUNK_EVERY_VISIT: true
     BENCH_SELL_FREE_EQUIP_SLOTS: 4
+    # Crew ties and banter (2026-10-28, docs/BOT_CONCEPT_PLAN.md F6.4): two of an owner's companions trade a call and an
+    # answer in party chat at calm moments - in town, just onto a new field, after leaving a cleared instance - in the
+    # words their tie allows (spouses, rivals, a debt, friends, crewmates; scripts/config/living-world/banter.yaml).
+    # Rivals tease with real records only: levels, clears, deaths and damage in their last run, best clear times. The
+    # owner's "quiet" / "no chatter" mutes it and "talk more" brings it back (kept across logins). !banter (GM 5).
+    # Technical: server.living.crew.CrewBanter on a CREW_BANTER_TICK_MS companion-ops tick that hands nothing over while
+    # this is false; ties (server.living.crew.CrewTies) are a view read at each owner's login whatever the switch, from
+    # Persona.relationships, lore spouses and living_clear. Measuring only and not behind this switch: each companion
+    # PQ or boss run now writes companion_performance.damage_share (its share of the run's damage), as
+    # CLEAR_RECORDS_ENABLED measures clears. false = the kill switch: nothing is said and no mute is kept.
+    CREW_BANTER_ENABLED: false
+    # Technical: how often CrewBanter.tick looks at every online owner's crew on companion-ops (party time, the moment,
+    # maybe an exchange); 20000 matches the ChatterEngine tick. At least 5000.
+    CREW_BANTER_TICK_MS: 20000
+    # Technical: at most one exchange per this many minutes of party time per owner and per party; party time runs only
+    # while two or more of the owner's companions are free on its map and the owner moved within CREW_BANTER_OWNER_IDLE_MS.
+    CREW_BANTER_GAP_MINUTES: 10
+    # Technical: chance per calm town or walk tick, once the gap is met, that an exchange starts (its call comes 0-15 s
+    # later), so exchanges never fall on a fixed rhythm the tell audit would flag; a clear's moment always fires.
+    CREW_BANTER_CHANCE: 0.25
+    # Technical: a booked clear (ClearLog) with two or more of the owner's companions waits this long for the first calm
+    # tick off the event instance, where the after-clear exchange quotes its real time; then it lapses.
+    CREW_BANTER_AFTER_CLEAR_WINDOW_MS: 300000
+    # Technical: party time stops accruing while the owner stood within 30 px of one spot on one map this long, so a
+    # crew does not chat on a clock beside an AFK owner. At least 60000.
+    CREW_BANTER_OWNER_IDLE_MS: 300000
+    # Technical: no exchange while a hostile living mob is within this many px of the owner or a speaker, or any boss
+    # is alive on the map (event instances and run commitments never banter at all). At least 100.
+    CREW_BANTER_CALM_RANGE_PX: 400
+    # Technical: CrewTies affinity per living_clear the owner (as a player) and both companions were in, on top of the
+    # best seed of their authored ties (banter.yaml ties.seeds), at most 100. 0 = affinity is the seed alone.
+    CREW_TIE_CLEAR_POINTS: 3
+    # Technical: a pair with nothing authored between them (hires among them) reads FRIEND instead of CREWMATE from
+    # this affinity (with the defaults about 14 shared clears), which opens the friends' exchanges to them.
+    CREW_TIE_FRIEND_AFFINITY: 40
 
 # Populated server: generated citizens with schedules, progression, chatter, guilds, conversation and
 # market participation (docs/POPULATED_SERVER_PLAN.md). Runs inside the living world. ASCII only.

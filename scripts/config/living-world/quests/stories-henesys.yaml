@@ -1,0 +1,88 @@
+# The pilots' story chapters (docs/BOT_CONCEPT_PLAN.md F6; stories/henesys.yaml). These quests are in no persona's
+# questLines: only the story offers them, from the companion's card, to its owner. A chapter starts with its
+# conversation (the TALK step) and ends with its last step's say line in the closing window; the capstone's SCENE step
+# is played in a private copy of a map (scenes/henesys.yaml). Each one's reward sets the story's done flag.
+
+- id: fenna-story-1
+  persona: fenna
+  title: "The Long Road: Why the Road"
+  requires: { friendship: 3 }
+  steps:
+    - { id: talk, type: TALK, say: ["thanks for hearing it. i don't say it twice."] }
+  rewards: { bondPoints: 10, flags: [story.fenna-long-road.one] }
+
+- id: fenna-story-2
+  persona: fenna
+  title: "The Long Road: The Shot"
+  requires: { friendship: 6, questsCompleted: [fenna-story-1] }
+  steps:
+    - { id: talk, type: TALK, say: ["i've never said that out loud. don't make it a thing."] }
+  rewards: { bondPoints: 10, flags: [story.fenna-long-road.two] }
+
+- id: fenna-story-3
+  persona: fenna
+  title: "The Long Road: The Old Blind"
+  requires: { friendship: 9, questsCompleted: [fenna-story-2] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: blind, type: SCENE, scene: fenna-old-blind, say: ["thanks for standing on the ridge with me. the road's lighter now."] }
+  rewards: { bondPoints: 20, flags: [story.fenna-long-road.three] }
+
+- id: rivals-fenna-dorran
+  persona: fenna
+  title: "The Bet"
+  requires: { friendship: 6 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: race, type: SCENE, scene: fenna-dorran-bet, say: ["a bet's a bet. same time next season?"] }
+  rewards: { bondPoints: 10 }
+
+- id: dorran-story-1
+  persona: dorran
+  title: "Eleven Names: The Banner"
+  requires: { friendship: 3 }
+  steps:
+    - { id: talk, type: TALK, say: ["eleven names. now somebody else knows them."] }
+  rewards: { bondPoints: 10, flags: [story.dorran-eleven-names.one] }
+
+- id: dorran-story-2
+  persona: dorran
+  title: "Eleven Names: The Watch"
+  requires: { friendship: 6, questsCompleted: [dorran-story-1] }
+  steps:
+    - { id: talk, type: TALK, say: ["i've carried that one alone a long time. it's lighter split two ways."] }
+  rewards: { bondPoints: 10, flags: [story.dorran-eleven-names.two] }
+
+- id: dorran-story-3
+  persona: dorran
+  title: "Eleven Names: The Grove"
+  requires: { friendship: 9, questsCompleted: [dorran-story-2] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: grove, type: SCENE, scene: dorran-last-grove, say: ["the banner has a twelfth name now. don't argue."] }
+  rewards: { bondPoints: 20, flags: [story.dorran-eleven-names.three] }
+
+- id: ilse-story-1
+  persona: ilse
+  title: "House Calls: The Bill"
+  requires: { friendship: 3 }
+  steps:
+    - { id: talk, type: TALK, say: ["there. now you know my terrible business secret. drink water!"] }
+  rewards: { bondPoints: 10, flags: [story.ilse-house-calls.one] }
+
+- id: ilse-story-2
+  persona: ilse
+  title: "House Calls: Callo"
+  requires: { friendship: 6, questsCompleted: [ilse-story-1] }
+  steps:
+    - { id: talk, type: TALK, say: ["thank you for listening. healers don't get asked much."] }
+  rewards: { bondPoints: 10, flags: [story.ilse-house-calls.two] }
+
+- id: ilse-story-3
+  persona: ilse
+  title: "House Calls: The Forest Road"
+  requires: { friendship: 9, questsCompleted: [ilse-story-2] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: call, type: SCENE, scene: ilse-forest-call, say: ["you held the line. that's a house call i'll remember."] }
+  rewards: { bondPoints: 20, flags: [story.ilse-house-calls.three] }
