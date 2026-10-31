@@ -159,6 +159,30 @@ class AgentJumpProbeServiceTest {
     }
 
     @Test
+    void aMoveFromTheFootOfAWallNoTallerThanASlopeStepIsNotHeld() {
+        // Kerning City's roofs (103000000 x 340): a floor ends at a 16 px wall up to the next floor. The ground walk
+        // passes such a step, so the fall the graph times from its foot must not be held at it either.
+        MapleMap map = new MapleMap(910000074, 0, 0, 910000074, 1.0f);
+        FootholdTree footholds = new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
+        Foothold lower = new Foothold(new Point(0, 100), new Point(50, 100), 1);
+        Foothold step = new Foothold(new Point(50, 100), new Point(50, 84), 2);
+        Foothold upper = new Foothold(new Point(50, 84), new Point(120, 84), 3);
+        lower.setNext(2);
+        step.setPrev(1);
+        step.setNext(3);
+        upper.setPrev(2);
+        for (Foothold foothold : new Foothold[]{lower, step, upper}) {
+            footholds.insert(foothold);
+        }
+        map.setFootholds(footholds);
+
+        AgentJumpProbeService.AirCollision fromTheFoot =
+                AgentJumpProbeService.resolveAirCollision(map, new Point(50, 100), new Point(56, 104));
+
+        assertEquals(AgentJumpProbeService.AirCollisionType.NONE, fromTheFoot.type());
+    }
+
+    @Test
     void anArcReachingAFloorsEndOnTheTickItReachesTheWallLandsOnlyOnAFloorRunningBack() {
         MapleMap map = new MapleMap(910000073, 0, 0, 910000073, 1.0f);
         FootholdTree footholds = new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
