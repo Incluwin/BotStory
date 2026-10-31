@@ -138,6 +138,18 @@ public final class AgentVictoriaRouteRuntime {
                 if (portalId == null) {
                     choice = reachablePortalTo(entry, agent, nextMap, destinationMapId, blockedEdges, gateway, state);
                 }
+            } else {
+                // In the air canReach rules nothing out, so the way out chosen on the ground is kept until it lands.
+                int[] detour = choice.trapped() ? reentry(entry, agent, nextMap, gateway)
+                        : gateway.footing(agent) == PrimitiveCapabilityGateway.Footing.AIR ? state.detour(nextMap)
+                        : null;
+                if (choice.trapped()) {
+                    state.keepDetour(nextMap, detour == null ? -1 : detour[0], detour == null ? -1 : detour[1]);
+                }
+                if (detour != null) {
+                    nextMap = detour[0];
+                    choice = new PortalChoice(detour[1], false);
+                }
             }
             if (portalId == null) {
                 portalId = choice.portalId();
@@ -218,6 +230,36 @@ public final class AgentVictoriaRouteRuntime {
 
     /** The portal travelStatus walks to, and whether no portal to that map gets the Agent through it. */
     private record PortalChoice(Integer portalId, boolean trapped) {
+    }
+
+    /**
+     * For a hop none of whose portals the Agent walks to from where it stands, with no route around it: {map, portal}
+     * of a way out it walks to, to a map that leads straight back in where the hop's portal is walkable, else null.
+     * Another Entrance (105090200) reached on its middle floor (from 105090400, or 105090100's east01) has its only
+     * portal to 105090300 on the top floor; out by west01 to 105090100 and back in by its east00, the Agent is set
+     * down on the top floor. The map-level route knows maps, not which floor of one the Agent stands on.
+     */
+    private static int[] reentry(AgentRuntimeEntry entry,
+                                 Character agent,
+                                 int hopMapId,
+                                 PrimitiveCapabilityGateway gateway) {
+        List<Integer> hopPortals = gateway.directPortalIdsTo(agent, hopMapId);
+        for (int mapId : AgentVictoriaTrainingRouteCatalog.adjacentMaps(agent.getMapId())) {
+            if (mapId == hopMapId) {
+                continue;
+            }
+            for (Integer portalId : gateway.directPortalIdsTo(agent, mapId)) {
+                if (!notRuledOut(entry, agent, portalId, gateway)) {
+                    continue;
+                }
+                for (Integer hopPortal : hopPortals) {
+                    if (gateway.reentryReaches(entry, agent, portalId, hopPortal)) {
+                        return new int[]{mapId, portalId};
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static boolean notRuledOut(AgentRuntimeEntry entry,

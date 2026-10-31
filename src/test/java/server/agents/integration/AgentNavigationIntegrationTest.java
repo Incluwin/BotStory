@@ -951,6 +951,28 @@ class AgentNavigationIntegrationTest {
     }
 
     @Test
+    void shouldLeapIntoTheWaterUnderATargetLessThanTwoJumpThresholdsAbove() {
+        // Aqua Road (230040000): top00 stands 59 px over the floor beneath it. Agents that came down on that floor
+        // stood under the portal for the supply trip's 300 s: no walk closes the distance and the leap waited for 60.
+        MapleMap map = new MapleMap(910000205, 0, 0, 910000205, 1.0f);
+        map.setSwim(true);
+        FootholdTree footholds = new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
+        footholds.insert(new Foothold(new Point(0, 100), new Point(200, 100), 1));
+        map.setFootholds(footholds);
+
+        Character bot = mockBot(new Point(120, 100), map);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        AgentMovementStateRuntime.setMovementProfile(entry, AgentMovementProfile.base());
+        AgentNavigationDebugStateRuntime.setGraphWarmupFallback(entry, true);
+
+        boolean immediateAction = AgentFallbackMovementService.tryImmediateAction(
+                entry, bot.getPosition(), new Point(124, 41));
+
+        assertTrue(immediateAction);
+        assertTrue(AgentMovementStateRuntime.inAir(entry));
+    }
+
+    @Test
     void shouldUseDownJumpInNonSwimFallbackWhenTargetIsDirectlyBelow() {
         MapleMap map = new MapleMap(910000204, 0, 0, 910000204, 1.0f);
         FootholdTree footholds = new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
