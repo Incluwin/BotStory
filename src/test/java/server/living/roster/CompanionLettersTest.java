@@ -254,9 +254,12 @@ class CompanionLettersTest {
             List<String> names = List.of("Ada", "Bo", "Cy", "Dee", "Eli", "Fay", "Gus");
             for (int i = 0; i < names.size(); i++) {
                 game.companion(names.get(i).toLowerCase(), names.get(i), 900 + i, RosterState.BENCHED, LITH);
-                game.store.store.event(ANN, names.get(i).toLowerCase(), CompanionLetters.JOB_ADVANCED_EVENT, "HUNTER from Athena");
             }
             FakeNotes notes = letters(game.roster());
+            game.roster().onOwnerLogout(game.ann, null);
+            for (String name : names) {
+                game.store.store.event(ANN, name.toLowerCase(), CompanionLetters.JOB_ADVANCED_EVENT, "HUNTER from Athena");
+            }
 
             game.roster().letters().deliver(ANN);
 
@@ -281,6 +284,29 @@ class CompanionLettersTest {
             game.roster().letters().deliver(ANN);
             assertTrue(notes.sent.isEmpty());
             verify(game.ann).dropMessage(5, "While you were away, your crew has news, but your notes are full.");
+        }
+    }
+
+    @Test
+    void theFirstLettersAfterTheyAreTurnedOnLeaveOutTheJobAdvancesLoggedBefore() throws IOException {
+        try (LifecycleHarness game = new LifecycleHarness(); MockedStatic<MapFactory> places = places()) {
+            game.companion("olwen", "Olwen", 900, RosterState.BENCHED, LITH);
+            game.companion("mira", "Mira", 950, RosterState.BENCHED, LITH);
+            game.store.store.event(ANN, "mira", CompanionLetters.JOB_ADVANCED_EVENT, "CRUSADER from Tylus"); // weeks ago
+            game.config.LETTERS_ENABLED = true; // Ann last logged out with the letters off: she has no marker
+            FakeNotes notes = letters(game.roster());
+
+            game.roster().letters().deliver(ANN);
+            assertTrue(notes.sent.isEmpty(), "nothing the letters wrote yet: the old advance is no news");
+            assertTrue(game.store.events(CompanionLetters.TOLD_EVENT).isEmpty());
+
+            BenchLedger ledger = ledger(game);
+            ledger.reportHaul(ANN, "olwen", FIELD, 0L, GLOVE_SCROLL, 1);
+            ledger.flushReports(0);
+            game.store.store.event(ANN, "mira", CompanionLetters.JOB_ADVANCED_EVENT, "CRUSADER from Tylus"); // since
+            game.roster().letters().deliver(ANN);
+            assertEquals(List.of("Olwen: Ann, found a Scroll for Gloves for DEX 60% at Ant Tunnel I. - Olwen",
+                    "Mira: Ann, made crusader. - Mira"), notes.messages(), "told from the letters' first row on");
         }
     }
 

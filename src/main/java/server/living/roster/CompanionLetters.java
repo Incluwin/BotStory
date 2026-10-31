@@ -61,6 +61,11 @@ public final class CompanionLetters {
             RIVAL_NEWS_EVENT);
     private static final List<String> MARKERS = List.of(AWAY_EVENT, TOLD_EVENT);
     /**
+     * The news only the letters write, so only while they are on: an owner with no marker yet (the letters were off at
+     * their last logout) is told from the first of these on, never the job advances logged before the letters were.
+     */
+    private static final List<String> STARTS = List.of(BenchLedger.REPORT_EVENT, GIFT_EVENT, ASKED_EVENT);
+    /**
      * Rows one digest reads at most, the newest: about two weeks of a full bench's (ten companions, a row each a ledger
      * tick); a longer absence leaves out its oldest news.
      */
@@ -260,7 +265,7 @@ public final class CompanionLetters {
         if (ledger != null) {
             ledger.flushReports(ownerId);
         }
-        List<CharacterEvent> window = world.store().eventsAfterMarker(ownerId, NEWS, MARKERS, WINDOW_ROWS);
+        List<CharacterEvent> window = world.store().eventsAfterMarker(ownerId, NEWS, MARKERS, STARTS, WINDOW_ROWS);
         if (window == null) {
             return; // the read failed: nothing is marked told
         }

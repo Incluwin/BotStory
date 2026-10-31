@@ -2127,15 +2127,20 @@ public final class LivingStore {
     public record CharacterEvent(String personaId, String kind, String detail) { }
 
     /**
-     * The character's events of these {@code kinds} since their newest event of one of the {@code markers} (all of them
-     * when there is none), oldest first: the newest {@code limit} of them, what the letters have not told them yet
-     * (CompanionLetters). Null when the read fails.
+     * The character's events of these {@code kinds} since their newest event of one of the {@code markers}, oldest
+     * first: the newest {@code limit} of them, what the letters have not told them yet (CompanionLetters). With no
+     * marker yet, from their first event of one of the {@code starts} on (none of them: nothing). Null when the read
+     * fails.
      */
-    public List<CharacterEvent> eventsAfterMarker(int characterId, List<String> kinds, List<String> markers, int limit) {
+    public List<CharacterEvent> eventsAfterMarker(int characterId, List<String> kinds, List<String> markers,
+                                                  List<String> starts, int limit) {
         String sql = "SELECT persona_id, kind, detail FROM living_event_log WHERE character_id = ? AND kind IN ("
                 + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ")"
                 + " AND id > COALESCE((SELECT MAX(id) FROM living_event_log WHERE character_id = ? AND kind IN ("
-                + String.join(",", java.util.Collections.nCopies(markers.size(), "?")) + ")), 0) ORDER BY id DESC LIMIT ?";
+                + String.join(",", java.util.Collections.nCopies(markers.size(), "?")) + ")),"
+                + " (SELECT MIN(id) - 1 FROM living_event_log WHERE character_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(starts.size(), "?")) + ")),"
+                + " 9223372036854775807) ORDER BY id DESC LIMIT ?";
         List<CharacterEvent> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             int at = 1;
@@ -2146,6 +2151,10 @@ public final class LivingStore {
             ps.setInt(at++, characterId);
             for (String marker : markers) {
                 ps.setString(at++, marker);
+            }
+            ps.setInt(at++, characterId);
+            for (String start : starts) {
+                ps.setString(at++, start);
             }
             ps.setInt(at, limit);
             try (ResultSet rs = ps.executeQuery()) {
