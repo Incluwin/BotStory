@@ -16,6 +16,32 @@ import constants.skills.WhiteKnight;
 import java.util.function.IntUnaryOperator;
 
 public final class AgentWeaponCompatibilityPolicy {
+    // A warrior's weapon family is every skill it holds for one weapon, its 2nd job's included: found 2026-10-31,
+    // 14 Crusaders with Sword Mastery, Sword Booster and Final Attack: Sword maxed but no Coma or Panic yet counted
+    // as either family, so they wore axes and blunt weapons none of their skills work with.
+    private static final int[] FIGHTER_SWORD = {
+            Fighter.SWORD_MASTERY, Fighter.SWORD_BOOSTER, Fighter.FINAL_ATTACK_SWORD};
+    private static final int[] FIGHTER_AXE = {
+            Fighter.AXE_MASTERY, Fighter.AXE_BOOSTER, Fighter.FINAL_ATTACK_AXE};
+    private static final int[] CRUSADER_SWORD = with(FIGHTER_SWORD, Crusader.SWORD_COMA, Crusader.SWORD_PANIC);
+    private static final int[] CRUSADER_AXE = with(FIGHTER_AXE, Crusader.AXE_COMA, Crusader.AXE_PANIC);
+    private static final int[] PAGE_SWORD = {Page.SWORD_MASTERY, Page.SWORD_BOOSTER, Page.FINAL_ATTACK_SWORD};
+    private static final int[] PAGE_BW = {Page.BW_MASTERY, Page.BW_BOOSTER, Page.FINAL_ATTACK_BW};
+    private static final int[] WHITEKNIGHT_SWORD = with(PAGE_SWORD,
+            WhiteKnight.SWORD_FIRE_CHARGE, WhiteKnight.SWORD_ICE_CHARGE, WhiteKnight.SWORD_LIT_CHARGE);
+    private static final int[] WHITEKNIGHT_BW = with(PAGE_BW,
+            WhiteKnight.BW_FIRE_CHARGE, WhiteKnight.BW_ICE_CHARGE, WhiteKnight.BW_LIT_CHARGE);
+    private static final int[] PALADIN_SWORD = with(WHITEKNIGHT_SWORD, Paladin.SWORD_HOLY_CHARGE);
+    private static final int[] PALADIN_BW = with(WHITEKNIGHT_BW, Paladin.BW_HOLY_CHARGE);
+    private static final int[] SPEARMAN_SPEAR = {
+            Spearman.SPEAR_MASTERY, Spearman.SPEAR_BOOSTER, Spearman.FINAL_ATTACK_SPEAR};
+    private static final int[] SPEARMAN_POLEARM = {
+            Spearman.POLEARM_MASTERY, Spearman.POLEARM_BOOSTER, Spearman.FINAL_ATTACK_POLEARM};
+    private static final int[] DRAGONKNIGHT_SPEAR = with(SPEARMAN_SPEAR,
+            DragonKnight.SPEAR_CRUSHER, DragonKnight.SPEAR_DRAGON_FURY);
+    private static final int[] DRAGONKNIGHT_POLEARM = with(SPEARMAN_POLEARM,
+            DragonKnight.POLE_ARM_CRUSHER, DragonKnight.POLE_ARM_DRAGON_FURY);
+
     private AgentWeaponCompatibilityPolicy() {
     }
 
@@ -67,41 +93,19 @@ public final class AgentWeaponCompatibilityPolicy {
         return switch (job) {
             case BOWMAN -> weaponType == WeaponType.BOW || weaponType == WeaponType.CROSSBOW;
             case FIGHTER -> matchesWarriorWeaponFamily(skillLevel,
-                    isSword(weaponType), isGeneralWeapon(weaponType),
-                    new int[]{Fighter.SWORD_MASTERY, Fighter.SWORD_BOOSTER},
-                    new int[]{Fighter.AXE_MASTERY, Fighter.AXE_BOOSTER});
-            case CRUSADER -> matchesWarriorWeaponFamily(skillLevel,
-                    isSword(weaponType), isGeneralWeapon(weaponType),
-                    new int[]{Crusader.SWORD_COMA, Crusader.SWORD_PANIC},
-                    new int[]{Crusader.AXE_COMA, Crusader.AXE_PANIC});
-            case HERO -> matchesWarriorWeaponFamily(skillLevel,
-                    isSword(weaponType), isGeneralWeapon(weaponType),
-                    new int[]{Crusader.SWORD_COMA, Crusader.SWORD_PANIC},
-                    new int[]{Crusader.AXE_COMA, Crusader.AXE_PANIC});
+                    isSword(weaponType), isGeneralWeapon(weaponType), FIGHTER_SWORD, FIGHTER_AXE);
+            case CRUSADER, HERO -> matchesWarriorWeaponFamily(skillLevel,
+                    isSword(weaponType), isGeneralWeapon(weaponType), CRUSADER_SWORD, CRUSADER_AXE);
             case PAGE -> matchesWarriorWeaponFamily(skillLevel,
-                    isSword(weaponType), isGeneralWeapon(weaponType),
-                    new int[]{Page.SWORD_MASTERY, Page.SWORD_BOOSTER},
-                    new int[]{Page.BW_MASTERY, Page.BW_BOOSTER});
+                    isSword(weaponType), isGeneralWeapon(weaponType), PAGE_SWORD, PAGE_BW);
             case WHITEKNIGHT -> matchesWarriorWeaponFamily(skillLevel,
-                    isSword(weaponType), isGeneralWeapon(weaponType),
-                    new int[]{WhiteKnight.SWORD_FIRE_CHARGE, WhiteKnight.SWORD_ICE_CHARGE, WhiteKnight.SWORD_LIT_CHARGE},
-                    new int[]{WhiteKnight.BW_FIRE_CHARGE, WhiteKnight.BW_ICE_CHARGE, WhiteKnight.BW_LIT_CHARGE});
+                    isSword(weaponType), isGeneralWeapon(weaponType), WHITEKNIGHT_SWORD, WHITEKNIGHT_BW);
             case PALADIN -> matchesWarriorWeaponFamily(skillLevel,
-                    isSword(weaponType), isGeneralWeapon(weaponType),
-                    new int[]{Paladin.SWORD_HOLY_CHARGE},
-                    new int[]{Paladin.BW_HOLY_CHARGE});
+                    isSword(weaponType), isGeneralWeapon(weaponType), PALADIN_SWORD, PALADIN_BW);
             case SPEARMAN -> matchesWarriorWeaponFamily(skillLevel,
-                    isSpearWeapon(weaponType), isPolearmWeapon(weaponType),
-                    new int[]{Spearman.SPEAR_MASTERY, Spearman.SPEAR_BOOSTER},
-                    new int[]{Spearman.POLEARM_MASTERY, Spearman.POLEARM_BOOSTER});
-            case DRAGONKNIGHT -> matchesWarriorWeaponFamily(skillLevel,
-                    isSpearWeapon(weaponType), isPolearmWeapon(weaponType),
-                    new int[]{DragonKnight.SPEAR_CRUSHER, DragonKnight.SPEAR_DRAGON_FURY},
-                    new int[]{DragonKnight.POLE_ARM_CRUSHER, DragonKnight.POLE_ARM_DRAGON_FURY});
-            case DARKKNIGHT -> matchesWarriorWeaponFamily(skillLevel,
-                    isSpearWeapon(weaponType), isPolearmWeapon(weaponType),
-                    new int[]{DragonKnight.SPEAR_CRUSHER, DragonKnight.SPEAR_DRAGON_FURY},
-                    new int[]{DragonKnight.POLE_ARM_CRUSHER, DragonKnight.POLE_ARM_DRAGON_FURY});
+                    isSpearWeapon(weaponType), isPolearmWeapon(weaponType), SPEARMAN_SPEAR, SPEARMAN_POLEARM);
+            case DRAGONKNIGHT, DARKKNIGHT -> matchesWarriorWeaponFamily(skillLevel,
+                    isSpearWeapon(weaponType), isPolearmWeapon(weaponType), DRAGONKNIGHT_SPEAR, DRAGONKNIGHT_POLEARM);
             case MAGICIAN, FP_WIZARD, FP_MAGE, FP_ARCHMAGE, IL_WIZARD, IL_MAGE, IL_ARCHMAGE, CLERIC, PRIEST, BISHOP ->
                     weaponType == WeaponType.WAND || weaponType == WeaponType.STAFF;
             case HUNTER, RANGER, BOWMASTER -> weaponType == WeaponType.BOW;
@@ -169,6 +173,12 @@ public final class AgentWeaponCompatibilityPolicy {
             return secondFamilyMatch;
         }
         return firstFamilyMatch || secondFamilyMatch;
+    }
+
+    private static int[] with(int[] earlierJob, int... thisJob) {
+        int[] all = java.util.Arrays.copyOf(earlierJob, earlierJob.length + thisJob.length);
+        System.arraycopy(thisJob, 0, all, earlierJob.length, thisJob.length);
+        return all;
     }
 
     private static boolean hasAnySkill(IntUnaryOperator skillLevel, int... skillIds) {
