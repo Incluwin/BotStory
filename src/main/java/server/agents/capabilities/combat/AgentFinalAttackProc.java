@@ -62,7 +62,8 @@ public final class AgentFinalAttackProc {
         }
         AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, rolled.startMs() + rolled.swing().animationMs());
         long decision = AgentCombatLearner.decisions(entry);
-        AgentCombatRuntime.afterDelay(entry, rolled.startMs(), () -> send(entry, bot, rolled, decision));
+        int lockClears = AgentCombatCooldownStateRuntime.attackLockClears(entry);
+        AgentCombatRuntime.afterDelay(entry, rolled.startMs(), () -> send(entry, bot, rolled, decision, lockClears));
     }
 
     /** The roll against a Final Attack's prop, 0 to 1. */
@@ -123,9 +124,16 @@ public final class AgentFinalAttackProc {
 
     /**
      * Sends {@code rolled} when it is due: from where the Agent stands then, at whatever its final swing reaches.
-     * {@code decision} is the learner decision its trigger opened.
+     * {@code decision} is the learner decision its trigger opened, {@code lockClears} the attack locks cut short before
+     * it. The Final Attack is part of its trigger's animation, which the trigger's attack lock stands for: once that
+     * lock is gone (a knockback, a death or a reset cleared it, or it ran out) the Final Attack goes with it, so it never
+     * lands after the Agent's next attack.
      */
-    static void send(AgentRuntimeEntry entry, Character bot, Rolled rolled, long decision) {
+    static void send(AgentRuntimeEntry entry, Character bot, Rolled rolled, long decision, int lockClears) {
+        if (!AgentCombatCooldownStateRuntime.hasAttackCooldown(entry)
+                || AgentCombatCooldownStateRuntime.attackLockClears(entry) != lockClears) {
+            return;
+        }
         if (bot.getMapId() != rolled.mapId() || bot.getHp() <= 0 || bot.getSkillLevel(rolled.skillId()) <= 0) {
             return;
         }

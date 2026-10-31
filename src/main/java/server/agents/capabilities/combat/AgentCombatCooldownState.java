@@ -13,6 +13,9 @@ public final class AgentCombatCooldownState {
                     AgentCombatCooldownState.class, AgentCombatCooldownState::new);
 
     private int attackCooldownMs = 0;
+    // Counts the attack locks cut short (a knockback, a death, a reset), so what a lock carries, such as a Final
+    // Attack, can tell its own lock from one set after it was cleared.
+    private int attackLockClears = 0;
     private int moveWindowMs = 0;
     private int mobHitCooldownMs = 0;
     // Mirrors CharLook::alerted (TimedBool, 5000ms): absolute reset on each
@@ -36,6 +39,11 @@ public final class AgentCombatCooldownState {
 
     public void clearAttackCooldown() {
         attackCooldownMs = 0;
+        attackLockClears++;
+    }
+
+    public int attackLockClears() {
+        return attackLockClears;
     }
 
     public void tickAttackCooldown(IntUnaryOperator tickDown) {
