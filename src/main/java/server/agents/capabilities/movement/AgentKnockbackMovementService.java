@@ -13,7 +13,7 @@ import java.awt.Point;
  * Agent-owned seam for combat-driven knockback movement.
  */
 public final class AgentKnockbackMovementService {
-    private static final int DASH_PROBE_STEP_PX = config.AgentTuning.intValue("server.agents.capabilities.movement.AgentKnockbackMovementService.DASH_PROBE_STEP_PX");
+    static final int DASH_PROBE_STEP_PX = config.AgentTuning.intValue("server.agents.capabilities.movement.AgentKnockbackMovementService.DASH_PROBE_STEP_PX");
 
     private AgentKnockbackMovementService() {
     }

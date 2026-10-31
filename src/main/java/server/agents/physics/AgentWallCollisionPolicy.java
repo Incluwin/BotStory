@@ -56,6 +56,41 @@ public final class AgentWallCollisionPolicy {
         return foothold.getZMass();
     }
 
+    /**
+     * The x direction of the ground a wall bounds: the side the floor capping its run of wall segments extends to
+     * (a cliff's upper floor, a block's top). 0 when no single floor caps it.
+     */
+    public static int groundSide(MapleMap map, Foothold wall) {
+        if (map == null || map.getFootholds() == null || wall == null || !wall.isWall()) {
+            return 0;
+        }
+        int x = wall.getX1();
+        int topY = Math.min(wall.getY1(), wall.getY2());
+        java.util.List<Foothold> footholds = map.getFootholds().getAllFootholds();
+        for (int hops = 0; hops < 64; hops++) {
+            boolean west = false;
+            boolean east = false;
+            Foothold above = null;
+            for (Foothold foothold : footholds) {
+                if (foothold.isWall()) {
+                    if (foothold.getX1() == x && foothold.getY1() != foothold.getY2()
+                            && Math.max(foothold.getY1(), foothold.getY2()) == topY) {
+                        above = foothold;
+                    }
+                } else if (foothold.getX1() < foothold.getX2()) {
+                    west |= foothold.getX2() == x && foothold.getY2() == topY;
+                    east |= foothold.getX1() == x && foothold.getY1() == topY;
+                }
+            }
+            if (above == null) {
+                return west == east ? 0 : west ? -1 : 1;
+            }
+            // A ledge branching off part-way up the wall (105090310 x -2, y -460) is not its cap.
+            topY = Math.min(above.getY1(), above.getY2());
+        }
+        return 0;
+    }
+
     private static int baseZMass(MapleMap map) {
         if (map == null || map.getFootholds() == null) {
             return UNKNOWN_GROUP;

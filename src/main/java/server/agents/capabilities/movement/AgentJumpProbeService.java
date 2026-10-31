@@ -619,10 +619,27 @@ public final class AgentJumpProbeService {
         if (ceiling.type() != AirCollisionType.NONE && ceiling.progress() < best.progress()) {
             best = ceiling;
         }
-        if (landing.type() != AirCollisionType.NONE && landing.progress() < best.progress()) {
+        // A landing as far along as a wall hit, on a floor that runs back toward where the Agent came from, is
+        // the Agent reaching that floor's end where its wall starts: it lands on that end. Taking the wall held it
+        // beside the wall under the floor's top, and it fell through the floor (Drake's Nest blocks, 105090310
+        // x 362/538 and 105090312 x 1213).
+        if (landing.type() != AirCollisionType.NONE
+                && (landing.progress() < best.progress()
+                || best == wall && landing.progress() == wall.progress()
+                && floorRunsBackFrom(landing, Integer.compare(nextPos.x, previousPos.x)))) {
             best = landing;
         }
         return best;
+    }
+
+    private static boolean floorRunsBackFrom(AirCollision landing, int dir) {
+        Foothold floor = landing.foothold();
+        if (floor == null || dir == 0) {
+            return false;
+        }
+        return dir < 0
+                ? Math.max(floor.getX1(), floor.getX2()) > landing.point().x
+                : Math.min(floor.getX1(), floor.getX2()) < landing.point().x;
     }
 
     private static AirCollision findWallCollision(MapleMap map, Point previousPos, Point nextPos, int moverZMass) {
@@ -635,7 +652,7 @@ public final class AgentJumpProbeService {
             if (!AgentWallCollisionPolicy.collides(map, foothold, moverZMass)) {
                 continue;
             }
-            AirCollision collision = wallCollision(foothold, previousPos, nextPos, false);
+            AirCollision collision = wallCollision(map, foothold, previousPos, nextPos, false);
             if (collision.type() == AirCollisionType.WALL && collision.progress() < best.progress()) {
                 best = collision;
             }
@@ -745,6 +762,12 @@ public final class AgentJumpProbeService {
         }
 
         int steps = Math.abs(endX - startX);
+        // The floor under the Agent where the move starts, followed along its chain: where it rises toward the Agent
+        // to the Agent's own height or above (a bump's flank or a dip's far side on Drake's Nest's bottom floor,
+        // 105090312 x 1235 and x 1350), the probes, which start a pixel below the Agent, missed it and the Agent
+        // went through.
+        Foothold under = map.getFootholds() == null ? null : map.getFootholds().findBelow(previousPos);
+        java.util.Map<Integer, Foothold> footholdsById = under == null ? null : footholdsById(map);
         for (int i = 0; i <= steps; i++) {
             int x = startX + dir * i;
             double progress = i / (double) steps;
@@ -752,8 +775,72 @@ public final class AgentJumpProbeService {
             if (landing.type == AirCollisionType.LAND) {
                 return landing;
             }
+            under = floorChainAt(map, footholdsById, under, x);
+            if (i > 0 && under != null) {
+                AirCollision rising = landingOnRisingFloor(map, previousPos, nextPos, under, x, progress);
+                if (rising.type == AirCollisionType.LAND) {
+                    return rising;
+                }
+            }
         }
         return AirCollision.none();
+    }
+
+    private static java.util.Map<Integer, Foothold> footholdsById(MapleMap map) {
+        server.agents.capabilities.navigation.AgentNavigationWalkRegionLookupService.WalkRegionLookup lookup =
+                server.agents.capabilities.navigation.AgentNavigationWalkRegionLookupService
+                        .resolveWalkRegionLookup(map);
+        return lookup == null ? null : lookup.footholdsById();
+    }
+
+    private static Foothold floorChainAt(MapleMap map,
+                                         java.util.Map<Integer, Foothold> footholdsById,
+                                         Foothold floor,
+                                         int x) {
+        for (int hops = 0; floor != null && hops < 64; hops++) {
+            if (floor.isWall() || floor.getX1() >= floor.getX2()) {
+                return null;
+            }
+            if (x >= floor.getX1() && x <= floor.getX2()) {
+                return floor;
+            }
+            floor = footholdById(map, footholdsById, x < floor.getX1() ? floor.getPrev() : floor.getNext());
+        }
+        return null;
+    }
+
+    private static Foothold footholdById(MapleMap map, java.util.Map<Integer, Foothold> footholdsById, int id) {
+        if (id <= 0) {
+            return null;
+        }
+        if (footholdsById != null) {
+            return footholdsById.get(id);
+        }
+        for (Foothold foothold : map.getFootholds().getAllFootholds()) {
+            if (foothold.getId() == id) {
+                return foothold;
+            }
+        }
+        return null;
+    }
+
+    private static AirCollision landingOnRisingFloor(MapleMap map,
+                                                     Point previousPos,
+                                                     Point nextPos,
+                                                     Foothold floor,
+                                                     int x,
+                                                     double progress) {
+        int yAtX = (int) Math.round(previousPos.y + (nextPos.y - previousPos.y) * progress);
+        int floorY = (int) Math.floor(floor.getY1()
+                + (floor.getY2() - floor.getY1()) * (x - floor.getX1()) / (double) (floor.getX2() - floor.getX1()));
+        Point probe = new Point(x, floorY - 2);
+        Point ground = map.getPointBelow(probe);
+        Foothold foothold = map.getFootholds().findBelow(probe);
+        if (ground == null || foothold == null || foothold.getId() != floor.getId()
+                || ground.y > previousPos.y || yAtX < ground.y) {
+            return AirCollision.none();
+        }
+        return new AirCollision(AirCollisionType.LAND, new Point(x, ground.y), foothold, progress);
     }
 
     private static AirCollision landingAtX(MapleMap map,
@@ -762,7 +849,12 @@ public final class AgentJumpProbeService {
                                            int x,
                                            double progress) {
         int yAtX = (int) Math.round(previousPos.y + (nextPos.y - previousPos.y) * progress);
-        AirCollision landing = landingAtProbeY(map, previousPos, x, yAtX, progress, previousPos.y + 1, false);
+        // A fall straight down probes from the Agent's own height, so one that starts exactly on a floor's top
+        // lands on it: held beside a wall at the foot of a cliff it is level with the floor there, and probing a
+        // pixel lower let it fall through that floor (105090312 x 1214). A move with a horizontal part keeps the
+        // pixel: it leaves the floor it starts on (a walk-off from a floor's end) and lands tangent further on.
+        int probeY = previousPos.x == nextPos.x ? previousPos.y : previousPos.y + 1;
+        AirCollision landing = landingAtProbeY(map, previousPos, x, yAtX, progress, probeY, false);
         if (landing.type() == AirCollisionType.LAND) {
             return landing;
         }
@@ -808,7 +900,8 @@ public final class AgentJumpProbeService {
         return new AirCollision(AirCollisionType.LAND, new Point(x, floor.y), foothold, progress);
     }
 
-    private static AirCollision wallCollision(Foothold wall,
+    private static AirCollision wallCollision(MapleMap map,
+                                              Foothold wall,
                                               Point previousPos,
                                               Point nextPos,
                                               boolean allowWalkableGroundEndpoint) {
@@ -819,14 +912,22 @@ public final class AgentJumpProbeService {
             return AirCollision.none();
         }
 
+        int dir = Integer.compare(endX, startX);
         double progress = (wallX - startX) / (double) (endX - startX);
-        if (progress <= 0.0 || progress > 1.0) {
+        int minY = Math.min(wall.getY1(), wall.getY2());
+        int maxY = Math.max(wall.getY1(), wall.getY2());
+        // Starting on the wall's own x below its top, the move hits it when it heads into the ground the wall
+        // bounds. Skipping that case let a knockback from a floor's first pixel fly west through the cliff rising
+        // from it (105090312 x 1213) and fall under the ledge above to the bottom of the map. A move from the
+        // wall's top corner is on the floor capping it, not in the rock.
+        boolean startsOnWall = progress == 0.0
+                && previousPos.y > minY
+                && dir == AgentWallCollisionPolicy.groundSide(map, wall);
+        if ((progress <= 0.0 && !startsOnWall) || progress > 1.0) {
             return AirCollision.none();
         }
 
         double yAtWall = previousPos.y + (nextPos.y - previousPos.y) * progress;
-        int minY = Math.min(wall.getY1(), wall.getY2());
-        int maxY = Math.max(wall.getY1(), wall.getY2());
         if (yAtWall < minY || yAtWall > maxY) {
             return AirCollision.none();
         }
@@ -834,7 +935,6 @@ public final class AgentJumpProbeService {
             return AirCollision.none();
         }
 
-        int dir = Integer.compare(endX, startX);
         int safeX = wallX - dir;
         return new AirCollision(AirCollisionType.WALL,
                 new Point(safeX, (int) Math.round(yAtWall)),
