@@ -22,7 +22,7 @@ class LivingWorldConfigLettersTest {
     @Test
     void theDefaultsAreThePlansAndValidate() {
         LivingWorldConfig config = new LivingWorldConfig();
-        assertFalse(config.LETTERS_ENABLED);
+        assertFalse(config.LETTERS_ENABLED); // off unless config.yaml turns it on
         assertEquals(5, config.LETTERS_MAX_NOTES);
         assertEquals(10, config.LETTERS_EQUIP_LEVEL_SPAN);
         assertEquals(4, config.LETTERS_GIFT_FRIENDSHIP_LEVEL);
@@ -48,7 +48,7 @@ class LivingWorldConfigLettersTest {
     @Test
     void configYamlShipsTheSameDefaults() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII).replace("\r\n", "\n");
-        for (String line : new String[] {"LETTERS_ENABLED: false", "LETTERS_DELAY_MS: 6000", "LETTERS_MAX_NOTES: 5",
+        for (String line : new String[] {"LETTERS_ENABLED: true", "LETTERS_DELAY_MS: 6000", "LETTERS_MAX_NOTES: 5",
                 "LETTERS_EQUIP_LEVEL_SPAN: 10", "LETTERS_GIFT_FRIENDSHIP_LEVEL: 4", "LETTERS_GIFT_CHANCE: 0.03",
                 "LETTERS_GIFTS_PER_WEEK: 1", "LETTERS_ASK_WARMTH: 40", "LETTERS_ASK_CHANCE: 0.1", "LETTERS_ASK_GAP_HOURS: 6"}) {
             assertTrue(yaml.contains("\n    " + line + "\n"), line);
