@@ -219,6 +219,15 @@ public interface PrimitiveCapabilityGateway {
         return Set.of();
     }
 
+    /**
+     * Whether walking out by {@code portalId} and back in by a portal of the map behind it that leads here, one this
+     * Agent walks to from where portalId sets it down, sets it down here where it walks to {@code targetPortalId}, by
+     * its navigation graphs of both maps. False when that cannot be told: the map behind or a graph not loaded.
+     */
+    default boolean reentryReaches(AgentRuntimeEntry entry, Character agent, int portalId, int targetPortalId) {
+        return false;
+    }
+
     /** Where a character stands: on a foothold, on a rope or ladder, or in the air. */
     enum Footing { GROUND, ROPE, AIR }
 

@@ -105,6 +105,51 @@ class AgentVictoriaRouteTrapTest {
     }
 
     @Test
+    void anAgentOnAnotherEntrancesMiddleFloorWalksOutAndBackInOnTheTopFloor() {
+        // Set down on the middle floor at east01 (from 105090400), the Agent reaches nothing of the top floor, where
+        // east00 to 105090300 stands, and no map-level route goes around that hop.
+        MapleMap anotherEntrance = AgentNavigationMapLoader.loadMapGeometry(ANOTHER_ENTRANCE);
+        MapleMap tunnel = AgentNavigationMapLoader.loadMapGeometry(TUNNEL_THAT_LOST_LIGHT_II);
+        AgentNavigationGraphService.getGraph(tunnel, AgentMovementProfile.base());
+        Point middleFloor = anotherEntrance.getPortal("east01").getPosition();
+        Character agent = agentOn(anotherEntrance, middleFloor, tunnel);
+        AgentRuntimeEntry entry = entryFor(agent);
+        int east00 = REAL.directPortalIdTo(agent, BEYOND_ANOTHER_ENTRANCE);
+        int west01 = anotherEntrance.getPortal("west01").getId();
+        assertFalse(REAL.canReach(entry, agent, REAL.portalPosition(agent, east00)),
+                "precondition: the middle floor reaches nothing of the top floor");
+        assertTrue(REAL.canReach(entry, agent, REAL.portalPosition(agent, west01)));
+        assertTrue(REAL.reentryReaches(entry, agent, west01, east00));
+        PrimitiveCapabilityGateway gateway = delegatingTo(REAL);
+
+        AgentVictoriaRouteRuntime.TravelOutcome outcome = AgentVictoriaRouteRuntime.travelStatus(
+                entry, agent, BEYOND_ANOTHER_ENTRANCE, gateway, 1_000L);
+
+        assertEquals(AgentVictoriaRouteRuntime.Status.MOVING, outcome.status());
+        assertEquals(TUNNEL_THAT_LOST_LIGHT_II, outcome.nextMapId());
+        verify(gateway).navigate(entry, REAL.portalPosition(agent, west01), true);
+        Point east00Spot = REAL.portalPosition(agent, east00);
+        verify(gateway, never()).navigate(any(), eq(east00Spot), anyBoolean());
+    }
+
+    @Test
+    void onTheMiddleFloorWithTheMapBehindNotLoadedTheTopFloorPortalIsWalkedToAsBefore() {
+        MapleMap anotherEntrance = AgentNavigationMapLoader.loadMapGeometry(ANOTHER_ENTRANCE);
+        MapleMap tunnel = AgentNavigationMapLoader.loadMapGeometry(TUNNEL_THAT_LOST_LIGHT_II);
+        Point middleFloor = anotherEntrance.getPortal("east01").getPosition();
+        Character agent = agentOn(anotherEntrance, middleFloor, null);
+        AgentRuntimeEntry entry = entryFor(agent);
+        PrimitiveCapabilityGateway gateway = delegatingTo(REAL);
+
+        AgentVictoriaRouteRuntime.TravelOutcome outcome = AgentVictoriaRouteRuntime.travelStatus(
+                entry, agent, BEYOND_ANOTHER_ENTRANCE, gateway, 1_000L);
+
+        assertEquals(BEYOND_ANOTHER_ENTRANCE, outcome.nextMapId());
+        verify(gateway).navigate(entry, REAL.portalPosition(agent, REAL.directPortalIdTo(agent, BEYOND_ANOTHER_ENTRANCE)),
+                true);
+    }
+
+    @Test
     void withTheNextMapNotLoadedThePortalOrderStaysAsBefore() {
         MapleMap tunnel = AgentNavigationMapLoader.loadMapGeometry(TUNNEL_THAT_LOST_LIGHT_II);
         Character agent = agentOn(tunnel, tunnel.getPortal("west00").getPosition(), null);
@@ -158,6 +203,10 @@ class AgentVictoriaRouteTrapTest {
                 call -> real.unwalkablePortal(call.getArgument(0), call.getArgument(1), call.getArgument(2)));
         when(gateway.landingExits(any(), any(), anyInt())).thenAnswer(
                 call -> real.landingExits(call.getArgument(0), call.getArgument(1), call.getArgument(2)));
+        when(gateway.reentryReaches(any(), any(), anyInt(), anyInt())).thenAnswer(
+                call -> real.reentryReaches(call.getArgument(0), call.getArgument(1), call.getArgument(2),
+                        call.getArgument(3)));
+        when(gateway.footing(any())).thenAnswer(call -> real.footing(call.getArgument(0)));
         return gateway;
     }
 }

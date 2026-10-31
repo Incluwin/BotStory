@@ -482,6 +482,41 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
         return exits;
     }
 
+    @Override
+    public boolean reentryReaches(AgentRuntimeEntry entry, Character agent, int portalId, int targetPortalId) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        server.maps.Portal out = map == null ? null : map.getPortal(portalId);
+        server.maps.Portal target = map == null ? null : map.getPortal(targetPortalId);
+        if (entry == null || out == null || target == null || agent.getClient() == null
+                || agent.getClient().getChannelServer() == null) {
+            return false;
+        }
+        MapleMap next = agent.getClient().getChannelServer().getMapFactory().getLoadedMap(out.getTargetMapId());
+        server.maps.Portal landing = next == null ? null : next.getPortal(out.getTarget());
+        var profile = AgentMovementStateRuntime.movementProfileOrCharacter(entry, agent);
+        AgentNavigationGraph nextGraph = landing == null ? null : AgentNavigationGraphService.peekBestGraph(next, profile);
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(map, profile);
+        int fromRegionId = nextGraph == null ? -1 : portalRegionId(nextGraph, next, landing.getPosition());
+        int targetRegionId = graph == null ? -1
+                : portalRegionId(graph, map, AgentPortalApproachService.navigableTarget(map, target));
+        if (fromRegionId < 0 || targetRegionId < 0) {
+            return false;
+        }
+        for (server.maps.Portal back : next.getPortals()) {
+            if (!back.getPortalStatus() || back.getTargetMapId() != map.getId()) {
+                continue;
+            }
+            server.maps.Portal reentry = map.getPortal(back.getTarget());
+            int backRegionId = portalRegionId(nextGraph, next, AgentPortalApproachService.navigableTarget(next, back));
+            int reentryRegionId = reentry == null ? -1 : portalRegionId(graph, map, reentry.getPosition());
+            if (backRegionId >= 0 && reentryRegionId >= 0 && nextGraph.canReach(fromRegionId, backRegionId)
+                    && graph.canReach(reentryRegionId, targetRegionId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** The graph region under a point, looked for from just above it as canReach looks; -1 over no ground. */
     private static int portalRegionId(AgentNavigationGraph graph, MapleMap map, Point position) {
         return position == null ? -1 : AgentNavigationRegionService.resolvePointTargetRegionId(
