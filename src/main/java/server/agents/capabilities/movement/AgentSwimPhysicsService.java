@@ -40,7 +40,8 @@ public final class AgentSwimPhysicsService {
             AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
             AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
             AgentMovementStateRuntime.setDownJumpPending(entry, false);
-            AgentMovementStateRuntime.setDownJumpGracePeriodMs(entry, 0L);
+            // A down-jump's grace is kept into the water, as the navigation graph's drop probes keep it: see the
+            // landing below.
         } else if (Math.abs(AgentMovementPhysicsStateRuntime.physicsX(entry) - position.x) > 2
                 || Math.abs(AgentMovementPhysicsStateRuntime.physicsY(entry) - position.y) > 2) {
             AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, position);
@@ -103,7 +104,13 @@ public final class AgentSwimPhysicsService {
         Point nextPoint = new Point((int) Math.round(nextX), (int) Math.round(nextY));
         AgentJumpProbeService.AirCollision collision =
                 AgentJumpProbeService.resolveAirCollision(map, previousPoint, nextPoint);
-        if (collision.type() == AgentJumpProbeService.AirCollisionType.LAND) {
+        // A down-jump sinks through the floor it starts on for its grace period, as it falls through it in the air
+        // (AgentAirbornePhysicsService.canLand). Without that check the water only let the Agent through because
+        // a straight fall probed from a pixel under its start; since a straight fall probes from the Agent's own
+        // height (the Drake's Nest floors), each down-jump landed back on its floor, and Agents on Aqua Road's
+        // 230040000 down-jumped in place for 300 s on the floors over under00 (x -600, y 324/586/1283).
+        if (collision.type() == AgentJumpProbeService.AirCollisionType.LAND
+                && AgentAirbornePhysicsService.canLand(entry)) {
             nextX = collision.point().x;
             nextY = collision.point().y;
             velocityY = 0.0;
