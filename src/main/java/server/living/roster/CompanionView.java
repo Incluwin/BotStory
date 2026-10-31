@@ -165,11 +165,16 @@ public record CompanionView(String personaId,
     /** "Fighter", "F/P Wizard", "Dawn Warrior", "Maple Leaf Brigadier"; empty when unknown. */
     public static String jobName(int jobId) {
         Job job = jobId < 0 ? null : Job.getById(jobId);
-        if (job == null) {
-            return "";
-        }
+        return job == null ? "" : jobName(job.name());
+    }
+
+    /** {@link #jobName(int)} from the job's enum name ("DAWNWARRIOR2" is "Dawn Warrior"). */
+    static String jobName(String enumName) {
         StringBuilder out = new StringBuilder();
-        for (String word : job.name().replaceAll("[0-9]", "").split("_")) {
+        for (String word : enumName.replaceAll("[0-9]", "").split("_")) {
+            if (word.isEmpty()) {
+                continue;
+            }
             if (!out.isEmpty()) {
                 out.append(' ');
             }

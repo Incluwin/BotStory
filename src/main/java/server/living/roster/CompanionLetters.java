@@ -372,8 +372,8 @@ public final class CompanionLetters {
         if (detail == null || detail.isBlank()) {
             return null;
         }
-        String job = detail.trim().split(" ", 2)[0];
-        return job.toLowerCase(Locale.ROOT).replace('_', ' ');
+        String job = CompanionView.jobName(detail.trim().split(" ", 2)[0]); // "F/P Wizard", "Dawn Warrior"
+        return job.isEmpty() ? null : job.toLowerCase(Locale.ROOT);
     }
 
     /** One companion's sentences, most important first: job, level, finds, parcels, camp move, deaths, meso. */

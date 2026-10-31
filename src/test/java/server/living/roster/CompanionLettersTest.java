@@ -333,6 +333,9 @@ class CompanionLettersTest {
         assertEquals("a few times", CompanionLetters.softCount(5));
         assertEquals("crusader", CompanionLetters.spokenJob("CRUSADER from Tylus at map 211000001"));
         assertEquals("ice lightning wizard", CompanionLetters.spokenJob("ICE_LIGHTNING_WIZARD from Grendel"));
+        assertEquals("f/p wizard", CompanionLetters.spokenJob("FP_WIZARD from Grendel"), "as players write it");
+        assertEquals("dawn warrior", CompanionLetters.spokenJob("DAWNWARRIOR2 from Neinheart"), "no rank digit");
+        assertEquals("white knight", CompanionLetters.spokenJob("WHITEKNIGHT from Tylus"));
         assertEquals(31, CompanionLetters.readyLevel(30, ExpTable.getExpNeededForLevel(30)));
         assertEquals(30, CompanionLetters.readyLevel(30, ExpTable.getExpNeededForLevel(30) - 1L));
     }

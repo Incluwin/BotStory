@@ -21,10 +21,10 @@ parts:
       playful-social-v1: ["{owner}!!", "heyy {owner}!", "omg {owner} hi!"]
       curious-millennial-v1: ["hey {owner}!", "{owner}! guess what"]
   job:
-    lines: ["i made {job}!", "i'm a {job} now!", "finally made {job}."]
+    lines: ["i made {job}!", "made {job} today!", "finally made {job}."]
     styles:
       quiet-practical-v1: ["made {job}.", "{job} now."]
-      playful-social-v1: ["i'm a {job} now!!! so happy", "guess who made {job}!!"]
+      playful-social-v1: ["made {job}!!! so happy", "guess who made {job}!!"]
   level:
     lines: ["i'm ready for lv {level} whenever you call me.", "got enough exp for lv {level}, just call me back.",
             "lv {level} as soon as you call me!"]
