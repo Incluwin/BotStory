@@ -268,7 +268,6 @@ import client.command.commands.gm6.DeleteAgentCommand;
 import client.command.commands.gm6.DevtestCommand;
 import client.command.commands.gm6.EraseAllPNpcsCommand;
 import client.command.commands.gm6.FreeMarketSpotsCommand;
-import client.command.commands.gm6.EconomyCommand;
 import client.command.commands.gm6.GetAccCommand;
 import client.command.commands.gm6.HeapDumpCommand;
 import client.command.commands.gm6.HealAgentCommand;
@@ -737,7 +736,6 @@ public class CommandsExecutor {
         addCommand("mapleisland", 6, MapleIslandCommand.class);
         addCommand("observer", 6, ObserverCommand.class);
         addCommand("southperry", 6, SouthperryCommand.class);
-        addCommand("economy", 6, EconomyCommand.class);
         addCommand("bossgear", 6, BossGearCommand.class);
         addCommand("bossmirror", 6, BossMirrorCommand.class);
 

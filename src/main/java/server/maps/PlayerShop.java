@@ -32,9 +32,7 @@ import net.packet.Packet;
 import server.Trade;
 import server.economy.EconomyOperationKind;
 import server.economy.EconomyTransactionCoordinator;
-import server.economy.EconomyOperationContext;
 import server.economy.EconomyItemEvidence;
-import server.economy.EconomyTaxOverride;
 import server.economy.ledger.MesoAccount;
 import server.economy.ledger.MesoFlows;
 import server.living.LivingWorldHooks;
@@ -296,9 +294,8 @@ public class PlayerShop extends AbstractMapObject {
                 visitorLock.lock();
                 try {
                     int price = (int) Math.min((float) pItem.getPrice() * quantity, Integer.MAX_VALUE);
-                    EconomyTaxOverride taxOverride = EconomyOperationContext.currentMetadata().taxOverride();
-                    int buyerTax = taxOverride == null ? 0 : taxOverride.buyerTax(price);
-                    int sellerTax = taxOverride == null ? Trade.getFee(price) : taxOverride.sellerTax(price);
+                    int buyerTax = 0;
+                    int sellerTax = Trade.getFee(price);
                     int buyerDebit = (int) Math.min(Integer.MAX_VALUE, (long) price + buyerTax);
                     int sellerProceeds = price - sellerTax;
 
@@ -332,12 +329,6 @@ public class PlayerShop extends AbstractMapObject {
                                         MesoFlows.reclassify(MesoFlows.holder(owner), MesoAccount.PLAYER_SHOP, MesoAccount.TAX, fee);
                                         pItem.setBundles((short) (pItem.getBundles() - quantity));
                                         if (pItem.getBundles() < 1) pItem.setDoesExist(false);
-                                        context.recordEvidence("marketSale", Map.of(
-                                                "stallId", escrowId == null ? "legacy:" + getObjectId() : escrowId,
-                                                "listingId", (escrowId == null ? "legacy:" + getObjectId() : escrowId)
-                                                        + ':' + item,
-                                                "listingSlot", item, "bundlesPurchased", (int) quantity,
-                                                "bundlesRemaining", (int) pItem.getBundles()));
                                         if (escrowId != null) {
                                             PlayerShopEscrowSnapshot escrow = PlayerShopEscrowSnapshot.capture(this);
                                             context.enlist(connection -> PlayerShopEscrowStore.persist(connection, escrow),
@@ -676,8 +667,6 @@ public class PlayerShop extends AbstractMapObject {
                                         remaining.get(index).setDoesExist(true);
                                     }
                                 });
-                        context.recordEvidence("marketStallClose", Map.of(
-                                "stallId", escrowId, "reason", reason));
                     });
             return true;
         }

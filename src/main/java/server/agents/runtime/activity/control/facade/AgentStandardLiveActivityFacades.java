@@ -4,7 +4,6 @@ import client.Character;
 import server.agents.plans.AgentPlanSessionHandle;
 import server.agents.plans.AgentUniversalPlanRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
-import server.agents.runtime.activity.session.AgentActivityExitResult;
 import server.agents.runtime.activity.session.AgentActivityKind;
 import server.agents.runtime.activity.session.AgentActivityRollbackPort;
 import server.agents.runtime.activity.session.AgentActivitySourcePort;
@@ -12,7 +11,6 @@ import server.agents.runtime.activity.session.adapter.FieldActivitySessionAdapte
 import server.agents.runtime.activity.session.adapter.PartyQuestActivitySessionAdapter;
 import server.agents.runtime.activity.session.adapter.QuestPlanActivitySessionAdapter;
 import server.agents.runtime.activity.session.adapter.TownLifeActivitySessionAdapter;
-import server.agents.runtime.commerce.AgentCommerceSessionRegistryRuntime;
 import server.agents.runtime.field.AgentFieldActivityRuntime;
 
 import java.util.List;
@@ -26,7 +24,6 @@ public final class AgentStandardLiveActivityFacades {
                 provider(AgentActivityKind.QUESTING, AgentStandardLiveActivityFacades::questing),
                 provider(AgentActivityKind.HUNTING, AgentStandardLiveActivityFacades::hunting),
                 provider(AgentActivityKind.TOWN_LIFE, AgentStandardLiveActivityFacades::townLife),
-                provider(AgentActivityKind.COMMERCE, AgentStandardLiveActivityFacades::commerce),
                 provider(AgentActivityKind.PARTY_QUEST, AgentStandardLiveActivityFacades::partyQuest)));
     }
 
@@ -59,28 +56,6 @@ public final class AgentStandardLiveActivityFacades {
         return new AgentLiveActivityFacade(AgentActivityKind.TOWN_LIFE, adapter, adapter,
                 adapter::resumeExact, true,
                 "TownLife finishes its activity then retains an exact suspended session");
-    }
-
-    private static AgentLiveActivityFacade commerce(AgentRuntimeEntry entry, Character agent) {
-        int characterId = agent.getId();
-        AgentActivitySourcePort source = new AgentActivitySourcePort() {
-            @Override public server.agents.runtime.activity.session.AgentActivitySessionSnapshot
-                    snapshot(long nowMs) {
-                return AgentCommerceSessionRegistryRuntime.snapshot(characterId, nowMs);
-            }
-            @Override public AgentActivityExitResult requestGracefulExit(
-                    String reason, long nowMs, long deadlineMs) {
-                return AgentCommerceSessionRegistryRuntime.suspendExact(characterId, reason, nowMs);
-            }
-        };
-        return new AgentLiveActivityFacade(AgentActivityKind.COMMERCE, source,
-                nowMs -> AgentCommerceSessionRegistryRuntime.terminalOutcome(characterId, nowMs),
-                (sessionId, nowMs) -> AgentCommerceSessionRegistryRuntime.resumeExact(
-                        characterId, sessionId, nowMs)
-                        ? AgentActivityRollbackPort.Result.resumed("Commerce session resumed")
-                        : AgentActivityRollbackPort.Result.rejected(
-                        "Commerce source session is not retained and suspended"),
-                true, "Commerce checkpoint retains exact suspended market session state");
     }
 
     private static AgentLiveActivityFacade partyQuest(AgentRuntimeEntry entry, Character agent) {

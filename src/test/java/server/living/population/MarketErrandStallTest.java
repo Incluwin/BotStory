@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
-import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService;
+import server.agents.capabilities.shop.AgentFreeMarketBuyerService;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.knowledge.KnowledgeTestKit;

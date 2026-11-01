@@ -46,17 +46,3 @@ services:
       - "127.0.0.1:3307:3306"
     volumes:
       - ./database/docker-db-data:/var/lib/mysql
-
-  # Optional economy evidence database (!economy runs, economy dashboard): docker compose --profile economy up
-  economy-db:
-    image: postgres:16.4
-    profiles: ["economy"]
-    environment:
-      POSTGRES_DB: "${ECONOMY_DB_NAME:-cosmic_economy}"
-      POSTGRES_USER: "${ECONOMY_DB_USER:-economy}"
-      POSTGRES_PASSWORD: "${ECONOMY_DB_PASSWORD:-}" # set ECONOMY_DB_PASSWORD in .env before using this profile
-    ports:
-      - "127.0.0.1:${ECONOMY_DB_PORT:-5433}:5432"
-    volumes:
-      - ./economy-database/docker-db-data:/var/lib/postgresql/data
-      - ./economy-database/migrations:/docker-entrypoint-initdb.d:ro

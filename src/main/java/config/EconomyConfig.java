@@ -7,7 +7,10 @@ package config;
 public class EconomyConfig {
     /** E0: count every meso made, destroyed or moved (MesoFlows) and close each UTC day into the economy_* tables. */
     public boolean LEDGER_ENABLED = true;
-    /** Days economy_transaction_journal and economy_transaction_outbox keep a row; 0 keeps them forever. */
+    /**
+     * Days economy_transaction_journal keeps a row; 0 keeps them forever. The rows left in economy_transaction_outbox,
+     * which nothing writes since the agent economy engine went, drain on the same clock.
+     */
     public int JOURNAL_RETENTION_DAYS = 90;
     /** The price basket (CPI): item ids, each priced every day from sales, else open listings, else the price index. */
     public String CPI_BASKET = "2000004,2000005,2000006,2002004,2020014,"

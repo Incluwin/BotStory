@@ -77,18 +77,10 @@
       "id": "commerce",
       "role": "PRIMARY",
       "activityKind": "COMMERCE",
-      "sourceRoots": [
-        "server/agents/economy",
-        "server/agents/runtime/commerce"
-      ],
-      "entryPoints": [
-        "server/agents/economy/session/EconomySessionPort.java",
-        "server/agents/runtime/commerce/AgentCommerceSessionRuntime.java"
-      ],
+      "sourceRoots": [],
+      "entryPoints": [],
       "responsibilities": [
-        "commerce visit lifecycle",
-        "market participation",
-        "trade and stall settlement"
+        "the COMMERCE activity kind: nothing runs under it since the agent economy engine went; Free Market stalls and purchases are inventory capabilities (capabilities/shop) and bench stalls are charged to its pool"
       ],
       "collaborators": [
         "inventory",
@@ -117,23 +109,6 @@
         "socials",
         "agent-context",
         "agent-platform"
-      ]
-    },
-    {
-      "id": "commerce-observation",
-      "role": "OBSERVATION",
-      "sourceRoots": [
-        "server/agents/observation/commerce"
-      ],
-      "entryPoints": [
-        "server/agents/observation/commerce/CommerceObservationRuntime.java"
-      ],
-      "responsibilities": [
-        "commerce scenario observation"
-      ],
-      "collaborators": [
-        "commerce",
-        "agent-context"
       ]
     },
     {

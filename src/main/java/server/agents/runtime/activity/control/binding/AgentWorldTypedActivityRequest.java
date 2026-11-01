@@ -3,7 +3,6 @@ package server.agents.runtime.activity.control.binding;
 import server.agents.capabilities.townlife.AgentTownLifeEntryRequest;
 import server.agents.plans.AgentPlanEntryRequest;
 import server.agents.runtime.activity.session.AgentActivityKind;
-import server.agents.runtime.commerce.AgentCommerceVisitRequest;
 import server.agents.runtime.field.AgentFieldEntryRequest;
 
 /** Typed, validated destination request compiled from one durable Director directive. */
@@ -11,7 +10,6 @@ public sealed interface AgentWorldTypedActivityRequest permits
         AgentWorldTypedActivityRequest.Questing,
         AgentWorldTypedActivityRequest.Hunting,
         AgentWorldTypedActivityRequest.TownLife,
-        AgentWorldTypedActivityRequest.Commerce,
         AgentWorldTypedActivityRequest.PartyQuest {
 
     AgentActivityKind kind();
@@ -35,13 +33,6 @@ public sealed interface AgentWorldTypedActivityRequest permits
             if (request == null) throw new IllegalArgumentException("TownLife request is required");
         }
         @Override public AgentActivityKind kind() { return AgentActivityKind.TOWN_LIFE; }
-    }
-
-    record Commerce(AgentCommerceVisitRequest request) implements AgentWorldTypedActivityRequest {
-        public Commerce {
-            if (request == null) throw new IllegalArgumentException("Commerce request is required");
-        }
-        @Override public AgentActivityKind kind() { return AgentActivityKind.COMMERCE; }
     }
 
     record PartyQuest(AgentPartyQuestVisitRequest request)

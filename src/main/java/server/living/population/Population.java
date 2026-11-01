@@ -12,7 +12,6 @@ import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.inventory.AgentStallHolds;
 import server.agents.capabilities.looting.AgentLootPolicy;
-import server.agents.economy.market.MarketPricePrior;
 import server.economy.ledger.EconomyLedger;
 import server.economy.ledger.MesoFlows;
 import server.economy.ledger.MesoHolder;
@@ -168,11 +167,6 @@ public final class Population {
             return current != null && current.isCitizen(characterId);
         });
         MesoFlows.installClassifier(Population::mesoHolder); // the economy ledger tells citizens from players
-        MarketPricePrior.install(itemId -> { // the agent engine's valuations start from the index (ECONOMY_PLAN E2)
-            Population current = instance;
-            ContentAnswers.PriceQuote quote = current == null ? null : current.market().known(itemId);
-            return quote == null ? 0L : quote.price();
-        });
         AgentStallHolds.install(population.market::keepForStall); // list or vendor (docs/ECONOMY_PLAN.md E3)
         population.controller.start(); // the last applied E4 setting (docs/ECONOMY_PLAN.md E4)
         AgentLootPolicy.installSelectivity(population.controller);
@@ -223,7 +217,6 @@ public final class Population {
         }
         instance = null;
         MesoFlows.installClassifier(null);
-        MarketPricePrior.install(null);
         AgentStallHolds.install(null);
         AgentLootPolicy.installSelectivity(null);
         EconomyLedger.onClose(null);

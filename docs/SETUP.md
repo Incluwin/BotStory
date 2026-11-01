@@ -77,8 +77,6 @@ minutes after that. Clients connect to this PC on ports 8484 and 7575-7577. MySQ
   `docker compose stop`. Both save everyone first; Docker gives the server up to 2 minutes for that.
 - For the Residents' portraits and quest log in your client, see
   [the game client](#2-the-game-client), step 4.
-- The optional economy database starts only with `docker compose --profile economy up`. Set
-  `ECONOMY_DB_PASSWORD` in `.env` before you use it.
 - **Players on other PCs.** Docker Desktop passes every connection to the server from its own
   network address (172.17.0.1), so the server takes every player, even one on this PC, for a
   home-network player and sends them `SERVER_LANHOST`. `SERVER_HOST` and `SERVER_TAILSCALEHOST`
@@ -289,7 +287,6 @@ The server runs without any of these.
 | TypeSafe Jev | Typed judgments for free-form chat with companions and Residents | `TYPESAFE_API_KEY` in `.env`; switches `AGENT_TYPESAFE_*` (agent-engine.yaml), `USE_TYPESAFE_*` (config.yaml) |
 | Ollama | Generated small talk for citizens and companions | `SOCIAL_OLLAMA_*` in `.env`; without it, the deterministic catalog answers |
 | MapleEdit admin dashboard | The loopback AdminControlPort (:8480) | `ADMIN_CONTROL_TOKEN` in `.env` |
-| Economy database (PostgreSQL) | `!economy` runs and the economy dashboard | `ECONOMY_DB_*` in `.env`; `docker compose --profile economy up economy-db` |
 | Database Console | A web console for game data | `database-console/README.md`; off unless `COSMIC_DATABASE_CONSOLE_BRIDGE_ENABLED=true` |
 
 ## Troubleshooting

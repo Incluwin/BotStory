@@ -2,13 +2,11 @@ package server.agents.runtime.activity.control.binding;
 
 import server.agents.capabilities.townlife.AgentTownLifeEntryRequest;
 import server.agents.capabilities.townlife.AgentTownLifeVisitRequest;
-import server.agents.economy.session.CommerceParticipant;
 import server.agents.field.AgentFieldIntent;
 import server.agents.field.AgentFieldObservationState;
 import server.agents.plans.AgentPlanEntryRequest;
 import server.agents.runtime.activity.world.AgentWorldActivityRequestType;
 import server.agents.runtime.activity.world.AgentWorldDirective;
-import server.agents.runtime.commerce.AgentCommerceVisitRequest;
 import server.agents.runtime.field.AgentFieldEntryRequest;
 import server.agents.runtime.field.AgentFieldVisitRequest;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
@@ -31,7 +29,8 @@ public final class AgentWorldDirectiveRequestCompiler {
             case INDIVIDUAL_QUEST -> individualQuest(directive);
             case FIELD_VISIT -> hunting(directive);
             case TOWN_LIFE_VISIT -> townLife(directive);
-            case COMMERCE_VISIT -> commerce(directive);
+            case COMMERCE_VISIT -> throw new IllegalArgumentException(
+                    "Commerce visits ran on the agent economy engine, which is gone");
             case PARTY_QUEST_VISIT -> partyQuest(directive);
             case OBSERVE_ONLY -> throw new IllegalArgumentException(
                     "observe-only requests cannot be admitted as an activity");
@@ -93,30 +92,6 @@ public final class AgentWorldDirectiveRequestCompiler {
                 directive.reason(), nonNegativeLong(values, "freeTimeBudgetMs"));
         return new AgentWorldTypedActivityRequest.TownLife(AgentTownLifeEntryRequest.external(
                 directive.directiveId(), caller(directive), visit));
-    }
-
-    private AgentWorldTypedActivityRequest commerce(AgentWorldDirective directive) {
-        Map<String, String> values = directive.parameters();
-        CommerceParticipant participant = new CommerceParticipant(
-                Integer.toString(directive.agentId()), required(values, "jobFamily"),
-                fraction(values, "dailyActivityFraction"), fraction(values, "riskTolerance"),
-                fraction(values, "liquidityPreference"), fraction(values, "upgradeAggressiveness"),
-                fraction(values, "shoppingPatience"), fraction(values, "stallWillingness"),
-                positiveInt(values, "priceMemoryHours"),
-                fraction(values, "negotiationAggressiveness"), fraction(values, "chairInterest"));
-        Map<String, String> attributes = new LinkedHashMap<>();
-        values.forEach((key, value) -> {
-            if (key.startsWith("attribute.")) {
-                attributes.put(key.substring("attribute.".length()), value);
-            }
-        });
-        AgentCommerceVisitRequest visit = new AgentCommerceVisitRequest(
-                directive.directiveId(), caller(directive), participant,
-                enumValue(required(values, "purpose"), AgentCommerceVisitRequest.Purpose.class,
-                        "purpose"),
-                positiveLong(values, "maximumDurationMs"),
-                nonNegativeLong(values, "maximumIdleMs"), attributes);
-        return new AgentWorldTypedActivityRequest.Commerce(visit);
     }
 
     private AgentWorldTypedActivityRequest partyQuest(AgentWorldDirective directive) {
@@ -182,12 +157,6 @@ public final class AgentWorldDirectiveRequestCompiler {
         throw new IllegalArgumentException(label + " must be a positive integer");
     }
 
-    private static long positiveLong(Map<String, String> values, String key) {
-        long value = nonNegativeLong(values, key);
-        if (value <= 0L) throw new IllegalArgumentException(key + " must be positive");
-        return value;
-    }
-
     private static long nonNegativeLong(Map<String, String> values, String key) {
         try {
             long value = Long.parseLong(required(values, key));
@@ -195,15 +164,6 @@ public final class AgentWorldDirectiveRequestCompiler {
         } catch (RuntimeException ignored) {
         }
         throw new IllegalArgumentException(key + " must be a non-negative integer");
-    }
-
-    private static double fraction(Map<String, String> values, String key) {
-        try {
-            double value = Double.parseDouble(required(values, key));
-            if (Double.isFinite(value) && value >= 0.0d && value <= 1.0d) return value;
-        } catch (RuntimeException ignored) {
-        }
-        throw new IllegalArgumentException(key + " must be between zero and one");
     }
 
     private static String required(Map<String, String> values, String key) {

@@ -32,9 +32,8 @@ public final class AgentWorldActivityAdapterCatalog {
                 new Coverage(AgentActivityKind.TOWN_LIFE,
                         "server.agents.runtime.activity.session.adapter.TownLifeActivitySessionAdapter",
                         true, "standard session adapter exists"),
-                new Coverage(AgentActivityKind.COMMERCE,
-                        "server.agents.runtime.activity.session.adapter.EconomyActivitySessionAdapter",
-                        true, "standard session adapter exists"),
+                new Coverage(AgentActivityKind.COMMERCE, "", false,
+                        "no session adapter: Commerce sessions ran on the agent economy engine, which is gone"),
                 new Coverage(AgentActivityKind.PARTY_QUEST,
                         "server.agents.runtime.activity.session.adapter.PartyQuestActivitySessionAdapter",
                         true, "standard session adapter exists")));

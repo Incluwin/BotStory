@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import server.agents.capabilities.partyquest.kpq.AgentKpqMemberState;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
-import server.agents.runtime.AgentCommerceControlRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.activity.AgentActivityHostState;
 import server.agents.runtime.activity.session.AgentActivityKind;
@@ -62,18 +61,6 @@ class CosmicAgentWorldContextFactoryTest {
             assertEquals(kpq.sessionId(), partyQuest.currentSessionId());
         } finally {
             AgentKpqSessionRegistry.remove(kpq);
-        }
-
-        AgentCommerceControlRuntime.claim(28, "economy:test");
-        try {
-            entry.capabilityStates().require(AgentActivityHostState.STATE_KEY)
-                    .select("commerce", AgentActivityKind.COMMERCE, 2_000L);
-            AgentWorldContext commerce =
-                    CosmicAgentWorldContextFactory.capture(entry, agent, 2_100L);
-            assertEquals(AgentActivityKind.COMMERCE, commerce.currentActivityKind());
-            assertTrue(commerce.currentSessionId().startsWith("commerce-control:28:"));
-        } finally {
-            AgentCommerceControlRuntime.releaseCharacter(28, "economy:test");
         }
     }
 

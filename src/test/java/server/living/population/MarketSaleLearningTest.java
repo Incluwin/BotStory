@@ -119,7 +119,7 @@ class MarketSaleLearningTest {
     @Test
     void thePlayerPriceTablesAreReadAtThisServersVersion() {
         Map<Integer, Long> seeds = PriceSeeds.load(PriceSeeds.DIR);
-        assertTrue(seeds.size() > 100, "the SoloMapling tables list " + seeds.size() + " items");
+        assertTrue(seeds.size() > 100, "the price tables list " + seeds.size() + " items");
         assertEquals(1_200_000L, seeds.get(2040302), "Earring Int 10%: { 1: 1300000, 39: 1200000 } at v83");
         assertEquals(600_000L, seeds.get(1302009), "a variant id written 01302009");
         assertEquals(0L, PriceSeeds.priceAt(Map.of("84", "5"), PriceSeeds.VERSION), "a later version is not ours");

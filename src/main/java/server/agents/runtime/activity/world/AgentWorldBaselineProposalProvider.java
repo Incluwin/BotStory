@@ -113,9 +113,6 @@ public final class AgentWorldBaselineProposalProvider implements AgentWorldPropo
         intents.add(intent("optional:town-life", AgentActivityKind.TOWN_LIFE,
                 100, 20L, true, "bounded rest and town activity are available",
                 AgentWorldActivityRequestType.TOWN_LIFE_VISIT, "town-life:auto"));
-        intents.add(intent("optional:commerce", AgentActivityKind.COMMERCE,
-                200, 10L, false, "economic need evidence is not captured yet",
-                AgentWorldActivityRequestType.COMMERCE_VISIT, "commerce:auto"));
         return List.copyOf(intents);
     }
 

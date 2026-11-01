@@ -1,7 +1,6 @@
 package server.agents.runtime;
 
 import client.Character;
-import server.agents.runtime.commerce.AgentCommerceSessionRegistryRuntime;
 
 import java.awt.Point;
 
@@ -102,17 +101,6 @@ public final class AgentLiveTickGateService {
     }
 
     public static boolean tickLiveGates(Context context, Hooks hooks) {
-        if (AgentCommerceSessionRegistryRuntime.active(context.agent().getId())) {
-            return hooks.activityHostTick().tick(context.entry(), context.agent());
-        }
-        if (AgentCommerceControlRuntime.claimed(context.agent().getId())) {
-            // Commerce ownership suppresses every ordinary decision gate, but a
-            // navigation capability deliberately returns a non-consuming tick
-            // after installing its MOVE_TO target. Let that one tick reach the
-            // existing movement phase so the character still walks physically.
-            return AgentCommerceControlRuntime.withAttribution(context.agent().getId(),
-                    () -> hooks.activityHostTick().tick(context.entry(), context.agent()));
-        }
         if (hooks.trackedMapChangeTick().tick(context.entry(), context.agent())) {
             return true;
         }

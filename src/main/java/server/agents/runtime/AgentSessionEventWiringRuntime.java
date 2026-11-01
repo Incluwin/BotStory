@@ -179,8 +179,6 @@ public final class AgentSessionEventWiringRuntime {
                         server.agents.operations.events.AgentMobDamagedEvent.TYPE,
                         new server.agents.progression.AgentMushroomKingdomEventListener(entry)));
                 subscriptions.add(bus.subscribe("*", new AgentDurableEventJournalListener()));
-                subscriptions.add(bus.subscribe("*",
-                        new server.agents.economy.activity.ActivityCalibrationEventListener()));
                 subscriptions.add(bus.subscribe("*", new AgentJourneyEventListener()));
                 if (rollout.llmContextEnabled()) {
                     subscriptions.add(bus.subscribe("*", new AgentSocialContextProjectionService(entry)));

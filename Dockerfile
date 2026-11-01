@@ -39,8 +39,8 @@ COPY --from=jar /opt/cosmic/target/Cosmic.jar ./Server.jar
 COPY scripts ./scripts/
 # Config is read on server startup, so you can mount over it for quicker redeploy.
 COPY config.yaml ./
-# BotStory's other startup files: the Agent engine settings (required), the economy engine and its presets.
-COPY agent-engine.yaml economy-engine.yaml ./
+# BotStory's other startup files: the Agent engine settings (required) and data under config/ (price seeds).
+COPY agent-engine.yaml ./
 COPY config ./config/
 RUN mkdir -p ./logs/gc ./logs/heapdumps ./logs/crash
 # Default exposure, although not required if using docker compose.
