@@ -405,8 +405,12 @@ public final class Market {
             double m = price / 1_000_000.0d;
             return (m == Math.floor(m) ? String.valueOf((long) m) : String.format(java.util.Locale.ROOT, "%.1f", m)) + "m";
         }
-        if (price >= 1_000L) {
+        if (price >= 10_000L) {
             return (price / 1000L) + "k";
+        }
+        if (price >= 1_000L) { // "1.5k" as players write it, cut (never rounded up past what is paid)
+            long tenths = price / 100L;
+            return (tenths % 10L == 0L ? String.valueOf(tenths / 10L) : (tenths / 10L) + "." + (tenths % 10L)) + "k";
         }
         return String.valueOf(price);
     }

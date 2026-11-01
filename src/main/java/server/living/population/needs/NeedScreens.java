@@ -184,8 +184,9 @@ public final class NeedScreens {
             return;
         }
         int most = Math.min(carried, need.remaining());
-        String text = name + " needs " + amount(need) + " for " + ledger.forWords(need) + ", paying #b"
-                + Market.formatPrice(need.offer()) + "#k each. You have " + carried + ".";
+        String text = name + " needs " + amount(need) + " for " + ledger.forWords(need)
+                + (need.remaining() > 1 ? ", paying #b" + Market.formatPrice(need.offer()) + "#k each" : "")
+                + ". You have " + carried + ".";
         if (most > 1) {
             LivingTalk.open(player, NeedBoards.BOARD_NPC)
                     .number(text + "\r\nHow many do you give?", most, 1, most, count -> give(player, needId, count, false))
@@ -340,8 +341,8 @@ public final class NeedScreens {
         }
         String left = need.deadlineMs() <= 0L ? "" : "\r\nUp for " + duration(need.deadlineMs() - nowMs) + " more.";
         return who + " needs #i" + need.itemId() + "# " + amount(need) + " for " + ledger.forWords(need) + ".\r\n"
-                + "Pays #b" + Market.formatPrice(need.offer()) + "#k each (#b" + Market.formatPrice(need.pay(need.remaining()))
-                + "#k in all)" + (need.delivered() > 0 ? ", " + need.delivered() + " already brought" : "") + "." + left
+                + "Pays #b" + Market.formatPrice(need.offer()) + "#k" + (need.remaining() > 1 ? " each (#b"
+                + Market.formatPrice(need.pay(need.remaining())) + "#k in all)" : "") + (need.delivered() > 0 ? ", " + need.delivered() + " already brought" : "") + "." + left
                 + "\r\n" + (about ? "Now at #b" + mapName(session.mapId) + "#k: hand it over in person (double-click them)."
                 : "Away right now: leave it here and they pick it up when they're back.")
                 + (need.kind() == NeedKind.GEAR ? "\r\nA plain one is fine; better is welcome." : "");
@@ -387,7 +388,7 @@ public final class NeedScreens {
         List<Need> mine = ledger.claimedBy(player.getId(), nowMs);
         for (Need need : mine) {
             out.add("[yours] #" + need.id() + " " + citizenName(need.citizenId()) + ": " + plain(need) + " for "
-                    + ledger.forWords(need) + ", " + Market.formatPrice(need.offer()) + " ea, "
+                    + ledger.forWords(need) + ", " + price(need) + ", "
                     + duration(need.holder(nowMs) == 0 ? 0 : need.claimedUntilMs() - nowMs) + " left");
         }
         List<Need> near = listed(player, player.getMapId(), nowMs);
@@ -396,10 +397,15 @@ public final class NeedScreens {
                 continue;
             }
             out.add("#" + need.id() + " " + citizenName(need.citizenId()) + ": " + plain(need) + (need.kind().item()
-                    ? " for " + ledger.forWords(need) + ", " + Market.formatPrice(need.offer()) + " ea" : "")
+                    ? " for " + ledger.forWords(need) + ", " + price(need) : "")
                     + " (" + mapName(where(need)) + ")" + (need.holder(nowMs) != 0 ? " [held]" : ""));
         }
         return out;
+    }
+
+    /** The offer as a chat line writes it: "400k" for one, "1.5k ea" for several. */
+    static String price(Need need) {
+        return Market.formatPrice(need.offer()) + (need.remaining() > 1 ? " ea" : "");
     }
 
     private String plain(Need need) {
