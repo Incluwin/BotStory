@@ -76,7 +76,7 @@ public final class PopulationLoader {
             // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)
             "pq.smega", "pq.where", "whisper.join.invited", "whisper.join.where", "whisper.join.full",
             "whisper.join.level", "whisper.join.party", "whisper.join.wait", "whisper.join.leader", "whisper.ack",
-            "whisper.ack.thanks", "whisper.ack.no", "whisper.ack.question", "whisper.need.yes", "whisper.hi",
+            "whisper.ack.thanks", "whisper.ack.no", "whisper.ack.question", "whisper.need.yes", "whisper.need.here", "whisper.hi",
             "whisper.busy", "whisper.training", "whisper.pq", "whisper.shop",
             "jq.start", "jq.fall", "jq.clear", "jq.giveup");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */

@@ -3,7 +3,8 @@
 # {pq} the quest, {levels} its band, {ch} the channel, {me} its name. pq.where: in party chat, to a player who whispered
 # in and joined but is not at the lobby yet. whisper.*: answers to a player's whisper (CITIZEN_WHISPERS_ENABLED), only
 # ever composed for that player: join.* to a seat request, ack.* to a whisper back to the citizen's own whisper,
-# need.yes to a yes about its needs-board request, and hi/busy/training/pq/shop to a whisper out of nowhere. {name} is
+# need.yes to a yes about its needs-board request (need.here while the player shares its map), and
+# hi/busy/training/pq/shop to a whisper out of nowhere. {name} is
 # the player, {leader} the party's citizen leader.
 intents:
   - id: pq.smega.lf
@@ -152,6 +153,16 @@ intents:
       - "nice! im in {map}, double click me when u get here"
       - "cool, im at {map}. or leave it at a board"
       - "ty! find me in {map}"
+  - id: whisper.need.here
+    trigger: whisper.need.here
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nice! im right here"
+      - "ty!! im here on the map"
+      - "oh nice, im right here lol"
   - id: whisper.hi
     trigger: whisper.hi
     where: any

@@ -201,8 +201,14 @@ class CitizenWhispersTest {
         whispers.onWhisper(ann, "Lia", "who r u?", 4 * MINUTE);
         whispers.opened(lia.getId(), ann.getId(), "rival", 5 * MINUTE);
         whispers.onWhisper(ann, "Lia", "gg", 6 * MINUTE);
+        Character bo = lobby.human(11, "Bo", 24);
+        lobby.away(bo, 101_000_000);
+        onChannel(bo, CitizenLobbyFixture.CHANNEL);
+        whispers.opened(lia.getId(), bo.getId(), CitizenWhispers.NEED, 7 * MINUTE);
+        whispers.onWhisper(bo, "Lia", "ya i got one", 8 * MINUTE);
 
-        assertEquals(List.of("whisper.need.yes -> Ann", "whisper.ack.thanks -> Ann", "whisper.ack.question -> Ann"), answers);
+        assertEquals(List.of("whisper.need.yes -> Ann", "whisper.ack.thanks -> Ann", "whisper.ack.question -> Ann",
+                "whisper.need.here -> Bo"), answers);
         assertEquals(List.of("Lia:gg"), rivalReplies, "a registered topic answers its own threads");
     }
 
@@ -217,6 +223,9 @@ class CitizenWhispersTest {
         assertTrue(whispers.onWhisper(bo, "Lia", "hi", MINUTE));
         lobby.sessions.get(1).afkUntilMs = 10 * MINUTE;
         assertTrue(whispers.onWhisper(ann, "Lia", "hi", 5 * MINUTE));
+        lobby.sessions.get(1).afkUntilMs = 0L;
+        lobby.sessions.get(1).activity = Activity.AFK; // idling in town all session
+        assertTrue(whispers.onWhisper(ann, "Lia", "hi", 15 * MINUTE));
 
         assertEquals(List.of("whisper.training -> Ann", "whisper.hi -> Bo"), answers);
     }

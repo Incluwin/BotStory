@@ -123,7 +123,7 @@ public final class CitizenWhispers {
             }
             return true;
         }
-        if (session.afkUntilMs > nowMs) {
+        if (session.afkUntilMs > nowMs || session.activity == Activity.AFK) {
             return true; // away from the keyboard: nobody answers
         }
         Long last = repliedAt.get(key(session.characterId, human.getId()));
@@ -153,11 +153,16 @@ public final class CitizenWhispers {
         log.info("citizen {} answered {}'s whisper for a seat: {}", leader.name(), human.getName(), answer);
     }
 
-    /** The needs board's thread: a yes says how to hand it over, a no or anything else gets the acknowledgement. */
+    /**
+     * The needs board's thread: a yes says where to find it (it is right here when they share the map, as they did when
+     * it asked), a no or anything else gets the acknowledgement.
+     */
     private boolean needReply(CitizenSession citizen, Character human, String text) {
         String said = words(text);
         if (YES.matcher(said).find()) {
-            reply(citizen, human, "whisper.need.yes", null);
+            boolean here = human.getMapId() == citizen.mapId && human.getClient() != null
+                    && human.getClient().getChannel() == citizen.channel;
+            reply(citizen, human, here ? "whisper.need.here" : "whisper.need.yes", null);
             return true;
         }
         return false;
