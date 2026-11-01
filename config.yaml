@@ -818,7 +818,7 @@ living_world:
     # HIRE_FRIENDSHIP_ENABLED is the kill switch (false: hires keep no friendship, offers go by party time).
     # Technical: the bond is a living_bond row keyed hire:<characterId> (Friendship/BondService), the offer cooldown is
     # read back from living_event_log hire.offer rows, and the rungs are server.living.standing.Standing; see !standing.
-    HIRE_FRIENDSHIP_ENABLED: false
+    HIRE_FRIENDSHIP_ENABLED: true
     HIRE_FRIEND_FEE_DISCOUNT_PERCENT: 25
     HIRE_CLOSE_WAGE_DISCOUNT_PERCENT: 25
     # Mentor (docs/BOT_CONCEPT_PLAN.md F4.1-F4.4, decisions D8 and D9): a new character's first login (never logged
