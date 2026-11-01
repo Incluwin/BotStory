@@ -261,6 +261,17 @@ class NeedLedgerTest {
     }
 
     @Test
+    void aRequestItCanNoLongerPayForEnds() {
+        Need dear = ledger.post(CITIZEN, session, HENESYS, new NeedDerivation.Proposal(NeedKind.GEAR, GARNIER, 1, 2_500_000L,
+                "weapon"), NOW + HOUR, NOW);
+        Need gear = ledger.post(CITIZEN, session, HENESYS, new NeedDerivation.Proposal(NeedKind.GEAR, 1302000, 1, 900_000L,
+                "weapon"), NOW + HOUR, NOW);
+        ledger.derive(session, citizenChr, NOW + HOUR); // it holds 2,000,000
+        assertEquals(Need.State.GONE, store.rows.get(dear.id()).state(), "a player bringing it would only be told it can't pay");
+        assertTrue(ledger.need(gear.id()).isOpen(), "900k it can still pay");
+    }
+
+    @Test
     void aPlayerHoldsThreeRequestsForAnHourEach() {
         Need first = post(NeedKind.SUPPLY, WHITE, 100, 345, NOW);
         Need second = post(NeedKind.SUPPLY, MANA, 50, 700, NOW);
