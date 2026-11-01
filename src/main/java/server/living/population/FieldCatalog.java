@@ -246,6 +246,18 @@ public final class FieldCatalog {
             return "Free Market room " + (mapId - FM_ENTRANCE);
         }
         Field field = population.content().field(mapId);
-        return field == null ? "map " + mapId : field.name();
+        if (field != null) {
+            return field.name();
+        }
+        String placed = placeName(mapId); // a lobby or boss map no field lists: "Bottom of the Temple", not "map 105100100"
+        return placed.isEmpty() ? "map " + mapId : placed;
+    }
+
+    private static String placeName(int mapId) {
+        try {
+            return server.maps.MapFactory.loadPlaceName(mapId).trim();
+        } catch (RuntimeException | LinkageError unavailable) {
+            return ""; // no WZ data (tools, tests without the files)
+        }
     }
 }
