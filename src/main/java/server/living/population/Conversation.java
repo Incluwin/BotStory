@@ -138,13 +138,15 @@ public final class Conversation {
             overhear(knowledge, speaker, text, now);
         }
         List<CitizenSession> near = nearby(speaker);
-        if (near.isEmpty()) {
-            return false;
-        }
         CitizenSession addressee = byName(near, normalized);
         boolean explicit = addressee != null;
         if (!explicit && hasCompanionHere(speaker)) {
-            return false; // a player with a companion here is talking to it unless they name a citizen
+            // "hi blade520" to a citizen out of earshot is still that citizen's line: nobody answers it, and the speaker's
+            // companion does not take it as its own (2026-10-31 live: Dorran said "heyy" to a greeting for Blade520)
+            return !namesCompanionHere(speaker, normalized) && namesCitizenAway(speaker, normalized);
+        }
+        if (near.isEmpty()) {
+            return false;
         }
         if (content) {
             Boolean took = contentTurn(knowledge, speaker, near, addressee, text, now);
@@ -555,6 +557,54 @@ public final class Conversation {
             }
         }
         return near;
+    }
+
+    /** A citizen on the speaker's map and channel named in the line as a word of its own (one in earshot is the addressee already). */
+    private boolean namesCitizenAway(Character speaker, String normalized) {
+        for (CitizenSession session : population.presence().sessions()) {
+            Character agent = session.agent();
+            if (session.virtual || agent == null || agent.getMap() == null || speaker.getMap() == null
+                    || agent.getMapId() != speaker.getMapId() || agent.getClient() == null || speaker.getClient() == null
+                    || agent.getClient().getChannel() != speaker.getClient().getChannel()) {
+                continue;
+            }
+            if (names(normalized, session.name())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** One of the speaker's companions on this map, named in the line: the line stays the companion's. */
+    static boolean namesCompanionHere(Character speaker, String normalized) {
+        Party party = speaker.getParty();
+        MapleMap map = speaker.getMap();
+        if (party == null || map == null) {
+            return false;
+        }
+        for (PartyCharacter member : party.getMembers()) {
+            Character here = member.getId() == speaker.getId() ? null : map.getCharacterById(member.getId());
+            if (here != null && AgentPresence.isAgent(here) && here.getName() != null && names(normalized, here.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** {@code name} as a word of {@code normalized} (lower case), not inside a longer word. */
+    static boolean names(String normalized, String name) {
+        String word = name.toLowerCase(Locale.ROOT);
+        int at = normalized.indexOf(word);
+        while (at >= 0) {
+            int end = at + word.length();
+            boolean startsWord = at == 0 || !java.lang.Character.isLetterOrDigit(normalized.charAt(at - 1));
+            boolean endsWord = end == normalized.length() || !java.lang.Character.isLetterOrDigit(normalized.charAt(end));
+            if (startsWord && endsWord) {
+                return true;
+            }
+            at = normalized.indexOf(word, at + 1);
+        }
+        return false;
     }
 
     private CitizenSession byName(List<CitizenSession> near, String normalized) {
