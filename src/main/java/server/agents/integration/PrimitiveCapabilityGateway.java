@@ -123,6 +123,18 @@ public interface PrimitiveCapabilityGateway {
         return AgentRouteOutcome.unavailable(mapId(agent), destinationMapId);
     }
 
+    /**
+     * travelTo that, where no portal path reaches the destination, also boards the NPC rides (npc-travel-legs.json),
+     * spending at most {@code spendableMesos} on their fares and tickets.
+     */
+    default AgentRouteOutcome rideTo(AgentRuntimeEntry entry,
+                                     Character agent,
+                                     int destinationMapId,
+                                     long nowMs,
+                                     long spendableMesos) {
+        return travelTo(entry, agent, destinationMapId, nowMs);
+    }
+
     Collection<Reactor> reactors(Character agent);
 
     default Point nearestActiveReactorPosition(Character agent, Integer reactorId, String reactorName) {

@@ -821,9 +821,20 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
                                       Character agent,
                                       int destinationMapId,
                                       long nowMs) {
-        AgentVictoriaRouteRuntime.TravelOutcome outcome =
-                AgentVictoriaRouteRuntime.travelStatus(
-                        entry, agent, destinationMapId, this, nowMs);
+        return routeOutcome(AgentVictoriaRouteRuntime.travelStatus(entry, agent, destinationMapId, this, nowMs));
+    }
+
+    @Override
+    public AgentRouteOutcome rideTo(AgentRuntimeEntry entry,
+                                    Character agent,
+                                    int destinationMapId,
+                                    long nowMs,
+                                    long spendableMesos) {
+        return routeOutcome(AgentVictoriaRouteRuntime.travelStatus(entry, agent, destinationMapId, this, nowMs,
+                new AgentVictoriaRouteRuntime.RideBudget(spendableMesos)));
+    }
+
+    private static AgentRouteOutcome routeOutcome(AgentVictoriaRouteRuntime.TravelOutcome outcome) {
         return new AgentRouteOutcome(
                 switch (outcome.status()) {
                     case ARRIVED -> AgentRouteStatus.ARRIVED;

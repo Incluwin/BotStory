@@ -90,6 +90,16 @@ public final class AgentTravelLegCatalog {
         return FROM.getOrDefault(mapId, List.of());
     }
 
+    /** The leg with this id, or null. */
+    public static Leg leg(String id) {
+        for (Leg leg : LEGS) {
+            if (leg.id().equals(id)) {
+                return leg;
+            }
+        }
+        return null;
+    }
+
     /** True on a waiting room or ride map of some leg: the rider waits there until the server moves it on. */
     public static boolean rideMap(int mapId) {
         return RIDE_MAPS.contains(mapId);

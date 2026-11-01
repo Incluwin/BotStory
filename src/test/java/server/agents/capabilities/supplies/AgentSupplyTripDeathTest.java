@@ -265,7 +265,10 @@ class AgentSupplyTripDeathTest {
         return agent;
     }
 
-    /** Any map the test did not name spawns monsters, as every map on the way from Sleepywood to the store does. */
+    /**
+     * Any map the test did not name spawns monsters, as every map on the way from Sleepywood to the store does. The
+     * Sleepywood Hotel is not named either, so the sauna's ride is never in reach here (AgentSleepywoodSaunaTripTest).
+     */
     private MapleMap map(int mapId) {
         return maps.computeIfAbsent(mapId, id -> map(id, true));
     }

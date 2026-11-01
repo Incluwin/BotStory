@@ -36,7 +36,9 @@ public final class AgentCareerShopCatalog {
      * (portal hops, or a negative value when there is no route). Potions come from any town
      * potion shop (AgentPotionSupplierCatalog, every continent); everything else from the
      * career shop. Returns null when no supplier of this category is reachable, so callers
-     * never travel toward a shop the router cannot get to.
+     * never travel toward a shop the router cannot get to. A supplier only a ride reaches (Sleepywood's
+     * sauna) has no portal path in, so the walking routeHops picks it only for an Agent standing in it;
+     * the supply trip rides there itself (AgentSupplyRideStop).
      */
     public static ShopStop forSupply(AgentCareerBuildBundle bundle,
                                      AgentResourceCategory category,

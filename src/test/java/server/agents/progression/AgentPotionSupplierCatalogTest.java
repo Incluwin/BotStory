@@ -1,6 +1,7 @@
 package server.agents.progression;
 
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.contracts.AgentResourceCategory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,6 +18,8 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Every town potion supplier is a real NPC shop, standing on its map, that the portal router walks to. */
@@ -98,7 +101,17 @@ class AgentPotionSupplierCatalogTest {
         Set<String> seen = new HashSet<>();
         for (AgentPotionSupplierCatalog.Supplier supplier : AgentPotionSupplierCatalog.suppliers()) {
             assertTrue(nodes.contains(supplier.mapId()), () -> supplier + " is off the portal graph");
-            assertTrue(entered.contains(supplier.mapId()), () -> "no portal leads into " + supplier);
+            if (supplier.rideLeg() == null) {
+                assertTrue(entered.contains(supplier.mapId()), () -> "no portal leads into " + supplier);
+            } else {
+                // its ride is the only way in, and the walk out leads back to where the ride boards
+                AgentTravelLegCatalog.Leg leg = AgentTravelLegCatalog.leg(supplier.rideLeg());
+                assertEquals(supplier.mapId(), leg.toMapId(), () -> supplier + " is not where its ride lands");
+                assertTrue(nodes.contains(leg.fromMapId()), () -> supplier + "'s ride boards off the portal graph");
+                assertFalse(entered.contains(supplier.mapId()), () -> "a portal leads into " + supplier + ": no ride");
+                assertTrue(AgentVictoriaTrainingRouteCatalog.distance(supplier.mapId(), leg.fromMapId()) >= 0,
+                        () -> "nothing walks back from " + supplier);
+            }
             assertTrue(seen.add(supplier.mapId() + ":" + supplier.npcId()), () -> "duplicate " + supplier);
             assertFalse(supplier.town().isBlank(), () -> supplier + " names no town");
         }
@@ -109,8 +122,38 @@ class AgentPotionSupplierCatalogTest {
         // live 2026-10-04: "visit timeout (never reached the shop NPC)" at the Eos Tower Gumball Machine
         for (AgentPotionSupplierCatalog.Supplier supplier : AgentPotionSupplierCatalog.suppliers()) {
             assertFalse(supplier.npcId() == 2040049, "the Gumball Machine on Eos Tower's 26th-40th floors");
-            assertFalse(supplier.npcId() == 1061002, "Sleepywood's sauna: no portal leads in");
         }
+    }
+
+    @Test
+    void sleepywoodsSaunaIsTheHotelReceptionistsRideAndTheOnlySupplierARideReaches() {
+        // 2026-11-01: an Agent respawned in Sleepywood at 50 HP with nothing to drink has a monster map on every walk
+        // to a shop; the Hotel Receptionist (1061100, 105040400) takes it into the Regular Sauna for 499 mesos, where
+        // Mr. Sweatbottom sells Red, Orange, White, Blue, Mana Elixir, Unagi and Pure Water
+        assertTrue(AgentPotionSupplierCatalog.suppliers().contains(new AgentPotionSupplierCatalog.Supplier(
+                105040401, 1061002, "Sleepywood", "sleepywood-hotel-to-regular-sauna")));
+        AgentTravelLegCatalog.Leg ride = AgentTravelLegCatalog.leg("sleepywood-hotel-to-regular-sauna");
+        assertEquals(105040400, ride.fromMapId());
+        assertEquals(1061100, ride.npcId());
+        assertEquals(499, ride.cost());
+        assertEquals(ride, AgentPotionSupplierCatalog.rideLegTo(105040401));
+        assertEquals(1, AgentPotionSupplierCatalog.suppliers().stream()
+                .filter(supplier -> supplier.rideLeg() != null).count(), "every other supplier is walked to");
+        assertNull(AgentPotionSupplierCatalog.rideLegTo(105070001));
+    }
+
+    @Test
+    void theSaunaIsNeverTheWalkingMeasuresPickFromOutside() {
+        // From Sleepywood, its hotel and Ant Tunnel Park the nearest walking supplier is as before; standing in the
+        // sauna it is the shop there
+        AgentCareerBuildBundle bundle = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("pirate-knuckle-standard-v1").orElseThrow();
+        for (int mapId : new int[]{105040300, 105040400, 105070001}) {
+            assertNotEquals(105040401, AgentCareerShopCatalog.forSupply(
+                    bundle, AgentResourceCategory.HP_POTION, mapId).mapId(), () -> "from map " + mapId);
+        }
+        assertEquals(new AgentCareerShopCatalog.ShopStop(105040401, 1061002),
+                AgentCareerShopCatalog.forSupply(bundle, AgentResourceCategory.HP_POTION, 105040401));
     }
 
     @Test
@@ -118,7 +161,7 @@ class AgentPotionSupplierCatalogTest {
         // CWKPQ C9 (2026-10-23): NonThePriest ran out of stars in the Council Hall; New Leaf City's store sells arrows
         // but no stars, and Mo sells Icicles (2070010) besides Unagi and Pure Water (db/data/102-shopitems-data.sql)
         assertTrue(AgentPotionSupplierCatalog.suppliers().contains(
-                new AgentPotionSupplierCatalog.Supplier(610010004, 9201099, "Phantom Forest")));
+                new AgentPotionSupplierCatalog.Supplier(610010004, 9201099, "Phantom Forest", null)));
     }
 
     @Test
@@ -126,7 +169,7 @@ class AgentPotionSupplierCatalogTest {
         // fix L7 (2026-10-08): no shop is in reach of Mu Young's room; this store on the walk down sells Unagi
         // (2022003) and Pure Water (2022000) (db/data/102-shopitems-data.sql), appended so earlier ties break as before
         List<AgentPotionSupplierCatalog.Supplier> suppliers = AgentPotionSupplierCatalog.suppliers();
-        assertEquals(new AgentPotionSupplierCatalog.Supplier(105070001, 1061001, "Ant Tunnel Park"),
+        assertEquals(new AgentPotionSupplierCatalog.Supplier(105070001, 1061001, "Ant Tunnel Park", null),
                 suppliers.get(suppliers.size() - 1));
     }
 

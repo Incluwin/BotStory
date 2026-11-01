@@ -320,6 +320,19 @@ class AgentTravelLegRouteTest {
     }
 
     @Test
+    void theRegularSaunaIsTheHotelReceptionistsRideAndTheWalkOutGoesBackThroughTheHotel() {
+        List<AgentVictoriaTrainingRouteCatalog.Step> in = AgentVictoriaTrainingRouteCatalog.ridePath(
+                105040300, 105040401, Set.of(), leg -> true, RIDE_HOP_COST);
+        assertEquals(List.of("sleepywood-hotel-to-regular-sauna"), legs(in));
+        assertEquals(List.of(105040400, 105040401), in.stream().map(AgentVictoriaTrainingRouteCatalog.Step::toMapId)
+                .toList(), "Sleepywood walks into the hotel and the Receptionist takes it on");
+        assertEquals(-1, AgentVictoriaTrainingRouteCatalog.distance(105040300, 105040401), "no portal leads in");
+        assertEquals(2, AgentVictoriaTrainingRouteCatalog.distance(105040401, 105040300), "the sauna walks out");
+        assertEquals(List.of(), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                105040401, 105040300, Set.of(), leg -> true, RIDE_HOP_COST)));
+    }
+
+    @Test
     void aLegItCannotUseIsLeftOutAndWithoutItThereIsNoWay() {
         assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(
                 200000000, 220000000, Set.of(), leg -> !leg.id().equals("orbis-to-ludibrium"), RIDE_HOP_COST));

@@ -32,6 +32,8 @@ import server.agents.objectives.AgentObjectiveStatus;
 import server.agents.progression.AgentCareerBuildBundle;
 import server.agents.progression.AgentCareerProgressionState;
 import server.agents.progression.AgentCareerShopCatalog;
+import server.agents.progression.AgentPotionSupplierCatalog;
+import server.agents.progression.AgentTravelLegCatalog;
 import server.agents.progression.AgentVictoriaRouteRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentSessionEventRuntime;
@@ -44,6 +46,7 @@ import server.maps.MapleMap;
 
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.IntBinaryOperator;
 
@@ -449,15 +452,23 @@ public final class AgentSupplyProcurementRuntime {
                 return false;
             }
             int hostileMapId = hostileMapOnTheWay(entry, agent, stop.mapId(), nowMs);
-            if (hostileMapId > 0) {
+            AgentSupplyRideStop ride = hostileMapId > 0
+                    ? affordableRide(entry, agent, request.category(), nowMs) : null;
+            if (hostileMapId > 0 && ride == null) {
                 log.info("Agent '{}' stays on map {} instead of walking to its {} supplier on map {}: HP {}/{} and no"
                                 + " HP potion, and monsters spawn on map {} on the way", agent.getName(),
                         agent.getMapId(), request.category(), stop.mapId(), agent.getHp(), agent.getCurrentMaxHp(),
                         hostileMapId);
                 return false;
             }
-            supplierMapId = stop.mapId();
-            supplierNpcId = stop.npcId();
+            if (ride != null) {
+                log.info("Agent '{}' rides to its {} supplier on map {} ({}-meso fare) instead of walking to map {}:"
+                                + " HP {}/{} and no HP potion, and monsters spawn on map {} on the way",
+                        agent.getName(), request.category(), ride.mapId(), ride.fare(), stop.mapId(), agent.getHp(),
+                        agent.getCurrentMaxHp(), hostileMapId);
+            }
+            supplierMapId = ride != null ? ride.mapId() : stop.mapId();
+            supplierNpcId = ride != null ? ride.npcId() : stop.npcId();
             phase = supplierMapId == agent.getMapId()
                     ? AgentSupplyProcurementState.Phase.SHOPPING
                     : AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER;
@@ -520,11 +531,24 @@ public final class AgentSupplyProcurementRuntime {
         }
         int hostileMapId = hostileMapOnTheWay(entry, agent, execution.supplierMapId(), nowMs);
         if (hostileMapId > 0) {
-            return giveUpWhereItStands(entry, agent, planning, execution, "HP " + agent.getHp() + "/"
-                    + agent.getCurrentMaxHp() + " and no HP potion on map " + agent.getMapId()
-                    + ", where no monsters spawn, with monsters on map " + hostileMapId + " ahead", nowMs);
+            AgentSupplyRideStop ride = affordableRide(entry, agent, execution.category(), nowMs);
+            if (ride == null) {
+                return giveUpWhereItStands(entry, agent, planning, execution, "HP " + agent.getHp() + "/"
+                        + agent.getCurrentMaxHp() + " and no HP potion on map " + agent.getMapId()
+                        + ", where no monsters spawn, with monsters on map " + hostileMapId + " ahead", nowMs);
+            }
+            int hops = supplierHops(entry, agent, ride.mapId(), nowMs);
+            log.info("Agent '{}' switched {} resupply from supplier map {} to the ride to map {} ({} hops, {}-meso"
+                            + " fare): HP {}/{} and no HP potion, with monsters on map {} ahead", agent.getName(),
+                    execution.category(), execution.supplierMapId(), ride.mapId(), hops, ride.fare(), agent.getHp(),
+                    agent.getCurrentMaxHp(), hostileMapId);
+            execution.redirectSupplier(ride.mapId(), ride.npcId(), hops);
         }
-        AgentRouteOutcome outcome = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
+        // Only the supplier a ride reaches is ridden to; every other walks, so a supply trip never crosses the sea.
+        AgentRouteOutcome outcome = AgentPotionSupplierCatalog.rideLegTo(execution.supplierMapId()) != null
+                ? AgentPrimitiveCapabilityGatewayRuntime.gateway().rideTo(
+                entry, agent, execution.supplierMapId(), nowMs, rideBudget(agent))
+                : AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
                 entry, agent, execution.supplierMapId(), nowMs);
         if (outcome.status() == AgentRouteStatus.NO_ROUTE) {
             recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
@@ -572,8 +596,7 @@ public final class AgentSupplyProcurementRuntime {
                                                    AgentSupplyProcurementState execution,
                                                    long nowMs) {
         int budget = execution.supplierHopBudget();
-        int hops = AgentVictoriaRouteRuntime.routeHops(
-                entry, agent.getMapId(), execution.supplierMapId(), nowMs);
+        int hops = supplierHops(entry, agent, execution.supplierMapId(), nowMs);
         if (hops >= 0 && (budget < 0 || hops <= budget)) {
             if (budget < 0) {
                 execution.setSupplierHopBudget(hops);
@@ -749,16 +772,68 @@ public final class AgentSupplyProcurementRuntime {
                 || AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION) > 0) {
             return -1;
         }
+        return firstMapWithSpawns(agent,
+                AgentVictoriaRouteRuntime.plannedRoute(entry, agent.getMapId(), destinationMapId, nowMs));
+    }
+
+    /** The first map {@code way} enters where monsters spawn, or -1. */
+    static int firstMapWithSpawns(Character agent, List<AgentVictoriaRouteRuntime.PlannedStep> way) {
         int world = AgentClientGatewayRuntime.clients().world(agent);
         int channel = AgentClientGatewayRuntime.clients().channel(agent);
-        for (AgentVictoriaRouteRuntime.PlannedStep step
-                : AgentVictoriaRouteRuntime.plannedRoute(entry, agent.getMapId(), destinationMapId, nowMs)) {
+        for (AgentVictoriaRouteRuntime.PlannedStep step : way) {
             MapleMap map = AgentMapGatewayRuntime.map().resolveMap(world, channel, step.toMapId());
             if (map != null && !monsterFree(map)) {
                 return step.toMapId();
             }
         }
         return -1;
+    }
+
+    /**
+     * Where a potion trip goes while {@link #hostileMapOnTheWay} holds its walk: a supplier only a ride reaches, by a
+     * way with no monsters on it (AgentSupplyRideStop.nearest), when its purse less its wallet reserve pays the fare
+     * and one potion there. Null when none is in reach or it cannot pay. Live 2026-11-01: SpearArcher, Lv70, respawned
+     * in Sleepywood at 50 of 5,111 HP with nothing to drink; every walk to a shop crosses the Ant Tunnel or the forest,
+     * and passive regen takes about 38 minutes to get it over CRITICAL_HP_PERCENT. The Hotel next door takes it into
+     * the Regular Sauna for 499 mesos, where Mr. Sweatbottom sells potions, as a player there would go.
+     */
+    private static AgentSupplyRideStop affordableRide(AgentRuntimeEntry entry,
+                                                      Character agent,
+                                                      AgentResourceCategory category,
+                                                      long nowMs) {
+        AgentSupplyRideStop ride = potion(category) ? AgentSupplyRideStop.nearest(entry, agent, nowMs) : null;
+        if (ride == null) {
+            return null;
+        }
+        int reserve = AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
+        long spendable = (long) Math.max(0, agent.getMeso()) - reserve;
+        int price = ride.price(agent, category);
+        if (spendable < price) {
+            log.info("Agent '{}' cannot ride to its {} supplier on map {}: the {}-meso fare and one potion there"
+                            + " cost {}, and mesos {} less its wallet reserve of {} leave {}", agent.getName(), category,
+                    ride.mapId(), ride.fare(), price, agent.getMeso(), reserve, spendable);
+            return null;
+        }
+        return ride;
+    }
+
+    /** What the purse less the wallet reserve leaves for fares: a ride never spends the reserve. */
+    private static long rideBudget(Character agent) {
+        return Math.max(0L, (long) Math.max(0, agent.getMeso()) - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent));
+    }
+
+    /**
+     * Portal hops to the supplier, as keepSupplierWithinReach weighs them; to one only a ride reaches, the hops to where
+     * the ride boards and the ride as one more. -1 when nothing reaches it.
+     */
+    private static int supplierHops(AgentRuntimeEntry entry, Character agent, int supplierMapId, long nowMs) {
+        AgentTravelLegCatalog.Leg ride = supplierMapId == agent.getMapId() ? null
+                : AgentPotionSupplierCatalog.rideLegTo(supplierMapId);
+        if (ride == null) {
+            return AgentVictoriaRouteRuntime.routeHops(entry, agent.getMapId(), supplierMapId, nowMs);
+        }
+        int walk = AgentVictoriaRouteRuntime.routeHops(entry, agent.getMapId(), ride.fromMapId(), nowMs);
+        return walk < 0 ? -1 : walk + 1;
     }
 
     private static boolean monsterFree(MapleMap map) {

@@ -17,12 +17,17 @@ public final class AgentPotionSupplierCatalog {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final List<Supplier> SUPPLIERS = load();
 
-    public record Supplier(int mapId, int npcId, String town) {
+    /**
+     * A shop on {@code mapId}. With {@code rideLeg} no portal leads in and that travel leg (AgentTravelLegCatalog) is
+     * the way: Sleepywood's Regular Sauna, the Hotel Receptionist's ride.
+     */
+    public record Supplier(int mapId, int npcId, String town, String rideLeg) {
         public Supplier {
             if (mapId <= 0 || npcId <= 0) {
                 throw new IllegalArgumentException("a potion supplier needs a map and an NPC");
             }
             town = town == null ? "" : town;
+            rideLeg = rideLeg == null || rideLeg.isBlank() ? null : rideLeg;
         }
     }
 
@@ -34,6 +39,16 @@ public final class AgentPotionSupplierCatalog {
 
     public static List<Supplier> suppliers() {
         return SUPPLIERS;
+    }
+
+    /** The ride leg into the supplier on {@code mapId} when only that leg reaches it, else null (it is walked to). */
+    public static AgentTravelLegCatalog.Leg rideLegTo(int mapId) {
+        for (Supplier supplier : SUPPLIERS) {
+            if (supplier.mapId() == mapId && supplier.rideLeg() != null) {
+                return AgentTravelLegCatalog.leg(supplier.rideLeg());
+            }
+        }
+        return null;
     }
 
     /**
@@ -54,6 +69,13 @@ public final class AgentPotionSupplierCatalog {
             Catalog catalog = MAPPER.readValue(input, Catalog.class);
             if (catalog.suppliers() == null || catalog.suppliers().isEmpty()) {
                 throw new IllegalStateException("potion supplier catalog lists no supplier: " + RESOURCE);
+            }
+            for (Supplier supplier : catalog.suppliers()) {
+                AgentTravelLegCatalog.Leg leg = supplier.rideLeg() == null ? null
+                        : AgentTravelLegCatalog.leg(supplier.rideLeg());
+                if (supplier.rideLeg() != null && (leg == null || leg.toMapId() != supplier.mapId())) {
+                    throw new IllegalStateException("no travel leg " + supplier.rideLeg() + " lands on " + supplier);
+                }
             }
             return List.copyOf(catalog.suppliers());
         } catch (IOException failure) {
