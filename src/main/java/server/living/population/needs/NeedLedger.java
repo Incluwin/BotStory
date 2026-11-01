@@ -74,6 +74,9 @@ public final class NeedLedger {
 
         /** The citizen puts what it got to use: applies a scroll (true: it passed), wears gear, readies its potions. */
         Boolean use(Character citizen, Need need);
+
+        /** Whether the loaded citizen's bag has room for {@code count} of the item. */
+        boolean room(Character citizen, int itemId, int count);
     }
 
     /** The item data the ledger reads (WZ names, a scroll's rate, the scroll rule, an equip's base); apart so tests need no database. */
@@ -567,6 +570,11 @@ public final class NeedLedger {
     Need post(int citizenId, CitizenSession session, int mapId, NeedDerivation.Proposal proposal, long deadlineMs,
               long nowMs) {
         if (proposal.kind().item() && openItemNeeds(citizenId) >= config().NEEDS_PER_CITIZEN) {
+            return null;
+        }
+        // a full bag would leave what a player brings waiting in escrow, paid for and never used
+        Character agent = session == null ? null : session.agent();
+        if (proposal.kind().item() && agent != null && !hands().room(agent, proposal.itemId(), proposal.quantity())) {
             return null;
         }
         // the repost pause is for things: a party forming again later asks again at once

@@ -248,6 +248,19 @@ class NeedLedgerTest {
     }
 
     @Test
+    void aCitizenWhoseBagIsFullAsksForNothingItCouldNotTake() {
+        hands.fullBags.add(CITIZEN);
+        assertNull(post(NeedKind.SCROLL, CLAW_ATT, 1, 2_500_000L, NOW), "a player's scroll would only wait in escrow");
+        assertTrue(ledger.open().isEmpty());
+
+        hands.fullBags.clear();
+        assertNotNull(post(NeedKind.SCROLL, CLAW_ATT, 1, 2_500_000L, NOW), "with room it asks");
+        assertNotNull(ledger.post(OTHER_CITIZEN, null, HENESYS,
+                new NeedDerivation.Proposal(NeedKind.SUPPLY, WHITE, 10, 345, "easy_balrog"), NOW + HOUR, NOW),
+                "an unloaded citizen's bag is not known: its request stands");
+    }
+
+    @Test
     void aPlayerHoldsThreeRequestsForAnHourEach() {
         Need first = post(NeedKind.SUPPLY, WHITE, 100, 345, NOW);
         Need second = post(NeedKind.SUPPLY, MANA, 50, 700, NOW);
@@ -542,6 +555,7 @@ class NeedLedgerTest {
         final Map<Integer, Long> purse = new HashMap<>(Map.of(CITIZEN, 2_000_000L));
         final Map<Integer, Long> paid = new HashMap<>();
         final List<Integer> used = new ArrayList<>();
+        final Set<Integer> fullBags = new HashSet<>();
 
         @Override
         public int carried(Character player, Need need) {
@@ -577,6 +591,11 @@ class NeedLedgerTest {
         public Boolean use(Character citizen, Need need) {
             used.add(need.itemId());
             return need.kind() == NeedKind.SCROLL ? Boolean.TRUE : null;
+        }
+
+        @Override
+        public boolean room(Character citizen, int itemId, int count) {
+            return !fullBags.contains(citizen.getId());
         }
     }
 }

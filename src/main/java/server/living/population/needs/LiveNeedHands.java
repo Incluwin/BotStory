@@ -93,7 +93,7 @@ final class LiveNeedHands implements NeedLedger.Hands {
                     refused.set("You don't have that any more.");
                     return;
                 }
-                if (citizen != null && (citizen.getMeso() < pay || !room(citizen, need, count))) {
+                if (citizen != null && (citizen.getMeso() < pay || !room(citizen, need.itemId(), count))) {
                     refused.set(citizen.getMeso() < pay ? name + " can't pay that right now." : name + " has no room for that.");
                     return;
                 }
@@ -147,8 +147,9 @@ final class LiveNeedHands implements NeedLedger.Hands {
         return left > 0 ? null : out;
     }
 
-    private static boolean room(Character citizen, Need need, int count) {
-        return InventoryManipulator.checkSpace(citizen.getClient(), need.itemId(), count, "");
+    @Override
+    public boolean room(Character citizen, int itemId, int count) {
+        return InventoryManipulator.checkSpace(citizen.getClient(), itemId, count, "");
     }
 
     @Override
