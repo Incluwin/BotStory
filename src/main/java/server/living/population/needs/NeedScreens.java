@@ -53,8 +53,8 @@ public final class NeedScreens {
                             () -> board(player, boardMapId))));
         }
         LivingTalk.open(player, NeedBoards.BOARD_NPC)
-                .menu("Townsfolk pin what they need here.\r\nBring it to them, or leave it here if they are away;"
-                        + " they pay on the spot.", options)
+                .menu("Townsfolk pin what they need here.\r\nBring it to them, or leave it here if they are away."
+                        + " They pay on the spot.", options)
                 .show();
     }
 
@@ -345,7 +345,7 @@ public final class NeedScreens {
                 + Market.formatPrice(need.pay(need.remaining())) + "#k in all)" : "") + (need.delivered() > 0 ? ", " + need.delivered() + " already brought" : "") + "." + left
                 + "\r\n" + (about ? "Now at #b" + mapName(session.mapId) + "#k: hand it over in person (double-click them)."
                 : "Away right now: leave it here and they pick it up when they're back.")
-                + (need.kind() == NeedKind.GEAR ? "\r\nA plain one is fine; better is welcome." : "");
+                + (need.kind() == NeedKind.GEAR ? "\r\nA plain one is fine, better is welcome." : "");
     }
 
     /** A PARTY request's page; {@code whisperTo} (null while whispers do not reach citizens) is the leader to whisper. */
