@@ -405,23 +405,9 @@ public final class NeedLedger {
     void derive(CitizenSession session, Character agent, long nowMs) {
         derivedAt.put(session.characterId, nowMs);
         synchronized (lock(session.characterId)) {
-            unaffordable(session, agent, nowMs);
             supply(session, agent, nowMs);
             scroll(session, agent, nowMs);
             mentor(session, agent, nowMs);
-        }
-    }
-
-    /**
-     * A scroll or gear request it can no longer pay for ends: its purse went on something else (a salon visit, a market
-     * buy), and a player bringing the item would only be told it can't pay.
-     */
-    private void unaffordable(CitizenSession session, Character agent, long nowMs) {
-        for (Need need : openOf(session.characterId, null)) {
-            if ((need.kind() == NeedKind.GEAR || need.kind() == NeedKind.SCROLL)
-                    && need.pay(need.remaining()) > agent.getMeso()) {
-                close(need, Need.State.GONE, nowMs);
-            }
         }
     }
 
