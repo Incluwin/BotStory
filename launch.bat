@@ -28,7 +28,11 @@ if errorlevel 1 (
 if not exist logs\gc mkdir logs\gc
 if not exist logs\heapdumps mkdir logs\heapdumps
 if not exist logs\crash mkdir logs\crash
-java -Xmx2048m %JAVA_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=logs\heapdumps -XX:+ExitOnOutOfMemoryError -XX:ErrorFile=logs\crash\hs_err_pid%%p.log -Xlog:gc*,safepoint:file=logs/gc/gc.log:time,uptime,level,tags:filecount=10,filesize=20M -Dwz-path=wz -jar target\Cosmic.jar
+if not exist logs\jfr\repo mkdir logs\jfr\repo
+REM --- A rolling flight recording of the last 2 hours (JFR default profile, ~1%% CPU). Its chunks live in
+REM ---   logs\jfr\repo, so a java killed from outside (no hs_err, no heap dump) still leaves them there;
+REM ---   a normal exit dumps one .jfr into logs\jfr. Open either with JDK Mission Control or `jfr print`.
+java -Xmx2048m %JAVA_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=logs\heapdumps -XX:+ExitOnOutOfMemoryError -XX:ErrorFile=logs\crash\hs_err_pid%%p.log -Xlog:gc*,safepoint:file=logs/gc/gc.log:time,uptime,level,tags:filecount=10,filesize=20M -XX:FlightRecorderOptions=repository=logs/jfr/repo -XX:StartFlightRecording=name=ring,disk=true,maxage=2h,maxsize=512m,dumponexit=true,filename=logs/jfr/ -Dwz-path=wz -jar target\Cosmic.jar
 set "COSMIC_EXIT=%ERRORLEVEL%"
 
 REM --- Every restart opens a new console, so this one must close by itself: at once after a clean
