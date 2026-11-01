@@ -168,7 +168,8 @@ public final class BlackjackTables implements Venue {
             }
         }
         for (Table table : tables.values()) {
-            if (table.dealer != null && !table.stepping && host.humanOn(table.channel, content.gameParkMap())) {
+            if (table.dealer != null && !table.stepping && (host.humanOn(table.channel, content.gameParkMap())
+                    || table.game.phase() != BlackjackGame.Phase.WAITING)) {
                 table.stepping = true;
                 host.after(STEP_MS, table::step);
             }
@@ -184,9 +185,7 @@ public final class BlackjackTables implements Venue {
         synchronized (table) {
             if (role.dealer) {
                 host.say(role.session, "casino.bj.closing", Map.of());
-                for (BlackjackGame.Seat seat : new ArrayList<>(table.game.seats())) {
-                    table.game.leave(seat.id);
-                }
+                table.game.close(); // bets still in play are handed back, not kept
                 table.sweepCards();
                 table.dealer = null;
                 for (Role other : new ArrayList<>(roles.values())) {
@@ -298,8 +297,6 @@ public final class BlackjackTables implements Venue {
         volatile boolean stepping;
         final Map<Integer, Character> humans = new ConcurrentHashMap<>();
         final Map<Integer, CitizenSession> citizens = new ConcurrentHashMap<>();
-        /** Seat id -> the chips it put down this round. */
-        final Map<Integer, List<MapItem>> bets = new HashMap<>();
         final List<MapItem> cards = new ArrayList<>();
         MapItem hole;
 
@@ -330,7 +327,8 @@ public final class BlackjackTables implements Venue {
 
         void step() {
             synchronized (this) {
-                if (dealer == null || !host.humanOn(channel, content.gameParkMap())) {
+                // a round in play is finished even after the last player walks off; a new one waits for a player
+                if (dealer == null || game.phase() == BlackjackGame.Phase.WAITING && !host.humanOn(channel, content.gameParkMap())) {
                     stepping = false;
                     return;
                 }
@@ -389,9 +387,9 @@ public final class BlackjackTables implements Venue {
             }
             long stack = ChipCashier.holding(agent);
             long want = Math.min(maxBet(), Math.max(Chips.value(Chips.SNAIL), stack * (5 + host.random().nextInt(11)) / 100));
-            Map<Integer, Integer> chips = Chips.from(held(agent), want);
-            if (!chips.isEmpty()) {
-                host.runAs(citizen, () -> Floor.dropChips(agent, chips, agent.getPosition(), null));
+            Map<Integer, Integer> chips = Chips.from(Floor.held(agent), want);
+            if (!chips.isEmpty()) { // its own until the dealer takes it in: no player can scoop a citizen's bet
+                host.runAs(citizen, () -> Floor.dropChips(agent, chips, agent.getPosition(), agent));
             }
         }
 
@@ -430,63 +428,45 @@ public final class BlackjackTables implements Venue {
         }
 
         @Override
-        public Map<Integer, Integer> chipsDown(BlackjackGame.Seat seat) {
+        public Map<Integer, Integer> takeBet(BlackjackGame.Seat seat) {
             Character chr = character(seat);
-            if (chr == null || chr.getMap() == null) {
+            Character by = dealerChr();
+            if (chr == null || by == null || chr.getMap() == null) {
                 return Map.of();
             }
             List<MapItem> chips = Floor.chipsBy(chr.getMap(), chr, chr.getPosition());
-            Map<Integer, Integer> counted = Floor.count(chips);
-            if (Chips.value(counted) > maxBet()) {
-                say("casino.bj.overmax", Map.of("name", seat.name, "max", Chips.mesos(maxBet())));
+            if (chips.isEmpty()) {
                 return Map.of();
             }
-            bets.put(seat.id, chips);
-            return counted;
+            if (Chips.value(Floor.count(chips)) > maxBet()) {
+                say("casino.bj.overmax", Map.of("name", seat.name, "max", Chips.mesos(maxBet())));
+                return Map.of(); // left on the floor for its owner: no bet this hand
+            }
+            // taken straight into the dealer's bag (not routed through its Agent tick): the round needs the count now
+            return Floor.take(by, chips);
         }
 
         @Override
-        public boolean betStillDown(BlackjackGame.Seat seat) {
-            Character by = dealerChr();
-            return by != null && Floor.allDown(by.getMap(), bets.getOrDefault(seat.id, List.of()));
-        }
-
-        @Override
-        public void pay(BlackjackGame.Seat seat, Map<Integer, Integer> chips) {
+        public void pay(BlackjackGame.Seat seat, long mesos) {
             Character by = dealerChr();
             Character to = character(seat);
-            if (by == null || to == null) {
+            if (by == null || to == null || mesos <= 0) {
                 return;
             }
-            Map<Integer, Integer> held = held(by);
-            for (Map.Entry<Integer, Integer> chip : chips.entrySet()) {
-                int missing = chip.getValue() - held.getOrDefault(chip.getKey(), 0);
-                if (missing > 0) {
-                    ChipCashier.buy(by, (long) missing * Chips.value(chip.getKey())); // a runner to the cashier
-                }
+            List<MapItem> paid = Floor.payOut(by, mesos, seatPoint(seat), to);
+            long unpaid = mesos - Chips.value(Floor.count(paid));
+            if (unpaid > 0) {
+                settleUp(by, to, unpaid, dealer);
             }
-            List<MapItem> paid = Floor.dropChips(by, chips, seatPoint(seat), to);
             CitizenSession citizen = citizens.get(seat.id);
-            if (citizen != null) {
-                List<MapItem> mine = new ArrayList<>(bets.getOrDefault(seat.id, List.of()));
-                mine.addAll(paid);
-                host.after(2_000L + host.random().nextInt(1_500), () -> host.runAs(citizen, () -> Floor.pickUp(to, mine)));
-            }
-        }
-
-        @Override
-        public void collect(BlackjackGame.Seat seat) {
-            Character by = dealerChr();
-            List<MapItem> chips = bets.remove(seat.id);
-            if (by != null && chips != null) {
-                host.runAs(dealer, () -> Floor.pickUp(by, chips));
+            if (citizen != null && !paid.isEmpty()) {
+                host.after(2_000L + host.random().nextInt(1_500), () -> host.runAs(citizen, () -> Floor.pickUp(to, paid)));
             }
         }
 
         @Override
         public void clearCards() {
             sweepCards();
-            bets.clear();
         }
 
         @Override
@@ -537,11 +517,6 @@ public final class BlackjackTables implements Venue {
             if (policy != null) {
                 policy.settle(reward);
             }
-            Character agent = citizen.agent();
-            if (result == BlackjackGame.Result.PUSH && agent != null) {
-                List<MapItem> mine = new ArrayList<>(bets.getOrDefault(seat.id, List.of()));
-                host.after(1_500L + host.random().nextInt(1_500), () -> host.runAs(citizen, () -> Floor.pickUp(agent, mine)));
-            }
             if (host.random().nextInt(100) < 35) {
                 String trigger = switch (result) {
                     case WIN -> "casino.bj.react.win";
@@ -554,15 +529,16 @@ public final class BlackjackTables implements Venue {
         }
     }
 
-    /** The chips a character holds, item id to count. */
-    static Map<Integer, Integer> held(Character chr) {
-        Map<Integer, Integer> out = new HashMap<>();
-        for (int chip : Chips.ids()) {
-            int count = chr.getItemQuantity(chip, false);
-            if (count > 0) {
-                out.put(chip, count);
-            }
+    /** What the dealer could not pay in chips it pays from its purse; a dealer who cannot even do that closes its table. */
+    private void settleUp(Character by, Character to, long unpaid, CitizenSession dealerSession) {
+        if (Floor.purse(by, to, unpaid)) {
+            return;
         }
-        return out;
+        org.slf4j.LoggerFactory.getLogger(BlackjackTables.class).warn("blackjack dealer {} could not pay {} {} mesos",
+                by.getName(), to.getName(), unpaid);
+        Role role = dealerSession == null ? null : roles.get(dealerSession.characterId);
+        if (role != null) {
+            host.after(1_000L, () -> leave(role, "could not pay out"));
+        }
     }
 }

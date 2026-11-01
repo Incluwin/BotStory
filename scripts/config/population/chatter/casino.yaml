@@ -178,15 +178,6 @@ intents:
     lines:
       - "{name} hasnt bet in a while, opening the seat"
       - "seat open, {name} sat out too long"
-  - id: casino.bj.tookback
-    trigger: casino.bj.tookback
-    where: any
-    channel: map
-    weight: 10
-    cooldownMs: 0
-    lines:
-      - "{name} took the bet back, ur out this hand"
-      - "{name} picked up their chips, no bet"
   - id: casino.bj.closing
     trigger: casino.bj.closing
     where: any
@@ -235,8 +226,8 @@ intents:
     weight: 10
     cooldownMs: 0
     lines:
-      - "{name} max is {max}, rest goes back to u"
-      - "too much {name}, max bet {max}"
+      - "{name} max is {max}, take some back"
+      - "too much {name}, max bet {max}. no bet this hand"
   # ---- blackjack: a citizen at the table ---------------------------------------------------
   - id: casino.bj.hit
     trigger: casino.bj.hit
@@ -422,15 +413,6 @@ intents:
       - "{a} and {b}.. {side}!"
       - "rolled {a}-{b}, {side}"
       - "{a} + {b}, {side}"
-  - id: casino.dice.tookback
-    trigger: casino.dice.tookback
-    where: any
-    channel: map
-    weight: 10
-    cooldownMs: 0
-    lines:
-      - "{name} picked the chips up, no bet"
-      - "chips gone {name}? no roll then"
   - id: casino.dice.win
     trigger: casino.dice.win
     where: any
@@ -544,6 +526,16 @@ intents:
       - "here u go {name}, one {drink}"
       - "{drink} for {name}, cheers"
       - "one {drink}, enjoy"
+  - id: casino.bar.again
+    trigger: casino.bar.again
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "one per customer {name} :P"
+      - "u just had one {name}, later"
+      - "slow down {name} lol, come back in a bit"
   # ---- the drop game ------------------------------------------------------------------------
   - id: casino.drop.advertise
     trigger: casino.drop.advertise
@@ -603,6 +595,24 @@ intents:
     lines:
       - "accept the party invite {name}"
       - "party sent {name}, accept and we go"
+  - id: casino.drop.inparty
+    trigger: casino.drop.inparty
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "u need to leave ur party first, then trade me again"
+      - "leave ur party first, its played in mine"
+  - id: casino.drop.refund
+    trigger: casino.drop.refund
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "cant party u rn {name}, gave ur mesos back"
+      - "sorry {name} party is bugged, mesos back"
   - id: casino.drop.start
     trigger: casino.drop.start
     where: any

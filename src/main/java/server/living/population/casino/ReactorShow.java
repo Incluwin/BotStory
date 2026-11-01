@@ -52,6 +52,10 @@ final class ReactorShow {
         reactor.setPosition(new Point(at));
         reactor.resetReactorActions(0);
         map.spawnReactor(reactor);
+        // a box is opened once and only by the show: no respawn, and players' hits are ignored (isActive is false), since
+        // its script would spray the map's reactordrops
+        reactor.setDelay(-1);
+        reactor.setAlive(false);
         for (int i = 0; i < 3; i++) {
             hit(map, reactor);
         }
@@ -84,10 +88,19 @@ final class ReactorShow {
             delay += STAGGER_MS;
         }
         hit(map, reactor);
-        int oid = reactor.getObjectId();
-        TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, () -> map.destroyReactor(oid),
+        TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, () -> remove(map, reactor),
                 BREAK_AFTER_MS + delay);
         return drops;
+    }
+
+    /**
+     * The box is gone for good. MapleMap.destroyReactor would only hide a live reactor (and respawn one with a delay), so
+     * the reactor is taken off the map here, where no player can hit it and run its script.
+     */
+    static void remove(MapleMap map, Reactor reactor) {
+        reactor.setAlive(false);
+        map.broadcastMessage(PacketCreator.destroyReactor(reactor));
+        map.removeMapObject(reactor);
     }
 
     private static void hit(MapleMap map, Reactor reactor) {

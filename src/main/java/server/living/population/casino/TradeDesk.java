@@ -1,8 +1,10 @@
 package server.living.population.casino;
 
 import client.Character;
+import database.note.NoteDao;
 import server.Trade;
 import server.Trade.TradeResult;
+import service.NoteService;
 
 /**
  * A citizen taking a fee through the trade window, as a player selling a service does (the drop game's entry, an NX
@@ -56,6 +58,15 @@ final class TradeDesk {
     static void confirm(Character agent) {
         if (agent.getTrade() != null) {
             Trade.completeTrade(agent);
+        }
+    }
+
+    /** A note in the player's inbox, read at their next login: what a whisper would have said to one who left. */
+    static void note(String from, Character to, String text) {
+        try {
+            new NoteService(new NoteDao()).sendNormal(text, from, to.getName());
+        } catch (RuntimeException failure) {
+            org.slf4j.LoggerFactory.getLogger(TradeDesk.class).warn("note from {} to {} not sent", from, to.getName(), failure);
         }
     }
 

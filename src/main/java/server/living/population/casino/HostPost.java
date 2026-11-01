@@ -119,7 +119,7 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
             }
             if (post.ready) {
                 step(post, now);
-                if (wantsQuick() && !post.quickRunning && host.humanOn(post.session.channel, mapId())) {
+                if (wantsQuick() && !post.quickRunning && (busy(post) || host.humanOn(post.session.channel, mapId()))) {
                     post.quickRunning = true;
                     host.after(QUICK_MS, () -> quickLoop(post));
                 }
@@ -127,8 +127,9 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
         }
     }
 
+    /** Fast steps while a player is there, and while a deal is open even after they leave, so its timeouts still run. */
     private void quickLoop(P post) {
-        if (posts.get(post.session.channel) != post || !host.humanOn(post.session.channel, mapId())) {
+        if (posts.get(post.session.channel) != post || !busy(post) && !host.humanOn(post.session.channel, mapId())) {
             post.quickRunning = false;
             return;
         }

@@ -34,8 +34,9 @@ class ChipsAndDiceTest {
 
     @Test
     void naturalsRoundUpToTheSmallestChip() {
-        assertEquals(20_000L, Chips.value(Chips.threeToTwo(Map.of(Chips.SNAIL, 1))));
-        assertEquals(1_500_000L, Chips.value(Chips.threeToTwo(Map.of(Chips.SLIME, 1))));
+        assertEquals(20_000L, Chips.threeToTwo(10_000));
+        assertEquals(1_500_000L, Chips.threeToTwo(1_000_000));
+        assertEquals(380_000L, Chips.threeToTwo(250_000));
     }
 
     @Test
@@ -48,14 +49,13 @@ class ChipsAndDiceTest {
         assertEquals(0, Chips.value(4000000));
     }
 
-    /** A dice table whose bettor has {@code down} chips on the floor. */
+    /** A dice table whose bettor has {@code down} chips on the floor; the host takes them in when a bet is called. */
     private static final class DiceTable implements ChoHanGame.Table {
         final List<String> said = new ArrayList<>();
         final Map<Integer, Map<Integer, Integer>> down = new HashMap<>();
-        final Map<Integer, Map<Integer, Integer>> paid = new HashMap<>();
-        final List<Integer> collected = new ArrayList<>();
+        final List<Integer> taken = new ArrayList<>();
+        final Map<Integer, Long> paid = new HashMap<>();
         final Map<Integer, Boolean> won = new HashMap<>();
-        boolean stillDown = true;
 
         @Override
         public void say(String trigger, Map<String, Object> args) {
@@ -63,23 +63,17 @@ class ChipsAndDiceTest {
         }
 
         @Override
-        public Map<Integer, Integer> chipsDown(int bettorId) {
-            return down.getOrDefault(bettorId, Map.of());
+        public Map<Integer, Integer> takeBet(int bettorId) {
+            Map<Integer, Integer> chips = down.getOrDefault(bettorId, Map.of());
+            if (!chips.isEmpty()) {
+                taken.add(bettorId);
+            }
+            return chips;
         }
 
         @Override
-        public boolean betStillDown(int bettorId) {
-            return stillDown;
-        }
-
-        @Override
-        public void pay(int bettorId, Map<Integer, Integer> chips) {
-            paid.put(bettorId, chips);
-        }
-
-        @Override
-        public void collect(int bettorId) {
-            collected.add(bettorId);
+        public void pay(int bettorId, long mesos) {
+            paid.merge(bettorId, mesos, Long::sum);
         }
 
         @Override
@@ -104,7 +98,6 @@ class ChipsAndDiceTest {
         int losses = 0;
         for (int i = 0; i < 40; i++) {
             table.paid.clear();
-            table.collected.clear();
             long now = i * 10_000L;
             assertTrue(game.call(1, "Ann", true, now));
             assertEquals(1, game.bettor());
@@ -112,11 +105,11 @@ class ChipsAndDiceTest {
             assertEquals(ChoHanGame.Phase.OPEN, game.phase());
             if (even) {
                 wins++;
-                assertEquals(Map.of(Chips.STUMP, 2), table.paid.get(1));
+                assertEquals(1_000_000L, table.paid.get(1), "the 500k stake back and as much again");
                 assertTrue(table.won.get(1));
             } else {
                 losses++;
-                assertEquals(List.of(1), table.collected);
+                assertFalse(table.paid.containsKey(1), "the host keeps a missed bet");
                 assertFalse(table.won.get(1));
             }
         }
@@ -136,16 +129,15 @@ class ChipsAndDiceTest {
     }
 
     @Test
-    void chipsPickedUpBeforeTheSettleAreNeitherPaidNorCollected() {
+    void theHostTakesTheChipsInWhenTheBetIsCalledAndHandsThemBackIfItCloses() {
         DiceTable table = new DiceTable();
         table.down.put(1, Map.of(Chips.SNAIL, 1));
         ChoHanGame game = new ChoHanGame(table, new Random(3));
         assertTrue(game.call(1, "Ann", true, 0));
-        table.stillDown = false;
-        roll(game, 0);
-        assertTrue(table.said.contains("casino.dice.tookback"));
-        assertTrue(table.paid.isEmpty());
-        assertTrue(table.collected.isEmpty());
+        assertEquals(List.of(1), table.taken, "off the floor before the dice are rolled");
+        game.close();
+        assertEquals(10_000L, table.paid.get(1));
+        assertEquals(ChoHanGame.Phase.OPEN, game.phase());
     }
 
     @Test
@@ -155,7 +147,7 @@ class ChipsAndDiceTest {
         ChoHanGame game = new ChoHanGame(table, new Random(3));
         assertTrue(game.call(1, "Ann", true, 0));
         game.abandon(1);
-        assertEquals(List.of(1), table.collected);
+        assertTrue(table.paid.isEmpty(), "walking off before the roll forfeits the bet");
         assertEquals(ChoHanGame.Phase.OPEN, game.phase());
     }
 }

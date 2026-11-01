@@ -196,17 +196,34 @@ public final class TownConversations {
         }
         started.incrementAndGet();
         log.debug("citizens {} play conversation {}", speakers.stream().map(CitizenSession::name).toList(), script.id());
-        faceEachOther(speakers);
+        try {
+            faceEachOther(speakers);
+        } catch (RuntimeException failure) {
+            log.debug("conversation {}: turning to face each other failed", script.id(), failure);
+        }
         clock.after(800L, () -> say(script, roles, 0));
     }
 
     private void say(Script script, Map<String, CitizenSession> roles, int index) {
-        if (index >= script.lines().size() || !stillHere(roles)) {
-            for (CitizenSession session : roles.values()) {
-                talking.remove(session.characterId);
+        try {
+            if (index >= script.lines().size() || !stillHere(roles)) {
+                release(roles);
+                return;
             }
-            return;
+            speak(script, roles, index);
+        } catch (RuntimeException failure) {
+            log.debug("conversation {} stopped at line {}", script.id(), index, failure);
+            release(roles); // a failed line never leaves its speakers marked as talking
         }
+    }
+
+    private void release(Map<String, CitizenSession> roles) {
+        for (CitizenSession session : roles.values()) {
+            talking.remove(session.characterId);
+        }
+    }
+
+    private void speak(Script script, Map<String, CitizenSession> roles, int index) {
         Line line = script.lines().get(index);
         CitizenSession speaker = roles.get(line.speaker());
         if (speaker != null) {

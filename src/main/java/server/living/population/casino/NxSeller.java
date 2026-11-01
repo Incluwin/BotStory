@@ -137,30 +137,46 @@ final class NxSeller extends HostPost<NxSeller.NxPost> {
         host.runAs(post.session, () -> {
             TradeDesk.chat(agent, line(post, "casino.nx.thanks", Map.of()));
             TradeDesk.confirm(agent);
-            if (agent.getMeso() - before >= price - Trade.getFee(price)) { // the trade went through, less its fee (5% at 50m)
-                deliver(post, buyer);
+            long received = agent.getMeso() - before;
+            if (received >= price - Trade.getFee(price)) { // the trade went through, less its fee (5% at 50m)
+                deliver(post, buyer, received);
             }
             post.buyer = null;
         });
     }
 
-    private void deliver(NxPost post, Character buyer) {
-        String code = NxCodes.generate(host.random());
-        if (!NxCodes.create(code, host.population().config().NX_CODE_AMOUNT)) {
+    /** The buyer paid {@code received}: a code by whisper, or by note when they are gone; the mesos back if no code. */
+    private void deliver(NxPost post, Character buyer, long received) {
+        Character agent = post.agent();
+        String code = NxCodes.createUnique(host.population().config().NX_CODE_AMOUNT);
+        if (code == null) {
+            if (agent != null && Floor.purse(agent, buyer, received)) {
+                String sorry = "sry the code didnt go through, gave ur mesos back";
+                if (buyer.isLoggedinWorld()) {
+                    host.population().chatter().whisper(post.session, buyer, sorry);
+                } else {
+                    TradeDesk.note(agent.getName(), buyer, sorry);
+                }
+            }
             return;
         }
+        String typed = code.replace("-", "");
         String text = line(post, "casino.nx.code", Map.of());
-        Character agent = post.agent();
-        if (text == null || agent == null) {
+        if (agent == null) {
+            TradeDesk.note(post.session.name(), buyer, typed);
             return;
         }
         host.after(3_000L + host.random().nextInt(3_000), () -> {
-            host.population().chatter().whisper(post.session, buyer, text);
-            // the code itself goes as typed, never through the voice's case and typos
+            if (text != null && buyer.isLoggedinWorld()) {
+                host.population().chatter().whisper(post.session, buyer, text);
+            }
+            // the code itself goes as typed, never through the voice's case and typos; a buyer who left gets a note
             host.after(4_000L + host.random().nextInt(2_000), () -> {
-                if (buyer.getClient() != null && agent.getClient() != null) {
+                if (buyer.getClient() != null && buyer.isLoggedinWorld() && agent.getClient() != null) {
                     AgentPacketGatewayRuntime.packets().sendWhisperReceive(buyer, agent.getName(),
-                            post.session.channel - 1, false, code.replace("-", ""));
+                            post.session.channel - 1, false, typed);
+                } else {
+                    TradeDesk.note(agent.getName(), buyer, typed);
                 }
             });
         });

@@ -15,8 +15,10 @@ import java.util.Random;
  * every seat with a bet and two to the dealer, the second face down (SoloMapling never dealt it, see its TODO); the
  * dealer peeks under an ace or ten and ends the round at once on a natural; each seat hits or stands in turn, a human
  * by saying so, a citizen through its {@link HitStandPolicy}; the dealer turns the hole card over and draws to 17
- * (stands on all 17s); then winners are paid in chips (a natural pays 3 to 2), pushes pick their bet back up and lost
- * bets go to the dealer. A seat whose bet has left the floor before it was settled took it back, and is sent away.
+ * (stands on all 17s); then winners are paid their stake and winnings in chips (a natural pays 3 to 2), a push gets its
+ * stake back and a lost bet stays with the dealer. The dealer takes the bets in when betting closes, so a bet cannot be
+ * picked back up once the cards show how it will go; a seat that walks off mid-hand forfeits it, and a table that
+ * closes mid-hand hands every open bet back.
  */
 final class BlackjackGame {
     static final int MAX_SEATS = 5;
@@ -67,17 +69,14 @@ final class BlackjackGame {
         /** The dealer's face-down card is turned over. */
         void reveal(String card);
 
-        /** The chips this seat's character has dropped in front of it, item id to count; empty when none. */
-        Map<Integer, Integer> chipsDown(Seat seat);
+        /**
+         * The dealer takes in the chips this seat's character dropped in front of it as its bet: returns what it took, item
+         * id to count; empty when none (or more than the table takes, which it leaves on the floor).
+         */
+        Map<Integer, Integer> takeBet(Seat seat);
 
-        /** Whether the bet this seat put down is still on the floor. */
-        boolean betStillDown(Seat seat);
-
-        /** The dealer drops winnings for a seat. */
-        void pay(Seat seat, Map<Integer, Integer> chips);
-
-        /** The dealer picks up a seat's lost bet. */
-        void collect(Seat seat);
+        /** The dealer pays a seat {@code mesos} in chips: its stake back with any winnings. */
+        void pay(Seat seat, long mesos);
 
         /** The dealer picks up every card on the table. */
         void clearCards();
@@ -161,10 +160,22 @@ final class BlackjackGame {
             return;
         }
         if (seat.inHand() && !seat.settled && phase != Phase.WAITING && phase != Phase.BETTING) {
-            table.collect(seat);
-            settle(seat, Result.LOSE);
+            settle(seat, Result.LOSE); // walking off mid-hand forfeits the bet the dealer holds
         }
         removeSeat(seat);
+    }
+
+    /** The table closes (its dealer goes): every bet not yet settled is handed back, and every seat leaves. */
+    void close() {
+        for (Seat seat : new ArrayList<>(seats)) {
+            if (seat.inHand() && !seat.settled) {
+                table.pay(seat, Chips.value(seat.bet));
+                settle(seat, Result.PUSH);
+            }
+            removeSeat(seat);
+        }
+        dealer.clear();
+        phase = Phase.WAITING;
     }
 
     /** What a seat said at the table: "hit" or "stand" on its own turn. */
@@ -226,7 +237,7 @@ final class BlackjackGame {
         }
         List<String> called = new ArrayList<>();
         for (Seat seat : new ArrayList<>(seats)) {
-            Map<Integer, Integer> chips = table.chipsDown(seat);
+            Map<Integer, Integer> chips = table.takeBet(seat);
             if (chips.isEmpty()) {
                 if (++seat.skipped > MAX_SKIPS) {
                     table.left(seat, "casino.bj.skipped");
@@ -352,7 +363,6 @@ final class BlackjackGame {
         if (total > 21) {
             seat.busted = true;
             table.say("casino.bj.bust", Map.of("name", seat.name, "total", total));
-            table.collect(seat);
             settle(seat, Result.LOSE);
             nextTurn(now);
         } else if (total == 21) {
@@ -409,18 +419,13 @@ final class BlackjackGame {
                 continue;
             }
             Result result = outcome(seat.hand, dealer);
-            if (result != Result.LOSE && !table.betStillDown(seat)) {
-                table.left(seat, "casino.bj.tookback");
-                settle(seat, Result.LOSE);
-                removeSeat(seat);
-                continue;
-            }
+            long stake = Chips.value(seat.bet);
             switch (result) {
-                case WIN -> table.pay(seat, seat.bet);
-                case BLACKJACK -> table.pay(seat, Chips.threeToTwo(seat.bet));
-                case LOSE -> table.collect(seat);
-                case PUSH -> {
-                }
+                case WIN -> table.pay(seat, stake * 2);
+                case BLACKJACK -> table.pay(seat, stake + Chips.threeToTwo(stake));
+                case PUSH -> table.pay(seat, stake);
+                case LOSE -> {
+                } // the dealer keeps the bet it took in
             }
             lines.add(seat.name + " " + result.name().toLowerCase());
             settle(seat, result);
@@ -452,7 +457,6 @@ final class BlackjackGame {
         for (Seat seat : new ArrayList<>(seats)) {
             if (!table.present(seat)) {
                 if (seat.inHand() && !seat.settled && phase != Phase.BETTING && phase != Phase.WAITING) {
-                    table.collect(seat);
                     settle(seat, Result.LOSE);
                 }
                 table.left(seat, null);

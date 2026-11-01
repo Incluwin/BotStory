@@ -45,6 +45,7 @@ public final class CitizenCasino implements CasinoHost {
     private final Clock clock;
     private final CasinoVenues venues;
     private final Map<Integer, Long> restUntil = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong deferred = new java.util.concurrent.atomic.AtomicLong();
 
     CitizenCasino(Population population) {
         this(population, (delayMs, step) -> TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY,
@@ -54,7 +55,8 @@ public final class CitizenCasino implements CasinoHost {
     CitizenCasino(Population population, Clock clock, CasinoContent content) {
         this.population = population;
         this.clock = clock;
-        this.random = new Random(population.config().SEED ^ 0x0ca5_1ae0L);
+        // not the population's public SEED: decks, dice and timings a player could otherwise predict are worth real chips
+        this.random = new java.security.SecureRandom();
         this.venues = content == null ? null : new CasinoVenues(this, content);
     }
 
@@ -246,7 +248,9 @@ public final class CitizenCasino implements CasinoHost {
         AgentRuntimeEntry entry = session.entry;
         try {
             if (entry != null && AgentForeignWriteRuntime.foreign(entry)) {
-                AgentForeignWriteRuntime.defer(entry, "casino", owner -> step.run());
+                // a key of its own per step: the mailbox keeps only the newest write per key, and two pickups in one
+                // settle must both run
+                AgentForeignWriteRuntime.defer(entry, "casino-" + deferred.incrementAndGet(), owner -> step.run());
             } else {
                 step.run();
             }

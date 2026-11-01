@@ -6,6 +6,8 @@ import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
 import server.ItemInformationProvider;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
 import server.maps.MapItem;
 import server.maps.MapObject;
 import server.maps.MapObjectType;
@@ -66,8 +68,8 @@ public final class Floor {
     }
 
     /**
-     * {@code from} drops chips out of its own bag at {@code at}: a bet ({@code owner} null, anyone may pick it up, as a
-     * player's drop) or a payout only {@code owner} can pick up. Returns the drops; empty when it lacks the chips.
+     * {@code from} drops chips out of its own bag at {@code at}: a payout or a citizen's bet that only {@code owner} can pick
+     * up, or ({@code owner} null) an ordinary player drop anyone may. Returns the drops; empty when it lacks the chips.
      */
     public static List<MapItem> dropChips(Character from, Map<Integer, Integer> chips, Point at, Character owner) {
         List<MapItem> out = new ArrayList<>();
@@ -88,6 +90,81 @@ public final class Floor {
             offset += 18;
             if (drop != null) {
                 out.add(drop);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * {@code by} takes these drops into its bag whoever may loot them: a dealer taking the bets in when betting closes, so
+     * a bet is held until the hand is settled and cannot be picked back up. Returns what it took, item id to count.
+     */
+    public static Map<Integer, Integer> take(Character by, List<MapItem> drops) {
+        Map<Integer, Integer> taken = new LinkedHashMap<>();
+        MapleMap map = by.getMap();
+        if (map == null || by.getClient() == null) {
+            return taken;
+        }
+        for (MapItem drop : drops) {
+            Item item = drop.getItem();
+            if (item == null) {
+                continue;
+            }
+            drop.lockItem();
+            try {
+                if (drop.isPickedUp() || map.getMapObject(drop.getObjectId()) != drop
+                        || !InventoryManipulator.checkSpace(by.getClient(), item.getItemId(), item.getQuantity(), item.getOwner())) {
+                    continue;
+                }
+                map.pickItemDrop(PacketCreator.removeItemFromMap(drop.getObjectId(), 2, by.getId()), drop);
+                InventoryManipulator.addFromDrop(by.getClient(), item, false);
+                taken.merge(item.getItemId(), (int) item.getQuantity(), Integer::sum);
+            } finally {
+                drop.unlockItem();
+            }
+        }
+        return taken;
+    }
+
+    /**
+     * {@code by} pays {@code mesos} in chips at {@code at} that only {@code to} can pick up: from the chips it holds, and
+     * what it lacks bought at the cashier first (a runner to the counter). Returns the drops; they are worth less than
+     * {@code mesos} only when its purse or bag could not cover the chips it lacked (see {@link #purse} for the rest).
+     */
+    public static List<MapItem> payOut(Character by, long mesos, Point at, Character to) {
+        Map<Integer, Integer> chips = Chips.from(held(by), mesos);
+        long missing = mesos - Chips.value(chips);
+        if (missing > 0 && ChipCashier.buy(by, missing)) {
+            chips = Chips.from(held(by), mesos);
+        }
+        return chips.isEmpty() ? new ArrayList<>() : dropChips(by, chips, at, to);
+    }
+
+    /**
+     * {@code by} hands {@code to} what it still owes straight from its purse (a host settling up when it ran out of
+     * chips); false, nothing moved, when it cannot.
+     */
+    public static boolean purse(Character by, Character to, long mesos) {
+        if (mesos <= 0) {
+            return true;
+        }
+        if (by.getMeso() < mesos || mesos > Integer.MAX_VALUE || !to.canHoldMeso((int) mesos)) {
+            return false;
+        }
+        try (var ignored = MesoFlows.as(MesoAccount.TRADE)) {
+            by.gainMeso((int) -mesos, false);
+            to.gainMeso((int) mesos, true);
+        }
+        return true;
+    }
+
+    /** The chips a character holds, item id to count. */
+    public static Map<Integer, Integer> held(Character chr) {
+        Map<Integer, Integer> out = new LinkedHashMap<>();
+        for (int chip : Chips.ids()) {
+            int count = chr.getItemQuantity(chip, false);
+            if (count > 0) {
+                out.put(chip, count);
             }
         }
         return out;

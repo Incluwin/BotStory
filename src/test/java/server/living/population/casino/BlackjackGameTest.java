@@ -8,7 +8,6 @@ import server.living.population.casino.BlackjackGame.Seat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -32,10 +31,9 @@ class BlackjackGameTest {
         final List<String> events = new ArrayList<>();
         final List<String> said = new ArrayList<>();
         final Map<Integer, Map<Integer, Integer>> betting = new HashMap<>();
-        final Set<Integer> tookBack = new HashSet<>();
         final Set<Integer> gone = new HashSet<>();
         final Map<Integer, Result> results = new HashMap<>();
-        final Map<Integer, Map<Integer, Integer>> paid = new HashMap<>();
+        final Map<Integer, Long> paid = new HashMap<>();
         final List<String> onTable = new ArrayList<>();
         final List<List<String>> rounds = new ArrayList<>();
         /** Seats that hit whenever it is their turn (citizens answer through decide). */
@@ -59,23 +57,17 @@ class BlackjackGameTest {
         }
 
         @Override
-        public Map<Integer, Integer> chipsDown(Seat seat) {
-            return betting.getOrDefault(seat.id, Map.of());
+        public Map<Integer, Integer> takeBet(Seat seat) {
+            Map<Integer, Integer> down = betting.getOrDefault(seat.id, Map.of());
+            if (!down.isEmpty()) {
+                events.add("take " + seat.name);
+            }
+            return down;
         }
 
         @Override
-        public boolean betStillDown(Seat seat) {
-            return !tookBack.contains(seat.id);
-        }
-
-        @Override
-        public void pay(Seat seat, Map<Integer, Integer> chips) {
-            paid.put(seat.id, new LinkedHashMap<>(chips));
-        }
-
-        @Override
-        public void collect(Seat seat) {
-            events.add("collect " + seat.name);
+        public void pay(Seat seat, long mesos) {
+            paid.merge(seat.id, mesos, Long::sum);
         }
 
         @Override
@@ -154,7 +146,7 @@ class BlackjackGameTest {
         seat(1, "Ann");
         game.stack(List.of("TH", "9S", "7D", "8C")); // Ann 17; dealer 9 up, 8 in the hole
         dealTo(Phase.PLAYER_TURN);
-        assertEquals(List.of("deal Ann TH", "deal dealer 9S", "deal Ann 7D", "deal dealer 8C down", "turn Ann 17"),
+        assertEquals(List.of("take Ann", "deal Ann TH", "deal dealer 9S", "deal Ann 7D", "deal dealer 8C down", "turn Ann 17"),
                 table.events);
         assertTrue(table.said.contains("casino.bj.dealer.up"));
         game.heard(1, "stand");
@@ -164,7 +156,7 @@ class BlackjackGameTest {
         int reveal = table.events.indexOf("reveal 8C");
         assertTrue(reveal > table.events.indexOf("turn Ann 17"), "the hole card is turned over after the players' turns");
         assertEquals(Result.PUSH, table.results.get(1), "17 against 17");
-        assertFalse(table.paid.containsKey(1), "a push is paid nothing: the bet is picked back up");
+        assertEquals(250_000L, table.paid.get(1), "a push hands the stake back");
     }
 
     @Test
@@ -177,7 +169,7 @@ class BlackjackGameTest {
         assertTrue(table.events.stream().noneMatch(e -> e.startsWith("turn")), "nobody plays against a natural");
         tick();
         assertEquals(Result.LOSE, table.results.get(1));
-        assertTrue(table.events.contains("collect Ann"));
+        assertFalse(table.paid.containsKey(1), "the dealer keeps the bet it took in");
     }
 
     @Test
@@ -186,7 +178,7 @@ class BlackjackGameTest {
         game.stack(List.of("AH", "9S", "KD", "7C")); // Ann blackjack; dealer 16
         playRound();
         assertEquals(Result.BLACKJACK, table.results.get(1));
-        assertEquals(380_000L, Chips.value(table.paid.get(1)), "250k at 3:2, rounded up to the 10k chip");
+        assertEquals(250_000L + 380_000L, table.paid.get(1), "the stake back and 250k at 3:2, rounded up to the 10k chip");
         assertTrue(table.said.contains("casino.bj.natural"));
     }
 
@@ -222,7 +214,7 @@ class BlackjackGameTest {
         assertTrue(table.events.contains("deal dealer AD"));
         assertFalse(table.events.contains("deal dealer 5H"), "a dealer at 17 stands");
         assertEquals(Result.WIN, table.results.get(1));
-        assertEquals(ONE_CHIP, table.paid.get(1));
+        assertEquals(500_000L, table.paid.get(1), "the stake back and as much again");
     }
 
     @Test
@@ -241,18 +233,46 @@ class BlackjackGameTest {
     }
 
     @Test
-    void aSeatThatPicksItsWinningBetUpIsSentAway() {
+    void theDealerTakesTheBetsInBeforeAnyCardShowsHowTheHandWillGo() {
         seat(1, "Ann");
-        game.stack(List.of("TH", "6S", "9D", "TC", "TS")); // Ann 19; dealer 16 draws T and busts
+        game.stack(List.of("TH", "9S", "6D", "8C", "KD")); // Ann 16 hits a K: a loss she might want to undo
         dealTo(Phase.PLAYER_TURN);
-        game.heard(1, "stand");
-        table.tookBack.add(1);
-        for (int i = 0; i < 10 && game.phase() != Phase.WAITING; i++) {
-            tick();
-        }
-        assertTrue(table.events.contains("left Ann casino.bj.tookback"));
-        assertFalse(table.paid.containsKey(1), "nothing is paid on a bet that is no longer there");
+        assertTrue(table.events.indexOf("take Ann") < table.events.indexOf("deal Ann TH"),
+                "the chips leave the floor when betting closes: " + table.events);
+        assertEquals(1, table.events.stream().filter(e -> e.equals("take Ann")).count());
+        game.heard(1, "hit");
+        tick();
+        assertEquals(Result.LOSE, table.results.get(1));
+        assertFalse(table.paid.containsKey(1));
+    }
+
+    @Test
+    void aTableThatClosesMidHandHandsEveryOpenBetBack() {
+        seat(1, "Ann");
+        seat(2, "Bo");
+        game.stack(List.of("TH", "TD", "6S", "6H", "8C", "TC", "KS"));
+        dealTo(Phase.PLAYER_TURN);
+        game.heard(1, "hit"); // Ann busts: that hand is over before the close
+        tick();
+        game.close();
+        assertFalse(table.paid.containsKey(1), "a hand already lost stays lost");
+        assertEquals(250_000L, table.paid.get(2), "Bo's open bet is handed back");
+        assertEquals(Result.PUSH, table.results.get(2));
+        assertTrue(game.seats().isEmpty());
+        assertEquals(Phase.WAITING, game.phase());
+    }
+
+    @Test
+    void aSeatThatWalksOffMidHandForfeitsItsBet() {
+        seat(1, "Ann");
+        game.stack(List.of("TH", "9S", "9D", "8C"));
+        dealTo(Phase.PLAYER_TURN);
+        table.gone.add(1);
+        tick();
+        assertEquals(Result.LOSE, table.results.get(1));
+        assertFalse(table.paid.containsKey(1));
         assertNull(game.seat(1));
+        assertTrue(table.events.contains("left Ann null"));
     }
 
     @Test

@@ -24,7 +24,6 @@ final class DiceTable extends HostPost<DiceTable.DicePost> {
     final class DicePost extends HostPost.Post implements ChoHanGame.Table {
         final ChoHanGame game = new ChoHanGame(this, host.random());
         final Map<Integer, Character> bettors = new HashMap<>();
-        final Map<Integer, List<MapItem>> bets = new HashMap<>();
         volatile boolean rolling;
 
         DicePost(CitizenSession session, long until) {
@@ -48,57 +47,41 @@ final class DiceTable extends HostPost<DiceTable.DicePost> {
         }
 
         @Override
-        public Map<Integer, Integer> chipsDown(int bettorId) {
+        public Map<Integer, Integer> takeBet(int bettorId) {
             Character chr = bettors.get(bettorId);
-            if (chr == null || chr.getMap() == null) {
+            Character agent = agent();
+            if (chr == null || agent == null || chr.getMap() == null) {
                 return Map.of();
             }
             List<MapItem> chips = Floor.chipsBy(chr.getMap(), chr, chr.getPosition());
-            Map<Integer, Integer> counted = Floor.count(chips);
-            if (Chips.value(counted) > host.population().config().CASINO_MAX_BET) {
+            if (chips.isEmpty()) {
+                return Map.of();
+            }
+            if (Chips.value(Floor.count(chips)) > host.population().config().CASINO_MAX_BET) {
                 host.say(session, "casino.dice.overmax", Map.of("name", chr.getName(),
                         "max", Chips.mesos(host.population().config().CASINO_MAX_BET)));
                 return Map.of();
             }
-            bets.put(bettorId, chips);
-            return counted;
+            return Floor.take(agent, chips); // held by the host until the roll is settled
         }
 
         @Override
-        public boolean betStillDown(int bettorId) {
-            Character agent = agent();
-            return agent != null && Floor.allDown(agent.getMap(), bets.getOrDefault(bettorId, List.of()));
-        }
-
-        @Override
-        public void pay(int bettorId, Map<Integer, Integer> chips) {
+        public void pay(int bettorId, long mesos) {
             Character agent = agent();
             Character to = bettors.get(bettorId);
-            if (agent == null || to == null) {
+            if (agent == null || to == null || mesos <= 0) {
                 return;
             }
-            Map<Integer, Integer> held = BlackjackTables.held(agent);
-            for (Map.Entry<Integer, Integer> chip : chips.entrySet()) {
-                int missing = chip.getValue() - held.getOrDefault(chip.getKey(), 0);
-                if (missing > 0) {
-                    ChipCashier.buy(agent, (long) missing * Chips.value(chip.getKey()));
-                }
-            }
-            host.runAs(session, () -> Floor.dropChips(agent, chips, to.getPosition(), to));
-        }
-
-        @Override
-        public void collect(int bettorId) {
-            Character agent = agent();
-            List<MapItem> chips = bets.remove(bettorId);
-            if (agent != null && chips != null) {
-                host.runAs(session, () -> Floor.pickUp(agent, chips));
+            List<MapItem> paid = Floor.payOut(agent, mesos, to.getPosition(), to);
+            long unpaid = mesos - Chips.value(Floor.count(paid));
+            if (!Floor.purse(agent, to, unpaid)) {
+                org.slf4j.LoggerFactory.getLogger(DiceTable.class).warn("dice host {} could not pay {} {} mesos",
+                        agent.getName(), to.getName(), unpaid);
             }
         }
 
         @Override
         public void settled(int bettorId, boolean won, long value) {
-            bets.remove(bettorId);
             bettors.remove(bettorId);
         }
     }
@@ -153,6 +136,9 @@ final class DiceTable extends HostPost<DiceTable.DicePost> {
     @Override
     void closing(DicePost post) {
         Character agent = post.agent();
+        synchronized (post) {
+            post.game.close(); // a bet still rolling is handed back
+        }
         host.say(post.session, "casino.dice.closing", Map.of());
         if (agent != null) {
             walk(post.session, content.cashier());

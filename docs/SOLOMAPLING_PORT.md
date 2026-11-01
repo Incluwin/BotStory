@@ -50,6 +50,28 @@ Venue spots, drop pools and gachapon pools: `scripts/config/population/casino.ya
 - `MapItem.permanentOwner` was set but never read. It now means only the owner picks the drop up, ever, so a dealt
   monster card or a payout never lands in someone else's bag or Monster Book.
 
+An independent review of the live casino code before the first run found more, all fixed in the second commit:
+
+- Dealers and the dice host now **take bets in** when betting closes (the chips leave the floor into their bag), and
+  pay stake plus winnings. Before, a player could pick a losing bet back up once the cards showed how it would go.
+  A citizen's bet is owner-only until it is taken in, so no player can scoop it.
+- A payout is built from the chips the dealer holds, topped up at the cashier for what it lacks, and finally from its
+  purse; before, a win paid in small chips silently failed. A dealer who cannot pay closes its table.
+- A table or dice host that closes mid-hand hands every open bet back (before, the dealer kept them).
+- A round in play finishes even after the last player walks off, and the drop game and NX seller keep stepping
+  while a deal is open, so their timeouts run and their citizens are never held at the post forever.
+- The gachapon reactor is taken off the map after its box (`MapleMap.destroyReactor` only hid it, and it respawned
+  every 10 s as a farmable LudiPQ box), and players' hits on it are ignored while it sprays.
+- The drop-game host creates its own party before inviting (the invite failed without one, after the fee was paid),
+  turns away a player already in a party before taking the fee, hands the fee back if it still cannot party them,
+  and starts a game only when the trade really brought the fee in.
+- NX codes come from a SecureRandom (the casino's Random was seeded with the public SEED, so a bought code could
+  predict the next), retry on a duplicate, store both rows in one transaction, and reach a buyer who logged off by
+  note; a buyer whose code could not be stored gets the mesos back. The casino's own randomness is a SecureRandom too.
+- Each deferred casino write has its own mailbox key (they coalesced, so a second pickup in one settle was dropped
+  once `ROUTE_EXTERNAL_WRITES` is on); a failed gachapon box or conversation line no longer holds its citizens; the
+  bar serves one drink per player per ten minutes.
+
 ## Removed from the core
 
 - `Server.java`: the gated `EquipMetadataCache`/`DesirableEquipList` loads and `WzXmlPatcher.applyAllPatches()`.
@@ -102,19 +124,22 @@ Each check passes only if nothing in it looks scripted to a player standing ther
   player). The dealer walks to a table and calls for bets; the citizen player sits and drops chips. Stand by the table
   and say "deal me in": welcome line with the max bet. Drop a chip in front of you when bets are called. Two cards
   each; the dealer shows one card face up and one Monster Card face down. Say "hit" / "stand". On the dealer's turn
-  the face-down card turns into its rank card. A win is paid in chips you alone can pick up; a push leaves your chip;
-  a loss is picked up by the dealer. Pick your chip back up before a winning hand settles: you are sent away and
-  paid nothing. Say "im out" to leave. `!citizens casino` shows each table's dealer, phase and seats. After the
+  the face-down card turns into its rank card. When betting closes the dealer takes the chips in (they fly to
+  it): try to pick yours up once the cards are out, it is gone. A win pays your stake and as much again in chips you
+  alone can pick up; a push hands the stake back; a loss stays with the dealer. Walk away mid-hand: the bet is
+  forfeit. Say "im out" to leave. `!citizens casino` shows each table's dealer, phase and seats. After the
   shift the dealer cashes its chips back in at Aramia.
 - **C3 dice** (`CASINO_DICE_ENABLED` + chips). Send a citizen to `dice`. Drop chips by the host and say "cho" or "han":
-  the host repeats the bet, rolls two dice, pays a match at evens or picks up the chips. "cho" with no chips down gets
+  the chips fly to the host, it repeats the bet, rolls two dice, and pays a match the stake and as much again; a miss
+  stays with it. "cho" with no chips down gets
   the "drop your chips first" line.
 - **C4 bar** (`CASINO_BAR_ENABLED`). Send a citizen to `bar`, then walk into Game Park from Henesys: the host greets you
-  by name. Say "drink?" near it: it offers; say "yes", then "maple cola pls": a Maple Cola drops for you alone. Say
-  "no": a decline line, nothing dropped.
+  by name. Say "drink?" near it: it offers; say "yes", then "maple cola pls": a Maple Cola drops for you alone. Ask again at
+  once: "one per customer". Say "no" to an offer: a decline line, nothing dropped.
 - **C5 drop game** (`DROP_GAME_ENABLED`). `!warp 100000102`, send a citizen to `dropgame`. It advertises the two tiers.
   Open a trade with it: it explains the tiers in the trade chat. Put in 9m: "wrong amount", the trade is cancelled and
-  the mesos come back. Put in exactly 10m and accept: the trade closes, a party invite comes, accept it; Haste, then
+  the mesos come back. Trade it while in a party of your own: "leave your party first",
+  cancelled, mesos back. Put in exactly 10m and accept: the trade closes, a party invite comes, accept it; Haste, then
   two minutes of drops along its route, each gone in about 1.5 s. Citizens nearby cheer an item now and then. Decline
   the invite instead: the game is called off and the host keeps the fee, as SoloMapling's did.
 - **C6 gachapon** (`GACHA_SHOW_ENABLED`). Send a citizen to `gacha` and stand in its map. Every `GACHA_BOX_GAP_MS` a
@@ -123,6 +148,7 @@ Each check passes only if nothing in it looks scripted to a player standing ther
 - **C7 NX seller** (`NX_SELLER_ENABLED`). `!warp 910000000`, send a citizen to `nxseller`. It advertises "10k nx code
   50m". Trade it 40m: "its 50m exactly", cancelled. Trade it exactly 50m: thanks line, then a whisper and the
   fifteen-character code. Redeem it at the Cash Shop coupon window: +10,000 NX Credit. Redeem it again: refused.
+  Buy one and log off within five seconds: the code is waiting as a note at your next login.
 - **C8 fidgets** (`TOWN_FIDGETS_ENABLED`). Stand in Henesys for ten minutes: now and then a citizen's chalkboard ("LF>
   guild", "brb") goes up and comes down a few minutes later, faces change; at most a couple of avatar megaphones an
   hour server-wide. `!citizens talk` counts them.

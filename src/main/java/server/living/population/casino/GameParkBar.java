@@ -29,6 +29,8 @@ final class GameParkBar extends HostPost<GameParkBar.BarPost> {
     private static final int STOCK_EACH = 3;
     private static final long GREET_AGAIN_MS = 30 * 60_000L;
     private static final long ANSWER_MS = 30_000L;
+    /** One drink on the house per player this often. */
+    static final long DRINK_AGAIN_MS = 10 * 60_000L;
 
     enum Stage { OFFERED, MENU }
 
@@ -40,6 +42,8 @@ final class GameParkBar extends HostPost<GameParkBar.BarPost> {
         final Map<Integer, Long> greeted = new ConcurrentHashMap<>();
         /** Human id -> where their talk with it stands. */
         final Map<Integer, Talk> talks = new ConcurrentHashMap<>();
+        /** Human id -> when it last served them. */
+        final Map<Integer, Long> served = new ConcurrentHashMap<>();
 
         BarPost(CitizenSession session, long until) {
             super(session, until);
@@ -137,6 +141,13 @@ final class GameParkBar extends HostPost<GameParkBar.BarPost> {
         Talk talk = post.talks.get(human.getId());
         Integer drink = drinkNamed(said);
         if (drink != null && (talk != null || says(said, "please", "pls", "plz", "one", "can i get", "can i have"))) {
+            Long last = post.served.get(human.getId());
+            if (last != null && now - last < DRINK_AGAIN_MS) {
+                post.talks.remove(human.getId());
+                host.say(post.session, "casino.bar.again", Map.of("name", human.getName()));
+                return true;
+            }
+            post.served.put(human.getId(), now);
             serve(post, human, drink);
             return true;
         }

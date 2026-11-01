@@ -84,13 +84,13 @@ public final class Chips {
     }
 
     /**
-     * A natural's payout: one and a half times the bet in the fewest chips, rounded up to the smallest chip (a 10k
-     * natural is paid 20k, not 10k), as a dealer with no half chips pays it.
+     * A natural's winnings on a {@code stake}: one and a half times it, rounded up to the smallest chip (a 10k natural
+     * wins 20k, not 10k), as a dealer with no half chips pays it.
      */
-    static Map<Integer, Integer> threeToTwo(Map<Integer, Integer> bet) {
+    static long threeToTwo(long stake) {
         long smallest = value(SNAIL);
-        long owed = value(bet) * 3 / 2;
-        return change((owed + smallest - 1) / smallest * smallest);
+        long owed = stake * 3 / 2;
+        return (owed + smallest - 1) / smallest * smallest;
     }
 
     /** "2m", "350k": a bet as players say it. */

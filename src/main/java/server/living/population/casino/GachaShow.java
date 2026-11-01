@@ -81,18 +81,24 @@ final class GachaShow extends HostPost<GachaShow.GachaPost> {
         post.boxesLeft--;
         post.nextBoxAt = now + host.population().config().GACHA_BOX_GAP_MS + host.random().nextInt(60_000);
         host.runAs(post.session, () -> {
-            try (var ignored = MesoFlows.as(MesoAccount.NPC_PURCHASE)) {
-                agent.gainMeso(-price, false);
-            }
             List<ReactorShow.Prize> prizes = box(content.gacha(), host.random());
             boolean prize = prizes.stream().anyMatch(p -> isPrize(content.gacha(), p.itemId()));
             Point at = new Point(agent.getPosition().x + 60, agent.getPosition().y);
-            List<MapItem> drops = ReactorShow.open(agent, content.gacha().reactor(), at, prizes);
+            List<MapItem> drops;
+            try {
+                try (var ignored = MesoFlows.as(MesoAccount.NPC_PURCHASE)) {
+                    agent.gainMeso(-price, false);
+                }
+                drops = ReactorShow.open(agent, content.gacha().reactor(), at, prizes);
+            } catch (RuntimeException failure) {
+                post.opening = false; // a failed box never holds the host at its post
+                throw failure;
+            }
             long sprayMs = 200L * prizes.size();
-            host.after(sprayMs + 2_000L + host.random().nextInt(2_000), () -> host.runAs(post.session, () -> {
-                Floor.pickUp(agent, drops);
-                post.opening = false;
-            }));
+            host.after(sprayMs + 2_000L + host.random().nextInt(2_000), () -> {
+                post.opening = false; // first, so a failed pickup cannot hold the host at its post either
+                host.runAs(post.session, () -> Floor.pickUp(agent, drops));
+            });
             host.after(sprayMs + 3_500L, () -> host.say(post.session,
                     prize ? "casino.gacha.prize" : "casino.gacha.open", Map.of()));
         });

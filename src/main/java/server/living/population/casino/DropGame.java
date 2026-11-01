@@ -7,6 +7,7 @@ import server.ItemInformationProvider;
 import client.Skill;
 import client.SkillFactory;
 import server.TimerManager;
+import server.Trade;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.living.population.CitizenSession;
@@ -44,6 +45,8 @@ final class DropGame extends HostPost<DropGame.DropPost> {
         volatile int dropsSinceCheer;
         volatile int nextCheerAt = 7;
         volatile int routeIndex;
+        /** The mesos the trade brought in (the fee less the trade fee), handed back if the game cannot start. */
+        volatile long received;
 
         DropPost(CitizenSession session, long until) {
             super(session, until);
@@ -162,20 +165,52 @@ final class DropGame extends HostPost<DropGame.DropPost> {
             reset(post);
             return;
         }
+        Character player = post.player;
+        if (player != null && player.getParty() != null && player.getParty() != agent.getParty()) {
+            // the game is played in the host's party: one already in a party cannot be invited
+            TradeDesk.chat(agent, line(post, "casino.drop.inparty", Map.of()));
+            host.after(1_500L, () -> host.runAs(post.session, () -> TradeDesk.cancel(agent)));
+            reset(post);
+            return;
+        }
         CasinoContent.DropTier chosen = tier;
-        host.runAs(post.session, () -> {
-            TradeDesk.chat(agent, line(post, "casino.drop.locked", Map.of("tier", chosen.id())));
-            TradeDesk.confirm(agent);
-        });
         post.tier = chosen;
         post.stage = Stage.PARTY;
         post.stageUntil = now + PARTY_WAIT_MS;
-        host.after(2_500L, () -> host.runAs(post.session, () -> {
-            if (post.player != null && (agent.getParty() == null || agent.getParty() != post.player.getParty())) {
-                AgentPartyGatewayRuntime.party().invitePartyMember(agent, post.player);
-                host.say(post.session, "casino.drop.party", Map.of("name", post.player.getName()));
+        host.runAs(post.session, () -> {
+            TradeDesk.chat(agent, line(post, "casino.drop.locked", Map.of("tier", chosen.id())));
+            long before = agent.getMeso();
+            TradeDesk.confirm(agent);
+            long received = agent.getMeso() - before;
+            if (received < chosen.fee() - Trade.getFee(chosen.fee())) {
+                reset(post); // the trade did not go through (cancelled, a meso cap): no fee, no game
+                return;
             }
-        }));
+            post.received = received;
+            host.after(2_500L, () -> host.runAs(post.session, () -> invite(post, agent)));
+        });
+    }
+
+    /** The host parties the player who paid; if it cannot, it hands the fee back. */
+    private void invite(DropPost post, Character agent) {
+        Character player = post.player;
+        if (post.stage != Stage.PARTY || player == null) {
+            return;
+        }
+        if (agent.getParty() != null && agent.getParty() == player.getParty()) {
+            return;
+        }
+        if (agent.getParty() == null) {
+            AgentPartyGatewayRuntime.party().createAgentParty(agent);
+        }
+        if (AgentPartyGatewayRuntime.party().invitePartyMember(agent, player)) {
+            host.say(post.session, "casino.drop.party", Map.of("name", player.getName()));
+            return;
+        }
+        if (Floor.purse(agent, player, post.received)) {
+            host.say(post.session, "casino.drop.refund", Map.of("name", player.getName()));
+        }
+        end(post, agent);
     }
 
     private void party(DropPost post, Character agent, long now) {
@@ -281,6 +316,7 @@ final class DropGame extends HostPost<DropGame.DropPost> {
         post.stage = Stage.IDLE;
         post.player = null;
         post.tier = null;
+        post.received = 0;
     }
 
     @Override

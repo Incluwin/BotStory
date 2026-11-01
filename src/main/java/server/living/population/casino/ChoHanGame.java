@@ -6,8 +6,8 @@ import java.util.Random;
 
 /**
  * Cho-han dice at a host's table, ported from SoloMapling's DiceBot: a player drops chips in front of the host and calls
- * cho (even) or han (odd); the host rolls two dice, and an even match pays the bet at evens, a miss goes to the host.
- * One bet at a time. {@link #tick} moves it one step; the world goes through {@link Table}.
+ * cho (even) or han (odd); the host takes the chips in, rolls two dice, and pays a match the stake and as much again; a
+ * miss stays with the host. One bet at a time; a host that closes mid-roll hands the bet back. {@link #tick} moves it one step; the world goes through {@link Table}.
  */
 final class ChoHanGame {
     static final long ROLL_MS = 2_500;
@@ -20,15 +20,11 @@ final class ChoHanGame {
         /** The host says a line ({@code trigger} casino.dice.*). */
         void say(String trigger, Map<String, Object> args);
 
-        /** The chips the bettor has dropped in front of the host, item id to count. */
-        Map<Integer, Integer> chipsDown(int bettorId);
+        /** The host takes in the chips the bettor dropped by it: what it took, item id to count; empty when none. */
+        Map<Integer, Integer> takeBet(int bettorId);
 
-        /** Whether the bettor's chips are still on the floor. */
-        boolean betStillDown(int bettorId);
-
-        void pay(int bettorId, Map<Integer, Integer> chips);
-
-        void collect(int bettorId);
+        /** The host pays the bettor {@code mesos} in chips. */
+        void pay(int bettorId, long mesos);
 
         /** The bet is settled: {@code won} or not, for its value in mesos. */
         void settled(int bettorId, boolean won, long value);
@@ -63,7 +59,7 @@ final class ChoHanGame {
         if (phase != Phase.OPEN) {
             return false;
         }
-        Map<Integer, Integer> chips = table.chipsDown(id);
+        Map<Integer, Integer> chips = table.takeBet(id);
         if (chips.isEmpty()) {
             table.say("casino.dice.nobet", Map.of("name", name));
             return false;
@@ -79,11 +75,19 @@ final class ChoHanGame {
         return true;
     }
 
-    /** The bettor walked off before the roll: its chips stay for the host. */
+    /** The bettor walked off before the roll: the host keeps its bet. */
     void abandon(int id) {
         if (phase != Phase.OPEN && bettor == id) {
-            table.collect(id);
             table.settled(id, false, Chips.value(bet));
+            phase = Phase.OPEN;
+        }
+    }
+
+    /** The host closes mid-roll: the bet is handed back. */
+    void close() {
+        if (phase != Phase.OPEN) {
+            table.pay(bettor, Chips.value(bet));
+            table.settled(bettor, false, 0);
             phase = Phase.OPEN;
         }
     }
@@ -102,15 +106,11 @@ final class ChoHanGame {
         }
         boolean even = (dice[0] + dice[1]) % 2 == 0;
         long value = Chips.value(bet);
-        if (!table.betStillDown(bettor)) {
-            table.say("casino.dice.tookback", Map.of("name", bettorName));
-            table.settled(bettor, false, value);
-        } else if (even == cho) {
-            table.pay(bettor, bet);
+        if (even == cho) {
+            table.pay(bettor, value * 2);
             table.say("casino.dice.win", Map.of("name", bettorName, "bet", Chips.describe(bet)));
             table.settled(bettor, true, value);
         } else {
-            table.collect(bettor);
             table.say("casino.dice.lose", Map.of("name", bettorName));
             table.settled(bettor, false, value);
         }
