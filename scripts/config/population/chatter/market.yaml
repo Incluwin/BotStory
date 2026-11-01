@@ -8,7 +8,6 @@ intents:
     cooldownMs: 180000
     lines:
       - "S> {item} {price}"
-      - "S> {item} {price} whisper me"
       - "selling {item} {price} come to my shop"
       - "S> {item} cheap cheap"
       - "S> {item} {price} or offer"

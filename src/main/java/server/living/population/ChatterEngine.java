@@ -54,6 +54,8 @@ public final class ChatterEngine {
     private static final String NEED_INTENT = "need.";
     /** The random-basket "B>" talk the needs board replaces while it is on. */
     private static final Set<String> RANDOM_BUY_INTENTS = Set.of("fm.buy", "town.buy");
+    /** A lobby town's idle recruiting ("R> 2 for KPQ", "pm me"), with no party behind it (chatter/social.yaml). */
+    private static final String LOBBY_RECRUIT_INTENT = "lobby.recruit";
     /** The Super Megaphone, a cash item no NPC sells: {@link #megaphone} with consumeItem uses one up (F5c). */
     public static final int SUPER_MEGAPHONE = 5072000;
     /** A megaphone line with the ear button on, so a player can whisper back with one click ({@link #megaphone}). */
@@ -329,7 +331,7 @@ public final class ChatterEngine {
             if (intent.maxLevel() > 0 && level > intent.maxLevel()) {
                 continue; // "how do i get to orbis" from a level-90 reads scripted
             }
-            if (!channelAvailable(session, intent.channel()) || !needsAllow(session, intent)) {
+            if (!channelAvailable(session, intent.channel()) || !needsAllow(session, intent) || !whispersAllow(intent)) {
                 continue;
             }
             if (!partyQuest && session.recentIntents.contains(intent.id())) {
@@ -505,6 +507,14 @@ public final class ChatterEngine {
             return false;
         }
         return !needLine || population.needs().posting(session.characterId, intent.id()) != null;
+    }
+
+    /**
+     * Players' whispers (docs/BOT_CONCEPT_PLAN.md F5c): while they reach citizens the idle lobby recruiting goes, since a
+     * whisper back would find no party; a short party's leader still calls for more (pq.lf).
+     */
+    private boolean whispersAllow(Intent intent) {
+        return !(LOBBY_RECRUIT_INTENT.equals(intent.id()) && population.config().CITIZEN_WHISPERS_ENABLED);
     }
 
     /**

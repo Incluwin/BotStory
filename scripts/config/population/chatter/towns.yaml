@@ -49,7 +49,7 @@ intents:
     cooldownMs: 400000
     lines:
       - "S> {item} {price}"
-      - "selling {item} for {price} whisper me"
+      - "selling {item} for {price}"
       - "S> {item} cheap"
       - "anyone buying {item}"
   - id: town.buy
