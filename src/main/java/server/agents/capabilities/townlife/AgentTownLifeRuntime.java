@@ -277,6 +277,8 @@ public final class AgentTownLifeRuntime {
         AgentFidgetService.clear(entry);
         if (agent != null && agent.getChair() >= 0) {
             AgentChairService.stand(entry, agent);
+            // TownLife's own stand-up: an abstract window must not read it as outside drift.
+            entry.simulationState().backgroundOutcomes().acceptOwnChairChange(agent.getChair());
         }
         if (entry.simulationState().mode()
                 != server.agents.runtime.simulation.AgentSimulationMode.BACKGROUND_ABSTRACT) {

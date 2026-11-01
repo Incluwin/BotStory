@@ -48,6 +48,34 @@ class AgentBackgroundOutcomeLedgerTest {
     }
 
     @Test
+    void anOwnChairChangeIsTakenIntoTheBaselineButMesosStillDrift() {
+        AgentMaterializedStateFingerprint seated =
+                new AgentMaterializedStateFingerprint(102000000, 10, 20, 3010000, 100, 30, 0);
+        AgentMaterializedStateFingerprint stood = seated.withChair(-1);
+        AgentMaterializedStateFingerprint gifted =
+                new AgentMaterializedStateFingerprint(102000000, 10, 20, -1, 5_100, 30, 0);
+        AgentBackgroundOutcomeLedger ledger = new AgentBackgroundOutcomeLedger();
+        ledger.begin(AgentAbstractExecutionScope.TOWN_LIFE, 100L, seated);
+        assertFalse(ledger.reconcile(stood));
+
+        ledger.acceptOwnChairChange(-1);
+
+        assertEquals(stood, ledger.snapshot().materializedBaseline());
+        assertFalse(ledger.reconcile(gifted));
+        assertTrue(ledger.reconcile(stood));
+    }
+
+    @Test
+    void anOwnChairChangeOutsideAWindowDoesNothing() {
+        AgentBackgroundOutcomeLedger ledger = new AgentBackgroundOutcomeLedger();
+
+        ledger.acceptOwnChairChange(-1);
+
+        assertFalse(ledger.snapshot().active());
+        assertNull(ledger.snapshot().materializedBaseline());
+    }
+
+    @Test
     void abandonClosesTheWindowAndKeepsEvidence() {
         AgentMaterializedStateFingerprint baseline =
                 new AgentMaterializedStateFingerprint(102000000, 10, 20, -1, 100, 30, 0);

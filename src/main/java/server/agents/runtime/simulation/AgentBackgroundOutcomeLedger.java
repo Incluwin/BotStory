@@ -66,6 +66,17 @@ public final class AgentBackgroundOutcomeLedger {
                 : description.trim();
     }
 
+    /**
+     * Takes a chair change the abstract capability made itself into the window's baseline. TownLife stands a
+     * seated Agent up when it ends, which can be after the window began; read as drift, that stand-up made the
+     * window abandon. Any other change, mesos included, still fails reconciliation.
+     */
+    public synchronized void acceptOwnChairChange(int chairId) {
+        if (active && materializedBaseline != null) {
+            materializedBaseline = materializedBaseline.withChair(chairId);
+        }
+    }
+
     public synchronized boolean reconcile() {
         return reconcile(materializedBaseline);
     }
