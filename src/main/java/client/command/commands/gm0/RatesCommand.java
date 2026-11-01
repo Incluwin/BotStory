@@ -25,6 +25,7 @@ package client.command.commands.gm0;
 
 import client.Character;
 import client.Client;
+import client.FamilyBuffs;
 import client.command.Command;
 import config.YamlConfig;
 
@@ -36,12 +37,16 @@ public class RatesCommand extends Command {
     @Override
     public void execute(Client c, String[] params) {
         Character player = c.getPlayer();
+        long now = System.currentTimeMillis();
+        float familyExpRate = FamilyBuffs.expRate(player.getId(), now);
+        float familyDropRate = FamilyBuffs.dropRate(player.getId(), now);
 
         String showMsg = "#eEXP RATE#n\r\n";
         showMsg += "World EXP Rate: #k" + c.getWorldServer().getExpRate() + "x#k\r\n";
         showMsg += "Player EXP Rate: #k" + player.getRawExpRate() + "x#k\r\n";
         if (player.getCouponExpRate() != 1) showMsg += "Coupon EXP Rate: #k" + player.getCouponExpRate() + "x#k\r\n";
-        showMsg += "EXP Rate: #e#b" + player.getExpRate() + "x#k#n" + (player.hasNoviceExpRate() || player.hasFirstJobExpRate() ? " - novice rate" : "") + "\r\n";
+        if (familyExpRate != 1.0f) showMsg += "Family EXP Rate (hunting): #k" + FamilyBuffs.formatRate(familyExpRate) + "x#k\r\n";
+        showMsg += "EXP Rate:#e#b" + player.getExpRate() + "x#k#n" + (player.hasNoviceExpRate() || player.hasFirstJobExpRate() ? " - novice rate" : "") + "\r\n";
 
         showMsg += "\r\n#eMESO RATE#n\r\n";
         showMsg += "World MESO Rate: #k" + c.getWorldServer().getMesoRate() + "x#k\r\n";
@@ -53,6 +58,7 @@ public class RatesCommand extends Command {
         showMsg += "World DROP Rate: #k" + c.getWorldServer().getDropRate() + "x#k\r\n";
         showMsg += "Player DROP Rate: #k" + player.getRawDropRate() + "x#k\r\n";
         if (player.getCouponDropRate() != 1) showMsg += "Coupon DROP Rate: #k" + player.getCouponDropRate() + "x#k\r\n";
+        if (familyDropRate != 1.0f) showMsg += "Family DROP Rate: #k" + FamilyBuffs.formatRate(familyDropRate) + "x#k\r\n";
         showMsg += "DROP Rate: #e#b" + player.getDropRate() + "x#k#n\r\n";
 
         showMsg += "\r\n#eBOSS DROP RATE#n\r\n";

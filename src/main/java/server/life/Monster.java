@@ -25,6 +25,7 @@ import client.BotClient;
 import client.BuffStat;
 import client.Character;
 import client.Client;
+import client.FamilyBuffs;
 import client.FamilyEntry;
 import client.Job;
 import client.Skill;
@@ -807,12 +808,15 @@ public class Monster extends AbstractLoadedLife {
             }
 
             personalExp *= (float) server.living.LivingWorldHooks.expMultiplier(attacker);
+            float familyExpRate = FamilyBuffs.expRate(attacker.getId(), System.currentTimeMillis());
+            personalExp *= familyExpRate;
             int _personalExp = expValueToInteger(personalExp); // assuming no negative xp here
 
             if (partyExp != null) {
                 partyExp *= getStatusExpMultiplier(attacker, hasPartySharers);
                 partyExp *= attacker.getExpRate();
                 partyExp *= YamlConfig.config.server.PARTY_BONUS_EXP_RATE;
+                partyExp *= familyExpRate;
             } else {
                 partyExp = 0.0f;
             }

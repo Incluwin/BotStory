@@ -25,6 +25,7 @@ import client.BotClient;
 import client.BuffStat;
 import client.Character;
 import client.Client;
+import client.FamilyBuffs;
 import client.Skill;
 import client.SkillFactory;
 import client.autoban.AutobanFactory;
@@ -735,8 +736,26 @@ public class MapleMap {
         return chRate;
     }
 
+    /**
+     * The Family drop buff (FamilyUseHandler) scales the same rows the killer's drop rate does: never a certain drop,
+     * and never a meso row whose chance ignores the drop rate.
+     */
+    static float familyEntryRate(MonsterDropEntry de, int chRate, float familyDropRate) {
+        if (chRate >= GUARANTEED_DROP_RATE
+                || (de.itemId == 0 && YamlConfig.config.economy.MESO_CHANCE_IGNORES_DROP_RATE)) {
+            return 1.0f;
+        }
+        return familyDropRate;
+    }
+
     private byte dropItemsFromMonsterOnMap(List<MonsterDropEntry> dropEntry, Point pos, byte index, int chRate,
                                            byte droptype, int mobpos, Character chr, Monster mob, short delay) {
+        return dropItemsFromMonsterOnMap(dropEntry, pos, index, chRate, 1.0f, droptype, mobpos, chr, mob, delay);
+    }
+
+    private byte dropItemsFromMonsterOnMap(List<MonsterDropEntry> dropEntry, Point pos, byte index, int chRate,
+                                           float familyDropRate, byte droptype, int mobpos, Character chr,
+                                           Monster mob, short delay) {
         if (dropEntry.isEmpty()) {
             return index;
         }
@@ -748,7 +767,8 @@ public class MapleMap {
 
         for (final MonsterDropEntry de : dropEntry) {
             float cardRate = chr.getCardRate(de.itemId);
-            int dropChance = (int) Math.min((float) de.chance * entryRate(de, chRate) * cardRate, Integer.MAX_VALUE);
+            int dropChance = (int) Math.min((float) de.chance * entryRate(de, chRate) * cardRate
+                    * familyEntryRate(de, chRate, familyDropRate), Integer.MAX_VALUE);
 
             if (Randomizer.nextInt(1_000_000) < dropChance) {
                 if (droptype == 3) {
@@ -856,6 +876,7 @@ public class MapleMap {
         if (useBaseRate) {
             chRate = 1;
         }
+        final float familyDropRate = useBaseRate ? 1.0f : FamilyBuffs.dropRate(chr.getId(), System.currentTimeMillis());
 
         final MonsterInformationProvider mi = MonsterInformationProvider.getInstance();
         final List<MonsterGlobalDropEntry> globalEntry = new ArrayList<>(mi.getRelevantGlobalDrops(mapid));
@@ -874,14 +895,14 @@ public class MapleMap {
 
         byte index = 1;
         // Normal Drops
-        index = dropItemsFromMonsterOnMap(dropEntry, pos, index, chRate, droptype, mobpos, chr, mob, delay);
+        index = dropItemsFromMonsterOnMap(dropEntry, pos, index, chRate, familyDropRate, droptype, mobpos, chr, mob, delay);
 
         // Global Drops
         index = dropGlobalItemsFromMonsterOnMap(globalEntry, pos, index, droptype, mobpos, chr, mob, delay);
 
         // Quest Drops
-        index = dropItemsFromMonsterOnMap(visibleQuestEntry, pos, index, chRate, droptype, mobpos, chr, mob, delay);
-        index = dropItemsFromMonsterOnMap(otherQuestEntry, pos, index, chRate, droptype, mobpos, chr, mob, delay);
+        index = dropItemsFromMonsterOnMap(visibleQuestEntry, pos, index, chRate, familyDropRate, droptype, mobpos, chr, mob, delay);
+        index = dropItemsFromMonsterOnMap(otherQuestEntry, pos, index, chRate, familyDropRate, droptype, mobpos, chr, mob, delay);
 
         // Bucket C (KuroMS mirror): Steal grants one extra boss-drop roll when a Bandit-branch
         // character with Steal learned is in the killing party. Picks a single random entry
@@ -889,7 +910,7 @@ public class MapleMap {
         if (mob.isBoss() && !dropEntry.isEmpty() && partyHasStealLearned(chr)) {
             int pick = Randomizer.nextInt(dropEntry.size());
             dropItemsFromMonsterOnMap(java.util.Collections.singletonList(dropEntry.get(pick)),
-                    pos, index, chRate, droptype, mobpos, chr, mob, delay);
+                    pos, index, chRate, familyDropRate, droptype, mobpos, chr, mob, delay);
         }
     }
 

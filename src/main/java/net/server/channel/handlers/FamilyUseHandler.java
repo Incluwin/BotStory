@@ -23,6 +23,7 @@ package net.server.channel.handlers;
 
 import client.Character;
 import client.Client;
+import client.FamilyBuffs;
 import client.FamilyEntitlement;
 import client.FamilyEntry;
 import config.YamlConfig;
@@ -35,11 +36,17 @@ import server.maps.FieldLimit;
 import server.maps.MapleMap;
 import tools.PacketCreator;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author Moogra
  * @author Ubaware
  */
 public final class FamilyUseHandler extends AbstractPacketHandler {
+    private static final long MINUTE_MS = 60_000L;
+    private static final int FAMILY_BONDING_MIN_JUNIORS = 6;
+
     @Override
     public final void handlePacket(InPacket p, Client c) {
         if (!YamlConfig.config.server.USE_FAMILY_SYSTEM) {
@@ -92,8 +99,25 @@ public final class FamilyUseHandler extends AbstractPacketHandler {
                 }
             }
         } else if (type == FamilyEntitlement.FAMILY_BONDING) {
-            //not implemented
+            List<Character> members = new ArrayList<>();
+            collectOnlineJuniors(entry, members);
+            if (members.size() < FAMILY_BONDING_MIN_JUNIORS) {
+                c.getPlayer().dropMessage(5, "Family Bonding needs at least " + FAMILY_BONDING_MIN_JUNIORS
+                        + " Family members online below you in the Pedigree.");
+                return;
+            }
+            if (useEntitlement(entry, type)) {
+                long until = System.currentTimeMillis() + 30 * MINUTE_MS;
+                members.add(c.getPlayer());
+                for (Character member : members) {
+                    FamilyBuffs.grantExp(member.getId(), 2.0f, until);
+                    FamilyBuffs.grantDrop(member.getId(), 2.0f, until);
+                    member.dropMessage(5, c.getPlayer().getName() + " used " + type.getName()
+                            + ": EXP from hunting and monster drop rate are 2x for 30 minutes.");
+                }
+            }
         } else {
+            final FamilyEntitlement entitlement = type;
             boolean party = false;
             boolean isExp = false;
             float rate = 1.5f;
@@ -126,7 +150,36 @@ public final class FamilyUseHandler extends AbstractPacketHandler {
                 }
                 break;
             } while (true);
-            //not implemented
+
+            if (!useEntitlement(entry, entitlement)) {
+                return;
+            }
+            long until = System.currentTimeMillis() + duration * MINUTE_MS;
+            List<Character> targets = party ? c.getPlayer().getPartyMembersOnline() : List.of();
+            if (targets.isEmpty()) {
+                targets = List.of(c.getPlayer());
+            }
+            String effect = (isExp ? "EXP from hunting is " : "Monster drop rate is ") + FamilyBuffs.formatRate(rate)
+                    + "x for " + duration + " minutes.";
+            for (Character target : targets) {
+                if (isExp) {
+                    FamilyBuffs.grantExp(target.getId(), rate, until);
+                } else {
+                    FamilyBuffs.grantDrop(target.getId(), rate, until);
+                }
+                target.dropMessage(5, (target == c.getPlayer() ? "" : c.getPlayer().getName() + " used ")
+                        + entitlement.getName() + ": " + effect);
+            }
+        }
+    }
+
+    private static void collectOnlineJuniors(FamilyEntry senior, List<Character> out) {
+        for (FamilyEntry junior : senior.getJuniors()) {
+            Character chr = junior.getChr();
+            if (chr != null) {
+                out.add(chr);
+            }
+            collectOnlineJuniors(junior, out);
         }
     }
 
