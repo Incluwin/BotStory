@@ -1448,7 +1448,7 @@ population:
     # them; a player holds CLAIMS_PER_PLAYER requests for CLAIM_MINUTES each and hands the item over in person (double
     # click the citizen) or at a board (escrow until its next load). false = the kill switch: none of it.
     # Technical: NeedLedger keeps the open living_need rows in memory, derives at each citizen load and every REFRESH_MINUTES on the 60 s social lane, and moves item and mesos in one NEED_FULFILLED economy transaction.
-    NEEDS_ENABLED: false
+    NEEDS_ENABLED: true
     NEEDS_PER_CITIZEN: 2
     NEEDS_EXPIRE_MIN_HOURS: 24
     NEEDS_EXPIRE_MAX_HOURS: 48
