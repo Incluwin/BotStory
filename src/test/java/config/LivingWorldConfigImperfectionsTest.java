@@ -12,17 +12,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * living_world.IMPERFECTIONS_ENABLED (2026-10-27, docs/BOT_CONCEPT_PLAN.md F8): the kill switch is off in code and in
- * config.yaml until the live checks pass, its settings are explained, and the caps the user asked for cannot be
- * configured away (a companion AFK over 90 s, a potion point under 0.45).
+ * living_world.IMPERFECTIONS_ENABLED (2026-10-27, docs/BOT_CONCEPT_PLAN.md F8): the kill switch is off in code and
+ * turned on in config.yaml (since 2026-11-01, after its live checks), its settings are explained, and the caps the user
+ * asked for cannot be configured away (a companion AFK over 90 s, a potion point under 0.45).
  */
 class LivingWorldConfigImperfectionsTest {
 
     @Test
-    void imperfectionsAreOffByDefaultAndInConfigYaml() throws IOException {
+    void imperfectionsAreOffInCodeAndOnInConfigYaml() throws IOException {
         assertFalse(new LivingWorldConfig().IMPERFECTIONS_ENABLED);
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        assertTrue(yaml.contains("\n    IMPERFECTIONS_ENABLED: false\n"));
+        assertTrue(yaml.contains("\n    IMPERFECTIONS_ENABLED: true\n"));
         String comment = yaml.substring(yaml.indexOf("# Small imperfections (2026-10-27"),
                 yaml.indexOf("IMPERFECTIONS_ENABLED:"));
         String technical = comment.substring(comment.indexOf("# Technical:")).replace("\n    #", "");

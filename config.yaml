@@ -1106,7 +1106,7 @@ living_world:
     # engine never slips in an event instance, on a boss map or in a party quest, and keeps its own caps (no late drink
     # under 50% HP, survival buffs never later than 90%, a Resurrection wait at most 10 s). Read at boot.
     # false = the kill switch: every Agent behaves exactly as before.
-    IMPERFECTIONS_ENABLED: false
+    IMPERFECTIONS_ENABLED: true
     # Technical: each bot's sliding-hour budget for slips, all kinds together; each kind also has its own hourly cap in
     # Imperfections.Kind (late potion 6, buff lapse 2, rope miss 2, NPC walk-past 2, loot 4, rez wait 2, typo 3, AFK 1).
     IMPERFECTIONS_SLIPS_PER_HOUR: 10
