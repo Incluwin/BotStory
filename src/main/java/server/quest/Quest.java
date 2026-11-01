@@ -50,6 +50,7 @@ import server.quest.requirements.AbstractQuestRequirement;
 import server.quest.requirements.BuffExceptRequirement;
 import server.quest.requirements.BuffRequirement;
 import server.quest.requirements.CompletedQuestRequirement;
+import server.quest.requirements.DayByDayRequirement;
 import server.quest.requirements.EndDateRequirement;
 import server.quest.requirements.FieldEnterRequirement;
 import server.quest.requirements.InfoExRequirement;
@@ -67,6 +68,7 @@ import server.quest.requirements.NpcRequirement;
 import server.quest.requirements.PetRequirement;
 import server.quest.requirements.QuestRequirement;
 import server.quest.requirements.ScriptRequirement;
+import server.quest.requirements.SkillRequirement;
 import tools.PacketCreator;
 import tools.StringUtil;
 
@@ -80,6 +82,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -154,6 +157,7 @@ public class Quest {
                 QuestRequirementType type = QuestRequirementType.getByWZName(startReq.getName());
                 switch (type) {
                 case INTERVAL:
+                case DAY_BY_DAY:
                     repeatable = true;
                     break;
                 case MOB:
@@ -256,7 +260,8 @@ public class Quest {
         }
 
         IntervalRequirement ir = (IntervalRequirement) startReqs.get(QuestRequirementType.INTERVAL);
-        return ir.getInterval() < HOURS.toMillis(YamlConfig.config.server.QUEST_POINT_REPEATABLE_INTERVAL);
+        long interval = ir != null ? ir.getInterval() : DAYS.toMillis(1); // no interval: a dayByDay quest
+        return interval < HOURS.toMillis(YamlConfig.config.server.QUEST_POINT_REPEATABLE_INTERVAL);
     }
 
     public boolean canStartQuestByStatus(Character chr) {
@@ -643,6 +648,12 @@ public class Quest {
                 break;
             case SCRIPT:
                 ret = new ScriptRequirement(this, data);
+                break;
+            case DAY_BY_DAY:
+                ret = new DayByDayRequirement(this, data);
+                break;
+            case SKILL:
+                ret = new SkillRequirement(this, data);
                 break;
             case NORMAL_AUTO_START:
             case START:

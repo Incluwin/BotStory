@@ -58,6 +58,10 @@ public class QuestAction extends AbstractQuestAction {
     public void run(Character chr, Integer extSelection) {
         for (Integer questID : quests.keySet()) {
             int stat = quests.get(questID);
+            // only ever moves a quest forward: a quest already at or past the state keeps its record
+            if (chr.getQuest(Quest.getInstance(questID)).getStatus().getId() >= stat) {
+                continue;
+            }
             chr.updateQuestStatus(new QuestStatus(Quest.getInstance(questID), QuestStatus.Status.getById(stat)));
         }
     }

@@ -77,6 +77,8 @@ public enum QuestActionType {
             return NPC;
         case "lvmin":
             return MIN_LEVEL;
+        case "quest": // sets other quests' states, e.g. closing a branch's sibling (18 Act.img entries)
+            return QUEST;
         case "normalAutoStart":
             return NORMAL_AUTO_START;
         case "pettameness":

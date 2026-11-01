@@ -49,7 +49,8 @@ public enum QuestRequirementType {
     DAY_BY_DAY(20),
     MESO(21),
     BUFF(22),
-    EXCEPT_BUFF(23);
+    EXCEPT_BUFF(23),
+    SKILL(24);
 
     final byte type;
 
@@ -105,10 +106,13 @@ public enum QuestRequirementType {
             return START;
 	/* case "end":already coded
             return END;*/
-        case "daybyday":
+        case "dayByDay": // Check.img's spelling; "daybyday" never matched
             return DAY_BY_DAY;
         case "money":
+        case "endmeso": // the meso a quest takes at completion (Check.img phase 1)
             return MESO;
+        case "skill":
+            return SKILL;
         case "buff":
             return BUFF;
         case "exceptbuff":
