@@ -701,8 +701,6 @@ public final class AgentSupplyProcurementRuntime {
                                          long nowMs) {
         String died = "died on map " + execution.lastMapStoodOn();
         String respawned = " and respawned on map " + agent.getMapId();
-        log.warn("Agent '{}' {} during its {} resupply ({}){}; the trip ends there", agent.getName(), died,
-                execution.category(), execution.phase(), respawned);
         if (execution.phase() == AgentSupplyProcurementState.Phase.RETURNING) {
             return resumeWhereItStands(entry, agent, planning, execution, died + " on the way" + respawned, nowMs);
         }
@@ -722,6 +720,8 @@ public final class AgentSupplyProcurementRuntime {
                                                AgentSupplyProcurementState execution,
                                                String reason,
                                                long nowMs) {
+        log.warn("Agent '{}' gave its {} resupply up where it stands on map {}: {}", agent.getName(),
+                execution.category(), agent.getMapId(), reason);
         if (AgentShopStateRuntime.shopVisitPending(entry)) {
             AgentShopService.cancelShopVisit(entry);
         }
