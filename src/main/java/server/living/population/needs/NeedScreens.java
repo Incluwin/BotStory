@@ -53,8 +53,8 @@ public final class NeedScreens {
                             () -> board(player, boardMapId))));
         }
         LivingTalk.open(player, NeedBoards.BOARD_NPC)
-                .menu("Townsfolk pin what they need here. Bring it to them, or leave it here if they are away; they pay"
-                        + " on the spot.", options)
+                .menu("Townsfolk pin what they need here.\r\nBring it to them, or leave it here if they are away;"
+                        + " they pay on the spot.", options)
                 .show();
     }
 
@@ -349,10 +349,11 @@ public final class NeedScreens {
     }
 
     /** A PARTY request's page; {@code whisperTo} (null while whispers do not reach citizens) is the leader to whisper. */
+    /** In short lines: the NPC window shows a paragraph's first two wrapped lines only ("Go there, o" on screen). */
     static String partyPage(String who, String where, String what, String whisperTo) {
-        return who + " is forming a party at #b" + where + "#k and wants " + what
-                + (whisperTo != null ? ". Go there, or whisper #e" + whisperTo + "#n for an invite;" : ". Go there;")
-                + " the leader invites people whose level fits.";
+        return who + " is forming a party at #b" + where + "#k and wants " + what + ".\r\n"
+                + (whisperTo != null ? "Go there, or whisper #e" + whisperTo + "#n for an invite." : "Go there.")
+                + "\r\nThe leader invites people whose level fits.";
     }
 
     private static String amount(Need need) {
