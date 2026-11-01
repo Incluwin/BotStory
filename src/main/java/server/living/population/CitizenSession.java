@@ -12,9 +12,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class CitizenSession {
     /**
      * JOB: on its way to its instructor for its next job (CitizenJobErrands); never rolled by a cohort's weights. PLAY:
-     * omok or match cards in a town that allows minigames (CitizenMiniGames).
+     * omok or match cards in a town that allows minigames (CitizenMiniGames). CASINO: dealing, hosting or playing at
+     * Henesys Game Park, the drop game, a gachapon box or selling NX codes (CitizenCasino).
      */
-    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK, JOB, PLAY, JQ }
+    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK, JOB, PLAY, JQ, CASINO }
 
     public final int characterId;
     public volatile Citizen citizen;

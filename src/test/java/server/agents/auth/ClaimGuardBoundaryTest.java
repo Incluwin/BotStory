@@ -155,9 +155,6 @@ class ClaimGuardBoundaryTest {
             "server/agents/observer/AgentObserverRuntime.java load 1",
             // the loopback admin port's headless operator (an operator character, never an Agent it hands out)
             "server/admin/HeadlessOperatorService.java load 1",
-            // the legacy SoloMapling bot commands (their own fake characters, not Agents)
-            "soloMapling/ArtificialPlayer/BotPartySystem/BotPartyCommands.java partyjoin 1",
-            "soloMapling/ArtificialPlayer/BotCommandsPack/MapleMessengerCommands.java messenger 1",
             // GM tools, test fixtures and diagnostics (operator-run, administrators in practice)
             "server/agents/commands/AgentSpawnCommandExecutor.java spawn 1",
             "server/agents/commands/AgentSpawnCommandExecutor.java join 1",

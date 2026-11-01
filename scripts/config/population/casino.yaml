@@ -1,0 +1,361 @@
+# The casino and the other SoloMapling venues citizens run (docs/SOLOMAPLING_PORT.md, CitizenCasino). Spots are map
+# coordinates; a citizen walks to the ground below one. Lines are in chatter/casino.yaml.
+#
+# Henesys Game Park (100000203). The five blackjack tables are SoloMapling's: the dealer stands at the middle of a
+# table's upper platform, two seats beside it and three on the platform below. Aramia (9000055) is the chip cashier;
+# the bar host and the dice host have their own spots near the middle. drinks: what the bar host serves (it buys them
+# at their WZ price first): Orange Juice, Grape Juice, Maple Cola, Pure Water.
+gamePark:
+  mapId: 100000203
+  cashier: [1321, 214]
+  bar: [503, 250]
+  dice: [716, 254]
+  drinks: [2020009, 2020010, 2022035, 2022000]
+  tables:
+    - { dealer: [-559, 64], seats: [[-818, 64], [-300, 64], [-795, 274], [-545, 274], [-295, 274]] }
+    - { dealer: [-546, -296], seats: [[-808, -296], [-284, -296], [-806, -116], [-544, -116], [-282, -116]] }
+    - { dealer: [581, -296], seats: [[344, -296], [818, -296], [345, -116], [582, -116], [819, -116]] }
+    - { dealer: [-530, -656], seats: [[-795, -656], [-265, -656], [-822, -476], [-554, -476], [-286, -476]] }
+    - { dealer: [575, -656], seats: [[344, -656], [806, -656], [340, -476], [581, -476], [822, -476]] }
+# The drop game (SoloMapling's DropGameBot) in the Henesys Department Store (100000102): the host waits at `host`,
+# takes a fee by trade, then walks `route` for gameMs dropping an item every 4-6 s that vanishes after despawnMs.
+# pools: SoloMapling's loot pool; a third of the drops come from special_items when a tier has them.
+dropGame:
+  mapId: 100000102
+  host: [45, 182]
+  route: [[-330, 182], [-120, 182], [120, 182], [330, 182]]
+  gameMs: 120000
+  tiers:
+    - { id: medium, fee: 10000000, despawnMs: 1400 }
+    - { id: elite, fee: 50000000, despawnMs: 1150 }
+  pools:
+    medium:
+      # ~66% chance  general pool: scrolls, stars, consumables, chairs
+      items:
+        # --- Scrolls (10%) ---
+        - id: 2040301
+          weight: 8
+        - id: 2040501
+          weight: 8
+        - id: 2040804
+          weight: 6
+        - id: 2040704
+          weight: 6
+        - id: 2041013
+          weight: 6
+        - id: 2044701
+          weight: 5
+        - id: 2043301
+          weight: 5
+        - id: 2040302
+          weight: 4
+        - id: 2040805
+          weight: 3
+        - id: 2040502
+          weight: 3
+
+        # --- Dark Scrolls (70%) ---
+        - id: 2040304
+          weight: 5
+        - id: 2040811
+          weight: 4
+        - id: 2040509
+          weight: 4
+        - id: 2041035
+          weight: 4
+        - id: 2040715
+          weight: 3
+
+        # --- Throwing Stars ---
+        - id: 2070002
+          weight: 10
+        - id: 2070003
+          weight: 8
+        - id: 2070010
+          weight: 5
+        - id: 2070004
+          weight: 3
+
+        # --- Chairs ---
+        - id: 3010000
+          weight: 3
+        - id: 3010004
+          weight: 3
+        - id: 3010005
+          weight: 3
+        - id: 3010011
+          weight: 3
+
+        # --- Consumables (filler) ---
+        - id: 2000004
+          weight: 15
+        - id: 2000005
+          weight: 15
+        - id: 2050004
+          weight: 10
+        - id: 2022179
+          weight: 5
+        - id: 2022245
+          weight: 5
+
+        # --- Trash Scrolls (padding) ---
+        - id: 2041007
+          weight: 5
+        - id: 2040701
+          weight: 5
+        - id: 2040004
+          weight: 5
+        - id: 2040601
+          weight: 5
+        - id: 2048001
+          weight: 5
+
+
+
+    elite:
+      # ~66% chance  general pool: better scrolls, stars, dark scrolls, chairs, buffs
+      items:
+        # --- High-Value Scrolls ---
+        - id: 2040805
+          weight: 8
+        - id: 2040302
+          weight: 8
+        - id: 2040514
+          weight: 6
+        - id: 2044702
+          weight: 6
+        - id: 2043302
+          weight: 5
+        - id: 2040502
+          weight: 5
+
+        # --- Dark Scrolls (30%) ---
+        - id: 2040811
+          weight: 8
+        - id: 2040815
+          weight: 6
+        - id: 2040305
+          weight: 6
+        - id: 2040307
+          weight: 5
+        - id: 2040509
+          weight: 5
+        - id: 2040519
+          weight: 5
+        - id: 2040521
+          weight: 4
+        - id: 2040917
+          weight: 4
+        - id: 2040922
+          weight: 3
+
+        # --- Throwing Stars ---
+        - id: 2070004
+          weight: 8
+        - id: 2070005
+          weight: 6
+        - id: 2070006
+          weight: 3
+        - id: 2070007
+          weight: 1
+
+        # --- Chairs (S-tier v1/v23) ---
+        - id: 3010002
+          weight: 2
+        - id: 3010003
+          weight: 2
+        - id: 3010006
+          weight: 2
+        - id: 3010014
+          weight: 1
+        - id: 3010016
+          weight: 1
+
+        # --- Special Scrolls ---
+        - id: 2340000
+          weight: 1
+        - id: 2049100
+          weight: 1
+
+        # --- Buff Consumables ---
+        - id: 2022179
+          weight: 8
+        - id: 2022245
+          weight: 6
+        - id: 2022273
+          weight: 4
+        - id: 2022121
+          weight: 4
+
+
+      # ~33% chance  hand-picked special items
+      special_items:
+        - id: 4001126
+          weight: 10
+        - id: 1002515
+          weight: 10
+          equip: true
+        - id: 1002516
+          weight: 10
+          equip: true
+        - id: 1002517
+          weight: 10
+          equip: true
+        - id: 1002518
+          weight: 10
+          equip: true
+        - id: 1002577
+          weight: 10
+          equip: true
+        - id: 1002578
+          weight: 10
+          equip: true
+        - id: 1002579
+          weight: 10
+          equip: true
+        - id: 1002580
+          weight: 10
+          equip: true
+        - id: 1002600
+          weight: 10
+          equip: true
+        - id: 1002601
+          weight: 10
+          equip: true
+        - id: 1002602
+          weight: 10
+          equip: true
+        - id: 1002603
+          weight: 10
+          equip: true
+        - id: 1072427
+          weight: 10
+          equip: true
+        - id: 1072428
+          weight: 10
+          equip: true
+        - id: 1072429
+          weight: 10
+          equip: true
+        - id: 1072430
+          weight: 10
+          equip: true
+        - id: 1072431
+          weight: 10
+          equip: true
+        - id: 1072432
+          weight: 10
+          equip: true
+        - id: 1072344
+          weight: 10
+          equip: true
+        - id: 1082145
+          weight: 10
+          equip: true
+        - id: 1082146
+          weight: 10
+          equip: true
+        - id: 1082147
+          weight: 10
+          equip: true
+        - id: 1082148
+          weight: 10
+          equip: true
+        - id: 1082149
+          weight: 10
+          equip: true
+        - id: 1082150
+          weight: 10
+          equip: true
+        - id: 1082223
+          weight: 10
+          equip: true
+        - id: 1102040
+          weight: 10
+          equip: true
+        - id: 1102041
+          weight: 10
+          equip: true
+        - id: 1102042
+          weight: 10
+          equip: true
+        - id: 1102043
+          weight: 10
+          equip: true
+        - id: 1102084
+          weight: 10
+          equip: true
+        - id: 1102085
+          weight: 10
+          equip: true
+        - id: 1102086
+          weight: 10
+          equip: true
+        - id: 1102087
+          weight: 10
+          equip: true
+        - id: 1012058
+          weight: 10
+          equip: true
+        - id: 1012059
+          weight: 10
+          equip: true
+        - id: 1012060
+          weight: 10
+          equip: true
+        - id: 1012061
+          weight: 10
+          equip: true
+        - id: 1012076
+          weight: 10
+          equip: true
+        - id: 1012077
+          weight: 10
+          equip: true
+        - id: 1012078
+          weight: 10
+          equip: true
+        - id: 1012079
+          weight: 10
+          equip: true
+        - id: 1022058
+          weight: 10
+          equip: true
+        - id: 1022060
+          weight: 10
+          equip: true
+        - id: 1032026
+          weight: 10
+          equip: true
+        - id: 1032027
+          weight: 10
+          equip: true
+        - id: 1032028
+          weight: 10
+          equip: true
+# The gachapon show (SoloMapling's GachaBot) in Henesys Market (100000100): a citizen pays GACHA_BOX_PRICE, a box
+# (reactor 2202004) springs open beside it and sprays `size` drops: each is mesos (one of `mesos`) unless a fillerChance
+# roll makes it a filler item (type by typeWeights, tier by tierWeights), and one in prizeChance boxes holds a prize.
+gacha:
+  mapId: 100000100
+  spot: [366, 154]
+  reactor: 2202004
+  size: 10
+  fillerChance: 0.30
+  prizeChance: 0.02
+  mesos: [10, 10, 10, 10, 10, 69, 69, 69, 69, 420, 420, 420, 1337]
+  typeWeights: { useables: 50, ores: 20, jewels: 20, crystals: 10 }
+  tierWeights: { s: 20, a: 30, b: 50 }
+  filler:
+    useables: { s: [2000005], a: [2000004, 2012000, 2012002, 2020014, 2020015], b: [2001000, 2001001, 2001002, 2020012, 2020013] }
+    ores: { s: [4010005, 4010006], a: [4010002, 4010003, 4010004], b: [4010000, 4010001] }
+    jewels: { s: [4020007, 4020008], a: [4020004, 4020005, 4020006], b: [4020000, 4020001, 4020002, 4020003] }
+    crystals: { s: [4004004], a: [4004003], b: [4004000, 4004001, 4004002] }
+  prizes:
+    - { id: 1082223, weight: 2 }
+    - { id: 1102041, weight: 3 }
+    - { id: 2049100, weight: 5 }
+    - { id: 2340000, weight: 10 }
+# The NX code seller (SoloMapling's NXMerchantBot) stands in the Free Market entrance.
+nxSeller:
+  mapId: 910000000

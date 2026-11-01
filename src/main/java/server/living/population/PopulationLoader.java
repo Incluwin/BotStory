@@ -78,7 +78,26 @@ public final class PopulationLoader {
             "whisper.join.level", "whisper.join.party", "whisper.join.wait", "whisper.join.leader", "whisper.ack",
             "whisper.ack.thanks", "whisper.ack.no", "whisper.ack.question", "whisper.need.yes", "whisper.need.here", "whisper.hi",
             "whisper.busy", "whisper.training", "whisper.pq", "whisper.shop",
-            "jq.start", "jq.fall", "jq.clear", "jq.giveup");
+            "jq.start", "jq.fall", "jq.clear", "jq.giveup",
+            // the casino citizens run (CitizenCasino, docs/SOLOMAPLING_PORT.md): blackjack, dice, the bar, the drop
+            // game, the gachapon show, the NX seller; and town fidgets (TownFidgets)
+            "casino.bj.bets", "casino.bj.nobets", "casino.bj.closed", "casino.bj.dealer.natural", "casino.bj.dealer.up",
+            "casino.bj.natural", "casino.bj.turn", "casino.bj.nag", "casino.bj.autostand", "casino.bj.bust",
+            "casino.bj.twentyone", "casino.bj.dealer.shows", "casino.bj.dealer.bust", "casino.bj.dealer.draws",
+            "casino.bj.results", "casino.bj.skipped", "casino.bj.tookback", "casino.bj.closing", "casino.bj.full",
+            "casino.bj.welcome", "casino.bj.bye", "casino.bj.overmax", "casino.bj.hit", "casino.bj.stand",
+            "casino.bj.react.win", "casino.bj.react.blackjack", "casino.bj.react.push", "casino.bj.react.bust",
+            "casino.bj.react.lose",
+            "casino.dice.call", "casino.dice.closing", "casino.dice.lose", "casino.dice.nobet", "casino.dice.overmax",
+            "casino.dice.result", "casino.dice.taken", "casino.dice.tookback", "casino.dice.wait", "casino.dice.win",
+            "casino.bar.greet", "casino.bar.greet.all", "casino.bar.flavor", "casino.bar.offer", "casino.bar.menu",
+            "casino.bar.decline", "casino.bar.unknown", "casino.bar.serve",
+            "casino.drop.advertise", "casino.drop.rules", "casino.drop.slow", "casino.drop.wrong", "casino.drop.locked",
+            "casino.drop.party", "casino.drop.start", "casino.drop.forfeit", "casino.drop.gone", "casino.drop.end",
+            "casino.drop.cheer",
+            "casino.gacha.open", "casino.gacha.prize",
+            "casino.nx.sell", "casino.nx.flavor", "casino.nx.wrong", "casino.nx.thanks", "casino.nx.code",
+            "town.chalkboard", "town.avatar");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

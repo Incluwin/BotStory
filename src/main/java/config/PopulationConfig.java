@@ -395,6 +395,44 @@ public class PopulationConfig {
     /** Its help request stays on the needs board this long. */
     public int RIVALS_HELP_OPEN_MINUTES = 30;
 
+    // The casino and the other SoloMapling features citizens took over (docs/SOLOMAPLING_PORT.md)
+    /** Kill switch: false = no blackjack table in Henesys Game Park; no citizen deals or sits down to play. */
+    public boolean CASINO_BLACKJACK_ENABLED = false;
+    /** Blackjack tables with a citizen dealer at once (Game Park has five). */
+    public int CASINO_BLACKJACK_TABLES = 2;
+    /** Kill switch: false = no cho-han dice host in Game Park. */
+    public boolean CASINO_DICE_ENABLED = false;
+    /** Kill switch: false = no chip cashier (Aramia) in Game Park; stamps sell at their stock price everywhere. */
+    public boolean CASINO_CHIPS_ENABLED = false;
+    /** Kill switch: false = no Game Park host greeting players and handing out drinks. */
+    public boolean CASINO_BAR_ENABLED = false;
+    /** The largest bet a dealer or dice host takes from one seat, in mesos; its chip float covers a full table at 3:2. */
+    public int CASINO_MAX_BET = 1000000;
+    /** A dealer's, host's or player's time at the casino before it goes on with its day. */
+    public int CASINO_SHIFT_MIN_MS = 1200000;
+    public int CASINO_SHIFT_MAX_MS = 2700000;
+    /** No CASINO plan for a citizen this long after its time there. */
+    public int CASINO_COOLDOWN_MS = 3600000;
+    /** Kill switch: false = no drop game host in the Henesys Department Store. */
+    public boolean DROP_GAME_ENABLED = false;
+    /** Kill switch: false = no citizen opening gachapon boxes in Henesys Market. */
+    public boolean GACHA_SHOW_ENABLED = false;
+    /** Mesos a citizen pays for one box (a sink); the box's drops are worth less on average. */
+    public int GACHA_BOX_PRICE = 200000;
+    /** A citizen opens its next box at least this long after the last. */
+    public int GACHA_BOX_GAP_MS = 180000;
+    /** Kill switch: false = no citizen selling NX cash codes in the Free Market. */
+    public boolean NX_SELLER_ENABLED = false;
+    /** Mesos one code costs, and the NX it holds. */
+    public int NX_CODE_PRICE = 50000000;
+    public int NX_CODE_AMOUNT = 10000;
+    /** Kill switch: false = no chalkboards, idle emotes or avatar megaphones from citizens in town. */
+    public boolean TOWN_FIDGETS_ENABLED = false;
+    /** Kill switch: false = no multi-line conversations among citizens standing together in town. */
+    public boolean CONVERSATIONS_ENABLED = false;
+    /** One conversation per town map at most this often while 20 citizens or fewer stand on it (busier maps: a third). */
+    public int CONVERSATION_GAP_MS = 80000;
+
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
         if (!BOSS_RUNS_ENABLED || BOSS_RUN_BOSSES == null) {
@@ -504,6 +542,14 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.RIVALS_MIN_LEVEL, RIVALS_REFRESH_MINUTES and"
                     + " RIVALS_HELP_OPEN_MINUTES must be >= 1, RIVALS_CREW_MIN..MAX a range within 2..6, RIVALS_JOIN_BAND >= 0"
                     + " with RIVALS_LEAVE_BAND at least it, RIVALS_BANTER_GAP_MINUTES and RIVALS_HELP_GAP_HOURS >= 0");
+        }
+        if (CASINO_BLACKJACK_TABLES < 0 || CASINO_BLACKJACK_TABLES > 5 || CASINO_MAX_BET < 10000
+                || CASINO_SHIFT_MIN_MS < 60000 || CASINO_SHIFT_MAX_MS < CASINO_SHIFT_MIN_MS || CASINO_COOLDOWN_MS < 0
+                || GACHA_BOX_PRICE < 0 || GACHA_BOX_GAP_MS < 30000 || NX_CODE_PRICE < 1 || NX_CODE_AMOUNT < 1
+                || CONVERSATION_GAP_MS < 10000) {
+            throw new IllegalArgumentException("population.CASINO_BLACKJACK_TABLES must be 0..5, CASINO_MAX_BET >= 10000,"
+                    + " CASINO_SHIFT_MIN_MS..MAX_MS a range from 60000, CASINO_COOLDOWN_MS and GACHA_BOX_PRICE >= 0,"
+                    + " GACHA_BOX_GAP_MS >= 30000, NX_CODE_PRICE and NX_CODE_AMOUNT >= 1, CONVERSATION_GAP_MS >= 10000");
         }
     }
 }

@@ -1166,6 +1166,9 @@ public final class LivingWorldHooks {
             if (population != null && population.needs() != null && population.needs().boards().clicked(clicker, objectId)) {
                 return true; // a needs board (docs/BOT_CONCEPT_PLAN.md F1), not the Guild PQ board's script
             }
+            if (population != null && population.casino() != null && population.casino().clicked(clicker, objectId)) {
+                return true; // the casino's chip cashier in Game Park (docs/SOLOMAPLING_PORT.md)
+            }
             if (!world.markers().isHitbox(clicker, objectId)) {
                 return false;
             }

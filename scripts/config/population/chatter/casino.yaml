@@ -1,0 +1,738 @@
+# What citizens say while they run or play the casino (CitizenCasino, docs/SOLOMAPLING_PORT.md; SoloMapling's
+# BlackjackDealerBot, DiceBot, GameZoneHostBot, DropGameBot and its spectators, GachaBot and NXMerchantBot). Every
+# trigger here is said only when its table or post calls for it, never picked as idle chat; a call a table waits on
+# goes past the map's line budget. The dealer's and hosts' calls carry the game's state in slots, so keep each slot a
+# line uses: {name} is the player it is said to, {total} a hand's value, {card} the dealer's face-up card, {bets} and
+# {results} lists the table builds, {max} and {price} meso amounts, {bet} a chip count, {a} {b} the two dice, {side}
+# cho or han, {drinks} the bar's menu, {drink} the one served, {fees} the drop game's tiers, {tier} the one paid for,
+# {item} a dropped item's name, {nx} the code's NX. A line with a slot nobody filled is never said.
+# casino.drop.rules/slow/wrong/locked and casino.nx.wrong/thanks go to the trade window's chat; casino.nx.code is
+# whispered before the code itself (which is sent as typed, never through a voice). Per-style lines (`styles`)
+# override `lines` for that voice style.
+intents:
+  # ---- blackjack: the dealer --------------------------------------------------------------
+  - id: casino.bj.bets
+    trigger: casino.bj.bets
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "place ur bets, drop chips in front of u"
+      - "bets please, drop ur chips"
+      - "new hand, bets in"
+      - "bets in pls"
+      - "ok place bets"
+      - "drop chips to bet"
+    styles:
+      playful-social-v1:
+        - "bets bets bets!! drop ur chips"
+        - "new hand~ place ur bets"
+  - id: casino.bj.nobets
+    trigger: casino.bj.nobets
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "no bets, skipping this hand"
+      - "nobody bet, next hand"
+      - "no bets in.. waiting"
+  - id: casino.bj.closed
+    trigger: casino.bj.closed
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "bets closed: {bets}"
+      - "ok no more bets. {bets}"
+      - "bets locked: {bets}"
+  - id: casino.bj.dealer.natural
+    trigger: casino.bj.dealer.natural
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "dealer blackjack.. sorry all"
+      - "dealer has blackjack"
+      - "blackjack for the house, sorry"
+  - id: casino.bj.dealer.up
+    trigger: casino.bj.dealer.up
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "dealer shows {card}"
+      - "{card} up for dealer"
+      - "dealer: {card} and one down"
+  - id: casino.bj.natural
+    trigger: casino.bj.natural
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} blackjack! pays 3:2"
+      - "blackjack for {name}"
+      - "nice {name}, blackjack"
+  - id: casino.bj.turn
+    trigger: casino.bj.turn
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} u have {total}, hit or stand?"
+      - "{name}: {total}. hit or stand"
+      - "{name} ur on {total}. hit or stand?"
+      - "ur turn {name}, {total}"
+  - id: casino.bj.nag
+    trigger: casino.bj.nag
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name}? hit or stand"
+      - "waiting on u {name}"
+      - "{name} ur turn"
+  - id: casino.bj.autostand
+    trigger: casino.bj.autostand
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} stands (took too long)"
+      - "ok {name} stands"
+      - "standing u {name}, too slow"
+  - id: casino.bj.bust
+    trigger: casino.bj.bust
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} busts with {total}"
+      - "{total}, bust. sorry {name}"
+      - "bust {name}, {total}"
+  - id: casino.bj.twentyone
+    trigger: casino.bj.twentyone
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} has 21"
+      - "21 for {name}"
+      - "nice, 21 {name}"
+  - id: casino.bj.dealer.shows
+    trigger: casino.bj.dealer.shows
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "dealer flips.. {total}"
+      - "dealer has {total}"
+      - "turning over: {total}"
+  - id: casino.bj.dealer.bust
+    trigger: casino.bj.dealer.bust
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "dealer busts at {total}!"
+      - "{total}, dealer bust"
+      - "bust for the house ({total})"
+  - id: casino.bj.dealer.draws
+    trigger: casino.bj.dealer.draws
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "dealer draws.. {total}"
+      - "dealer at {total}"
+      - "{total} for dealer"
+  - id: casino.bj.results
+    trigger: casino.bj.results
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "results: {results}"
+      - "{results}"
+      - "hand over: {results}"
+  - id: casino.bj.skipped
+    trigger: casino.bj.skipped
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} hasnt bet in a while, opening the seat"
+      - "seat open, {name} sat out too long"
+  - id: casino.bj.tookback
+    trigger: casino.bj.tookback
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} took the bet back, ur out this hand"
+      - "{name} picked up their chips, no bet"
+  - id: casino.bj.closing
+    trigger: casino.bj.closing
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "last hand for me, table closing after"
+      - "im done after this one, ty all"
+      - "closing the table, gg everyone"
+      - "gotta go, last hand"
+  - id: casino.bj.full
+    trigger: casino.bj.full
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "table's full {name}, sorry"
+      - "no seats {name}, try the other table"
+      - "full rn {name}"
+  - id: casino.bj.welcome
+    trigger: casino.bj.welcome
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "welcome {name}! drop chips to bet, max {max}. say hit or stand on ur turn"
+      - "ur in {name}. bet by dropping chips (max {max}), then hit or stand"
+      - "sit down {name}, drop chips when i call bets. max {max}"
+  - id: casino.bj.bye
+    trigger: casino.bj.bye
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "cya {name}"
+      - "ty for playing {name}"
+      - "bye {name}, gl"
+  - id: casino.bj.overmax
+    trigger: casino.bj.overmax
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} max is {max}, rest goes back to u"
+      - "too much {name}, max bet {max}"
+  # ---- blackjack: a citizen at the table ---------------------------------------------------
+  - id: casino.bj.hit
+    trigger: casino.bj.hit
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hit"
+      - "hit me"
+      - "hit me dealer"
+      - "one more. hit"
+      - "feeling lucky.. hit"
+      - "hit. no fear"
+      - "gotta risk it. hit"
+      - "hmm.. hit"
+      - "my gut says hit"
+      - "ok this is scary but hit"
+    styles:
+      quiet-practical-v1:
+        - "hit"
+        - "hit."
+      playful-social-v1:
+        - "hit me baby"
+        - "yolo hit"
+        - "send it. hit"
+  - id: casino.bj.stand
+    trigger: casino.bj.stand
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "stand"
+      - "ill stay"
+      - "stand. im good"
+      - "nah im good. stand"
+      - "holding"
+      - "not risking it. stand"
+      - "hmm... stand"
+      - "locked in. stand"
+    styles:
+      quiet-practical-v1:
+        - "stand"
+        - "stay"
+      playful-social-v1:
+        - "sitting pretty, stand"
+        - "this is the one i feel it. stand"
+  - id: casino.bj.react.win
+    trigger: casino.bj.react.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "lets gooo"
+      - "ez"
+      - "ty dealer"
+      - "called it"
+      - "W"
+      - "nice"
+      - "gg dealer"
+      - "that one felt good"
+      - "see? patience pays off"
+      - "im on a heater rn"
+      - "never in doubt"
+  - id: casino.bj.react.blackjack
+    trigger: casino.bj.react.blackjack
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "BLACKJACK"
+      - "21!! lets go"
+      - "natural 21 :D"
+      - "omg blackjack"
+      - "everyone saw that right"
+      - "that 3:2 hits different"
+  - id: casino.bj.react.push
+    trigger: casino.bj.react.push
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "push, ill take it"
+      - "at least i didnt lose"
+      - "tie.. runback"
+      - "coulda been worse"
+      - "draw?? really"
+  - id: casino.bj.react.bust
+    trigger: casino.bj.react.bust
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "noo too many"
+      - "why did i hit on that"
+      - "i got greedy"
+      - "knew i shouldnt have hit"
+      - "shoulda stayed"
+      - "oof"
+      - "22. one over. ONE over"
+      - "skill issue and i know it"
+  - id: casino.bj.react.lose
+    trigger: casino.bj.react.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "bruh"
+      - "rigged lol"
+      - "pain"
+      - "unlucky"
+      - "rip"
+      - "welp"
+      - "of course lol"
+      - "this table hates me"
+      - "ok next hand is mine"
+      - "cant win em all"
+      - "house always wins huh"
+  # ---- cho-han dice -------------------------------------------------------------------------
+  - id: casino.dice.call
+    trigger: casino.dice.call
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "dice! drop chips and say cho (even) or han (odd), pays 1:1"
+      - "cho-han here, drop chips and call cho or han"
+      - "who wants to roll? chips down, cho or han"
+      - "dice game open, even=cho odd=han"
+  - id: casino.dice.closing
+    trigger: casino.dice.closing
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "last roll for me"
+      - "closing up the dice, ty all"
+      - "im off after this, gg"
+  - id: casino.dice.nobet
+    trigger: casino.dice.nobet
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} drop ur chips first then call"
+      - "no chips down {name}"
+      - "{name} put a bet down first"
+  - id: casino.dice.overmax
+    trigger: casino.dice.overmax
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} max is {max}"
+      - "too big {name}, max {max}"
+  - id: casino.dice.taken
+    trigger: casino.dice.taken
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} {bet} on {side}, rolling.."
+      - "ok {name}, {side} for {bet}. rolling"
+      - "{side}! {bet}. here goes"
+  - id: casino.dice.result
+    trigger: casino.dice.result
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{a} and {b}.. {side}!"
+      - "rolled {a}-{b}, {side}"
+      - "{a} + {b}, {side}"
+  - id: casino.dice.tookback
+    trigger: casino.dice.tookback
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} picked the chips up, no bet"
+      - "chips gone {name}? no roll then"
+  - id: casino.dice.win
+    trigger: casino.dice.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} wins {bet}!"
+      - "nice {name}, {bet} back to u"
+      - "{name} takes it, {bet}"
+  - id: casino.dice.lose
+    trigger: casino.dice.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "sorry {name}, house wins"
+      - "unlucky {name}"
+      - "not this time {name}"
+  - id: casino.dice.wait
+    trigger: casino.dice.wait
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "one sec {name}, rolling for someone"
+      - "wait ur turn {name}"
+  # ---- the Game Park bar --------------------------------------------------------------------
+  - id: casino.bar.greet
+    trigger: casino.bar.greet
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey {name}! welcome to the game park"
+      - "yo {name}, tables are hot tonight"
+      - "{name}! come try ur luck"
+      - "welcome {name} :)"
+      - "hi {name}, want a drink? just ask"
+  - id: casino.bar.greet.all
+    trigger: casino.bar.greet.all
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "welcome welcome! tables are open"
+      - "hey all, come play"
+      - "welcome to the game park!"
+  - id: casino.bar.flavor
+    trigger: casino.bar.flavor
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "who wants to test their luck today"
+      - "big winners at the dice earlier"
+      - "the house always wins.. or does it"
+      - "drinks here if anyone wants one"
+      - "another day in the game park"
+  - id: casino.bar.offer
+    trigger: casino.bar.offer
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "u look thirsty {name}, want a drink?"
+      - "drink {name}? on me"
+      - "can i get u something {name}?"
+  - id: casino.bar.menu
+    trigger: casino.bar.menu
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "got {drinks}, which one?"
+      - "{drinks}. pick one {name}"
+      - "what'll it be? {drinks}"
+  - id: casino.bar.decline
+    trigger: casino.bar.decline
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "np {name}, offer stands"
+      - "all good {name}"
+      - "suit urself {name} :P"
+  - id: casino.bar.unknown
+    trigger: casino.bar.unknown
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "dont have that {name}, only {drinks}"
+      - "nah just {drinks}"
+  - id: casino.bar.serve
+    trigger: casino.bar.serve
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "here u go {name}, one {drink}"
+      - "{drink} for {name}, cheers"
+      - "one {drink}, enjoy"
+  # ---- the drop game ------------------------------------------------------------------------
+  - id: casino.drop.advertise
+    trigger: casino.drop.advertise
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "drop game! {fees}, trade me to play"
+      - "drop game open, {fees}"
+      - "feeling lucky? drop game {fees}, trade me"
+      - "2 min drop game, loot what u can! {fees}"
+      - "who wants the drop game? {fees}"
+  - id: casino.drop.rules
+    trigger: casino.drop.rules
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{fees}. put the mesos in and accept, 2 min to loot what i drop"
+      - "pick a tier: {fees}. then accept, i party u and drop stuff for 2 min"
+  - id: casino.drop.slow
+    trigger: casino.drop.slow
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "still there? put the mesos in"
+      - "need the mesos in the window"
+  - id: casino.drop.wrong
+    trigger: casino.drop.wrong
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "wrong amount, its {fees}"
+      - "has to be exact: {fees}"
+  - id: casino.drop.locked
+    trigger: casino.drop.locked
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{tier} it is, accept when ready"
+      - "{tier} locked in"
+      - "ok {tier}, good luck"
+  - id: casino.drop.party
+    trigger: casino.drop.party
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "accept the party invite {name}"
+      - "party sent {name}, accept and we go"
+  - id: casino.drop.start
+    trigger: casino.drop.start
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "GO {name}! 2 minutes, {tier}"
+      - "game on {name}, grab everything"
+      - "here we go {name}, clock's ticking"
+  - id: casino.drop.forfeit
+    trigger: casino.drop.forfeit
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "no party accept {name}, maybe next time"
+      - "timed out {name}, cancelled"
+  - id: casino.drop.gone
+    trigger: casino.drop.gone
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "they left.. game over"
+      - "player left, cancelled"
+  - id: casino.drop.end
+    trigger: casino.drop.end
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "times up {name}! gg"
+      - "thats a wrap {name}, how'd u do"
+      - "gg {name}, come back anytime"
+  - id: casino.drop.cheer
+    trigger: casino.drop.cheer
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "omg {item}??"
+      - "wow {item}!!"
+      - "grab the {item} {name}!!"
+      - "is that a {item}?!"
+      - "i want that {item} lol"
+      - "that {item} tho"
+      - "this drop game is stacked"
+      - "LETS GO"
+      - "GET IT"
+  # ---- a gachapon box -----------------------------------------------------------------------
+  - id: casino.gacha.open
+    trigger: casino.gacha.open
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "meh"
+      - "ok not bad"
+      - "trash again lol"
+      - "one more box"
+      - "eh"
+      - "gacha never pays out"
+  - id: casino.gacha.prize
+    trigger: casino.gacha.prize
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "YOOO"
+      - "omg finally"
+      - "no way!!"
+      - "jackpot!!"
+      - "worth it"
+  # ---- the NX seller ------------------------------------------------------------------------
+  - id: casino.nx.sell
+    trigger: casino.nx.sell
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "S> {nx} nx code {price}, trade me"
+      - "selling {nx} nx codes {price}"
+      - "{nx} nx cash code for {price}, trade"
+      - "S> nx code {nx} = {price}"
+  - id: casino.nx.flavor
+    trigger: casino.nx.flavor
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nx codes legit, ask around"
+      - "need nx for cash shop? trade me"
+      - "been standing here forever lol"
+      - "anyone want nx? {price}"
+  - id: casino.nx.wrong
+    trigger: casino.nx.wrong
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "its {price} exactly"
+      - "need {price} for the code"
+      - "{price} pls"
+  - id: casino.nx.thanks
+    trigger: casino.nx.thanks
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ty! code coming in whisper"
+      - "ty, ill whisper u the code"
+      - "done, check ur whispers"
+  - id: casino.nx.code
+    trigger: casino.nx.code
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "here's ur code, use it at the cash shop coupon"
+      - "code next msg, redeem in cash shop"
+      - "ty again, code below (cash shop > coupon)"

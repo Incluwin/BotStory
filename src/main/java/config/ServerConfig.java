@@ -389,9 +389,6 @@ public class ServerConfig {
     public int     ADMIN_SERVICE_BOT_CHANNEL;
     public int     ADMIN_SERVICE_BOT_MAP;
 
-    //SoloMapling ambient social-bot layer master gate.
-    public boolean ENABLE_SOLO_MAPLING;
-
     //Connection / packet throttle (see net.security.ConnectionThrottle).
     public boolean ENABLE_CONNECTION_THROTTLE;
     public int CT_MAX_CONCURRENT_PER_IP;

@@ -127,7 +127,7 @@ Two server mods in `config.yaml` (`mods.SWITCHES`) decide which client a server 
 | Mod | When on | Installer client | Plain kaentake client |
 |---|---|---|---|
 | `fusion_anvil` | Every equip carries its Fusion Anvil transmog id, and the Fusion Anvil works | Needs it **on**: its DLL always reads that id, so with it off it misreads every item | Needs it **off**: misreads every item and closes as soon as a character enters the game |
-| `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), the Hunter's Codex becomes a cash medal, and GM commands and SoloMapling's bots may hand out the 303 Community Repack equips | Keep it off | Keep it off |
+| `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), the Hunter's Codex becomes a cash medal, and GM commands may hand out the 303 Community Repack equips | Keep it off | Keep it off |
 
 Both ship off in `config.yaml`. `setup.bat` sets `MOD_FUSION_ANVIL=on` in `.env` when it is blank,
 for the installer client; for plain kaentake, set `MOD_FUSION_ANVIL=off` there. With Docker or a
@@ -233,7 +233,7 @@ repository:
 - Images for 303 equips the server took from the Community Repack (168 shoulder pads, 126
   weapons and 9 others), which a client on the Cosmic WZ set lacks. No drop, shop, quest or
   reward gives one. While `botstory_wz` is off, the GM item commands (`!item`, `!drop`,
-  `!proitem`, `!dress`) refuse them and SoloMapling's bots never wear or sell one. On that
+  `!proitem`, `!dress`) refuse them. On that
   client such an item shows as an empty inventory slot. Double-clicking it closes the game,
   and a character wearing one closes the game at the character list.
 

@@ -171,16 +171,6 @@ import client.command.commands.gm3.TimerMapCommand;
 import client.command.commands.gm3.ToggleCouponCommand;
 import client.command.commands.gm3.UnBanCommand;
 import client.command.commands.gm4.BossDropRateCommand;
-// SoloMapling bot dev/admin commands.
-import client.command.commands.gm4.ArtificialPlayerCommand;
-import client.command.commands.gm4.OPQCommands;
-import client.command.commands.gm4.ReactorCommands;
-import client.command.commands.gm4.BotMoveCommand;
-import client.command.commands.gm4.ArtificialFreeMarketCommand;
-import client.command.commands.gm4.TestDevCommand;
-import client.command.commands.gm4.FMBotCommand;
-import client.command.commands.gm4.TradeBotTestCommand;
-import client.command.commands.gm4.EnvironmentCommand;
 import client.command.commands.gm4.CakeCommand;
 import client.command.commands.gm4.CheckSetsCommand;
 import client.command.commands.gm4.DropRateCommand;
@@ -604,18 +594,6 @@ public class CommandsExecutor {
         addCommand("itemvac", 4, ItemVacCommand.class);
         addCommand("resetboss", 4, ResetBossCommand.class);
         addCommand("checksets", 4, CheckSetsCommand.class);
-        // SoloMapling bot dev/admin commands (gm4). Operate on the social-bot layer;
-        // the FM/merchant ones (betafmshop/fmbot/tradebot) drive keep-but-gate code.
-        addCommand("bot", 4, ArtificialPlayerCommand.class);
-        addCommand("opq", 4, OPQCommands.class);
-        addCommand("reactor", 4, ReactorCommands.class);
-        addCommand("move", 4, BotMoveCommand.class);
-        addCommand("betafmshop", 4, ArtificialFreeMarketCommand.class);
-        addCommand("test", 4, TestDevCommand.class);
-        addCommand("fmbot", 4, FMBotCommand.class);
-        addCommand("tradebot", 4, TradeBotTestCommand.class);
-        addCommand("env", 4, EnvironmentCommand.class);
-
 
         commandsNameDesc.add(levelCommandsCursor);
     }

@@ -941,12 +941,6 @@ public class Server {
         futures.add(initExecutor.submit(CashItemFactory::loadAllCashItems));
         futures.add(initExecutor.submit(Quest::loadAllQuests));
         futures.add(initExecutor.submit(SkillbookInformationProvider::loadAllSkillbookInformation));
-        // SoloMapling bot equip metadata - loaded with the rest of the WZ-derived
-        // data so it's ready before the bot environment can start. Gated OFF by default.
-        if (YamlConfig.config.server.ENABLE_SOLO_MAPLING) {
-            futures.add(initExecutor.submit(soloMapling.itemPool.EquipMetadataCache::initialize));
-            futures.add(initExecutor.submit(soloMapling.itemPool.DesirableEquipList::load));
-        }
         initExecutor.shutdown();
 
         final int worldCount = Math.min(GameConstants.WORLD_NAMES.length, YamlConfig.config.server.WORLDS);
@@ -967,11 +961,6 @@ public class Server {
             throw new IllegalStateException(sqle);
         } finally {
             SlowOperationLogger.warnIfSlow("startup-db-bound-tasks", startupDbStartedNs, 5_000);
-        }
-
-        // SoloMapling: patch in casino/bot WZ nodes before timely tasks. Gated OFF by default.
-        if (YamlConfig.config.server.ENABLE_SOLO_MAPLING) {
-            soloMapling.Casino.WzXmlPatcher.applyAllPatches();
         }
 
         ThreadManager.getInstance().start();

@@ -133,7 +133,7 @@ public enum Job {
         */
     }
 
-    // SoloMapling: bot appearance/job-tier helper (1st-4th job, 0 = beginner/unknown).
+    // The job advancement: 1st-4th job, 0 = beginner or unknown.
     public int getJobTier() {
         // Special case for beginner
         if (jobid == 0) {

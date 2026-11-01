@@ -4,7 +4,6 @@ import client.BotClient;
 import client.Character;
 import config.YamlConfig;
 import server.mods.ServerMods;
-import soloMapling.ArtificialPlayer.BotHelpers;
 
 import java.util.Locale;
 import java.util.Map;
@@ -37,7 +36,7 @@ public final class ExpeditionDeathCount {
 
     /** Whose death spends the budget: players, never companions or other bots. */
     public static boolean counts(Character chr) {
-        return chr != null && !(chr.getClient() instanceof BotClient) && !BotHelpers.isBot(chr);
+        return chr != null && !(chr.getClient() instanceof BotClient);
     }
 
     /** A run with a positive budget starts counting; 0 leaves it off. */

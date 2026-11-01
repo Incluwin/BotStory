@@ -25,7 +25,8 @@ public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
                 + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|alliances|market|conversation|"
-                + "level <name> <level>|login <name>|salon <name>|pq [send <name> [lobby]]|jq [send <name> [course]]|memory [name]");
+                + "level <name> <level>|login <name>|salon <name>|pq [send <name> [lobby]]|jq [send <name> [course]]|memory [name]|"
+                + "casino [send <name> [blackjack|dice|bar|dropgame|gacha|nxseller]]|talk");
     }
 
     @Override
@@ -84,6 +85,23 @@ public class CitizensCommand extends Command {
                     for (String line : population.jumpQuests().recent()) {
                         gm.yellowMessage("  " + line);
                     }
+                }
+                case "casino" -> {
+                    if (params.length >= 3 && params[1].equalsIgnoreCase("send")) {
+                        Citizen target = population.citizenByName(params[2]);
+                        CitizenSession session = target == null ? null : population.presence().session(target.characterId());
+                        String venue = params.length >= 4 ? params[3] : null;
+                        gm.yellowMessage(session == null ? params[2] + " is not online"
+                                : population.casino().send(session, venue, System.currentTimeMillis()));
+                        return;
+                    }
+                    for (String line : population.casino().status()) {
+                        gm.yellowMessage(line);
+                    }
+                }
+                case "talk" -> {
+                    gm.yellowMessage(population.townConversations().status());
+                    gm.yellowMessage(population.fidgets().status());
                 }
                 case "online" -> {
                     for (CitizenSession session : population.presence().sessions()) {
