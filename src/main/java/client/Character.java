@@ -4339,7 +4339,7 @@ public class Character extends AbstractCharacterObject {
         Map<String, String> character = new LinkedHashMap<>();
 
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT `id`, `accountid`, `name` FROM `characters` WHERE `name` = ?")) {
+             PreparedStatement ps = con.prepareStatement("SELECT `id`, `accountid`, `name`, `gender` FROM `characters` WHERE `name` = ?")) {
             ps.setString(1, name);
 
             try (ResultSet rs = ps.executeQuery()) {

@@ -146,14 +146,25 @@ public class CashShop {
         private final long period;
         private final short count;
         private final boolean onSale;
+        private final int gender; // Commodity.img: 0 male, 1 female, 2 either
 
         private CashItem(int sn, int itemId, int price, long period, short count, boolean onSale) {
+            this(sn, itemId, price, period, count, onSale, 2);
+        }
+
+        CashItem(int sn, int itemId, int price, long period, short count, boolean onSale, int gender) {
             this.sn = sn;
             this.itemId = itemId;
             this.price = price;
             this.period = (period == 0 ? 90 : period);
             this.count = count;
             this.onSale = onSale;
+            this.gender = gender;
+        }
+
+        /** Whether a character of this gender (0 male, 1 female) may receive the item. */
+        public boolean fitsGender(int characterGender) {
+            return (gender != 0 && gender != 1) || gender == characterGender;
         }
 
         public int getSN() {
@@ -263,7 +274,8 @@ public class CashShop {
                 long period = DataTool.getIntConvert("Period", item, 1);
                 short count = (short) DataTool.getIntConvert("Count", item, 1);
                 boolean onSale = DataTool.getIntConvert("OnSale", item, 0) == 1;
-                loadedItems.put(sn, new CashItem(sn, itemId, price, period, count, onSale));
+                int gender = DataTool.getIntConvert("Gender", item, 2);
+                loadedItems.put(sn, new CashItem(sn, itemId, price, period, count, onSale, gender));
             }
             CashItemFactory.items = loadedItems;
 

@@ -114,7 +114,7 @@ public final class CashOperationHandler extends AbstractPacketHandler {
                         c.sendPacket(PacketCreator.showBoughtCashPackage(cashPackage, c.getAccID()));
                     }
                     c.sendPacket(PacketCreator.showCash(chr));
-                } else if (action == 0x04) {//TODO check for gender
+                } else if (action == 0x04) { // Gift
                     int birthday = p.readInt();
                     CashItem cItem = CashItemFactory.getItem(p.readInt());
                     Map<String, String> recipient = Character.getCharacterFromDatabase(p.readString());
@@ -131,6 +131,10 @@ public final class CashOperationHandler extends AbstractPacketHandler {
                         return;
                     } else if (recipient.get("accountid").equals(String.valueOf(c.getAccID()))) {
                         c.sendPacket(PacketCreator.showCashShopMessage((byte) 0xA8));
+                        return;
+                    } else if (!cItem.fitsGender(Integer.parseInt(recipient.get("gender")))) {
+                        chr.dropMessage(1, "This item can only be given to a " + (recipient.get("gender").equals("0") ? "female" : "male") + " character.");
+                        c.enableCSActions();
                         return;
                     }
                     cs.gainCash(4, cItem, chr.getWorld());
