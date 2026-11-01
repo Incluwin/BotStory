@@ -4488,7 +4488,9 @@ public class MapleMap {
         } else if (this.mapid == MapId.EVENT_SNOWBALL && getSnowball(chr.getTeam()) == null) {
             setSnowball(0, new Snowball(0, this));
             setSnowball(1, new Snowball(1, this));
-            getSnowball(chr.getTeam()).startEvent();
+            // Both teams need the clock and their own end-of-round warp, not only the GM's team.
+            getSnowball(0).startEvent();
+            getSnowball(1).startEvent();
         }
     }
 
