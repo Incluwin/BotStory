@@ -6,6 +6,7 @@ import constants.id.ItemId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.Shop;
+import server.agents.capabilities.combat.AgentDeathStateRuntime;
 import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
@@ -20,7 +21,9 @@ import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
+import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.objectives.AgentObjectiveDefinition;
@@ -38,6 +41,7 @@ import server.agents.runtime.maintenance.AgentRemediationCoordinator;
 import server.agents.runtime.maintenance.AgentRemediationFrame;
 import server.agents.runtime.maintenance.AgentRemediationKind;
 import server.agents.runtime.maintenance.AgentRemediationState;
+import server.maps.MapleMap;
 
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -73,6 +77,9 @@ public final class AgentSupplyProcurementRuntime {
         AgentSupplyMaintenanceEvaluationState evaluations = entry.capabilityStates().require(
                 AgentSupplyMaintenanceEvaluationState.STATE_KEY);
         execution.retainPartyAsks(category -> planning.procurement(category) != null);
+        if (diedOnTheTrip(entry, execution)) {
+            return endAfterDeath(entry, agent, planning, execution, nowMs);
+        }
         execution.noteMapStoodOn(agent.getMapId());
         if (!execution.isActive()
                 && releaseInapplicableRestoredMaintenance(
@@ -442,6 +449,14 @@ public final class AgentSupplyProcurementRuntime {
                 }
                 return false;
             }
+            int hostileMapId = hostileMapOnTheWay(entry, agent, stop.mapId(), nowMs);
+            if (hostileMapId > 0) {
+                log.info("Agent '{}' stays on map {} instead of walking to its {} supplier on map {}: HP {}/{} and no"
+                                + " HP potion, and monsters spawn on map {} on the way", agent.getName(),
+                        agent.getMapId(), request.category(), stop.mapId(), agent.getHp(), agent.getCurrentMaxHp(),
+                        hostileMapId);
+                return false;
+            }
             supplierMapId = stop.mapId();
             supplierNpcId = stop.npcId();
             phase = supplierMapId == agent.getMapId()
@@ -479,6 +494,7 @@ public final class AgentSupplyProcurementRuntime {
                 supplierNpcId, agent.getMapId(), phase,
                 AgentSupplyInventorySnapshot.quantity(agent, request.category()),
                 Math.max(0, agent.getMeso()));
+        execution.noteDeathsAtStart(AgentDeathStateRuntime.deaths(entry));
         execution.rememberForegroundMode(
                 AgentModeStateRuntime.following(entry), AgentModeStateRuntime.grinding(entry));
         journal(entry, agent, request, "started", "supply shortage interrupted foreground work",
@@ -503,6 +519,12 @@ public final class AgentSupplyProcurementRuntime {
                                             long nowMs) {
         if (!keepSupplierWithinReach(entry, agent, planning, execution, nowMs)) {
             return true;
+        }
+        int hostileMapId = hostileMapOnTheWay(entry, agent, execution.supplierMapId(), nowMs);
+        if (hostileMapId > 0) {
+            return giveUpWhereItStands(entry, agent, planning, execution, "HP " + agent.getHp() + "/"
+                    + agent.getCurrentMaxHp() + " and no HP potion on map " + agent.getMapId()
+                    + ", where no monsters spawn, with monsters on map " + hostileMapId + " ahead", nowMs);
         }
         AgentRouteOutcome outcome = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
                 entry, agent, execution.supplierMapId(), nowMs);
@@ -653,6 +675,97 @@ public final class AgentSupplyProcurementRuntime {
         finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
                 "shop transaction completed; plan resumed where it stands: " + stuck, nowMs);
         return false;
+    }
+
+    /** True once the Agent stands again after dying since its trip began; never while it lies dead. */
+    private static boolean diedOnTheTrip(AgentRuntimeEntry entry, AgentSupplyProcurementState execution) {
+        return execution.isActive() && execution.phase() != AgentSupplyProcurementState.Phase.STALLED
+                && !AgentDeathStateRuntime.isDead(entry)
+                && AgentDeathStateRuntime.deaths(entry) > execution.deathsAtStart();
+    }
+
+    /**
+     * The Agent died since its trip began and stands again where it respawned (its last map's return map, at the
+     * respawn HP): the trip ends there. Live 2026-11-01 (77666f9fc) the citizen SpearArcher, Lv70 with no potions,
+     * set off from Cold Cradle (105090311) for Ant Tunnel Park's store (105070001), died in the Ant Tunnel, respawned
+     * in Sleepywood and walked straight back in at 50 HP, over and over for 50+ minutes: the trip outlived every
+     * death, and its no-progress watchdog starts again on every map. A walk back ends as one that stood still does
+     * (restocked, the plan resumes where it stands); a trip that had not bought is given up where it stands, without
+     * the walk back through the maps it died on. Its next trip sets off from where it respawned, toward the supplier
+     * nearest there.
+     */
+    private static boolean endAfterDeath(AgentRuntimeEntry entry,
+                                         Character agent,
+                                         AgentResourcePlanningState planning,
+                                         AgentSupplyProcurementState execution,
+                                         long nowMs) {
+        String died = "died on map " + execution.lastMapStoodOn();
+        String respawned = " and respawned on map " + agent.getMapId();
+        log.warn("Agent '{}' {} during its {} resupply ({}){}; the trip ends there", agent.getName(), died,
+                execution.category(), execution.phase(), respawned);
+        if (execution.phase() == AgentSupplyProcurementState.Phase.RETURNING) {
+            return resumeWhereItStands(entry, agent, planning, execution, died + " on the way" + respawned, nowMs);
+        }
+        return giveUpWhereItStands(entry, agent, planning, execution,
+                died + " on its way to the supplier on map " + execution.supplierMapId() + respawned, nowMs);
+    }
+
+    /**
+     * Gives the trip up where the Agent stands, with no walk back to the map it left (it would cross what it could not
+     * cross), and asks the party as a trip given up does. Not suppressed: the next trip sets off from here, where
+     * {@link #hostileMapOnTheWay} keeps it while it cannot walk out. A self-sustaining session stalls, as its trips do
+     * on any failure.
+     */
+    private static boolean giveUpWhereItStands(AgentRuntimeEntry entry,
+                                               Character agent,
+                                               AgentResourcePlanningState planning,
+                                               AgentSupplyProcurementState execution,
+                                               String reason,
+                                               long nowMs) {
+        if (AgentShopStateRuntime.shopVisitPending(entry)) {
+            AgentShopService.cancelShopVisit(entry);
+        }
+        recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED, reason, nowMs);
+        if (selfSustaining(entry)) {
+            stall(entry, agent, planning, execution, reason, nowMs);
+            return true;
+        }
+        // stop() clears the follow target; keep it so the Agent can rejoin its leader.
+        Character followTarget = AgentRelationshipRuntime.followTarget(entry);
+        AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
+        AgentRelationshipRuntime.setFollowTarget(entry, followTarget);
+        execution.markAbandoned(reason);
+        return finishAbandoned(entry, agent, planning, execution, nowMs);
+    }
+
+    /**
+     * The first map on the walk from where the Agent stands to {@code destinationMapId} where monsters spawn, while it
+     * should not set out on that walk: under CRITICAL_HP_PERCENT of its HP, with no HP potion to drink, on a map where
+     * none spawn (a town, a shop), every hit out there takes HP it cannot win back. -1 when it may walk: its
+     * destination is its map, its HP or a potion carries it, it already stands among monsters (walking on is its way
+     * out), or no map on the way spawns any (a town's shop next door). At Sleepywood's respawn HP (50) the walk down
+     * to Ant Tunnel Park's store died in the Ant Tunnel, again and again (live 2026-11-01).
+     */
+    private static int hostileMapOnTheWay(AgentRuntimeEntry entry, Character agent, int destinationMapId, long nowMs) {
+        if (destinationMapId == agent.getMapId() || !AgentSupplyRecoveryPolicy.criticallyLowHp(agent)
+                || !monsterFree(agent.getMap())
+                || AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION) > 0) {
+            return -1;
+        }
+        int world = AgentClientGatewayRuntime.clients().world(agent);
+        int channel = AgentClientGatewayRuntime.clients().channel(agent);
+        for (AgentVictoriaRouteRuntime.PlannedStep step
+                : AgentVictoriaRouteRuntime.plannedRoute(entry, agent.getMapId(), destinationMapId, nowMs)) {
+            MapleMap map = AgentMapGatewayRuntime.map().resolveMap(world, channel, step.toMapId());
+            if (map != null && !monsterFree(map)) {
+                return step.toMapId();
+            }
+        }
+        return -1;
+    }
+
+    private static boolean monsterFree(MapleMap map) {
+        return map != null && map.getMonsterSpawn().isEmpty();
     }
 
     private static IntBinaryOperator routeHops(AgentRuntimeEntry entry, long nowMs) {
