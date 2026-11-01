@@ -53,7 +53,7 @@ intents:
     cooldownMs: 500000
     lines:
       - "B> {item} {price}"
-      - "anyone got a {item}? want to scroll {for}"
+      - "anyone got {item}? want to scroll {for}"
       - "buying {item} {price}"
   - id: need.gear.fm
     trigger: dwell
@@ -63,7 +63,7 @@ intents:
     cooldownMs: 300000
     lines:
       - "B> {item} {price}"
-      - "looking for a {item}, paying {price}"
+      - "looking for {item}, paying {price}"
       - "anyone selling {item}? clean is fine"
       - "B> {item} pls, {price}"
   - id: need.gear.town
@@ -74,8 +74,8 @@ intents:
     cooldownMs: 500000
     lines:
       - "B> {item} {price}"
-      - "anyone have a {item}? ill pay {price}"
-      - "need a {item} so bad"
+      - "anyone have {item}? ill pay {price}"
+      - "need {item} so bad"
   - id: need.supply.smega
     trigger: smega
     where: any
@@ -156,7 +156,7 @@ intents:
     cooldownMs: 60000
     lines:
       - "it passed!!"
-      - "omg 60% passed"
+      - "omg it passed"
       - "yesss it worked"
   - id: needs.scroll.fail
     trigger: need.scroll.fail
