@@ -6,7 +6,6 @@ import constants.id.ItemId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.Shop;
-import server.agents.capabilities.combat.AgentDeathStateRuntime;
 import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
@@ -77,7 +76,7 @@ public final class AgentSupplyProcurementRuntime {
         AgentSupplyMaintenanceEvaluationState evaluations = entry.capabilityStates().require(
                 AgentSupplyMaintenanceEvaluationState.STATE_KEY);
         execution.retainPartyAsks(category -> planning.procurement(category) != null);
-        if (diedOnTheTrip(entry, execution)) {
+        if (diedOnTheTrip(agent, execution)) {
             return endAfterDeath(entry, agent, planning, execution, nowMs);
         }
         execution.noteMapStoodOn(agent.getMapId());
@@ -494,7 +493,6 @@ public final class AgentSupplyProcurementRuntime {
                 supplierNpcId, agent.getMapId(), phase,
                 AgentSupplyInventorySnapshot.quantity(agent, request.category()),
                 Math.max(0, agent.getMeso()));
-        execution.noteDeathsAtStart(AgentDeathStateRuntime.deaths(entry));
         execution.rememberForegroundMode(
                 AgentModeStateRuntime.following(entry), AgentModeStateRuntime.grinding(entry));
         journal(entry, agent, request, "started", "supply shortage interrupted foreground work",
@@ -678,10 +676,9 @@ public final class AgentSupplyProcurementRuntime {
     }
 
     /** True once the Agent stands again after dying since its trip began; never while it lies dead. */
-    private static boolean diedOnTheTrip(AgentRuntimeEntry entry, AgentSupplyProcurementState execution) {
+    private static boolean diedOnTheTrip(Character agent, AgentSupplyProcurementState execution) {
         return execution.isActive() && execution.phase() != AgentSupplyProcurementState.Phase.STALLED
-                && !AgentDeathStateRuntime.isDead(entry)
-                && AgentDeathStateRuntime.deaths(entry) > execution.deathsAtStart();
+                && execution.diedOnMapId() >= 0 && agent.isAlive();
     }
 
     /**
@@ -699,7 +696,7 @@ public final class AgentSupplyProcurementRuntime {
                                          AgentResourcePlanningState planning,
                                          AgentSupplyProcurementState execution,
                                          long nowMs) {
-        String died = "died on map " + execution.lastMapStoodOn();
+        String died = "died on map " + execution.diedOnMapId();
         String respawned = " and respawned on map " + agent.getMapId();
         if (execution.phase() == AgentSupplyProcurementState.Phase.RETURNING) {
             return resumeWhereItStands(entry, agent, planning, execution, died + " on the way" + respawned, nowMs);

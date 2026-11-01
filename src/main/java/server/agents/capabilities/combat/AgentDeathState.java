@@ -13,15 +13,9 @@ public final class AgentDeathState {
     private long deadUntilMs = 0L;
     /** F8.6: this death waits for a Resurrection ("rez pls?"); a revive in place ends it (AgentRezWaitRuntime). */
     private boolean rezWaiting = false;
-    /** Deaths since this state was made (enterDeadState); a respawn or a revive keeps the count. */
-    private int deaths = 0;
 
     public long deadUntilMs() {
         return deadUntilMs;
-    }
-
-    public int deaths() {
-        return deaths;
     }
 
     public boolean rezWaiting() {
@@ -46,7 +40,6 @@ public final class AgentDeathState {
 
     public void enterDeadState(long nowMs, long deadDurationMs) {
         deadUntilMs = nowMs + deadDurationMs;
-        deaths++;
     }
 
     public void setDeadUntilMs(long deadUntilMs) {

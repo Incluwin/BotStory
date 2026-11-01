@@ -2,6 +2,7 @@ package server.agents.capabilities.combat;
 
 import server.agents.capabilities.movement.AgentMovementBroadcastService;
 import server.agents.capabilities.recovery.AgentDeathConfig;
+import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 
 import client.Character;
 import server.agents.capabilities.movement.AgentMovementPoseService;
@@ -21,6 +22,9 @@ public final class AgentCombatDeathRuntime {
         AgentMovementBroadcastService.broadcastMovement(entry);
         AgentDeathStateRuntime.enterDeadState(
                 entry, System.currentTimeMillis(), AgentDeathConfig.cfg.RESPAWN_DELAY_MS);
+        // a supply trip under way ends where the Agent stands up again (AgentSupplyProcurementRuntime)
+        entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .ifPresent(trip -> trip.noteDeath(bot.getMapId()));
         // F8.6: beside a party member with Resurrection it may lie a little longer and ask (at most 10 s from now)
         AgentRezWaitRuntime.begin(entry, bot, System.currentTimeMillis(), AgentDeathConfig.cfg.RESPAWN_DELAY_MS);
         AgentOperationalEventPublisher.publish(entry,

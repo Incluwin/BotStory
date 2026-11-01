@@ -17,11 +17,6 @@ public final class AgentDeathStateRuntime {
         return entry.capabilityStates().require(AgentDeathState.STATE_KEY).isDead();
     }
 
-    /** How many times the Agent died this session: a caller that kept the count sees whether it died since. */
-    public static int deaths(AgentRuntimeEntry entry) {
-        return entry.capabilityStates().require(AgentDeathState.STATE_KEY).deaths();
-    }
-
     public static boolean shouldEnterDeadState(AgentRuntimeEntry entry, int hp) {
         return entry.capabilityStates().require(AgentDeathState.STATE_KEY).shouldEnterDeadState(hp);
     }

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.combat.AgentCombatDeathRuntime;
 import server.agents.capabilities.combat.AgentDeathStateRuntime;
 import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
@@ -121,7 +122,7 @@ class AgentSupplyTripDeathTest {
         // It dies in the Ant Tunnel and respawns in Sleepywood at 50 HP, still with nothing to drink.
         standsOn[0] = ANT_TUNNEL_III;
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 60_000L));
-        dieAndRespawn(entry, 60_100L, SLEEPYWOOD);
+        dieAndRespawn(entry, agent, SLEEPYWOOD);
         clearInvocations(gateway);
 
         // The trip is over where it stands: no walk on to the store, nor back to Cold Cradle through the same maps.
@@ -180,7 +181,7 @@ class AgentSupplyTripDeathTest {
 
         standsOn[0] = BENT_TREE;
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 30_000L));
-        dieAndRespawn(entry, 30_100L, HAUNTED_HOUSE);
+        dieAndRespawn(entry, agent, HAUNTED_HOUSE);
         clearInvocations(gateway);
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, 36_000L));
         assertFalse(execution.isActive());
@@ -233,9 +234,9 @@ class AgentSupplyTripDeathTest {
         verify(gateway).travelTo(entry, agent, HENESYS_SHOP, 1_000L);
     }
 
-    private void dieAndRespawn(AgentRuntimeEntry entry, long nowMs, int returnMapId) {
+    private void dieAndRespawn(AgentRuntimeEntry entry, Character agent, int returnMapId) {
         hp[0] = 0;
-        AgentDeathStateRuntime.enterDeadState(entry, nowMs, 5_000L);
+        AgentCombatDeathRuntime.enterDeadState(entry, agent, false);
         // AgentDeathTickService.respawnAtNearestTown: the return map of the map it died on, at the respawn HP
         AgentDeathStateRuntime.clear(entry);
         standsOn[0] = returnMapId;
@@ -253,6 +254,7 @@ class AgentSupplyTripDeathTest {
         when(agent.getMapId()).thenAnswer(call -> standsOn[0]);
         when(agent.getMap()).thenAnswer(call -> map(standsOn[0]));
         when(agent.getHp()).thenAnswer(call -> hp[0]);
+        when(agent.isAlive()).thenAnswer(call -> hp[0] > 0);
         when(agent.getCurrentMaxHp()).thenReturn(maxHp);
         when(agent.getMp()).thenReturn(3_000);
         when(agent.getCurrentMaxMp()).thenReturn(3_000);
