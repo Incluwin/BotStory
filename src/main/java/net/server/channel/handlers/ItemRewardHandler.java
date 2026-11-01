@@ -37,6 +37,8 @@ import tools.Randomizer;
 
 import java.util.List;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+
 /**
  * @author Jay Estrella
  * @author kevintjuh93
@@ -63,8 +65,9 @@ public final class ItemRewardHandler extends AbstractPacketHandler {
                 if (ItemConstants.getInventoryType(reward.itemid) == InventoryType.EQUIP) {
                     final Item item = ii.getEquipById(reward.itemid);
                     if (reward.period != -1) {
-                        // TODO is this a bug, meant to be 60 * 60 * 1000?
-                        item.setExpiration(currentServerTime() + reward.period * 60 * 60 * 10);
+                        // Item.wz reward periods are minutes: the box equips carry 7200 (5 days), which the old
+                        // period * 60 * 60 * 10 cut to 3 days
+                        item.setExpiration(currentServerTime() + rewardPeriodMillis(reward.period));
                     }
                     InventoryManipulator.addFromDrop(c, item, false);
                 } else {
@@ -81,5 +84,9 @@ public final class ItemRewardHandler extends AbstractPacketHandler {
             }
         }
         c.sendPacket(PacketCreator.enableActions());
+    }
+
+    static long rewardPeriodMillis(int periodMinutes) {
+        return MINUTES.toMillis(periodMinutes);
     }
 }
