@@ -3,20 +3,26 @@ package server.agents.capabilities.townlife;
 import client.Character;
 import constants.id.ItemId;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.capabilities.movement.AgentChairService;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentForegroundPauseRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentSessionEventRuntime;
 import server.agents.runtime.simulation.AgentAbstractExecutionScope;
+import server.agents.runtime.simulation.AgentMaterializedStateFingerprint;
+import server.agents.runtime.simulation.AgentSimulationMode;
 
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -257,6 +263,33 @@ class AgentTownLifeRuntimeTest {
 
         assertEquals(AgentTownLifeState.Stage.CHOOSE_ACTIVITY, state.stage());
         verify(gateway).stop(entry);
+    }
+
+    @Test
+    void standingASeatedAbstractAgentUpLeavesItsWindowReconcilable() {
+        Character agent = localAgent(31, LithHarborTownLifeCatalog.LITH_HARBOR_MAP_ID,
+                new Point(2_404, 525));
+        AtomicInteger chair = new AtomicInteger(ItemId.RELAXER);
+        when(agent.getChair()).thenAnswer(invocation -> chair.get());
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, agent, null);
+        AgentTownLifeState state = entry.capabilityStates().require(AgentTownLifeState.STATE_KEY);
+        state.start(0L, 0, LithHarborTownLifeCatalog.LITH_HARBOR_MAP_ID);
+        entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ABSTRACT, 0L);
+        entry.simulationState().backgroundOutcomes().begin(AgentAbstractExecutionScope.TOWN_LIFE, 0L,
+                AgentMaterializedStateFingerprint.capture(agent));
+
+        try (MockedStatic<AgentChairService> chairs = mockStatic(AgentChairService.class)) {
+            chairs.when(() -> AgentChairService.stand(entry, agent)).thenAnswer(invocation -> {
+                chair.set(-1);
+                return true;
+            });
+            AgentTownLifeRuntime.terminateLocal(entry, agent, AgentTownLifeLifecycleEvent.Phase.FORCED,
+                    "travel", 1_000L);
+        }
+
+        assertEquals(-1, agent.getChair());
+        assertTrue(entry.simulationState().backgroundOutcomes()
+                .reconcile(AgentMaterializedStateFingerprint.capture(agent)));
     }
 
     private static Character localAgent(int id, int mapId, Point position) {

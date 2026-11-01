@@ -28,4 +28,9 @@ public record AgentMaterializedStateFingerprint(
                 agent.getLevel(),
                 agent.getExp());
     }
+
+    /** This state with another chair, everything else unchanged. */
+    public AgentMaterializedStateFingerprint withChair(int chairId) {
+        return new AgentMaterializedStateFingerprint(mapId, x, y, chairId, mesos, level, experience);
+    }
 }
