@@ -375,8 +375,8 @@ public final class ResidentDialogue {
                 return new Target(persona, without(words, index)); // named but not here: replies come by whisper
             }
         }
-        if (requireName) {
-            return null;
+        if (requireName || namesSomeoneElseHere(speaker, words)) {
+            return null; // "thanks frostdemon": the line is the citizen's or player's it names, not the nearest Resident's
         }
         ResidentRuntime.Session nearest = null;
         double best = PROXIMITY_PX;
@@ -418,6 +418,20 @@ public final class ResidentDialogue {
                 || ACCEPT.matcher(normalized).matches() || TURN_IN.matcher(normalized).find()
                 || ASK_JOIN.matcher(normalized).find() || WHO.matcher(normalized).find()
                 || THANKS.matcher(normalized).matches() || PAY.matcher(normalized).matches();
+    }
+
+    /** True when a word of the line is the name of someone else on the speaker's map (a citizen, a player). */
+    private static boolean namesSomeoneElseHere(Character speaker, String[] words) {
+        if (speaker.getMap() == null) {
+            return false;
+        }
+        for (String word : words) {
+            Character named = speaker.getMap().getCharacterByName(word);
+            if (named != null && named.getId() != speaker.getId()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int indexOf(String[] words, String name) {
