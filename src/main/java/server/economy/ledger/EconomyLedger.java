@@ -365,7 +365,10 @@ public final class EconomyLedger {
                 : Math.max(0L, items.getWholePrice(itemId));
     }
 
-    /** Journal and outbox rows past economy.JOURNAL_RETENTION_DAYS go, a batch at a time. */
+    /**
+     * Journal rows past economy.JOURNAL_RETENTION_DAYS go, a batch at a time, and so do the outbox rows left from
+     * before the agent economy engine went (nothing writes the outbox now).
+     */
     private void prune() {
         if (config.JOURNAL_RETENTION_DAYS <= 0) {
             return;

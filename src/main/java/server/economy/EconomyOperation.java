@@ -8,12 +8,11 @@ public record EconomyOperation(
         EconomyOperationKind kind,
         int primaryCharacterId,
         Integer secondaryCharacterId,
-        String summary,
-        EconomyOperationMetadata metadata) {
+        String summary) {
 
     public EconomyOperation {
         if (transactionId == null || idempotencyKey == null || idempotencyKey.isBlank()
-                || kind == null || primaryCharacterId < 0 || metadata == null) {
+                || kind == null || primaryCharacterId < 0) {
             throw new IllegalArgumentException("An economy operation requires an id, kind, and primary character");
         }
         if (idempotencyKey.length() > 128) {
@@ -26,13 +25,13 @@ public record EconomyOperation(
                                           Integer secondaryCharacterId, String summary) {
         UUID transactionId = UUID.randomUUID();
         return new EconomyOperation(transactionId, transactionId.toString(), kind,
-                primaryCharacterId, secondaryCharacterId, summary, EconomyOperationContext.current());
+                primaryCharacterId, secondaryCharacterId, summary);
     }
 
     public static EconomyOperation create(String idempotencyKey, EconomyOperationKind kind,
                                           int primaryCharacterId, Integer secondaryCharacterId,
                                           String summary) {
         return new EconomyOperation(UUID.randomUUID(), idempotencyKey, kind,
-                primaryCharacterId, secondaryCharacterId, summary, EconomyOperationContext.current());
+                primaryCharacterId, secondaryCharacterId, summary);
     }
 }

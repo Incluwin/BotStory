@@ -16,9 +16,6 @@ import server.agents.runtime.activity.session.adapter.FieldActivitySessionAdapte
 import server.agents.runtime.activity.session.adapter.PartyQuestActivitySessionAdapter;
 import server.agents.runtime.activity.session.adapter.QuestPlanActivitySessionAdapter;
 import server.agents.runtime.activity.session.adapter.TownLifeActivitySessionAdapter;
-import server.agents.integration.AgentEconomyRuntime;
-import server.agents.runtime.commerce.AgentCommerceSessionRegistryRuntime;
-import server.agents.runtime.commerce.AgentFileCommerceSessionStore;
 import server.agents.runtime.field.AgentFieldAdmissionMode;
 import java.util.Set;
 
@@ -27,8 +24,7 @@ public final class AgentStandardWorldActivityBindingResolver
         implements AgentWorldActivityBindingResolver {
     private static final Set<AgentActivityKind> SUPPORTED = Set.of(
             AgentActivityKind.QUESTING, AgentActivityKind.HUNTING,
-            AgentActivityKind.TOWN_LIFE, AgentActivityKind.COMMERCE,
-            AgentActivityKind.PARTY_QUEST);
+            AgentActivityKind.TOWN_LIFE, AgentActivityKind.PARTY_QUEST);
 
     private final AgentWorldDirectiveRequestCompiler compiler;
     private final AgentLiveActivityFacadeRegistry facades;
@@ -105,15 +101,6 @@ public final class AgentStandardWorldActivityBindingResolver
                     nowMs -> mapTransfer.travel(
                             entry, agent, system.definition().recruitMapId(), nowMs),
                     target, rollback, target);
-        }
-        if (request instanceof AgentWorldTypedActivityRequest.Commerce commerce) {
-            var sessions = AgentEconomyRuntime.sessionPort().orElseThrow(() ->
-                    new IllegalStateException("managed Commerce runtime is not installed"));
-            var target = AgentCommerceSessionRegistryRuntime.prepare(
-                    agent.getId(), sessions, AgentFileCommerceSessionStore.runtimeDefault(),
-                    commerce.request());
-            return binding(source, rollback, target, target, entry, agent,
-                    constants.id.MapId.FM_ENTRANCE);
         }
         AgentWorldTypedActivityRequest.TownLife town =
                 (AgentWorldTypedActivityRequest.TownLife) request;

@@ -14,13 +14,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Player prices for the price index's seeds (docs/ECONOMY_PLAN.md E2, rule 5): the GMS-era tables SoloMapling ships
- * ({@link #DIR}, read as data; SoloMapling itself stays off), each at the latest version not after this server's.
+ * Player prices for the price index's seeds (docs/ECONOMY_PLAN.md E2, rule 5): the GMS-era tables that came with
+ * SoloMapling ({@link #DIR}), each at the latest version not after this server's.
  * An item they do not list falls back to the NPC price multiple, and the market basket comes before both.
  */
 final class PriceSeeds {
     private static final Logger log = LoggerFactory.getLogger(PriceSeeds.class);
-    static final Path DIR = Path.of("src/main/java/soloMapling/itemPool/itemConfig");
+    static final Path DIR = Path.of("config/living/price-seeds");
     /** This server is v83; a table's price for a later version is not this server's. */
     static final int VERSION = 83;
 

@@ -13,8 +13,8 @@ import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.shop.AgentFreeMarketStallService;
-import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService;
-import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService.ObservedStall;
+import server.agents.capabilities.shop.AgentFreeMarketBuyerService;
+import server.agents.capabilities.shop.AgentFreeMarketBuyerService.ObservedStall;
 import server.integration.AgentPresence;
 import server.knowledge.ContentAnswers;
 import server.knowledge.PersonalKnowledge;
@@ -130,7 +130,7 @@ public final class Market {
         this.gearErrands = new GearErrands(population, this);
         this.scrolling = new CitizenScrolling(population, this::quote);
         this.random = new Random(population.config().SEED ^ 0x3a44e7L);
-        this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX, population::isCitizen);
+        this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX);
         for (int[] row : population.store().prices()) {
             index.put(row[0], new long[]{row[1], row[2]});
         }

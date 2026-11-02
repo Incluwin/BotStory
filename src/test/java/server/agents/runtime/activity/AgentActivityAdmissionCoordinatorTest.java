@@ -3,7 +3,6 @@ package server.agents.runtime.activity;
 import client.Character;
 import org.junit.jupiter.api.Test;
 import server.agents.runtime.AgentRuntimeEntry;
-import server.agents.runtime.AgentCommerceControlRuntime;
 import server.agents.runtime.activity.session.AgentActivityKind;
 
 import java.util.List;
@@ -87,21 +86,6 @@ class AgentActivityAdmissionCoordinatorTest {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(mock(Character.class), null, null);
 
         assertFalse(coordinator.prepare("questing", entry, entry.bot(), "command", 100L));
-    }
-
-    @Test
-    void bootstrapRejectsQuestingWhileCommerceOwnsTheAgent() {
-        Character agent = mock(Character.class);
-        org.mockito.Mockito.when(agent.getId()).thenReturn(77);
-        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
-        AgentCommerceControlRuntime.claim(77, "economy:test-admission");
-        try {
-            assertFalse(AgentActivityBootstrap.admission().prepare(
-                    AgentActivityBootstrap.QUESTING_CONTROLLER_ID,
-                    entry, agent, "operator command", 100L));
-        } finally {
-            AgentCommerceControlRuntime.release("economy:test-admission");
-        }
     }
 
     @Test

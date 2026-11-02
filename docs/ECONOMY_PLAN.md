@@ -25,9 +25,9 @@ humans trade into a market whose prices stay put". The user's decisions on the o
 | Base Cosmic economy | `MapleMap`, `Shop`, `Trade`, `PlayerShop`, `HiredMerchant`, `FredrickProcessor`, NPC scripts | ON | Mob mesos, NPC buy/sell, trade tax, merchants, Fredrick | Keep; tune (section 7) |
 | Population market (citizens) | `server/living/population/Market.java` | ON (`population.MARKET_ENABLED: true`, 30 stalls, 200 k/day buy budget) | Price index (`living_price_index`), citizen stalls, citizens buying from human and companion stalls | **Becomes the one market** (section 4) |
 | Bench duties (companions) | `server/living/roster/BenchLedger.java`, `BenchStallForm.java`, `BenchSessions.java` | ON | Offline farm/sell/stall credit; live stalls priced from the index | Keep; fix the minting (E1) |
-| Agent economy engine | `server/agents/economy/**`, `economy-engine.yaml`, Postgres `cosmic_economy` | Only on GM6 `!economy start` / `!commerce start`; the MySQL journal half is always on | Scenario runs of agents trading in the FM, double-entry evidence ledger | Keep as an offline scenario tool; it reads the one index (E2) |
+| Agent economy engine | `server/agents/economy/**`, `economy-engine.yaml`, Postgres `cosmic_economy` | Only on GM6 `!economy start` / `!commerce start`; the MySQL journal half is always on | Scenario runs of agents trading in the FM, double-entry evidence ledger | Keep as an offline scenario tool; it reads the one index (E2). **Deleted 2026-11-01** (section 8) |
 | Old bot merchant economy | `server/bot/**`, `bot_economy:` in config.yaml | OFF (`ENABLED: false`) | Virtual hunters, bot hired merchants, treasury | **Retire** (E2): broken (below) |
-| SoloMapling FM | `soloMapling/FreeMarket/**` | OFF (`ENABLE_SOLO_MAPLING: false`) | Fake hired merchants, chat sellers | Leave off; mine its GMS-era price tables as an index seed |
+| SoloMapling FM | `soloMapling/FreeMarket/**` | OFF (`ENABLE_SOLO_MAPLING: false`) | Fake hired merchants, chat sellers | Leave off; mine its GMS-era price tables as an index seed. **Deleted 2026-11-01**; the tables are `config/living/price-seeds/` (section 8) |
 
 Broken or risky pieces found on the way (cite these when the phase touches them):
 - `bot_economy` shops would spawn **empty** (`BotMerchantManager.stockFromInventory`, `:271-317`, never calls
@@ -76,7 +76,7 @@ Six rules everything below follows.
    QUEST, EVENT, TOP_UP, BENCH_SIM, GM_GRANT; NPC_PURCHASE, TAX, FREDRICK, SERVICE, ...) and a holder kind (human,
    citizen, companion, GM). Itemised rows stay for trades and shop sales (the existing MySQL
    `economy_transaction_journal`); high-volume flows (mob drops) are summed in memory and flushed a minute at a time
-   into a daily flow table. The Postgres engine stays for scenario runs only.
+   into a daily flow table. The Postgres engine stays for scenario runs only (it was deleted on 2026-11-01, section 8).
 2. **Bots play by player rules.** A bot gets mesos the way a player does: killing, vendoring, quests, selling to
    someone. No top-ups, no sales without a buyer, no free gear that it can then sell.
 3. **Bots spend like players.** Their wealth leaves through the same doors a player's does: consumables, gear bought
@@ -139,6 +139,7 @@ Six rules everything below follows.
 - **Kept, unlike the bullet above:** bench-stall sales stay excluded. The reason was never minting: a bench stall prices
   at 0.85x the index, so its sales would pull the index down every time, and a median does not stop that.
 - `MarketPricePrior` (installed by the population) is the agent engine's catalog anchor where the index knows a price.
+  Gone with the engine on 2026-11-01.
 - Seeds: basket, then the SoloMapling tables at v83 (`PriceSeeds`), then the NPC multiple; an index row no sale ever
   moved takes the new seed at start.
 - `botBuy` books what it creates to a `SOLO_MAPLING` ledger account.
@@ -319,3 +320,42 @@ about **1.1 B/day**: 0.55 B/day NPC shop net, 0.58 B/day everything else (mostly
 - **D5, `server/bot/**`: DELETE.** Export its tables to a SQL dump, drop them, remove the code, timers and `!boteconomy`. E2.
 - **D6, bot-to-bot trades: YES, journaled and taxed.** Citizens shop at any stall, human first, through the real
   `PlayerShop.buy`; the index learns from those sales. E3 (the buyer rule) and E2 (the index learning from trades).
+
+## 8. Consolidation (2026-11-01)
+
+User request (2026-11-01): "please consolidate". A review that day found four overlapping economy layers, only one of
+which (the citizen `Market`) drove live play. Now there is one:
+
+- **Prices and listings:** `server/living/population` (`Market`, `living_price_index`, `PriceSeeds`, `ScrollSeeds`,
+  `EconomyController`, `CitizenSellTrips`). Unchanged; E0-E4, scrolling and sell trips run as before.
+- **Money moves and the ledger:** `server/economy`, the transaction layer under every NPC shop, buyback, trade, player
+  shop, hired merchant, cash-shop window, needs-board and companion-manager payment (`EconomyTransactionCoordinator`
+  into `economy_transaction_journal`), with `ledger/` (meso flows, daily close, CPI, the controller's numbers). It was
+  never a duplicate of the engine: the engine sat on top of it.
+
+Deleted:
+- The agent economy engine (`server/agents/economy`, 177 files and 67 tests from Kiwiism/cosmic_agents), its satellites
+  (`agents/runtime/commerce`, `agents/observation/commerce`, `agents/simulation/activity`, `AgentEconomyRuntime`,
+  `AgentCommerceControlRuntime`, the NPC-sale guard only it installed), GM6 `!economy` and `!commerce`,
+  `economy-engine.yaml`, `config/economy/`, `economy-database/`, `economy-dashboard/`, `tools/economy/`, the
+  `economy-db` compose profile and the engine runbooks in `docs/agents/economy-engine/`. The Postgres `cosmic_economy`
+  data on disk was left alone. Future cosmic_agents economy changes have nothing to land in.
+- What only the engine read in `server/economy`: the `economy_transaction_outbox` write on every commit (the table
+  stays; its old rows drain on `JOURNAL_RETENTION_DAYS`), the per-commit mutation evidence that filled it, and the
+  run attribution (`EconomyOperationContext`/`Metadata`, `EconomyTaxOverride`). Player-shop tax is `Trade.getFee`, as
+  it already was in live play. Journal rows and their summaries are unchanged.
+- SoloMapling's price data: the eleven GMS-era price tables `PriceSeeds` reads moved to `config/living/price-seeds/`
+  (the seed map is the same 631 items) and the three non-price `itemConfig` files went. Docker copies `config/`, not
+  `src/`, so Docker installs now get these seeds too. The `FreeMarket` and `itemPool` code, the two `botBuy` methods
+  and `MesoAccount.SOLO_MAPLING` go in a follow-up once the SoloMapling port (`feat/solomapling-port`) is merged: until
+  then the rest of SoloMapling still compiles against them.
+
+Kept on purpose:
+- `AgentFreeMarketBuyerService` moved to `server/agents/capabilities/shop`, beside `AgentFreeMarketStallService`:
+  citizens buy from stalls through the real `PlayerShop.buy` as before.
+- `AgentActivityKind.COMMERCE` and an inert commerce controller: bench stalls hand that kind back and PQ entry asks every
+  kind for its controller. The director can no longer start a COMMERCE visit (it never could without an engine run).
+- `src/main/resources/agents/catalogs/adaptive/victoria-quest-facts.json` (the adaptive quest catalog reads it).
+
+Still open (E3/E2, not part of this): reprice sold-out lines and round asks the way players do, citizens talking about
+real listings, and moving the citizen stall onto `AgentFreeMarketStallCapability`.

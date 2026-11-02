@@ -80,7 +80,7 @@ public final class EconomyTransactionCoordinator {
                 EconomyParticipantSnapshot secondaryAfter = secondary == null
                         ? null : EconomyParticipantSnapshot.capture(secondary);
                 journal.commit(operation, EconomyDurableState.capture(primaryBefore, primaryAfter,
-                        secondaryBefore, secondaryAfter, context.persistence(), context.evidence()));
+                        secondaryBefore, secondaryAfter, context.persistence()));
             } catch (RuntimeException failure) {
                 try {
                     context.rollback();

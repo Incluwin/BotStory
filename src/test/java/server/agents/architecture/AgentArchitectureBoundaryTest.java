@@ -29,10 +29,7 @@ class AgentArchitectureBoundaryTest {
                 AGENTS.resolve("model"),
                 AGENTS.resolve("capabilities").resolve("contracts"),
                 AGENTS.resolve("policy").resolve("behavior"),
-                AGENTS.resolve("profiles"),
-                AGENTS.resolve("economy").resolve("domain"),
-                AGENTS.resolve("economy").resolve("clock"),
-                AGENTS.resolve("economy").resolve("scenario"));
+                AGENTS.resolve("profiles"));
         for (Path root : roots) {
             if (!Files.exists(root)) {
                 continue;
@@ -61,8 +58,6 @@ class AgentArchitectureBoundaryTest {
                         () -> file + " must not own field internals");
                 assertFalse(source.contains("import server.agents.plans."),
                         () -> file + " must not own quest-plan internals");
-                assertFalse(source.contains("import server.agents.economy."),
-                        () -> file + " must not own economy internals");
             }
         }
     }
@@ -73,8 +68,7 @@ class AgentArchitectureBoundaryTest {
                 AGENTS.resolve("capabilities").resolve("townlife"),
                 AGENTS.resolve("capabilities").resolve("partyquest"),
                 AGENTS.resolve("runtime").resolve("field"),
-                AGENTS.resolve("plans"),
-                AGENTS.resolve("economy"));
+                AGENTS.resolve("plans"));
         for (Path root : roots) {
             assertTreeExcludes(root,
                     List.of(
@@ -99,9 +93,6 @@ class AgentArchitectureBoundaryTest {
                         AGENTS.resolve("plans"),
                         AGENTS.resolve("progression"),
                         AGENTS.resolve("objectives")),
-                "commerce", List.of(
-                        AGENTS.resolve("economy"),
-                        AGENTS.resolve("runtime").resolve("commerce")),
                 "partyquest", List.of(
                         AGENTS.resolve("capabilities").resolve("partyquest")));
         Map<String, List<String>> prefixes = Map.of(
@@ -110,8 +101,6 @@ class AgentArchitectureBoundaryTest {
                 "hunting", List.of("server.agents.field.", "server.agents.runtime.field."),
                 "questing", List.of("server.agents.plans.", "server.agents.progression.",
                         "server.agents.objectives."),
-                "commerce", List.of("server.agents.economy.",
-                        "server.agents.runtime.commerce."),
                 "partyquest", List.of("server.agents.capabilities.partyquest."));
         // Recorded 2026-10-06 at the counts the cosmic_agents graft brought in (upstream 08-24..09-03): the PQ
         // test-fixture services in field/ (hunting<->partyquest), plans.AgentScriptItemActionService used by the
@@ -136,20 +125,6 @@ class AgentArchitectureBoundaryTest {
     }
 
     @Test
-    void productionCommerceDoesNotDependOnObservationOrExternalActivitySimulation()
-            throws IOException {
-        for (Path root : List.of(
-                AGENTS.resolve("economy").resolve("session"),
-                AGENTS.resolve("runtime").resolve("commerce"))) {
-            assertTreeExcludes(root,
-                    List.of("import server.agents.observation.",
-                            "import server.agents.simulation.activity.",
-                            "SimulationRunEngine", "PopulationAdmissionPlanner"),
-                    "production Commerce contracts and sessions must remain simulator-free");
-        }
-    }
-
-    @Test
     void supportSystemsCannotAdmitOrStartPrimaryActivities() throws IOException {
         List<Path> roots = List.of(AGENTS.resolve("inventory"), AGENTS.resolve("socials"));
         for (Path root : roots) {
@@ -159,8 +134,7 @@ class AgentArchitectureBoundaryTest {
                             "AgentActivityAdmissionCoordinator",
                             "import server.agents.plans.",
                             "import server.agents.runtime.field.",
-                            "import server.agents.capabilities.townlife.",
-                            "import server.agents.economy."),
+                            "import server.agents.capabilities.townlife."),
                     "support systems may request work but cannot own primary admission");
         }
     }

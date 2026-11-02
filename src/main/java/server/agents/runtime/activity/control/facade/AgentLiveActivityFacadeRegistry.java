@@ -35,8 +35,4 @@ public final class AgentLiveActivityFacadeRegistry {
         }
         return facade;
     }
-
-    public boolean coversAllPrimaryActivities() {
-        return providers.keySet().containsAll(java.util.Set.of(AgentActivityKind.values()));
-    }
 }

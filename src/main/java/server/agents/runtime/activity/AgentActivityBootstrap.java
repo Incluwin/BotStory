@@ -6,8 +6,6 @@ import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.plans.AgentUniversalPlanRuntime;
 import server.agents.plans.mapleisland.AgentMapleIslandLithHandoffRuntime;
-import server.agents.runtime.AgentCommerceControlRuntime;
-import server.agents.runtime.commerce.AgentCommerceSessionRegistryRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.activity.session.AgentActivityKind;
 import server.agents.runtime.activity.session.AgentFileActivityHandoffStore;
@@ -148,51 +146,20 @@ public final class AgentActivityBootstrap {
         };
     }
 
+    /**
+     * COMMERCE keeps a primary controller so every activity kind resolves one (bench stalls hand back COMMERCE, PQ
+     * entry asks every kind), but nothing runs under it: Free Market stalls and purchases are capabilities, and the
+     * agent economy engine that ran Commerce sessions is gone (docs/ECONOMY_PLAN.md, consolidation 2026-11-01).
+     */
     private static AgentActivityController commerce() {
         return new AgentActivityController() {
             @Override public String id() { return COMMERCE_CONTROLLER_ID; }
             @Override public int precedence() { return 1_000; }
             @Override public AgentActivityRole role() { return AgentActivityRole.PRIMARY; }
             @Override public AgentActivityKind activityKind() { return AgentActivityKind.COMMERCE; }
-            @Override public boolean active(AgentRuntimeEntry entry, Character agent) {
-                return AgentCommerceSessionRegistryRuntime.active(agent.getId())
-                        || AgentCommerceControlRuntime.claimed(agent.getId());
-            }
-            @Override public AgentActivityTick tick(
-                    AgentRuntimeEntry entry, Character agent, long nowMs) {
-                    if (AgentCommerceSessionRegistryRuntime.active(agent.getId())) {
-                        if (entry.capabilityRuntimeState().hasActiveCapability()) {
-                            return AgentCommerceControlRuntime.withAttribution(agent.getId(),
-                                    () -> AgentCapabilityRuntime.tick(entry, agent, nowMs))
-                                    ? AgentActivityTick.CONSUMED : AgentActivityTick.IDLE;
-                        }
-                        return AgentCommerceSessionRegistryRuntime.tick(agent.getId(), nowMs)
-                                ? AgentActivityTick.CONSUMED : AgentActivityTick.IDLE;
-                    }
-                    if (entry.capabilityRuntimeState().hasActiveCapability()) {
-                        return AgentCommerceControlRuntime.withAttribution(agent.getId(),
-                                () -> AgentCapabilityRuntime.tick(entry, agent, nowMs))
-                                ? AgentActivityTick.CONSUMED : AgentActivityTick.IDLE;
-                    }
-                    return AgentActivityTick.CONSUMED;
-            }
-            @Override public boolean requestStop(
-                    AgentRuntimeEntry entry, Character agent, String reason, long nowMs) {
-                if (AgentCommerceSessionRegistryRuntime.active(agent.getId())) {
-                    return AgentCommerceSessionRegistryRuntime.requestStop(
-                            agent.getId(), reason, nowMs, nowMs + 30_000L)
-                            .status() == server.agents.runtime.activity.session.AgentActivityExitResult.Status.RELEASED;
-                }
-                return false;
-            }
-            @Override public void forceStop(
-                    AgentRuntimeEntry entry, Character agent, String reason, long nowMs) {
-                if (AgentCommerceSessionRegistryRuntime.active(agent.getId())) {
-                    throw new IllegalStateException(
-                            "Per-Agent Commerce must drain protected shop and trade state");
-                }
-                throw new IllegalStateException(
-                        "Commerce control must be released by the Commerce run lifecycle");
+            @Override public boolean active(AgentRuntimeEntry entry, Character agent) { return false; }
+            @Override public AgentActivityTick tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
+                return AgentActivityTick.IDLE;
             }
         };
     }

@@ -24,7 +24,6 @@ import server.agents.runtime.activity.world.AgentWorldMilestoneEvaluator;
 import server.agents.runtime.activity.world.AgentWorldMilestone;
 import server.agents.runtime.activity.world.AgentWorldMilestoneSnapshot;
 import server.agents.runtime.activity.world.AgentWorldProposalProvider;
-import server.agents.integration.AgentEconomyRuntime;
 import server.agents.progression.AgentCareerBuildBundleRepository;
 import server.agents.progression.AgentCareerProgressionState;
 import server.agents.progression.AgentVictoriaIndividualQuestCatalog;
@@ -79,7 +78,6 @@ public final class AgentDirectorActionCatalog {
             addIndividualQuests(result, agent, context, operatorEnabled);
             addTrainingMaps(result, context, operatorEnabled);
             addTownLife(result, operatorEnabled);
-            addCommerce(result, context, operatorEnabled);
         }
         if (victoriaReached && context.level() >= 10) {
             addPartyQuest(result, operatorEnabled, "hpq", "Henesys Party Quest", 3,
@@ -352,41 +350,6 @@ public final class AgentDirectorActionCatalog {
                         "freeTimeBudgetMs", "300000"),
                 AgentWorldInterruptionPolicy.WAIT_FOR_SAFE_BOUNDARY,
                 AgentWorldCompletionPolicy.REQUEST_NEXT_DECISION, 200, false)));
-    }
-
-    private static void addCommerce(
-            List<AgentDirectorAction> result,
-            AgentWorldContext context,
-            boolean operatorEnabled) {
-        boolean inFreeMarket = context.mapId() >= constants.id.MapId.FM_ENTRANCE
-                && context.mapId() <= constants.id.MapId.FM_ENTRANCE + 22;
-        boolean installed = AgentEconomyRuntime.sessionPort().isPresent();
-        boolean executable = operatorEnabled && installed && inFreeMarket;
-        String reason = !operatorEnabled ? "Director is not in an operator-controlled mode"
-                : !installed ? "a managed Commerce runtime is not installed"
-                : !inFreeMarket ? "normal Free Market entry is not yet connected to Director travel"
-                : "bounded market visit through the installed Commerce session owner";
-        result.add(new AgentDirectorAction(
-                "commerce:periodic-market-visit", "Visit the Free Market",
-                availability(executable, false), reason,
-                AgentWorldDirectiveType.START_ACTIVITY, AgentActivityKind.COMMERCE,
-                AgentWorldActivityRequestType.COMMERCE_VISIT, "commerce:periodic-market-visit",
-                Map.ofEntries(
-                        Map.entry("jobFamily", Integer.toString(context.jobId() / 100)),
-                        Map.entry("dailyActivityFraction", "0.50"),
-                        Map.entry("riskTolerance", "0.50"),
-                        Map.entry("liquidityPreference", "0.50"),
-                        Map.entry("upgradeAggressiveness", "0.35"),
-                        Map.entry("shoppingPatience", "0.60"),
-                        Map.entry("stallWillingness", "0.40"),
-                        Map.entry("priceMemoryHours", "72"),
-                        Map.entry("negotiationAggressiveness", "0.35"),
-                        Map.entry("chairInterest", "0.20"),
-                        Map.entry("purpose", "PERIODIC_MARKET_VISIT"),
-                        Map.entry("maximumDurationMs", "300000"),
-                        Map.entry("maximumIdleMs", "60000")),
-                AgentWorldInterruptionPolicy.WAIT_FOR_SAFE_BOUNDARY,
-                AgentWorldCompletionPolicy.REQUEST_NEXT_DECISION, 200, false));
     }
 
     private AgentDirectorAction activity(

@@ -9,7 +9,6 @@ import server.agents.runtime.activity.world.AgentWorldDirectiveSource;
 import server.agents.runtime.activity.world.AgentWorldDirectiveType;
 import server.agents.runtime.activity.world.AgentWorldInterruptionPolicy;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +19,7 @@ class AgentWorldDirectiveRequestCompilerTest {
             new AgentWorldDirectiveRequestCompiler();
 
     @Test
-    void compilesPlanFieldTownCommerceAndPartyQuestContracts() {
+    void compilesPlanFieldTownAndPartyQuestContracts() {
         assertEquals(AgentActivityKind.QUESTING,
                 compiler.compile(directive(AgentActivityKind.QUESTING,
                         AgentWorldActivityRequestType.AUTHORED_PLAN, Map.of())).kind());
@@ -41,20 +40,6 @@ class AgentWorldDirectiveRequestCompilerTest {
                         AgentWorldActivityRequestType.TOWN_LIFE_VISIT, Map.of(
                                 "mapId", "100000000", "purpose", "leisure",
                                 "freeTimeBudgetMs", "180000"))).kind());
-        Map<String, String> commerce = new LinkedHashMap<>();
-        commerce.put("jobFamily", "warrior");
-        commerce.put("purpose", "buy_supplies");
-        commerce.put("maximumDurationMs", "600000");
-        commerce.put("maximumIdleMs", "120000");
-        commerce.put("priceMemoryHours", "24");
-        for (String key : new String[]{"dailyActivityFraction", "riskTolerance",
-                "liquidityPreference", "upgradeAggressiveness", "shoppingPatience",
-                "stallWillingness", "negotiationAggressiveness", "chairInterest"}) {
-            commerce.put(key, "0.5");
-        }
-        assertEquals(AgentActivityKind.COMMERCE,
-                compiler.compile(directive(AgentActivityKind.COMMERCE,
-                        AgentWorldActivityRequestType.COMMERCE_VISIT, commerce)).kind());
         assertEquals(AgentActivityKind.PARTY_QUEST,
                 compiler.compile(directive(AgentActivityKind.PARTY_QUEST,
                         AgentWorldActivityRequestType.PARTY_QUEST_VISIT, Map.of(
@@ -76,6 +61,9 @@ class AgentWorldDirectiveRequestCompilerTest {
         assertThrows(IllegalArgumentException.class, () -> compiler.compile(directive(
                 AgentActivityKind.QUESTING, AgentWorldActivityRequestType.INDIVIDUAL_QUEST,
                 Map.of())));
+        assertThrows(IllegalArgumentException.class, () -> compiler.compile(directive(
+                AgentActivityKind.COMMERCE, AgentWorldActivityRequestType.COMMERCE_VISIT, Map.of())),
+                "Commerce visits ran on the agent economy engine");
     }
 
     private AgentWorldDirective directive(
