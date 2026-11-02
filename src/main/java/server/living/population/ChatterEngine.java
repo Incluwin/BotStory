@@ -238,7 +238,7 @@ public final class ChatterEngine {
         long now = System.currentTimeMillis();
         try {
             for (CitizenSession session : population.presence().sessions()) {
-                if (session.virtual || session.afkUntilMs > now || session.agent() == null) {
+                if (session.virtual || session.afkUntilMs > now || session.agent() == null || inConversation(session)) {
                     continue;
                 }
                 double sociability = sociability(session) / 100.0d;
@@ -256,6 +256,12 @@ public final class ChatterEngine {
         }
     }
 
+    /** In one of TownConversations' scripted talks: its idle lines and reactions wait until the talk is over. */
+    private boolean inConversation(CitizenSession session) {
+        TownConversations talks = population.townConversations();
+        return talks != null && talks.talking(session.characterId);
+    }
+
     // ---- selection -----------------------------------------------------------------------
 
     private void react(Event event) {
@@ -266,7 +272,8 @@ public final class ChatterEngine {
         List<CitizenSession> candidates = new ArrayList<>();
         for (CitizenSession session : population.presence().sessions()) {
             if (session.virtual || session.mapId != event.mapId || session.channel != event.channel
-                    || session.characterId == event.subjectId || session.afkUntilMs > 0L || session.agent() == null) {
+                    || session.characterId == event.subjectId || session.afkUntilMs > 0L || session.agent() == null
+                    || inConversation(session)) {
                 continue;
             }
             candidates.add(session);
@@ -707,6 +714,38 @@ public final class ChatterEngine {
         }
         String rendered = population.voices().renderAnswer(from.citizen, text, now, false);
         deliver(from, SMEGA_EAR, rendered, population.voices().delayMs(from.citizen, rendered));
+        return true;
+    }
+
+    /**
+     * A citizen's avatar megaphone (TownFidgets, docs/SOLOMAPLING_PORT.md): up to four short {@code lines} beside its
+     * avatar, world-wide for ten seconds as the stock item shows it, under the same hourly cap and 10-minute gap as
+     * every citizen megaphone. Like the random megaphones it uses no item. False, nothing sent, when the cap blocks.
+     */
+    public boolean avatarMegaphone(CitizenSession from, int itemId, List<String> lines) {
+        Character agent = from == null || from.virtual ? null : from.agent();
+        if (!population.config().CHATTER_ENABLED || agent == null || lines.isEmpty()) {
+            return false;
+        }
+        long now = megaphoneClock.getAsLong();
+        synchronized (this) {
+            if (!smegaAllowed(now)) {
+                return false;
+            }
+            smegasThisHour++;
+            lastSmegaMs = now;
+        }
+        int world = population.world().config().WORLD;
+        List<String> four = new ArrayList<>(lines);
+        while (four.size() < 4) {
+            four.add("");
+        }
+        Server.getInstance().broadcastMessage(world, PacketCreator.getAvatarMega(agent, "", from.channel, itemId,
+                four.subList(0, 4), false));
+        TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> Server.getInstance().broadcastMessage(world, PacketCreator.byeAvatarMega()), 10_000L);
+        linesSpoken.incrementAndGet();
+        remember(from.name() + " [avatar]: " + String.join(" ", lines));
         return true;
     }
 

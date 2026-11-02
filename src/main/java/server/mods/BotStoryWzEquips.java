@@ -15,7 +15,7 @@ import java.util.function.ToIntFunction;
  * The equips only BotStory's WZ files have (resource {@value #RESOURCE}): 303 the server took from the Community
  * Repack and the 4 Evolving Rings, none of them in the Cosmic WZ files. A client on those files shows one as an empty
  * inventory slot and closes when a character equips or wears it, so while {@link ServerMods#BOTSTORY_WZ} is off the GM
- * item commands, the dressing room and SoloMapling's bots leave them out.
+ * item commands and the dressing room leave them out.
  */
 public final class BotStoryWzEquips {
     static final String RESOURCE = "/mods/botstory-wz-equips.txt";

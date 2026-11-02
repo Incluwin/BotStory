@@ -774,6 +774,9 @@ public final class PresenceScheduler {
             if (activity == Activity.JQ && (session.virtual || jumpQuests() == null || !jumpQuests().plays(session, level, now))) {
                 weight = 0;
             }
+            if (activity == Activity.CASINO && (session.virtual || casino() == null || !casino().plays(citizen, now))) {
+                weight = 0;
+            }
             if (weight > 0) {
                 options.add(activity);
                 option.add(weight);
@@ -822,6 +825,10 @@ public final class PresenceScheduler {
                 int start = jumpQuests() == null ? 0 : jumpQuests().mapFor(session, level);
                 return start > 0 ? start : population.fields().homeTown(citizen, random);
             }
+            case CASINO -> {
+                int venue = casino() == null ? 0 : casino().mapFor(citizen);
+                return venue > 0 ? venue : population.fields().homeTown(citizen, random);
+            }
             default -> {
                 CitizenSellTrips.Trip sale = activity == Activity.TOWN ? session.sellTrip : null;
                 if (sale != null) {
@@ -854,6 +861,12 @@ public final class PresenceScheduler {
             }
             case JQ -> {
                 if (jumpQuests() == null || !jumpQuests().arrive(session, map, now)) { // nothing to climb here: a visit
+                    session.activity = Activity.TOWN;
+                    stroll(session, map, now);
+                }
+            }
+            case CASINO -> {
+                if (casino() == null || !casino().arrive(session, map, now)) { // no seat or post free here: a visit
                     session.activity = Activity.TOWN;
                     stroll(session, map, now);
                 }
@@ -925,6 +938,11 @@ public final class PresenceScheduler {
     /** The population's jump quests; null in tests that leave them out. */
     private CitizenJumpQuests jumpQuests() {
         return population.jumpQuests();
+    }
+
+    /** The population's casino; null in tests that leave it out. */
+    private CitizenCasino casino() {
+        return population.casino();
     }
 
     /** True while the citizen is in a party quest of its party, or on its way back from one. */
@@ -1000,6 +1018,9 @@ public final class PresenceScheduler {
         }
         if (jumpQuests() != null && jumpQuests().holds(session)) {
             return; // its jump quest plans its next activity when it clears or gives up (CitizenJumpQuests)
+        }
+        if (casino() != null && casino().holds(session)) {
+            return; // its shift at the table or post plans its next activity when it is over (CitizenCasino)
         }
         if (onSupplyTrip(session)) {
             // no AFK, stroll or re-plan while its own shop trip runs: a re-plan that is due stays due for the next sweep

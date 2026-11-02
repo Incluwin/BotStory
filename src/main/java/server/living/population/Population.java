@@ -65,6 +65,9 @@ public final class Population {
     private final CitizenPartyQuests partyQuests;
     private final CitizenMiniGames miniGames;
     private final CitizenJumpQuests jumpQuests;
+    private final CitizenCasino casino;
+    private final TownFidgets fidgets;
+    private final TownConversations conversations;
     private final PersonMemories memories;
     private final NeedLedger needs;
     private final ClearLog clears;
@@ -102,6 +105,9 @@ public final class Population {
         this.partyQuests = new CitizenPartyQuests(this);
         this.miniGames = new CitizenMiniGames(this);
         this.jumpQuests = new CitizenJumpQuests(this);
+        this.casino = new CitizenCasino(this);
+        this.fidgets = new TownFidgets(this);
+        this.conversations = new TownConversations(this);
         this.memories = new PersonMemories(this);
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
@@ -187,6 +193,9 @@ public final class Population {
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             population.chatter.tick();
             population.miniGames.tick(); // minigame rooms ride the chatter tick (docs/BOT_CONCEPT_PLAN.md F5a)
+            population.casino.tick(); // the casino's seating and shifts (docs/SOLOMAPLING_PORT.md)
+            population.fidgets.tick();
+            population.conversations.tick();
         }, 20_000L, 20_000L));
         // and on the same minute the tell audit samples where idle bots stand, folding hourly (BOT_CONCEPT_PLAN.md C2)
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
@@ -234,6 +243,7 @@ public final class Population {
         population.timers.clear();
         population.market.closeAll("server shutdown");
         population.needs.boards().removeAll(); // a later start spawns them again
+        population.casino.stopAll(); // the cashier NPC and the tables' chips and cards
         population.memories.flushAll(); // before the citizens unload: what happened up to the last event is kept
         population.presence.logoutAll("server shutdown");
         log.info("Population stopped.");
@@ -350,6 +360,21 @@ public final class Population {
     /** Pet-Walking Road and the Forest of Patience, climbed by citizens (docs/BOT_CONCEPT_PLAN.md F5b). */
     public CitizenJumpQuests jumpQuests() {
         return jumpQuests;
+    }
+
+    /** Henesys Game Park's tables, the drop game, the gachapon show and the NX seller (docs/SOLOMAPLING_PORT.md). */
+    public CitizenCasino casino() {
+        return casino;
+    }
+
+    /** Chalkboards, faces and avatar megaphones from citizens in town. */
+    public TownFidgets fidgets() {
+        return fidgets;
+    }
+
+    /** Conversations among citizens standing together in town. */
+    public TownConversations townConversations() {
+        return conversations;
     }
 
     /** What citizens ask for on the needs board (docs/BOT_CONCEPT_PLAN.md F1). */

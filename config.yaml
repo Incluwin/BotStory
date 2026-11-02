@@ -486,11 +486,6 @@ server:
     ADMIN_SERVICE_BOT_CHANNEL: 1
     ADMIN_SERVICE_BOT_MAP: 100000000      #Henesys by default; any valid map id works.
 
-    #SoloMapling ambient social-bot layer (town wanderers, minigames, social chat, jump/party quests).
-    #Master gate - shipped OFF until live-tested. When false, no bots spawn and all SoloMapling
-    #runtime hooks short-circuit. The FM marketplace stays owned by the citizen market (population) regardless.
-    ENABLE_SOLO_MAPLING: false
-
     #Connection & packet throttle (net.security.ConnectionThrottle).
     #Loopback (127/8) is always exempt so tests and the admin port are never throttled.
     ENABLE_CONNECTION_THROTTLE: true
@@ -1509,6 +1504,60 @@ population:
     RIVAL_HELP_REQUESTS_ENABLED: false
     RIVALS_HELP_GAP_HOURS: 12
     RIVALS_HELP_OPEN_MINUTES: 30
+    # The casino and the other SoloMapling features citizens took over (2026-11-01, docs/SOLOMAPLING_PORT.md). Citizens on a
+    # CASINO session run them as players would: a citizen deals blackjack at a Henesys Game Park table or hosts cho-han dice,
+    # others sit down and bet chips; players join by saying "deal me in" at a table, drop chips as their bet and say hit or
+    # stand. Chips are the four stamps (10k/50k/250k/1m), bought and sold at full value from Aramia in Game Park.
+    # false = the kill switch for each piece: no table, host or cashier; cohorts.yaml CASINO weights count for nothing.
+    # Technical: CitizenCasino rides the 20 s chatter tick for seating and shifts; each table steps on one-shot LOW_PRIORITY timers (about 1.5 s) only while a human stands on its map.
+    CASINO_BLACKJACK_ENABLED: false
+    # Technical: tables (of the five Game Park spots SoloMapling used) that get a citizen dealer at once, 0..5; each dealer buys a chip float of 8 x CASINO_MAX_BET from its purse first.
+    CASINO_BLACKJACK_TABLES: 2
+    # Technical: casino.DiceTable, one citizen host at Game Park's dice spot; one bet at a time, cho (even) or han (odd) paid at evens from the host's own chips.
+    CASINO_DICE_ENABLED: false
+    # Technical: casino.ChipCashier spawns stock NPC 9000055 (Aramia) in Game Park and opens a code-built Shop by object id; that shop alone buys stamps back at the chip value.
+    CASINO_CHIPS_ENABLED: false
+    # Technical: casino.GameParkBar, one host citizen at the bar spot who greets humans entering 100000203 and drops a real drink (Orange/Grape Juice, Maple Cola, Pure Water) it bought.
+    CASINO_BAR_ENABLED: false
+    # Technical: mesos; a seat's chips above this are pushed back; a dealer's float is 8x this and a dice host's 3x, bought from its purse, so a poor citizen never deals.
+    CASINO_MAX_BET: 1000000
+    # Technical: a CASINO session's length is drawn uniformly in MIN..MAX (ms, MIN >= 60000); a player also leaves when its chips run out, and sells what is left to Aramia.
+    CASINO_SHIFT_MIN_MS: 1200000
+    # Technical: upper end of the shift draw (>= CASINO_SHIFT_MIN_MS); the session plans its next activity at the end of the round or roll it is in.
+    CASINO_SHIFT_MAX_MS: 2700000
+    # Technical: after a CASINO session ends, CitizenCasino.plays is false for this long (ms), so a re-plan right after it never rolls CASINO again.
+    CASINO_COOLDOWN_MS: 3600000
+    # The drop game (SoloMapling's DropGameBot): a citizen in the Henesys Department Store takes 10m or 50m by trade, parties
+    # the player, and walks the store dropping items that vanish in about a second and a half; nearby citizens cheer.
+    # false = the kill switch: no drop game host.
+    # Technical: casino.DropGame steps on one-shot timers during a game (2 min); entry by core Trade with the host, items from scripts/config/population/casino.yaml dropgame pools.
+    DROP_GAME_ENABLED: false
+    # A citizen opening gachapon boxes in Henesys Market (SoloMapling's GachaBot): it pays GACHA_BOX_PRICE from its purse,
+    # a box springs open from a reactor and sprays its drops, which it picks up into its bag. false = the kill switch.
+    # Technical: casino.GachaShow with casino.ReactorShow (reactor 2202004 hit three times, drops owner-only with a 200 ms spray stagger); pools in casino.yaml gacha.
+    GACHA_SHOW_ENABLED: false
+    # Technical: mesos per box, booked as NPC_PURCHASE (a sink); casino.yaml keeps the box's expected drop value below it.
+    GACHA_BOX_PRICE: 200000
+    # Technical: ms between boxes for one citizen (>= 30000); boxes open only while a human stands on the market map.
+    GACHA_BOX_GAP_MS: 180000
+    # A citizen in the Free Market entrance sells NX cash codes (SoloMapling's NXMerchantBot): a player trades it
+    # NX_CODE_PRICE, and it whispers a real code redeemable at the Cash Shop's coupon window. false = the kill switch.
+    # Technical: casino.NxSeller with casino.NxCodes (rows in nxcode + nxcode_items, type 4 = NX Credit, auto-increment ids); the trade itself books as TRADE.
+    NX_SELLER_ENABLED: false
+    # Technical: mesos the code costs, 1 or more; the seller confirms the trade only for exactly this amount and cancels anything else with a line in the trade chat.
+    NX_CODE_PRICE: 50000000
+    # Technical: NX on one code, written as nxcode_items.quantity; CouponCodeHandler credits it to the redeeming account as NX Credit.
+    NX_CODE_AMOUNT: 10000
+    # Citizens in town now and then put up a chalkboard, pull a face or send an avatar megaphone (SoloMapling's social
+    # fidgets; chat itself is ChatterEngine's). false = the kill switch.
+    # Technical: TownFidgets rides the 20 s chatter tick, TOWN citizens on maps with a human only; avatar megaphones share CHATTER_SMEGA_PER_HOUR and its 10-minute gap.
+    TOWN_FIDGETS_ENABLED: false
+    # Citizens standing together in town talk among themselves (SoloMapling's ConversationManager): two to four of them
+    # play out one of scripts/config/population/conversations.yaml's conversations. false = the kill switch.
+    # Technical: TownConversations rides the 20 s chatter tick; a cluster is 2-4 idle TOWN citizens within 250 x 30 px on a map with a human, the last 20 scripts not repeated.
+    CONVERSATIONS_ENABLED: false
+    # Technical: ms between conversations on one map while it holds 20 citizens or fewer (>= 10000); a busier map uses a third of it.
+    CONVERSATION_GAP_MS: 80000
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

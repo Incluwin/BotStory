@@ -80,7 +80,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static soloMapling.ArtificialPlayer.BotClientHandler.createBotClient;
 
 public final class PlayerLoggedinHandler extends AbstractPacketHandler {
     private static final Logger log = LoggerFactory.getLogger(PlayerLoggedinHandler.class);
@@ -224,12 +223,6 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             cserv.addPlayer(player);
             wserv.addPlayer(player);
             player.setEnteredChannelWorld();
-            // SoloMapling: seed the shared bot client from the first real login so
-            // bots can route packets, then bootstrap the bot environment. Gated OFF
-            // by default; no effect (and no first-login disconnect) unless enabled.
-            if (YamlConfig.config.server.ENABLE_SOLO_MAPLING) {
-                createBotClient(c);
-            }
 
             List<PlayerBuffValueHolder> buffs = server.getPlayerBuffStorage().getBuffsFromStorage(cid);
             if (buffs != null) {

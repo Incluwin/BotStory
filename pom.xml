@@ -68,7 +68,6 @@
         <postgresql.version>42.7.7</postgresql.version> <!-- Separate economy evidence database -->
         <jdbi-version>3.49.5</jdbi-version> <!-- Convenience wrapper around JDBC -->
         <liquibase-core.version>4.32.0</liquibase-core.version> <!-- Database migrations -->
-        <jgrapht.version>1.5.2</jgrapht.version> <!-- Pathfinding (SoloMapling bot navigation) -->
         <jackson.version>2.19.0</jackson.version> <!-- JSON for internal admin bridge -->
         <junit.version>5.13.1</junit.version> <!-- Unit test -->
         <mockito.version>5.18.0</mockito.version> <!-- Unit test -->
@@ -117,18 +116,6 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
-        </dependency>
-
-        <!-- Pathfinding (SoloMapling bot navigation) -->
-        <dependency>
-            <groupId>org.jgrapht</groupId>
-            <artifactId>jgrapht-core</artifactId>
-            <version>${jgrapht.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jgrapht</groupId>
-            <artifactId>jgrapht-io</artifactId>
-            <version>${jgrapht.version}</version>
         </dependency>
 
         <!-- Networking -->
@@ -223,6 +210,18 @@
 
     <build>
         <plugins>
+            <!-- soloMapling/FreeMarket and soloMapling/itemPool are what is left of SoloMapling: the economy
+                 consolidation deletes them (docs/SOLOMAPLING_PORT.md); until then they are not compiled. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <excludes>
+                        <exclude>soloMapling/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <!-- Explicitly disable default jar which includes no dependencies -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -6,7 +6,6 @@ import client.inventory.Equip;
 import client.inventory.Item;
 import constants.inventory.ItemConstants;
 import server.mods.ServerMods;
-import soloMapling.ArtificialPlayer.BotHelpers;
 
 /**
  * Which cash items a player may put in a trade window while the {@code cash_item_trade} mod is on (the client's
@@ -36,6 +35,6 @@ public final class CashItemTradePolicy {
     }
 
     private static boolean isBot(Character chr) {
-        return chr == null || chr.getClient() instanceof BotClient || BotHelpers.isBot(chr);
+        return chr == null || chr.getClient() instanceof BotClient;
     }
 }

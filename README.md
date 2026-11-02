@@ -31,7 +31,8 @@ WZ files or the Community Repack WZ files; see [the game client](docs/SETUP.md#2
 - [nutnnut/Cosmic](https://github.com/nutnnut/Cosmic) provided the companion
   behavior from which the reconstructed Agent runtime was derived.
 - [MadaraGameDev/SoloMapling](https://github.com/MadaraGameDev/SoloMapling)
-  provided the ambient player population (`soloMapling`).
+  provided the original ambient player population; its casino, drop game, NX seller and town conversations now
+  live on in the citizen layer (docs/SOLOMAPLING_PORT.md).
 - Cosmic itself descends from the OdinMS and HeavenMS emulator lineage.
 
 This repository is not the official Cosmic project.

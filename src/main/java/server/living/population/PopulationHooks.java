@@ -292,6 +292,9 @@ public final class PopulationHooks {
             return false;
         }
         try {
+            if (population.casino() != null && population.casino().heard(speaker, text)) {
+                return true; // a table or host it was said to: "deal me in", "hit", "cho" (docs/SOLOMAPLING_PORT.md)
+            }
             return population.conversation().onChat(speaker, text);
         } catch (RuntimeException failure) {
             log.debug("population chat hook failed", failure);

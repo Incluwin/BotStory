@@ -16,7 +16,6 @@ public interface InPacket extends Packet {
     int available();
     void seek(int byteOffset);
     int getPosition();
-    InPacket copy(); // SoloMapling: bot movement packet replay
 
     default byte[] getBytes(int maximumLength) {
         byte[] bytes = getBytes();

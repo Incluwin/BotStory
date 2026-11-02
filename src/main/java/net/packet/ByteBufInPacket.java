@@ -14,11 +14,6 @@ public class ByteBufInPacket implements InPacket {
     }
 
     @Override
-    public InPacket copy() {
-        return new ByteBufInPacket(byteBuf.copy());
-    }
-
-    @Override
     public byte[] getBytes() {
         return ByteBufUtil.getBytes(byteBuf);
     }

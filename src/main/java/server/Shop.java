@@ -43,8 +43,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -57,6 +59,8 @@ public class Shop {
     private final int id;
     private final int npcId;
     private final List<ShopItem> items;
+    /** Item id to the mesos this shop pays for one, over the item's own price (the casino's chip cashier). */
+    private final Map<Integer, Integer> buyBack = new HashMap<>();
 
     static {
         for (int throwingStarId : ItemId.allThrowingStarIds()) {
@@ -75,6 +79,28 @@ public class Shop {
         this.id = id;
         this.npcId = npcId;
         items = new ArrayList<>();
+    }
+
+    /** A shop made in code rather than the shops table (the casino's chip cashier, docs/SOLOMAPLING_PORT.md). */
+    public static Shop custom(int id, int npcId) {
+        return new Shop(id, npcId);
+    }
+
+    /** Sells {@code itemId} at {@code price} mesos each. */
+    public void stock(int itemId, int price) {
+        addItem(new ShopItem((short) 1000, itemId, price, 0));
+    }
+
+    /** Buys {@code itemId} back at {@code price} mesos each, whatever the item's own price says. */
+    public void buysBackAt(int itemId, int price) {
+        buyBack.put(itemId, price);
+    }
+
+    /** What this shop pays for {@code quantity} of an item: its buy-back price when it has one, else the item's own. */
+    int salePrice(int itemId, short quantity) {
+        Integer each = buyBack.get(itemId);
+        return each == null ? ItemInformationProvider.getInstance().getPrice(itemId, quantity)
+                : (int) Math.min(Integer.MAX_VALUE, (long) each * quantity);
     }
 
     void addItem(ShopItem item) {
@@ -179,7 +205,7 @@ public class Shop {
         Item item = player.getInventory(type).getItem(slot);
         if (!canSell(item, quantity)) return TransactionResult.INVALID;
         short sold = getSellingQuantity(item, quantity);
-        int receivedMesos = ItemInformationProvider.getInstance().getPrice(item.getItemId(), sold);
+        int receivedMesos = salePrice(item.getItemId(), sold);
         if (!canReceiveSaleProceeds(player, receivedMesos)) return TransactionResult.MESO_CAPACITY;
         EconomyTransactionCoordinator.execute(player, null, EconomyOperationKind.SHOP_SELL,
                 shopSummary("sell", item.getItemId(), sold, receivedMesos), () -> {
@@ -325,8 +351,7 @@ public class Shop {
         Item item = c.getPlayer().getInventory(type).getItem(slot);
         if (canSell(item, quantity)) {
             quantity = getSellingQuantity(item, quantity);
-            ItemInformationProvider ii = ItemInformationProvider.getInstance();
-            int recvMesos = ii.getPrice(item.getItemId(), quantity);
+            int recvMesos = salePrice(item.getItemId(), quantity);
             if (!canReceiveSaleProceeds(c.getPlayer(), recvMesos)) {
                 rejectSaleForMesoCapacity(c);
                 return;

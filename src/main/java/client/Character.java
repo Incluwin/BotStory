@@ -38,7 +38,6 @@ import client.inventory.PetDataFactory;
 import client.inventory.WeaponType;
 import client.inventory.manipulator.CashIdGenerator;
 import client.inventory.manipulator.InventoryManipulator;
-import soloMapling.ArtificialPlayer.BotTier;
 import client.keybind.KeyBinding;
 import client.keybind.QuickslotBinding;
 import client.newyear.NewYearCardRecord;
@@ -290,20 +289,10 @@ public class Character extends AbstractCharacterObject {
     private int world;
     private int accountid, id, level;
 
-    // SoloMapling: bot appearance tier (gear-quality S/A/B/C/D). Default/harmless for real players.
-    private BotTier botTier = BotTier.getDefaultTier();
-
     public void setID(int id) {
         this.id = id;
     }
 
-    public BotTier getTier() {
-        return BotTier.TierManager.getSafeTier(botTier);
-    }
-
-    public void setTier(BotTier newTier) {
-        this.botTier = BotTier.TierManager.safeTierSet(this.botTier, newTier);
-    }
     private int rank, rankMove, jobRank, jobRankMove;
     private int gender, hair, face;
     private int fame, quest_fame;

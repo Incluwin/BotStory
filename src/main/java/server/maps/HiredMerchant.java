@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package server.maps;
 
-import static soloMapling.ArtificialPlayer.BotHelpers.isBot;
 
 import client.Character;
 import client.Client;
@@ -901,7 +900,7 @@ public class HiredMerchant extends AbstractMapObject {
             Character owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterByName(ownerName);
             // the FM bot pays nothing, so this sale creates meso: the ledger names it (docs/ECONOMY_PLAN.md E2)
             MesoFlows.record(MesoAccount.SOLO_MAPLING, owner == null ? MesoHolder.HUMAN : MesoFlows.holder(owner), price);
-            if (owner != null && !isBot(owner)) {
+            if (owner != null) {
                 owner.addMerchantMesos(price);
             } else {
                 try (Connection con = DatabaseConnection.getConnection()) {
