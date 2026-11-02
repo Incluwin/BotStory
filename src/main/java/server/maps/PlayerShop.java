@@ -765,46 +765,4 @@ public class PlayerShop extends AbstractMapObject {
         broadcast(PacketCreator.getPlayerShopChat(player, chat, s));
     }
 
-    public boolean botBuy(Character fakechar, PlayerShopItem pItem, int itemPosition, short quantity) {
-        synchronized (items) {
-            Item newItem = pItem.getItem().copy();
-            newItem.setQuantity((short) ((pItem.getItem().getQuantity() * quantity)));
-            visitorLock.lock();
-            try {
-                int price = (int) Math.min((float) pItem.getPrice() * quantity, Integer.MAX_VALUE);
-
-                if (!owner.canHoldMeso(price)) {    // thanks Rohenn for noticing owner hold check misplaced
-                    fakechar.dropMessage(1, "Transaction failed since the shop owner can't hold any more mesos.");
-                    return false;
-                }
-
-                price -= Trade.getFee(price);  // thanks BHB for pointing out trade fees not applying here
-                try (var ignored = MesoFlows.as(MesoAccount.SOLO_MAPLING)) { // the FM bot pays nothing: meso created
-                    owner.gainMeso(price, true);
-                }
-
-                SoldItem soldItem = new SoldItem(fakechar.getName(), pItem.getItem().getItemId(), quantity, price);
-                owner.sendPacket(PacketCreator.getPlayerShopOwnerUpdate(soldItem, itemPosition));
-
-                synchronized (sold) {
-                    sold.add(soldItem);
-                }
-
-                pItem.setBundles((short) (pItem.getBundles() - quantity));
-                if (pItem.getBundles() < 1) {
-                    pItem.setDoesExist(false);
-                    if (++boughtnumber == items.size()) {
-                        owner.setPlayerShop(null);
-                        this.setOpen(false);
-                        this.closeShop();
-                        owner.dropMessage(1, "Your items are sold out, and therefore your shop is closed.");
-                    }
-                }
-                return true;
-            } finally {
-                visitorLock.unlock();
-            }
-        }
-    }
-
 }

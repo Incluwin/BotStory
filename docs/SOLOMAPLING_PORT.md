@@ -86,17 +86,14 @@ An independent review of the live casino code before the first run found more, a
   `ItemConstants.getEquipSlotType`, and the jgrapht dependency (SoloMapling's navigation graph only).
 - `ClaimGuardBoundaryTest` no longer lists SoloMapling's party-join and messenger call sites.
 
-## What stays, and who removes it
+## What was left, and where it went
 
-The economy consolidation (branch `feat/economy-consolidation`) owns SoloMapling's FreeMarket and its price tables:
+`soloMapling/FreeMarket/` and `soloMapling/itemPool/` imported the rest of the package, so neither branch could remove
+them alone. Both merged on `int/consolidation-2026-11-01`, which then deleted them:
 
-- `src/main/java/soloMapling/FreeMarket/` and `soloMapling/itemPool/` stay in the tree but are **not compiled**
-  (`pom.xml` excludes `soloMapling/**`); they import the rest of the package, so they could not compile alone.
-- `server/living/population/PriceSeeds.java` still reads `soloMapling/itemPool/itemConfig/` as data. The economy
-  branch moves those tables to `config/living/price-seeds/`.
-- `PlayerShop.botBuy`, `HiredMerchant.botBuy` and `MesoAccount.SOLO_MAPLING` stay; nothing calls `botBuy` now.
-- After this branch merges, the economy session deletes `soloMapling/FreeMarket` and `itemPool`, both `botBuy`
-  methods, `MesoAccount.SOLO_MAPLING` and the `pom.xml` exclusion.
+- The price tables `PriceSeeds` reads moved to `config/living/price-seeds/` (branch `feat/economy-consolidation`).
+- `soloMapling/` is gone, along with `PlayerShop.botBuy`, `HiredMerchant.botBuy`, `MesoAccount.SOLO_MAPLING` and the
+  `pom.xml` compile exclusion. Old ledger rows that name `SOLO_MAPLING` stay as text; nothing reads them back.
 - Liquibase changeset 28 (`characters.bot_kind`) stays as applied history; nothing reads the column now. Dropping it
   is a new changeset, not an edit.
 

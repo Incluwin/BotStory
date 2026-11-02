@@ -210,18 +210,6 @@
 
     <build>
         <plugins>
-            <!-- soloMapling/FreeMarket and soloMapling/itemPool are what is left of SoloMapling: the economy
-                 consolidation deletes them (docs/SOLOMAPLING_PORT.md); until then they are not compiled. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <excludes>
-                        <exclude>soloMapling/**</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
             <!-- Explicitly disable default jar which includes no dependencies -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

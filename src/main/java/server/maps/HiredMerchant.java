@@ -38,7 +38,6 @@ import server.ItemInformationProvider;
 import server.Trade;
 import server.economy.ledger.MesoAccount;
 import server.economy.ledger.MesoFlows;
-import server.economy.ledger.MesoHolder;
 import server.living.LivingWorldHooks;
 import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.DatabaseConnection;
@@ -875,60 +874,6 @@ public class HiredMerchant extends AbstractMapObject {
 
         public int getMesos() {
             return mesos;
-        }
-    }
-
-    public void botBuy(Character fakechar, PlayerShopItem pItem, short quantity) {
-        synchronized (items) {
-            Item newItem = pItem.getItem().copy();
-            int price = (int) Math.min((float) pItem.getPrice() * quantity, Integer.MAX_VALUE);
-            price -= Trade.getFee(price);  // thanks BHB for pointing out trade fees not applying here
-
-            synchronized (sold) {
-                sold.add(new SoldItem(fakechar.getName(), pItem.getItem().getItemId(), quantity, price));
-            }
-
-            pItem.setBundles((short) (pItem.getBundles() - quantity));
-            if (pItem.getBundles() < 1) {
-                pItem.setDoesExist(false);
-            }
-
-            if (YamlConfig.config.server.USE_ANNOUNCE_SHOPITEMSOLD) {   // idea thanks to Vcoc
-                announceItemSold(newItem, price, getQuantityLeft(pItem.getItem().getItemId()));
-            }
-
-            Character owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterByName(ownerName);
-            // the FM bot pays nothing, so this sale creates meso: the ledger names it (docs/ECONOMY_PLAN.md E2)
-            MesoFlows.record(MesoAccount.SOLO_MAPLING, owner == null ? MesoHolder.HUMAN : MesoFlows.holder(owner), price);
-            if (owner != null) {
-                owner.addMerchantMesos(price);
-            } else {
-                try (Connection con = DatabaseConnection.getConnection()) {
-                    long merchantMesos = 0;
-                    try (PreparedStatement ps = con.prepareStatement("SELECT MerchantMesos FROM characters WHERE id = ?")) {
-                        ps.setInt(1, ownerId);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            if (rs.next()) {
-                                merchantMesos = rs.getInt(1);
-                            }
-                        }
-                    }
-                    merchantMesos += price;
-
-                    try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET MerchantMesos = ? WHERE id = ?", PreparedStatement.RETURN_GENERATED_KEYS)) {
-                        ps.setInt(1, (int) Math.min(merchantMesos, Integer.MAX_VALUE));
-                        ps.setInt(2, ownerId);
-                        ps.executeUpdate();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            try {
-                this.saveItems(false);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
     }
 
