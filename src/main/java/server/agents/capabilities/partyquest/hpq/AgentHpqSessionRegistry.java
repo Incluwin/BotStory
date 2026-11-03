@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.hpq;
 
 import client.Character;
+import server.agents.capabilities.partyquest.AgentPartyQuestScriptCallbacks;
 import server.maps.MapItem;
 
 import java.util.Collection;
@@ -130,10 +131,12 @@ public final class AgentHpqSessionRegistry {
         if (character != null && session != null) session.cancelRewardClaim(character.getId());
     }
 
+    /** HenesysPQ.js playerUnregistered, under the script's lock: never waits on the session there. */
     public static void forfeitUnclaimedReward(Character character) {
         AgentHpqSession session = character == null ? null : forMember(character.getId());
         if (session != null && session.eventInstance() == character.getEventInstance()) {
-            session.forfeitReward(character.getId());
+            int characterId = character.getId();
+            AgentPartyQuestScriptCallbacks.update(session, () -> session.forfeitReward(characterId));
         }
     }
 

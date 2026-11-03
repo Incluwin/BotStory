@@ -5,6 +5,7 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentPartyQuestScriptCallbacks;
 import server.maps.MapItem;
 
 import java.util.Collection;
@@ -160,11 +161,29 @@ public final class AgentLpqSessionRegistry {
         if (character != null && session != null) session.cancelRewardClaim(character.getId());
     }
 
+    /** LudiPQ.js playerUnregistered, under the script's lock: never waits on the session there. */
     public static void forfeitUnclaimedReward(Character character) {
         AgentLpqSession session = character == null ? null : forMember(character.getId());
         if (session != null && session.eventInstance() == character.getEventInstance()) {
-            session.forfeitReward(character.getId());
-            logUnregister(session, character);
+            int characterId = character.getId();
+            Unregistered seen = Unregistered.of(character);
+            AgentPartyQuestScriptCallbacks.update(session, () -> {
+                session.forfeitReward(characterId);
+                logUnregister(session, characterId, seen);
+            });
+        }
+    }
+
+    /** The member as the script unregistered it, read on the script's thread before the removal; null if unreadable. */
+    private record Unregistered(String name, int mapId, int hp, int registeredBefore, boolean cleared) {
+        static Unregistered of(Character character) {
+            try {
+                EventInstanceManager event = character.getEventInstance();
+                return new Unregistered(character.getName(), character.getMapId(), character.getHp(),
+                        event.getPlayerCount(), event.isEventCleared());
+            } catch (RuntimeException e) {
+                return null;
+            }
         }
     }
 
@@ -172,17 +191,16 @@ public final class AgentLpqSessionRegistry {
      * One 'LPQ unregister:' line per member LudiPQ.js unregisters: its playerUnregistered calls forfeitUnclaimedReward
      * before the removal, so registeredBefore is the count the script's floor check saw. Never throws.
      */
-    private static void logUnregister(AgentLpqSession session, Character character) {
+    private static void logUnregister(AgentLpqSession session, int characterId, Unregistered seen) {
         try {
-            AgentLpqMemberState member = session.member(character.getId());
-            EventInstanceManager event = character.getEventInstance();
+            if (seen == null) throw new IllegalStateException("unreadable when unregistered");
+            AgentLpqMemberState member = session.member(characterId);
             log.info("LPQ unregister: session={} member={}({}) type={} map={} hp={} registeredBefore={} cleared={} "
-                            + "phase={}", session.sessionId(), character.getName(), character.getId(),
-                    member == null ? "UNKNOWN" : member.memberType(), character.getMapId(), character.getHp(),
-                    event.getPlayerCount(), event.isEventCleared(), session.phase());
+                            + "phase={}", session.sessionId(), seen.name(), characterId,
+                    member == null ? "UNKNOWN" : member.memberType(), seen.mapId(), seen.hp(),
+                    seen.registeredBefore(), seen.cleared(), session.phase());
         } catch (RuntimeException e) {
-            log.info("LPQ unregister: session={} member={} detail unavailable", session.sessionId(),
-                    character.getId());
+            log.info("LPQ unregister: session={} member={} detail unavailable", session.sessionId(), characterId);
         }
     }
 

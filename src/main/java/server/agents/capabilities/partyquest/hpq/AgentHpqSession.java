@@ -44,7 +44,8 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     private boolean paused;
     private boolean terminating;
     private String failure = "";
-    private EventInstanceManager eventInstance;
+    // volatile: its event script's callbacks read it without the session (AgentPartyQuestScriptCallbacks)
+    private volatile EventInstanceManager eventInstance;
     private PartyOwnership partyOwnership = PartyOwnership.EXTERNAL;
     private BonusMode bonusMode = BonusMode.SKIP;
     private boolean rewardEligibilityFrozen;
@@ -198,7 +199,7 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     public synchronized boolean paused() { return paused; }
     public synchronized void setPaused(boolean paused) { this.paused = paused; }
     public synchronized String failure() { return failure; }
-    public synchronized EventInstanceManager eventInstance() { return eventInstance; }
+    public EventInstanceManager eventInstance() { return eventInstance; }
     public synchronized void bindEventInstance(EventInstanceManager eventInstance) {
         this.eventInstance = eventInstance;
     }

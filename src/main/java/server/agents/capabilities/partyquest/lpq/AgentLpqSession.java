@@ -55,7 +55,8 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private boolean paused;
     private boolean terminating;
     private String failure = "";
-    private EventInstanceManager eventInstance;
+    // volatile: its event script's callbacks read it without the session (AgentPartyQuestScriptCallbacks)
+    private volatile EventInstanceManager eventInstance;
     private PartyOwnership partyOwnership = PartyOwnership.EXTERNAL;
     private BonusMode bonusMode = BonusMode.ENTER;
     private List<List<Integer>> stage8Order = List.of();
@@ -669,7 +670,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     public synchronized boolean paused() { return paused; }
     public synchronized void setPaused(boolean paused) { this.paused = paused; }
     public synchronized String failure() { return failure; }
-    public synchronized EventInstanceManager eventInstance() { return eventInstance; }
+    public EventInstanceManager eventInstance() { return eventInstance; }
     public synchronized void bindEventInstance(EventInstanceManager eventInstance) { this.eventInstance = eventInstance; }
     public synchronized void clearEventInstance() { eventInstance = null; }
     public synchronized PartyOwnership partyOwnership() { return partyOwnership; }

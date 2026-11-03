@@ -3,6 +3,7 @@ package server.agents.capabilities.partyquest.kpq;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.partyquest.AgentPartyQuestScriptCallbacks;
 
 import java.util.Collection;
 import java.util.Map;
@@ -295,10 +296,12 @@ public final class AgentKpqSessionRegistry {
         if (character != null && session != null) session.cancelRewardClaim(character.getId());
     }
 
+    /** KerningPQ.js playerUnregistered, under the script's lock: never waits on the session there. */
     public static void forfeitUnclaimedReward(Character character) {
         AgentKpqSession session = character == null ? null : forMember(character.getId());
         if (session != null && session.eventInstance() == character.getEventInstance()) {
-            session.forfeitReward(character.getId());
+            int characterId = character.getId();
+            AgentPartyQuestScriptCallbacks.update(session, () -> session.forfeitReward(characterId));
         }
     }
 

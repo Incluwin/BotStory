@@ -84,7 +84,8 @@ public final class AgentKpqSession implements AgentCompanionRunSession {
     private long blockerSinceMs;
     private int blockerAttempts;
     private boolean terminationStarted;
-    private EventInstanceManager eventInstance;
+    // volatile: its event script's callbacks read it without the session (AgentPartyQuestScriptCallbacks)
+    private volatile EventInstanceManager eventInstance;
     private int stage5LastMobCount = -1;
     private int stage5LastPassCount = -1;
     private long stage5BossDefeatedAtMs;
@@ -628,7 +629,7 @@ public final class AgentKpqSession implements AgentCompanionRunSession {
     public synchronized long blockerSinceMs() { return blockerSinceMs; }
     public synchronized int blockerAttempts() { return blockerAttempts; }
     public synchronized boolean terminationStarted() { return terminationStarted; }
-    public synchronized EventInstanceManager eventInstance() { return eventInstance; }
+    public EventInstanceManager eventInstance() { return eventInstance; }
     public synchronized void bindEventInstance(EventInstanceManager event) { eventInstance = event; }
     public synchronized void clearEventInstance() { eventInstance = null; }
     public synchronized void freezeRewardEligibility() { rewardEligibilityFrozen = true; }

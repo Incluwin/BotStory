@@ -4,6 +4,7 @@ import client.Character;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.AgentPartyQuestScriptCallbacks;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -28,7 +30,8 @@ import static org.mockito.Mockito.when;
 /**
  * One LPQ run at session level, for its release: mocked members in a mocked event instance, and the gateways the
  * termination service reaches through. Companions are loaded Agents; humans are only online. Every member is in a
- * party ({@link #party} answers hasParty), and the lifecycle runtime is a mock, so childFinished is only recorded.
+ * party ({@link #party} answers hasParty), and the lifecycle runtime is a mock, so childFinished is only recorded. A
+ * script callback's session update runs in place, not on the scheduler.
  */
 final class LpqRunFixture implements AutoCloseable {
     final EventInstanceManager event = mock(EventInstanceManager.class);
@@ -42,6 +45,7 @@ final class LpqRunFixture implements AutoCloseable {
     private final List<AgentLpqSession> sessions = new ArrayList<>();
     private final MockedStatic<AgentRuntimeRegistry> registry;
     private final MockedStatic<AgentRuntimeIdentityRuntime> identity;
+    private final Consumer<Runnable> handOff = AgentPartyQuestScriptCallbacks.replaceHandOffForTest(Runnable::run);
 
     LpqRunFixture() {
         registry = open(AgentRuntimeRegistry.class);
@@ -118,6 +122,7 @@ final class LpqRunFixture implements AutoCloseable {
 
     @Override
     public void close() {
+        AgentPartyQuestScriptCallbacks.replaceHandOffForTest(handOff);
         sessions.forEach(AgentLpqSessionRegistry::remove);
         for (int i = statics.size() - 1; i >= 0; i--) {
             statics.get(i).close();
