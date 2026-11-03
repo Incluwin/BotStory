@@ -25,6 +25,14 @@ public final class AgentClaimGuard {
         boolean isClaimed(int agentCharacterId);
 
         /**
+         * True when this character is some player's companion. A host may claim characters nobody owns
+         * ({@link #isClaimed}: its Residents, its citizens), which answer false here. False by default.
+         */
+        default boolean isCompanion(int agentCharacterId) {
+            return false;
+        }
+
+        /**
          * True while some Agent may lead a character whose typed lines it must not take ({@link #mayCommandByChat}):
          * the chat routes' fast path. False by default, so they never look further.
          */
@@ -105,6 +113,12 @@ public final class AgentClaimGuard {
     public static boolean isClaimed(int agentCharacterId) {
         Rule current = rule;
         return current != null && current.isClaimed(agentCharacterId);
+    }
+
+    /** True when the installed host names this character some player's companion; with nothing installed, false. */
+    public static boolean isCompanion(int agentCharacterId) {
+        Rule current = rule;
+        return current != null && current.isCompanion(agentCharacterId);
     }
 
     /** True when the installed host may keep some leader's typed lines from an Agent it leads; with nothing installed, false. */

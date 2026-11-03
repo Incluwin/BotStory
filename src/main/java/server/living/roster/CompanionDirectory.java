@@ -208,6 +208,12 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         return isCitizen(agentCharacterId) || personaIdOf(agentCharacterId) != null;
     }
 
+    /** A roster row owns it: a companion, a hired citizen included; an unrecruited Resident or a citizen is none. */
+    @Override
+    public boolean isCompanion(int agentCharacterId) {
+        return ownerOfCharacter(agentCharacterId) != 0;
+    }
+
     /** While any companion is offered or out on loan, the chat routes ask {@link #mayCommandByChat}. */
     @Override
     public boolean restrictsChat() {

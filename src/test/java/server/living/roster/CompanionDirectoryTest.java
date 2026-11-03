@@ -205,6 +205,15 @@ class CompanionDirectoryTest {
         assertFalse(directory.isClaimed(PROBE));
     }
 
+    @Test
+    void ofTheClaimedOnlyAPlayersCompanionIsACompanion() {
+        assertTrue(directory.isCompanion(OLWEN));
+        assertTrue(directory.isCompanion(BRIN));
+        assertFalse(directory.isCompanion(CATO), "an unrecruited Resident");
+        assertFalse(directory.isCompanion(MIRA), "a citizen");
+        assertFalse(directory.isCompanion(PROBE));
+    }
+
     // ---- relations -----------------------------------------------------------------------
 
     @Test
@@ -243,6 +252,7 @@ class CompanionDirectoryTest {
         assertTrue(directory.mayControl(alice, MIRA));
         assertFalse(directory.mayControl(bob, MIRA));
         assertTrue(directory.isClaimed(MIRA));
+        assertTrue(directory.isCompanion(MIRA));
         assertFalse(directory.mayLoad(alice, MIRA), "only through the roster, which holds its lease");
         leases.tryAcquire(MIRA, CompanionLeases.Kind.COMPANION, ALICE);
         assertTrue(directory.mayLoad(alice, MIRA));
