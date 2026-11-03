@@ -110,7 +110,7 @@ class AgentSupplyReturnNoRouteTest {
         Character agent = agent(403, ANOTHER_ENTRANCE);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
         Trip trip = trip(entry, agent, AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, STAIRWAY, START);
-        trip.execution.redirectSupplier(STAIRWAY, ANT_TUNNEL_SHOPKEEPER, -1);
+        trip.execution.redirectSupplier(STAIRWAY, ANT_TUNNEL_SHOPKEEPER, -1, -1);
 
         try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class, CALLS_REAL_METHODS)) {
             assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, START));

@@ -542,7 +542,7 @@ public final class AgentSupplyProcurementRuntime {
                             + " fare): HP {}/{} and no HP potion, with monsters on map {} ahead", agent.getName(),
                     execution.category(), execution.supplierMapId(), ride.mapId(), hops, ride.fare(), agent.getHp(),
                     agent.getCurrentMaxHp(), hostileMapId);
-            execution.redirectSupplier(ride.mapId(), ride.npcId(), hops);
+            execution.redirectSupplier(ride.mapId(), ride.npcId(), hops, agent.getMapId());
         }
         // Only the supplier a ride reaches is ridden to; every other walks, so a supply trip never crosses the sea.
         AgentRouteOutcome outcome = AgentPotionSupplierCatalog.rideLegTo(execution.supplierMapId()) != null
@@ -586,9 +586,10 @@ public final class AgentSupplyProcurementRuntime {
      * refusing entry is blocked for a while and the router walks around it, which from
      * Kerning's outskirts means twenty maps through Lith Harbor and Henesys. The trip may
      * never become longer than it was when it started (a stray step through a portal on the
-     * way stays inside that); otherwise switch to a supplier within that length or give the
-     * trip up. Only a self-sustaining session accepts the detour. Returns false when the trip
-     * was given up.
+     * way stays inside that, and the first step off the map it was measured on may add one
+     * hop: the portal its last walk was already taking); otherwise switch to a supplier
+     * within that length or give the trip up. Only a self-sustaining session accepts the
+     * detour. Returns false when the trip was given up.
      */
     private static boolean keepSupplierWithinReach(AgentRuntimeEntry entry,
                                                    Character agent,
@@ -597,10 +598,17 @@ public final class AgentSupplyProcurementRuntime {
                                                    long nowMs) {
         int budget = execution.supplierHopBudget();
         int hops = supplierHops(entry, agent, execution.supplierMapId(), nowMs);
+        boolean firstStep = budget >= 0 && execution.firstStepOffHopBudgetMap(agent.getMapId());
         if (hops >= 0 && (budget < 0 || hops <= budget)) {
             if (budget < 0) {
-                execution.setSupplierHopBudget(hops);
+                execution.setSupplierHopBudget(hops, agent.getMapId());
             }
+            return true;
+        }
+        if (firstStep && hops == budget + 1) {
+            // The portal its last walk (or the walk a ride switch replaced) was already taking. Live 2026-11-02: 18 of
+            // 22 trips that "needed one hop more" gave up 0.2-6 s after they set out, BigCookie's sauna ride twice.
+            execution.remeasureAfterFirstStep(hops);
             return true;
         }
         boolean selfSustaining = selfSustaining(entry);
@@ -619,11 +627,11 @@ public final class AgentSupplyProcurementRuntime {
                     agent.getName(), execution.category(), execution.supplierMapId(),
                     nearer.mapId(), nearerHops, change);
             execution.redirectSupplier(nearer.mapId(), nearer.npcId(),
-                    selfSustaining || budget < 0 ? nearerHops : budget);
+                    selfSustaining || budget < 0 ? nearerHops : budget, agent.getMapId());
             return true;
         }
         if (hops >= 0 && selfSustaining) {
-            execution.setSupplierHopBudget(hops);
+            execution.setSupplierHopBudget(hops, agent.getMapId());
             return true;
         }
         String reason = hops < 0 ? "no portal route reaches the selected supplier"

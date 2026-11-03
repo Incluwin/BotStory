@@ -159,6 +159,30 @@ class AgentSupplyProcurementReachabilityTest {
     }
 
     @Test
+    void theStepItWasAlreadyTakingWhenItSetOutKeepsTheTripOnce() {
+        Character agent = agent(308, "BigCookie", HENESYS);
+        AgentRuntimeEntry entry = entryWithBundle(agent, "warrior-standard-v1");
+        planShortage(entry, "supply:HP_POTION:308", "");
+        AgentSupplyProcurementState execution = execution(entry);
+        startTrip(entry, execution, "supply:HP_POTION:308", AgentResourceCategory.HP_POTION,
+                HENESYS_SHOP, HENESYS_SHOP_NPC, HENESYS);
+
+        // Measured in Henesys; the walk it was on still carries it through the portal to the gate, one hop further
+        // (live 2026-11-02: 18 of 22 trips that "needed one hop more" gave up 0.2-6 s after they set out).
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 1_000L));
+        int setOut = execution.supplierHopBudget();
+        when(agent.getMapId()).thenReturn(HENESYS_GATE);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 1_100L));
+        assertFalse(execution.abandoned());
+        assertEquals(setOut + 1, execution.supplierHopBudget());
+
+        // Only that first step: one more map away is longer than the trip it measured.
+        when(agent.getMapId()).thenReturn(SLEEPYWOOD_ROAD);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 1_200L));
+        assertTrue(execution.abandoned());
+    }
+
+    @Test
     void selfSustainingTripSwitchesToTheNearestSupplierTheRouterStillReaches() {
         Character agent = agent(303, "JourneyThief", KERNING_WEST_FIELD);
         AgentRuntimeEntry entry = entryWithBundle(agent, "thief-claw-standard-v1");

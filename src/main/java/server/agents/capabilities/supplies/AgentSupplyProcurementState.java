@@ -37,6 +37,9 @@ public final class AgentSupplyProcurementState {
     private boolean resumeFollow;
     private boolean resumeGrind;
     private int supplierHopBudget = -1;
+    /** The map the budget was measured on, and whether the Agent has stepped off it since. */
+    private int hopBudgetMapId = -1;
+    private boolean hopBudgetStepped;
     private int travelMapId = -1;
     private long travelOnMapSinceMs;
     private boolean leftReturnMap;
@@ -262,15 +265,35 @@ public final class AgentSupplyProcurementState {
         return supplierHopBudget;
     }
 
-    public synchronized void setSupplierHopBudget(int hops) {
+    /** The trip's length, measured with the Agent on {@code measuredOnMapId}. */
+    public synchronized void setSupplierHopBudget(int hops, int measuredOnMapId) {
+        supplierHopBudget = hops;
+        hopBudgetMapId = measuredOnMapId;
+        hopBudgetStepped = false;
+    }
+
+    /**
+     * True on the first call that finds the Agent off the map the budget was measured on, false before and after: that
+     * step may be the portal its last walk was already taking.
+     */
+    public synchronized boolean firstStepOffHopBudgetMap(int mapId) {
+        if (hopBudgetStepped || hopBudgetMapId < 0 || mapId == hopBudgetMapId) {
+            return false;
+        }
+        hopBudgetStepped = true;
+        return true;
+    }
+
+    /** That first step led one hop away: the trip is measured from there, once ({@link #firstStepOffHopBudgetMap}). */
+    public synchronized void remeasureAfterFirstStep(int hops) {
         supplierHopBudget = hops;
     }
 
     /** Sends the trip to another supplier the router can still reach. */
-    public synchronized void redirectSupplier(int supplierMapId, int supplierNpcId, int hopBudget) {
+    public synchronized void redirectSupplier(int supplierMapId, int supplierNpcId, int hopBudget, int measuredOnMapId) {
         this.supplierMapId = supplierMapId;
         this.supplierNpcId = supplierNpcId;
-        supplierHopBudget = hopBudget;
+        setSupplierHopBudget(hopBudget, measuredOnMapId);
         shopRequested = false;
     }
 
