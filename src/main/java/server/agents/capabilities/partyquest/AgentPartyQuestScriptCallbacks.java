@@ -8,8 +8,8 @@ import java.util.function.Consumer;
  * A run's session update that its event script's callback asks for (playerUnregistered's reward forfeit in
  * HenesysPQ.js, KerningPQ.js and LudiPQ.js). The callback runs under the script's lock, and a coordinator that holds its
  * session calls into that script (exitPlayer, dispose, a party leave), so a callback waiting for the session deadlocks
- * both. HPQ, live 2026-11-02: all four TimerManager-Core threads for 77 min, every Agent frozen, and the shutdown task
- * never ran. The thread that already holds the session (a run ending exits its own players) updates it at once; any
+ * both. HPQ, live 2026-11-02: all four core timer threads for 77 min, every Agent frozen, and the shutdown task never
+ * ran. The thread that already holds the session (a run ending exits its own players) updates it at once; any
  * other hands the update to the scheduler, so a script never waits on a session.
  */
 public final class AgentPartyQuestScriptCallbacks {
