@@ -104,7 +104,7 @@ class AgentBossRunCitizenRunTest {
         }
         AgentBossRunHost.install(companions);
         AgentBossRunHost.installCitizens(citizens);
-        // only COMPANION is a player's companion (claimed); the citizens are nobody's
+        // as the living world's CompanionDirectory: the citizens are claimed too, only COMPANION is a player's companion
         AgentClaimGuard.install(new AgentClaimGuard.Rule() {
             @Override
             public boolean mayControl(Character actor, int agentCharacterId) {
@@ -113,6 +113,11 @@ class AgentBossRunCitizenRunTest {
 
             @Override
             public boolean isClaimed(int agentCharacterId) {
+                return agentCharacterId == COMPANION || List.of(LIA, BRAM, CORA).contains(agentCharacterId);
+            }
+
+            @Override
+            public boolean isCompanion(int agentCharacterId) {
                 return agentCharacterId == COMPANION;
             }
         });
@@ -219,6 +224,22 @@ class AgentBossRunCitizenRunTest {
         assertEquals(List.of(), enlisted.accepted());
         assertEquals(List.of(COMPANION), enlisted.refused());
         assertNull(session.member(COMPANION));
+    }
+
+    @Test
+    void aPlayersCompanionIsNeverTakenIntoACitizenRunNorLeadsOne() {
+        ports.place(COMPANION, RECRUIT_MAP, MU_YOUNG_X - 80, FLOOR_Y, 70);
+
+        AgentBossRunService.CitizenOpened led = AgentBossRunService.openCitizenExpedition(ports,
+                ports.agent(COMPANION), easy, List.of(COMPANION, LIA), true, NOW);
+        assertFalse(led.opened());
+        assertEquals("the leader is busy", led.problem());
+
+        AgentBossRunService.CitizenOpened opened = AgentBossRunService.openCitizenExpedition(ports, ports.agent(LIA),
+                easy, List.of(LIA, COMPANION, BRAM), true, NOW);
+        assertTrue(opened.opened(), "a citizen leads it");
+        assertEquals(List.of(LIA, BRAM), opened.accepted());
+        assertEquals(List.of(COMPANION), opened.refused());
     }
 
     @Test

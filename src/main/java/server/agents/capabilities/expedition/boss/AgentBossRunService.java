@@ -200,10 +200,13 @@ public final class AgentBossRunService {
         return session != null && session.requestStart();
     }
 
-    /** Loaded, no companion, and in no boss run and no party quest. */
+    /**
+     * Loaded, no companion, and in no boss run and no party quest. Not {@link AgentClaimGuard#isClaimed}: the living
+     * world claims its citizens too.
+     */
     private static boolean adoptableCitizen(AgentBossRunPorts ports, int agentId) {
         return ports.agent(agentId) != null
-                && !AgentClaimGuard.isClaimed(agentId)
+                && !AgentClaimGuard.isCompanion(agentId)
                 && AgentBossRunRegistry.forMember(agentId) == null
                 && !AgentPartyQuestRuntime.active(agentId);
     }
