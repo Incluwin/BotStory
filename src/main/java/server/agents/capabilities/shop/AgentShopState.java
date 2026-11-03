@@ -1,6 +1,8 @@
 package server.agents.capabilities.shop;
 
 import java.awt.Point;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -43,6 +45,8 @@ public final class AgentShopState {
     private long stuckCheckAtMs = 0L;
     private int closestApproachPx = Integer.MAX_VALUE;
     private long approachProgressAtMs = 0L;
+    /** The nav regions it has stood on during this visit's walk. */
+    private final Set<Integer> approachRegionIds = new HashSet<>();
 
     public boolean visitPending() {
         return visitPending;
@@ -220,17 +224,21 @@ public final class AgentShopState {
     }
 
     /**
-     * On its way to the shopkeeper, the Agent stood {@code distancePx} from where it trades at {@code nowMs}: closer
-     * than it has been by more than {@code stepPx} restarts the no-progress clock, which its first look starts.
+     * On its way to the shopkeeper, the Agent stood {@code distancePx} from where it trades at {@code nowMs}, on nav
+     * region {@code regionId} (-1: none, in the air or with no graph): closer than it has been by more than
+     * {@code stepPx}, or on a region it had not stood on this visit, restarts the no-progress clock, which its first
+     * look starts. A route can lead away from the shop before it turns back (Ant Tunnel Park 105070001, about 30 s),
+     * and its new regions are the walk's progress there; a stuck Agent runs out of new regions.
      */
-    public void noteApproach(int distancePx, int stepPx, long nowMs) {
-        if (approachProgressAtMs == 0L || distancePx < closestApproachPx - stepPx) {
+    public void noteApproach(int distancePx, int regionId, int stepPx, long nowMs) {
+        boolean newRegion = regionId >= 0 && approachRegionIds.add(regionId);
+        if (approachProgressAtMs == 0L || distancePx < closestApproachPx - stepPx || newRegion) {
             closestApproachPx = Math.min(closestApproachPx, distancePx);
             approachProgressAtMs = nowMs;
         }
     }
 
-    /** No step closer to the shopkeeper for more than {@code stallMs}: a walk that stopped waits no longer. */
+    /** No step closer and no new region for more than {@code stallMs}: a walk that stopped waits no longer. */
     public boolean approachStalled(long nowMs, long stallMs) {
         return visitPending && !sequenceActive && approachProgressAtMs > 0L && nowMs - approachProgressAtMs > stallMs;
     }
@@ -286,6 +294,7 @@ public final class AgentShopState {
         sequenceAllowanceMs = 0L;
         closestApproachPx = Integer.MAX_VALUE;
         approachProgressAtMs = 0L;
+        approachRegionIds.clear();
     }
 
     public void markSequenceActive(long startedAtMs) {
@@ -353,6 +362,7 @@ public final class AgentShopState {
         stuckCheckAtMs = 0L;
         closestApproachPx = Integer.MAX_VALUE;
         approachProgressAtMs = 0L;
+        approachRegionIds.clear();
     }
 
     public boolean lastVisitRequestedItem(int itemId, int itemCount) {

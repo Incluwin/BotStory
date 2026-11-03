@@ -144,8 +144,8 @@ public final class AgentShopStateRuntime {
         entry.shopState().extendVisit(extraMs);
     }
 
-    public static void noteShopApproach(AgentRuntimeEntry entry, int distancePx, int stepPx, long nowMs) {
-        entry.shopState().noteApproach(distancePx, stepPx, nowMs);
+    public static void noteShopApproach(AgentRuntimeEntry entry, int distancePx, int regionId, int stepPx, long nowMs) {
+        entry.shopState().noteApproach(distancePx, regionId, stepPx, nowMs);
     }
 
     public static boolean shopApproachStalled(AgentRuntimeEntry entry, long nowMs, long stallMs) {

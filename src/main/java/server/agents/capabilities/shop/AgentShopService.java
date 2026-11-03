@@ -525,8 +525,11 @@ public final class AgentShopService {
         if (!reachedApproach && !AgentShopStateRuntime.shopSequenceActive(entry)) {
             // A walk that stopped gets none of its route's time: stuck where it landed, an Agent at Mushroom Shrine
             // waited out the route and the delay and the timeout, 64 s, before it gave up. One still walking keeps
-            // the whole allowance (visitTimedOut).
-            AgentShopStateRuntime.noteShopApproach(entry, manhattan(botPos, target), SHOP_STUCK_MOVE_TOLERANCE_PX, now);
+            // the whole allowance (visitTimedOut). Still walking is a step closer or a nav region it had not stood on:
+            // from Ant Tunnel Park's under00 portal the route climbs the far east column, and for 30 s the Agent was
+            // no closer than at the first rope (57 visits gave up up there 10-30..11-02; 52 retries reached the shop).
+            AgentShopStateRuntime.noteShopApproach(entry, manhattan(botPos, target),
+                    approachRegionId(entry, bot, botPos), SHOP_STUCK_MOVE_TOLERANCE_PX, now);
             if (AgentShopStateRuntime.shopApproachStalled(entry, now, SHOP_VISIT_TIMEOUT_MS)) {
                 if (!AgentShopStateRuntime.shopSaleOnly(entry)) { // a visit nobody asked for gives up quietly
                     AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
@@ -3040,6 +3043,14 @@ public final class AgentShopService {
                                              Point botPos) {
         int regionId = AgentNavigationRegionService.resolveCurrentRegionId(graph, entry, map, botPos);
         return regionId >= 0 || !AgentMovementStateRuntime.inAir(entry) ? regionId : graph.findRegionId(map, botPos);
+    }
+
+    // The nav region a walking Agent stands on, from the graph its navigation walks (-1 in the air, or with no graph).
+    private static int approachRegionId(AgentRuntimeEntry entry, Character bot, Point botPos) {
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(bot.getMap(),
+                AgentMovementStateRuntime.movementProfileOrCharacter(entry, bot));
+        return graph == null ? -1
+                : AgentNavigationRegionService.resolveCurrentRegionId(graph, entry, bot.getMap(), botPos);
     }
 
 
