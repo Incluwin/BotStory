@@ -83,16 +83,22 @@ class AgentShopStateTest {
         state.startVisit(new Point(10, 20), new Point(30, 40), 0, 1_000L);
         assertFalse(state.approachStalled(100_000L, 30_000L), "no look yet: no clock");
 
-        state.noteApproach(2_000, 2, 2_000L);
-        state.noteApproach(2_001, 2, 20_000L); // a step back, and the closest it has been stays
-        state.noteApproach(1_999, 2, 25_000L); // a pixel closer is no progress
+        state.noteApproach(2_000, 4, 2, 2_000L);
+        state.noteApproach(2_001, 4, 2, 20_000L); // a step back, and the closest it has been stays
+        state.noteApproach(1_999, 4, 2, 25_000L); // a pixel closer is no progress
         assertFalse(state.approachStalled(32_000L, 30_000L));
         assertTrue(state.approachStalled(32_001L, 30_000L));
 
-        state.noteApproach(1_900, 2, 32_001L);
+        state.noteApproach(1_900, 4, 2, 32_001L);
         assertFalse(state.approachStalled(62_001L, 30_000L), "closer: its clock starts again");
 
-        state.markSequenceActive(62_001L);
+        state.noteApproach(2_500, 7, 2, 50_000L); // farther, on a region it had not stood on
+        assertFalse(state.approachStalled(80_000L, 30_000L), "a new region: its clock starts again");
+        state.noteApproach(2_500, 4, 2, 60_000L); // back on one it stood on
+        state.noteApproach(2_500, -1, 2, 70_000L); // in the air
+        assertTrue(state.approachStalled(80_001L, 30_000L), "no region it had not stood on, no step closer");
+
+        state.markSequenceActive(80_001L);
         assertFalse(state.approachStalled(200_000L, 30_000L), "at the counter nothing stalls the walk");
         state.clear();
         state.startVisit(new Point(10, 20), new Point(30, 40), 0, 300_000L);
