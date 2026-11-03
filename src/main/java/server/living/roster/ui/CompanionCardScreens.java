@@ -1296,7 +1296,7 @@ final class CompanionCardScreens {
         List<Option> options = new ArrayList<>();
         if (affordable >= 1) {
             options.add(stamp.option("Pay your wages...", () -> LivingTalk.open(owner, portrait(persona))
-                    .number(String.format(Locale.ROOT, "how many hours? %,d meso an hour; you have %,d.", upkeep, owner.getMeso()),
+                    .number(String.format(Locale.ROOT, "how many hours? %,d meso an hour, you have %,d.", upkeep, owner.getMeso()),
                             (int) Math.min(WAGE_HOURS_DEFAULT, affordable), 1, (int) affordable,
                             hours -> menus.command(owner, persona, "menu.wages",
                                     () -> world.roster().payWages(owner, persona, hours * upkeep)))
@@ -1304,7 +1304,7 @@ final class CompanionCardScreens {
         } else {
             options.add(Option.heading(String.format(Locale.ROOT, "(you need %,d meso to pay an hour)", upkeep)));
         }
-        String text = "i'm " + view.wages() + String.format(Locale.ROOT, ".\r\nmy upkeep is %,d meso an hour; paid ahead,"
+        String text = "i'm " + view.wages() + String.format(Locale.ROOT, ".\r\nmy upkeep is %,d meso an hour. paid ahead,"
                 + " it doesn't come out of the haul.\r\n", upkeep);
         LivingTalk.open(owner, portrait(persona)).menu(text, options).back(() -> reopen(owner, persona, "")).show();
     }

@@ -1158,10 +1158,13 @@ class CompanionCardScreensTest {
         pick("Your wages...");
 
         Talk wages = lastTalk();
-        assertTrue(wages.text().startsWith("i'm working off the haul.\r\nmy upkeep is 930 meso an hour;"), wages.text());
+        // no ";" in either text: the NPC window cuts a text at its first semicolon (live 2026-11-01, the needs board)
+        assertTrue(wages.text().startsWith("i'm working off the haul.\r\nmy upkeep is 930 meso an hour. paid ahead"),
+                wages.text());
         assertEquals(List.of("Pay your wages...", "Back"), wages.labels());
         pick("Pay your wages...");
         assertEquals(NUMBER, lastTalk().msgType());
+        assertTrue(lastTalk().text().startsWith("how many hours? 930 meso an hour, you have 10,000."), lastTalk().text());
         assertEquals(List.of(2, 1, 10), numberBounds(lastTalkPacket()), "no more hours than Ann can pay for");
         answer(NUMBER, 1, 3);
 
