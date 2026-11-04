@@ -64,12 +64,12 @@ class LivingWorldConfigMentorTest {
     @Test
     void configYamlShipsTheSameDefaults() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII).replace("\r\n", "\n");
-        for (String line : new String[] {"MENTOR_ENABLED: false", "MENTOR_OFFER_DELAY_MS: 8000",
+        for (String line : new String[] {"MENTOR_ENABLED: true", "MENTOR_OFFER_DELAY_MS: 8000",
                 "MENTOR_OFFER_RETRY_MS: 4000", "MENTOR_OFFER_TRIES: 8", "MENTOR_LEAD_MIN: 3", "MENTOR_LEAD_MAX: 5",
                 "MENTOR_LEVEL_DELAY_MIN_MS: 30000", "MENTOR_LEVEL_DELAY_MAX_MS: 300000", "MENTOR_TIPS_PER_HOUR: 4",
                 "MENTOR_LOW_HP_PERCENT: 35", "MENTOR_LEAD_WAIT_MS: 20000", "MENTOR_LEAD_TRIES: 2",
                 "MENTOR_OUTGROWN_LEVELS: 2", "MENTOR_GIFT_ITEMS: \"2000002:50,2000006:50\"", "MENTOR_ABANDON_DAYS: 14",
-                "APPRENTICE_ENABLED: false", "APPRENTICE_ADOPT_MAX_LEVEL: 10", "APPRENTICE_ADOPT_MIN_OWNER_LEVEL: 30",
+                "APPRENTICE_ENABLED: true", "APPRENTICE_ADOPT_MAX_LEVEL: 10", "APPRENTICE_ADOPT_MIN_OWNER_LEVEL: 30",
                 "APPRENTICE_NEEDS_MAX: 2", "APPRENTICE_NEED_CHANCE: 0.1"}) {
             assertTrue(yaml.contains("\n    " + line + "\n"), line);
         }

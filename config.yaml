@@ -828,7 +828,7 @@ living_world:
     # Technical: the mentor is a hire:<characterId> row with living_roster.role MENTOR (changeset 54): no roster slot,
     # no fee, REST duty, no kill EXP of its own; the lead is server.living.mentor.MentorLead on a 1 s companion-ops
     # sweep, and the offer is gated by living_event_log mentor.* rows (see !mentor).
-    MENTOR_ENABLED: false
+    MENTOR_ENABLED: true
     MENTOR_OFFER_DELAY_MS: 8000
     MENTOR_OFFER_RETRY_MS: 4000
     MENTOR_OFFER_TRIES: 8
@@ -852,7 +852,7 @@ living_world:
     # (false: no adoption, apprentices are plain hires).
     # Technical: living_roster.role APPRENTICE and role_target (the picked Job), read by JobErrands' path; the chat job
     # word is held only for apprentices (AgentJobPath.Rule.holdsChatJobChange); requests are living_need kind MENTOR.
-    APPRENTICE_ENABLED: false
+    APPRENTICE_ENABLED: true
     APPRENTICE_ADOPT_MAX_LEVEL: 10
     APPRENTICE_ADOPT_MIN_OWNER_LEVEL: 30
     APPRENTICE_NEEDS_MAX: 2
