@@ -122,6 +122,15 @@ public final class AgentLithHarborArrivalRouteRuntime {
                 : LOWER_SHIP_EXIT_PORTAL_ID;
     }
 
+    /**
+     * The hidden way down off the ship deck Shanks lands a player on, while {@code agent} stands on that deck; null
+     * anywhere else ({@link #nextPortalId} also names portals on the town's far side, for an arrival that starts there).
+     */
+    public static Integer deckPortalId(Character agent) {
+        return agent != null && agent.getMapId() == LITH_HARBOR_MAP_ID && agent.getPosition().x <= MAPLE_ISLAND_SHIP_MAX_X
+                ? Integer.valueOf(LOWER_LEFT_ENTRY_PORTAL_ID) : null;
+    }
+
     private static Point shipArrivalPosition(MapleMap map, int selector) {
         Point candidate = selectShipSpawn(selector);
         Point ground = AgentPrimitiveCapabilityGatewayRuntime.gateway()

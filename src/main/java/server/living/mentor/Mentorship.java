@@ -735,8 +735,8 @@ public final class Mentorship {
         boolean offPlan;
         switch (leg.kind()) {
             case DECK -> {
-                newcomerAcross = AgentLithHarborArrivalRouteRuntime.nextPortalId(newcomer) == null;
-                mentorAcross = AgentLithHarborArrivalRouteRuntime.nextPortalId(mentor) == null;
+                newcomerAcross = AgentLithHarborArrivalRouteRuntime.deckPortalId(newcomer) == null;
+                mentorAcross = AgentLithHarborArrivalRouteRuntime.deckPortalId(mentor) == null;
                 offPlan = newcomer.getMapId() != leg.mapId();
             }
             case NPC -> {
@@ -862,7 +862,7 @@ public final class Mentorship {
             return npcLeg(here, MentorRoute.LITH_TAXI, "lead.taxi", false);
         }
         if (map == MentorRoute.LITH_HARBOR) {
-            Integer deck = AgentLithHarborArrivalRouteRuntime.nextPortalId(newcomer);
+            Integer deck = AgentLithHarborArrivalRouteRuntime.deckPortalId(newcomer);
             if (deck != null) { // short of the fare, walking: off the deck by its hidden way to the town's far side
                 Portal portal = here.getPortal(deck);
                 return portal == null ? null : new Leg(LegKind.DECK, map, deck, map, -1, 0, portal.getPosition(),

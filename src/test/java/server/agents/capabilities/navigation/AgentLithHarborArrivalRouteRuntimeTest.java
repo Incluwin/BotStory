@@ -111,6 +111,23 @@ class AgentLithHarborArrivalRouteRuntimeTest {
         }
     }
 
+    /** Live 2026-11-03: a mentor led a newcomer walking the far side of town to h_east00, not toward the road out. */
+    @Test
+    void onlyTheDeckShanksLandsOnHasADeckPortal() {
+        assertEquals(30, deckPortalAt(new Point(-495, -62)), "where Shanks lands a player");
+        assertEquals(30, deckPortalAt(new Point(-586, 195)), "beside the way down");
+        assertNull(deckPortalAt(new Point(2_894, 424)), "where that way comes out");
+        assertNull(deckPortalAt(new Point(4_160, 527)), "on the walk to the road out");
+        assertEquals(20, portalAt(new Point(4_160, 527)), "where an arrival's own route still names h_east00");
+    }
+
+    private static Integer deckPortalAt(Point position) {
+        Character agent = mock(Character.class);
+        when(agent.getMapId()).thenReturn(104_000_000);
+        when(agent.getPosition()).thenReturn(position);
+        return AgentLithHarborArrivalRouteRuntime.deckPortalId(agent);
+    }
+
     private static Integer portalAt(Point position) {
         Character agent = mock(Character.class);
         when(agent.getMapId()).thenReturn(104_000_000);
