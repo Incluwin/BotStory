@@ -302,6 +302,27 @@ class MentorshipTest {
     }
 
     @Test
+    void aJobItCameDueForOnTheIslandIsAskedAgainOnceItsNewcomerHasTheirs() {
+        JobErrands errands = world.jobErrands();
+        mentoring(4);
+        when(bo.getLevel()).thenReturn(11);
+        when(bo.getJob()).thenReturn(Job.BEGINNER);
+        when(bo.isBeginnerJob()).thenReturn(true);
+        when(errands.path(BO, Job.BEGINNER)).thenReturn(Job.ASSASSIN);
+        mentors.tick();
+        verify(errands, never()).due(anyInt(), any(Job.class)); // "my turn" waits for Ann's
+
+        when(ann.getJob()).thenReturn(Job.BOWMAN);
+        when(ann.isBeginnerJob()).thenReturn(false);
+        mentors.tick();
+        mentors.tick();
+        verify(errands, times(1)).due(BO, Job.THIEF);
+        clock.addAndGet(30_000L);
+        mentors.tick();
+        verify(errands, times(2)).due(BO, Job.THIEF);
+    }
+
+    @Test
     void aMentorEarnsNoKillExpOnlyWhileTheSwitchIsOn() {
         assertFalse(mentors.isMentor(BO));
         mentoring(3);

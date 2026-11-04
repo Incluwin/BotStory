@@ -8,6 +8,7 @@ import constants.game.ExpTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
+import server.agents.capabilities.build.AgentJobPath;
 import server.agents.capabilities.navigation.AgentLithHarborArrivalRouteRuntime;
 import server.agents.capabilities.navigation.AgentMapWalk;
 import server.agents.progression.AgentVictoriaRouteRuntime;
@@ -82,6 +83,7 @@ public final class Mentorship {
     private static final double DOOR_REACH_PX = 110;
     private static final long GOODBYE_STEP_MS = 3_500L;
     private static final long JOB_MENU_RETRY_MS = 5_000L;
+    private static final long OWN_JOB_CHECK_MS = 30_000L;
     private static final long ABANDON_SWEEP_MS = 3_600_000L;
     private static final int FRIEND_WARMTH = 40;
     private static final long DAY_MS = 86_400_000L;
@@ -103,6 +105,7 @@ public final class Mentorship {
         int ledAtLevel;
         boolean askJob;
         long jobMenuAtMs;
+        long ownJobAtMs;
         volatile long goodbyeAtMs;
         int goodbyeStep;
         final Set<String> saidOnce = ConcurrentHashMap.newKeySet();
@@ -495,7 +498,24 @@ public final class Mentorship {
         if (mentee.askJob && now >= mentee.jobMenuAtMs) {
             askJob(mentee, newcomer, now);
         }
+        ownJob(mentee, newcomer, mentor, now);
         lead(mentee, newcomer, mentor, now);
+    }
+
+    /**
+     * Its own job (JobErrands): the check that comes with a level-up is long past when that level came on the island,
+     * where it may not go, so the sweep asks again; its first job waits for its newcomer's ("my turn").
+     */
+    private void ownJob(Mentee mentee, Character newcomer, Character mentor, long now) {
+        if (now < mentee.ownJobAtMs || newcomer.isBeginnerJob() && mentor.isBeginnerJob()) {
+            return;
+        }
+        mentee.ownJobAtMs = now + OWN_JOB_CHECK_MS;
+        Job path = world.jobErrands().path(mentor.getId(), mentor.getJob());
+        Job step = path == null ? null : AgentJobPath.next(mentor.getJob(), path, mentor.getLevel());
+        if (step != null) {
+            world.jobErrands().due(mentor.getId(), step);
+        }
     }
 
     /** One level at a time, MENTOR_LEVEL_DELAY_* after its newcomer's, until it is {@code lead} levels ahead. */
