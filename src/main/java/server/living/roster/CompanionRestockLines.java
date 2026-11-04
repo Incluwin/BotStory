@@ -179,6 +179,10 @@ final class CompanionRestockLines {
             return false;
         }
         Persona persona = world.residents().personaOfCharacterId(bot.getId());
+        if ((BROKE.equals(intent) || BROKE_AMMO.equals(intent)) && persona != null
+                && CompanionRoles.mentor(world, persona.id())) {
+            return false; // a mentor does not ask its newcomer for potions (F4)
+        }
         List<String> lines = lines(world, persona, intent);
         String line = filled(lines.get(Math.floorMod(counter.getAndIncrement(), lines.size())), word);
         String heard = heard(world, bot, persona, line);

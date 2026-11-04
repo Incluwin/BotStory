@@ -323,6 +323,17 @@ class MentorshipTest {
     }
 
     @Test
+    void lithHarborsDeckAndItsRoadOutAreTwoLegsOnOneMap() {
+        Point spot = new Point(0, 0);
+        MentorLead.Leg lead = new MentorLead.Leg(false, true, "lead.deck");
+        Mentorship.Leg deck = new Mentorship.Leg(Mentorship.LegKind.DECK, 104_000_000, 30, 104_000_000, -1, 0, spot, lead, false);
+        Mentorship.Leg road = new Mentorship.Leg(Mentorship.LegKind.PORTAL, 104_000_000, 12, 104_000_100, 3, 0, spot, lead, false);
+        assertTrue(deck.sameDoor(deck));
+        assertFalse(road.sameDoor(deck));
+        assertFalse(deck.sameDoor(null));
+    }
+
+    @Test
     void aMentorEarnsNoKillExpOnlyWhileTheSwitchIsOn() {
         assertFalse(mentors.isMentor(BO));
         mentoring(3);

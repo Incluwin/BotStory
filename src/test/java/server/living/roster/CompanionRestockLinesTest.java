@@ -139,6 +139,27 @@ class CompanionRestockLinesTest {
     }
 
     @Test
+    void aMentorDoesNotAskItsNewcomerForPotions() {
+        server.living.LivingWorld world = mock(server.living.LivingWorld.class);
+        server.living.resident.ResidentRuntime residents = mock(server.living.resident.ResidentRuntime.class);
+        client.Character bot = mock(client.Character.class);
+        server.living.config.Content.Persona persona = mock(server.living.config.Content.Persona.class);
+        CompanionRoles roles = mock(CompanionRoles.class);
+        config.LivingWorldConfig settings = new config.LivingWorldConfig();
+        settings.MENTOR_ENABLED = true;
+        when(bot.getId()).thenReturn(900);
+        when(persona.id()).thenReturn("hire:900");
+        when(world.residents()).thenReturn(residents);
+        when(residents.personaOfCharacterId(900)).thenReturn(persona);
+        when(world.roles()).thenReturn(roles);
+        when(world.config()).thenReturn(settings);
+        when(roles.role("hire:900")).thenReturn(CompanionRoles.Role.MENTOR);
+
+        assertFalse(CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE, "potions"));
+        assertFalse(CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE_AMMO, "stars"));
+    }
+
+    @Test
     void aStillShortLineNamesWhatItStillLacksAndLeavesTheThanksToTheGift() {
         // the trade window's completion ("ty!") and the card's coin ("ty! appreciate it." from a companion short of
         // its potions) thank already: the still-short line that follows them within seconds does not thank again

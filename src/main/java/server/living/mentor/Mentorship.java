@@ -101,7 +101,7 @@ public final class Mentorship {
         MentorLead walk;
         Leg leg;
         long levelAtMs;
-        int ledFromMapId;
+        Leg ledLeg;
         int ledAtLevel;
         boolean askJob;
         long jobMenuAtMs;
@@ -127,7 +127,13 @@ public final class Mentorship {
      * -1 for none), or up to NPC {@code npcId}; {@code door} is where it stands to wait.
      */
     record Leg(LegKind kind, int mapId, int portalId, int toMapId, int backPortalId, int npcId, Point door,
-               MentorLead.Leg lead, boolean advancedEnds) { }
+               MentorLead.Leg lead, boolean advancedEnds) {
+        /** The same door or NPC: Lith Harbor's deck and its road out are two legs on one map. */
+        boolean sameDoor(Leg other) {
+            return other != null && kind == other.kind && mapId == other.mapId && portalId == other.portalId
+                    && npcId == other.npcId;
+        }
+    }
 
     private final LivingWorld world;
     private final LongSupplier clock;
@@ -698,12 +704,12 @@ public final class Mentorship {
             return;
         }
         Leg leg = nextLeg(mentee, newcomer, mentor);
-        if (leg == null || mentee.ledFromMapId == leg.mapId() && mentee.ledAtLevel == newcomer.getLevel()) {
-            return; // nowhere to go, or it led here at this level already: it follows until the next reason
+        if (leg == null || mentee.ledAtLevel == newcomer.getLevel() && leg.sameDoor(mentee.ledLeg)) {
+            return; // nowhere to go, or it led to this door at this level already: it follows until the next reason
         }
         mentee.leg = leg;
         mentee.walk = new MentorLead(leg.lead(), world.config().MENTOR_LEAD_WAIT_MS, world.config().MENTOR_LEAD_TRIES, now);
-        mentee.ledFromMapId = leg.mapId();
+        mentee.ledLeg = leg;
         mentee.ledAtLevel = newcomer.getLevel();
         leading.add(mentor.getId());
         apply(mentee, newcomer, mentor, mentee.walk.start(), now);

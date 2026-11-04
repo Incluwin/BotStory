@@ -38,7 +38,7 @@ lines:
   lead.shanks.fare:
     - "you need 150 mesos for the boat. kill a few more things and pick up the coins"
   lead.deck:
-    - "we're still on the boat. walk off the left edge, there's a way down"
+    - "we're still on the boat. go all the way left, then down + jump. there's a portal under the deck"
   lead.taxi:
     - "talk to the cab guy and pick {town}. it's like 100 mesos for beginners"
   lead.walk:
