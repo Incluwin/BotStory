@@ -7742,7 +7742,7 @@ public class Character extends AbstractCharacterObject {
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
-                    if (leaveParty()) {
+                    if (!server.living.LivingWorldHooks.keepsStarterParty(Character.this) && leaveParty()) {
                         showHint("You have reached #blevel 10#k, therefore you must leave your #rstarter party#k.");
                     }
                 }

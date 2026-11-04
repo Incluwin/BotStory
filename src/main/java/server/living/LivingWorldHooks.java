@@ -9,6 +9,7 @@ import server.knowledge.PersonalKnowledge;
 import server.life.Monster;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
+import server.agents.auth.AgentClaimGuard;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.roster.CompanionPartyRouter;
 import server.maps.MapleMap;
@@ -1210,6 +1211,15 @@ public final class LivingWorldHooks {
         } catch (RuntimeException failure) {
             return false;
         }
+    }
+
+    /**
+     * Level 10's stock "you must leave your starter party" is not for a party with a companion in it: the companion
+     * would be sent home, and a mentor (F4.3), born a few levels above its newcomer, passes level 10 on the island.
+     */
+    public static boolean keepsStarterParty(Character chr) {
+        var party = chr == null ? null : chr.getParty();
+        return party != null && party.getMembers().stream().anyMatch(member -> AgentClaimGuard.isCompanion(member.getId()));
     }
 
     /** Multiplier applied to a companion's kill EXP (apprentice bonus); 1.0 for everyone else. */
