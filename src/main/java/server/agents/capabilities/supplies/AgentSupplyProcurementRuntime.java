@@ -1060,7 +1060,7 @@ public final class AgentSupplyProcurementRuntime {
     private static void askPartyForSupply(AgentRuntimeEntry entry,
                                           Character agent,
                                           AgentResourceCategory category) {
-        if (category == null) {
+        if (category == null || AgentSupplyAskGuard.keepsQuiet(agent.getId())) {
             return;
         }
         switch (category) {

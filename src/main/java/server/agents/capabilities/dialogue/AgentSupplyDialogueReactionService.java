@@ -2,6 +2,7 @@ package server.agents.capabilities.dialogue;
 
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.supplies.AgentSupplyAskGuard;
 import server.agents.capabilities.supplies.AgentSupplyThresholdChangedEvent;
 import server.agents.events.AgentEvent;
 import server.agents.events.AgentEventBus;
@@ -25,7 +26,8 @@ public final class AgentSupplyDialogueReactionService implements AgentEventListe
     public void onAgentEvent(AgentEvent event) {
         if (!(event instanceof AgentSupplyThresholdChangedEvent threshold)
                 || threshold.urgency().ordinal() < AgentSupplyUrgency.LOW.ordinal()
-                || !supportsDialogue(threshold.category())) {
+                || !supportsDialogue(threshold.category())
+                || AgentSupplyAskGuard.keepsQuiet(threshold.agentId())) {
             return;
         }
         bus.publish(new AgentDialogueIntentEvent(

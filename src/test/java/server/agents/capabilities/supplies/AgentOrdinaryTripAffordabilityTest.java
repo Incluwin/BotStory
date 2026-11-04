@@ -130,6 +130,7 @@ class AgentOrdinaryTripAffordabilityTest {
     @AfterEach
     void unstub() {
         AgentWalletReserve.install(null);
+        AgentSupplyAskGuard.install(null);
         primitives.close();
         shopGateway.close();
         shopService.close();
@@ -236,6 +237,24 @@ class AgentOrdinaryTripAffordabilityTest {
 
         assertFalse(execution(entry).isActive(), "nobody shared, and its empty purse buys nothing at the shop");
         assertEquals(List.of("party ask SilentSin"), calls);
+    }
+
+    @Test
+    void anAgentItsHostKeepsQuietAsksNobodyForSupplies() {
+        AgentSupplyAskGuard.install(id -> id == SILENT_SIN);
+        AgentWalletReserve.install(id -> true);
+        Character silentSin = silentSin(0);
+        AgentRuntimeEntry entry = entry(silentSin);
+        Character owner = mock(Character.class);
+        AgentRelationshipRuntime.setInteractionTarget(entry, owner);
+        AgentRelationshipRuntime.setFollowTarget(entry, owner);
+        AgentModeStateRuntime.setFollowing(entry, true);
+        planCritical(entry, AgentResourceCategory.MP_POTION, 2);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, silentSin, 1_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, silentSin, 1_000L + partyWaitMs()));
+
+        assertEquals(List.of(), calls, "a mentor does not ask its newcomer");
     }
 
     @Test

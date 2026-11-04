@@ -216,6 +216,8 @@ public final class LivingWorld {
         server.agents.auth.AgentClaimGuard.installVerbs(world.chatVerbs); // chat dismiss/logout of a companion bench it
         // travelling, held and away companions never follow; the rest come into their owner's new map where they came in
         server.agents.capabilities.follow.AgentFollowGuard.install(new server.living.roster.CompanionFollowGuard(world));
+        // a mentor does not ask its newcomer for supplies (F4)
+        server.agents.capabilities.supplies.AgentSupplyAskGuard.install(id -> world.mentors() != null && world.mentors().isMentor(id));
         // lore couples: a bot its content writes as married wears its half of a real marriage from its next load
         server.agents.integration.AgentLoadHook.install(server.living.bond.LoreCouples.of(world));
         // a companion a party quest lets go goes back to its owner, not to Kerning TownLife (P6); before any admission,
@@ -420,6 +422,7 @@ public final class LivingWorld {
         net.server.world.PartySeatGate.install(null);
         server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
+        server.agents.capabilities.supplies.AgentSupplyAskGuard.install(null);
         server.agents.integration.AgentLoadHook.install(null);
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(null);
         world.roster.installInstanceDelegation(null);
