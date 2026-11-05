@@ -1,12 +1,23 @@
 package server.living.population;
 
 import client.Character;
+import client.Client;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
+import client.inventory.Item;
 import config.PopulationConfig;
+import constants.id.ItemId;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.ItemInformationProvider;
 import server.living.population.PopulationContent.Region;
 import server.maps.MapleMap;
 import server.maps.MiniGame.MiniGameResult;
+import tools.DatabaseConnection;
+
+import java.sql.SQLException;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
@@ -28,12 +40,23 @@ import static org.mockito.Mockito.when;
 class CitizenMiniGamesTest {
     private static final int HENESYS = 100_000_000;
     private static final int LITH_HARBOR = 104_000_000;
+    /** A monster drop no quest asks for. */
+    private static final int SPARE_DROP = 4_000_207;
+    private static final int ORE = 4_010_000;
 
     private final PopulationConfig config = new PopulationConfig();
     private final Population population = mock(Population.class);
     private final FieldCatalog fields = mock(FieldCatalog.class);
     private final MapleMap henesys = mock(MapleMap.class);
     private Citizen citizen;
+
+    @BeforeAll
+    static void itemDataWithNoDatabase() {
+        try (MockedStatic<DatabaseConnection> database = mockStatic(DatabaseConnection.class)) {
+            database.when(DatabaseConnection::getConnection).thenThrow(new SQLException("no database in this test"));
+            ItemInformationProvider.getInstance();
+        }
+    }
 
     @BeforeEach
     void wire() {
@@ -89,6 +112,52 @@ class CitizenMiniGamesTest {
         assertTrue(strong > 40 && strong < 200, strong + " strong players of 2000");
         assertTrue(total / 2_000 < 0.4d, "most play casually");
         assertTrue(games.strength(agent(77, 200)) > games.strength(agent(77, 0)), "a citizen with a record plays better");
+    }
+
+    @Test
+    void aFullEtcTabGivesUpSpareDropsForTheSetsItLacks() {
+        Character agent = agent(77, 0);
+        Inventory etc = fullEtcTab(agent, SPARE_DROP);
+        when(agent.haveItem(anyInt())).thenReturn(false);
+
+        CitizenMiniGames.makeRoomForSets(agent);
+
+        assertEquals(2, etc.getNumFreeSlot(), "one slot for the omok set, one for the cards");
+    }
+
+    @Test
+    void aCitizenAlreadyCarryingItsSetsLosesNothing() {
+        Character agent = agent(77, 0);
+        Inventory etc = fullEtcTab(agent, SPARE_DROP);
+        when(agent.haveItem(ItemId.MINI_GAME_BASE + 3)).thenReturn(true);
+        when(agent.haveItem(ItemId.MATCH_CARDS)).thenReturn(true);
+
+        CitizenMiniGames.makeRoomForSets(agent);
+
+        assertEquals(0, etc.getNumFreeSlot());
+    }
+
+    @Test
+    void oresAreNotGivenUpForASet() {
+        Character agent = agent(77, 0);
+        Inventory etc = fullEtcTab(agent, ORE);
+        when(agent.haveItem(anyInt())).thenReturn(false);
+
+        CitizenMiniGames.makeRoomForSets(agent);
+
+        assertEquals(0, etc.getNumFreeSlot(), "only monster drops go (AgentEtcRoomPlan)");
+    }
+
+    private static Inventory fullEtcTab(Character agent, int itemId) {
+        Client client = mock(Client.class);
+        when(client.getPlayer()).thenReturn(agent);
+        when(agent.getClient()).thenReturn(client);
+        Inventory etc = new Inventory(agent, InventoryType.ETC, (byte) 96);
+        for (short slot = 1; slot <= 96; slot++) {
+            etc.addItemFromDB(new Item(itemId, slot, (short) 50));
+        }
+        when(agent.getInventory(InventoryType.ETC)).thenReturn(etc);
+        return etc;
     }
 
     private static Character agent(int id, int played) {

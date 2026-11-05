@@ -1,12 +1,15 @@
 package server.living.population;
 
 import client.Character;
+import client.inventory.InventoryType;
 import client.inventory.manipulator.InventoryManipulator;
 import config.PopulationConfig;
 import constants.id.ItemId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
+import server.agents.capabilities.inventory.demand.AgentEtcRoomPlan;
+import server.agents.capabilities.inventory.demand.AgentEtcSaleCandidate;
 import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.runtime.AgentForeignWriteRuntime;
@@ -31,6 +34,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 /**
  * PLAY (docs/BOT_CONCEPT_PLAN.md F5a): citizens play omok and match cards in towns whose map allows minigames
@@ -164,6 +168,7 @@ public final class CitizenMiniGames {
         if (!enabled() || agent == null || session.entry == null || !allows(map) || players.containsKey(session.characterId)) {
             return false;
         }
+        makeRoomForSets(agent);
         int omokSet = carryOmokSet(agent);
         boolean hasCards = agent.haveItem(ItemId.MATCH_CARDS)
                 || InventoryManipulator.addById(agent.getClient(), ItemId.MATCH_CARDS, (short) 1);
@@ -388,6 +393,22 @@ public final class CitizenMiniGames {
             played += agent.getMiniGamePoints(result, true) + agent.getMiniGamePoints(result, false);
         }
         return Math.min(1.0d, base + Math.min(0.15d, played / 400.0d * 0.15d));
+    }
+
+    /**
+     * Room for the sets it lacks. Most citizens past level 60 carry a full Etc tab (611 of 982 on 11-04), and with no set
+     * and no room their session ended on its first step: it gives up the stacks AgentEtcRoomPlan would sell, as a player
+     * on a town bench with no shop at hand tosses a stack.
+     */
+    static void makeRoomForSets(Character agent) {
+        boolean hasOmokSet = IntStream.range(0, OMOK_SETS).anyMatch(set -> agent.haveItem(ItemId.MINI_GAME_BASE + set));
+        int lacking = (hasOmokSet ? 0 : 1) + (agent.haveItem(ItemId.MATCH_CARDS) ? 0 : 1);
+        for (AgentEtcSaleCandidate stack : AgentEtcRoomPlan.plan(agent, lacking)) {
+            InventoryManipulator.removeFromSlot(agent.getClient(), InventoryType.ETC, stack.item().getPosition(),
+                    stack.quantity(), false);
+            log.info("citizen {} gives up {} of item {} for its game sets", agent.getName(), stack.quantity(),
+                    stack.item().getItemId());
+        }
     }
 
     /** The omok set it carries, else one from the wardrobe pool by its id; -1 when there is no room for it. */
