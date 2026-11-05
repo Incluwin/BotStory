@@ -1382,7 +1382,7 @@ population:
     # sit down in a citizen's room or open one near PLAY citizens; one comes over. Records are the stock columns.
     # false = the kill switch: no PLAY plan (cohorts.yaml PLAY weights count for nothing), nobody opens or joins a room.
     # Technical: CitizenMiniGames rides the 20 s chatter tick; MiniGameTable plays each room through MiniGameRules and the MiniGame observer, one timer step per move.
-    MINIGAMES_ENABLED: false
+    MINIGAMES_ENABLED: true
     # Technical: comma list of town map ids; CitizenMiniGames skips one outside the citizen's region or whose fieldLimit has CANNOTMINIGAME (0x80, the Free Market).
     MINIGAME_TOWNS: "100000000,101000000,102000000,103000000,220000000"
     # Technical: MiniGameTable think time per move, drawn as min + (max - min) * u^2 so most moves are quick; the first omok stones use at most three times the minimum.
