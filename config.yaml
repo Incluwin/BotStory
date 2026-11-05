@@ -1284,7 +1284,7 @@ population:
     # way; no JQ plan for JQ_COOLDOWN_MS after one; it pays Shane only with JQ_FEE_RESERVE mesos left over. Breath of
     # Lava stays out (its fire hurts only on the client). false = the kill switch: no JQ plan, every jump exact.
     # Technical: CitizenJumpQuests ticks on the party quests' 10 s lane; it installs AgentJumpNoise (launch x drawn from N(0, sigma) per stage, sigma solved by JumpWindows from the probe's landing windows, every off-window draw probed to land on a foothold that still reaches the target). Noisy misses skip edge reliability and F8's rope fumble; a fall below the map in view of a player logs the citizen off instead of the recovery teleport (counted in /runtime/citizens).
-    JQ_ENABLED: false
+    JQ_ENABLED: true
     JQ_COURSES: pwr,fop_a
     JQ_FEE_RESERVE: 20000
     JQ_STAGE_SUCCESS_MIN: 0.3
