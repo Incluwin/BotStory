@@ -171,6 +171,30 @@ class MiniGameTableHeadlessTest {
     }
 
     @Test
+    void aCitizenOpenerWaitsOutTheClientsDealBeforeItTurnsACard() {
+        MiniGameTable.Seat owner = seat(ann, 0.5d, 3);
+        assertEquals(MiniGameRules.OK, MiniGameRules.createMatchCard(ann.chr, "cards", "", 0));
+        MiniGame game = ann.game();
+        MiniGameTable.watch(game, owner, clock, new Random(7L), PACE, listener);
+        assertEquals(MiniGameRules.OK, MiniGameRules.visit(bo.chr, game, ""));
+        runAll();
+        MiniGameRules.ready(bo.chr, true);
+
+        long startedAt = -1L;
+        while (bo.packets.stream().noneMatch(line -> line.startsWith("getMatchCardSelect("))) {
+            Step step = steps.poll();
+            assertNotNull(step, "the citizen never turned a card");
+            clockMs = step.atMs();
+            step.run().run();
+            if (startedAt < 0L && game.isMatchInProgress()) {
+                startedAt = clockMs;
+            }
+        }
+        assertTrue(clockMs - startedAt >= 12 * MiniGameTable.CARD_DEAL_MS,
+                "first card " + (clockMs - startedAt) + " ms after the start, during the client's deal");
+    }
+
+    @Test
     void aCitizenVisitorReadiesInAHumansRoomAndAnswersWithTheOtherStone() {
         assertEquals(MiniGameRules.OK, MiniGameRules.createOmok(ann.chr, "omok", "", 0));
         MiniGame game = ann.game();

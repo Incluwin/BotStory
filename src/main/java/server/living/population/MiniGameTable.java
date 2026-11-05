@@ -21,6 +21,12 @@ import java.util.function.Consumer;
  * and a step scheduled before it is dropped.
  */
 final class MiniGameTable implements MiniGameObserver {
+    /**
+     * The client shows a new deal card by card before play, about 0.3 s each (filmed 11-04), and a human cannot turn a
+     * card until it is done. The one client crash seen (com_error 0x80070057) came with a citizen's cards landing in it.
+     */
+    static final long CARD_DEAL_MS = 350L;
+
     /** Runs a step later: the population's timer live, a queue in tests. */
     interface Clock {
         void after(long delayMs, Runnable step);
@@ -194,7 +200,7 @@ final class MiniGameTable implements MiniGameObserver {
         for (Seat seat : seats()) {
             seat.memory = game.isOmok() ? null : MatchCardMemory.forStrength(cards, seat.strength, random);
         }
-        nextTurn(think(1_000L, 3_000L));
+        nextTurn(cards * CARD_DEAL_MS + think(1_000L, 3_000L));
     }
 
     @Override
