@@ -62,6 +62,8 @@ public final class CitizenJumpQuests {
     static final long TALK_MS = 3_000L;
     /** Moved less than this between ticks: standing still. */
     static final int STILL_PX = 8;
+    /** A login's session registers just after its arrive; not registered by then, its load failed. */
+    static final long LOGIN_REGISTER_MS = 30_000L;
     /** The noise's skill never reaches more than this, however much it practises. */
     static final double SKILL_CEILING = 0.85d;
     /** Shane's warp lands on the course; checked this many ticks before the gate counts as refused. */
@@ -137,6 +139,8 @@ public final class CitizenJumpQuests {
         long standUntilMs;
         Point lastPos;
         long stillSinceMs;
+        /** Its session has been seen registered: from then on a missing session means it logged off. */
+        boolean registered;
         int gateTries;
         boolean toldGiveUp;
         boolean exitAsked;
@@ -329,11 +333,16 @@ public final class CitizenJumpQuests {
     private void step(Attempt attempt, long nowMs) {
         CitizenSession session = attempt.session;
         Character agent = session.agent();
-        if (agent == null || population.presence().session(session.characterId) == null) {
+        boolean registered = population.presence().session(session.characterId) != null;
+        if (agent == null || !registered && (attempt.registered || nowMs - attempt.startedAtMs >= LOGIN_REGISTER_MS)) {
             attempts.remove(session.characterId);
             engine.clearNoise(session);
             return;
         }
+        if (!registered) {
+            return; // a login on the course: arrive runs just before PresenceScheduler.login registers it; the next tick climbs
+        }
+        attempt.registered = true;
         session.mapId = agent.getMapId();
         switch (attempt.phase) {
             case QUEST_START, QUEST_TURN_IN -> sabitrama(attempt, agent, nowMs);

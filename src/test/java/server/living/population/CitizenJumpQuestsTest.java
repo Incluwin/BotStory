@@ -237,6 +237,34 @@ class CitizenJumpQuestsTest {
     }
 
     @Test
+    void aCitizenThatLogsInOnTheCourseClimbsOnceItsSessionIsRegistered() {
+        engine.stages = twoStages(new Point(-900, 120), new Point(-1593, -1586));
+        mapId = 100000202;
+        position.setLocation(-2108, 236);
+        sessions.remove(ID); // PresenceScheduler.login registers the session after materialize has run arrive
+        assertTrue(arrive(JumpQuestCourses.PWR, 0L));
+        assertTrue(jq.holds(session), "still logging in: not gone");
+        sessions.put(ID, session);
+        jq.tick(10_000L);
+        assertEquals("move -900,120 precise", engine.last());
+        assertNotNull(engine.plan, "its noise is on for the climb");
+        assertTrue(said.contains("jq.start"));
+    }
+
+    @Test
+    void aLoginThatNeverRegistersDropsTheAttempt() {
+        engine.stages = twoStages(new Point(-900, 120), new Point(-1593, -1586));
+        mapId = 100000202;
+        position.setLocation(-2108, 236);
+        sessions.remove(ID);
+        assertTrue(arrive(JumpQuestCourses.PWR, 0L));
+        jq.tick(CitizenJumpQuests.LOGIN_REGISTER_MS - 1L);
+        assertTrue(jq.holds(session));
+        jq.tick(CitizenJumpQuests.LOGIN_REGISTER_MS);
+        assertFalse(jq.holds(session), "its load failed after arrive");
+    }
+
+    @Test
     void theForestRunsSabitramasErrandThroughShanesGateAndThePile() {
         level = 30;
         assertTrue(jq.send(session, "fop_a", 0L).contains("QUEST_START"));
