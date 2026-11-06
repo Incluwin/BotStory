@@ -240,6 +240,26 @@ different citizens (plain loot at 3x drops). Merchants (273 of 730 active citize
   sell trip comes into its shop by the portal its route enters by, watched or not (`PresenceScheduler.entersByRoute`),
   and walks to the shop visit's own place to stand (`AgentShopService.approachPoint`), worked out on its mailbox.
 
+**Etc room, built (11-05, branch `fix/citizen-etc-room`).** Measured first: 571 of 730 active citizens had all 96 Etc
+slots full (183 of 184 at levels 90-119), on a full tab 53 stacks of ores, materials and game pieces and 43 of monster
+drops. Nothing empties the tab: a visit's ETC sale (`AgentQuestItemDispositionRuntime`) passes over any item missing from
+the quest demand index (108 Victoria items, 28 of them drops), so in the 8 days to 11-05 it sold 32 kinds, every one
+indexed, and no other drop. On 11-05 that was 33 citizens, 217 stacks and 0.33 M of the 670 M NPC_SALE (Etc is 0.16 % of
+citizen sale mesos over those days, equips 99.8 %); stalls sold no Etc in 7 days. A full tab then takes no Etc at all
+(`AgentLootEligibility.hasRoomFor` wants a free slot even for a drop that would stack): in one hour 135 of 144 full-tab
+citizens that gained exp gained no Etc piece, against 19 of 21 with room (56 pieces and 0.76 new stacks an hour). Meso
+drops and equips still land, so the loss is small: about 3 k mesos a training hour at NPC price, beside 111 k of purse
+growth.
+- `population.ETC_ROOM_FREE_SLOTS` (16; 0 = off): at every shop visit an unhired citizen sells the stacks
+  `AgentEtcRoomPlan` lets go until that many slots are free, quietly, before it buys. No new trips: 561 of the 571 went
+  to a shop within 8 days, 279 within a day. 16 slots is about 4 days of refill (0.76 stacks x 5.4 training hours a day).
+- Cost, from the 11-05 bags: a first pass of 9,736 stacks and 88.7 M mesos (138 k a visit, 1 % of citizen purses), most
+  of it in the first few days, then at most about 13 M a day (under 2 % of NPC_SALE; the refill rate comes from 21
+  citizens in one hour, lower level than most).
+- "No quest asks for" stays what the plan already means for CWKPQ and minigames: not in that index, 42 stacks on a full
+  tab. Counting every quest in Quest.wz would leave 3.6, and 73 full tabs nothing; citizens hold 32 started and 3 finished
+  quests between them. Log line: "sold its junk on map M: ... N etc stacks".
+
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and
 unusable ammo, so looted scrolls were never used or sold; only merchants' stalls listed some.

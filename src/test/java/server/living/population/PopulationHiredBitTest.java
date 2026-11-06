@@ -60,6 +60,15 @@ class PopulationHiredBitTest {
     }
 
     @Test
+    void aCitizenKeepsEtcRoomUntilAPlayerHiresItAndNobodyElseDoes() {
+        assertEquals(new PopulationConfig().ETC_ROOM_FREE_SLOTS, population.etcRoomFor(MIRA));
+
+        population.setHired(MIRA, true);
+        assertEquals(0, population.etcRoomFor(MIRA), "a hired hand's owner may want its drops");
+        assertEquals(0, population.etcRoomFor(MIRA + 1), "no citizen");
+    }
+
+    @Test
     void aSaveOfACopyTakenBeforeTheHireKeepsTheHiredBit() {
         Citizen before = population.citizen(MIRA); // the ledger's list, made just before the hire
 

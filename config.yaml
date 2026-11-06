@@ -1352,6 +1352,9 @@ population:
     SELL_TRIPS_ENABLED: true
     SELL_TRIP_FREE_SLOTS: 8
     SELL_TRIP_EVERY_HOURS: 6
+    # Free Etc slots a citizen keeps at every shop visit, by selling whole stacks of monster drops AgentEtcRoomPlan lets
+    # go (never ores, crafting materials, game pieces or a quest's drop); 0 = off. A full tab picks up no Etc at all.
+    ETC_ROOM_FREE_SLOTS: 16
     # A citizen that died beside a field boss whose group COMPANION_BOSS_ENABLED_TYPES lists (2026-10-19) trains
     # elsewhere while that boss stands on the map, at most FIELD_BOSS_AVOID_MS from its death. Citizens never attack a
     # listed boss but take its hits while a player fights it, so they used to walk straight back to die again.

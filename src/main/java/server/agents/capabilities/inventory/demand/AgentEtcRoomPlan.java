@@ -14,16 +14,31 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntPredicate;
+import java.util.function.IntUnaryOperator;
 
 /**
  * Room in the ETC tab before an activity that hands its members ETC items (CWKPQ: the stage-5 weapons and the Armory's
  * loot). C9 live 2026-10-22: four of crew C's five carried 96 stacks in 96 slots, so no master's weapon and no gun
  * could land. The plan sells whole stacks of monster drops (4000xxx) that no quest asks for, from the kind it holds
  * the most stacks of, until the wanted slots are free; ores, crafting materials, game pieces, a drop any quest asks
- * for and a quest item stay (user decision 2026-10-22).
+ * for and a quest item stay (user decision 2026-10-22). A host can also have an Agent keep room at every shop visit
+ * ({@link #installKeepsFree}): citizens, whose tab otherwise only ever fills (docs/ECONOMY_PLAN.md, Etc room).
  */
 public final class AgentEtcRoomPlan {
+    private static volatile IntUnaryOperator keepsFree;
+
     private AgentEtcRoomPlan() {
+    }
+
+    /** Installs the host's answer to how many free ETC slots an Agent keeps at every shop visit (null: none do). */
+    public static void installKeepsFree(IntUnaryOperator rule) {
+        keepsFree = rule;
+    }
+
+    /** The free ETC slots its host has this Agent keep at every shop visit; 0 with no rule. Memory only. */
+    public static int keepsFree(int agentCharacterId) {
+        IntUnaryOperator rule = keepsFree;
+        return rule == null ? 0 : Math.max(0, rule.applyAsInt(agentCharacterId));
     }
 
     /** Free slots in its ETC tab. */

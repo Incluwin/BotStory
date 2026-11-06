@@ -744,12 +744,14 @@ public final class AgentShopService {
         }
 
         // 2026-10-22 (CWKPQ C9): a readiness trip for an activity with an ETC room standard sells monster drops for
-        // that room first (AgentEtcRoomPlan), once a visit
+        // that room first (AgentEtcRoomPlan), once a visit; so does an Agent its host has keep room there, which nobody
+        // asked to hear about
         List<AgentEtcSaleCandidate> room = roomSold ? List.of() : etcRoomSales(entry, bot);
         if (!room.isEmpty()) {
             AgentShopStateRuntime.extendShopSequence(entry, (long) room.size() * SHOP_SEQUENCE_SALE_ALLOWANCE_MS);
+            boolean quiet = AgentSupplyReadiness.etcRoomStandard(AgentSupplyReadiness.tripActivity(entry)) <= 0;
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runEtcSaleStep(entry, bot, npcPos, SaleTally.start(false), 0, room, new ArrayList<>(),
+                    () -> runEtcSaleStep(entry, bot, npcPos, SaleTally.start(quiet), 0, room, new ArrayList<>(),
                             null, inventory, () -> executePurchases(entry, bot, inventory, npcPos, true)));
             return;
         }
@@ -762,10 +764,13 @@ public final class AgentShopService {
                 actions, new ArrayList<>(), null), 0);
     }
 
-    /** The stacks a readiness trip sells for its activity's ETC room standard; empty off a trip or with room. */
+    /**
+     * The stacks a visit sells for ETC room: for a readiness trip's activity standard or the room its host has it keep
+     * (AgentEtcRoomPlan.keepsFree), whichever wants more; empty with room or with neither.
+     */
     static List<AgentEtcSaleCandidate> etcRoomSales(AgentRuntimeEntry entry, Character bot) {
         AgentSupplyReadiness.Activity trip = AgentSupplyReadiness.tripActivity(entry);
-        int wanted = trip == null ? 0 : AgentSupplyReadiness.etcRoomStandard(trip);
+        int wanted = Math.max(AgentSupplyReadiness.etcRoomStandard(trip), AgentEtcRoomPlan.keepsFree(bot.getId()));
         return wanted <= 0 ? List.of() : AgentEtcRoomPlan.plan(bot, wanted);
     }
 
@@ -1223,8 +1228,9 @@ public final class AgentShopService {
                         failedItems);
                 return;
             }
-            log.info("Agent '{}' sold its junk on map {}: {} equips sold, {} failed, mesos {}",
-                    bot.getName(), bot.getMapId(), tally.equipsSold(), tally.equipsFailed(), bot.getMeso());
+            log.info("Agent '{}' sold its junk on map {}: {} equips sold, {} failed, {} etc stacks, mesos {}",
+                    bot.getName(), bot.getMapId(), tally.equipsSold(), tally.equipsFailed(), tally.etcStacksSold(),
+                    bot.getMeso());
             afterSale.run();
             return;
         }
