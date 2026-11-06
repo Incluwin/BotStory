@@ -374,6 +374,19 @@ class CitizenPartyQuestsTest {
     }
 
     @Test
+    void aFormingPartyKeepsItsMembersFromAReplanThatIsDue() {
+        Character lia = lobby.citizen(1, "Lia", 25);
+        Character mira = lobby.citizen(2, "Mira", 22);
+        lobby.session(lia).lastPlanAtMs = 1L; // its next plan is long due, as for a citizen called over from town
+        lobby.session(mira).lastPlanAtMs = 1L;
+
+        quests.tick(5 * MINUTE);
+
+        assertEquals(5 * MINUTE, lobby.session(lia).lastPlanAtMs, "the leader stays until its party ends");
+        assertEquals(5 * MINUTE, lobby.session(mira).lastPlanAtMs, "and so does the member");
+    }
+
+    @Test
     void aShortPartyCallsACircleMateWhoIsTraining() {
         Character lia = lobby.citizen(1, "Lia", 25);
         lobby.citizen(2, "Mira", 22);

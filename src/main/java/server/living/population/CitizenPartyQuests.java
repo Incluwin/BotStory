@@ -406,6 +406,15 @@ public final class CitizenPartyQuests {
         }
         List<AgentPartyMemberSnapshot> members = members(leaderChr);
         size = members.size();
+        // the party decides when they leave (in, or out of patience): a re-plan that comes due would walk them off and
+        // keep the party, as Samix did with a player on the way (live 11-06)
+        leader.lastPlanAtMs = nowMs;
+        for (AgentPartyMemberSnapshot member : members) {
+            CitizenSession session = here.get(member.id());
+            if (session != null) {
+                session.lastPlanAtMs = nowMs;
+            }
+        }
         tellWhisperedWhere(party, leader, members, map);
         if (size < door.minSeats()) {
             party.minReachedAtMs = -1L;
