@@ -127,12 +127,13 @@ public final class RivalCrews implements ClearLog.Listener {
         return population.config();
     }
 
-    /** The stored crews, once, the first time the switch is on (never at construction). */
+    /** The stored crews and clear records, once, the first time the switch is on (never at construction). */
     synchronized void start() {
         if (started) {
             return;
         }
         started = true;
+        population.clears().load(); // this switch opens the records page, which reads memory only
         for (Crew crew : store.all()) {
             put(crew);
         }

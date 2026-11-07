@@ -176,8 +176,8 @@ public final class ClearLog {
         }
     }
 
-    /** The table's records into memory, once (at the first clear or the first look). */
-    synchronized void load() {
+    /** The table's records into memory, once (at the first clear, or RivalCrews' first tick: the views read memory only). */
+    public synchronized void load() {
         if (loaded) {
             return;
         }

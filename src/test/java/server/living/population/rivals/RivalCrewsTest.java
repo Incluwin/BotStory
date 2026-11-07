@@ -552,12 +552,21 @@ class RivalCrewsTest {
     }
 
     @Test
+    void theStoredClearRecordsAreReadOnceBeforeAnyoneLooksAtThem() {
+        crews.tick(NOW);
+        crews.tick(NOW + MINUTE);
+
+        verify(clears, times(1)).load();
+    }
+
+    @Test
     void theSwitchOffFormsAndSaysNothing() {
         fourInBand();
         config.RIVALS_ENABLED = false;
 
         crews.tick(NOW);
 
+        verify(clears, never()).load();
         assertNull(crews.crewOfAccount(ACCOUNT));
         assertEquals(0, crews.creditFor(Set.of(5001, 5002)));
         assertNull(crews.letter(ANN, "Ann", List.of("Ironclads|BalrogBattle_Easy|840000|960000")));
