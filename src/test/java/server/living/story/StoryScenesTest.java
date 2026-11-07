@@ -102,6 +102,7 @@ class StoryScenesTest {
         final List<Point> spawnedAt = new ArrayList<>();
         final Map<Integer, Point> warpedTo = new HashMap<>();
         final List<String> said = new ArrayList<>();
+        final List<String> orders = new ArrayList<>();
         boolean ended;
         SceneInstance.Exits exits;
         long damageFenna;
@@ -169,6 +170,16 @@ class StoryScenesTest {
         @Override
         public MapleMap channelMap(Character owner, int mapId) {
             return exitMap;
+        }
+
+        @Override
+        public void hunt(Character bot) {
+            orders.add("hunt " + bot.getId());
+        }
+
+        @Override
+        public void follow(Character bot) {
+            orders.add("follow " + bot.getId());
         }
     }
 
@@ -323,6 +334,7 @@ class StoryScenesTest {
         assertTrue(hands.ended);
         assertFalse(commitments.isCommitted(FENNA_ID));
         assertFalse(scenes.running(ANN));
+        assertEquals(List.of(), hands.orders, "a scene's own monsters come beside the owner: the cast keeps following");
         verify(quests, never()).sceneDone(any(), anyString());
 
         tickAfter(StoryScenes.CLOSE_DELAY_MS);
@@ -491,6 +503,29 @@ class StoryScenesTest {
         tickAfter(1000);
         tickAfter(StoryScenes.LINE_MAX_MS);
         assertEquals(List.of("Dorran: 70 to 10."), hands.said);
+    }
+
+    @Test
+    void theRacersGoAfterTheFoeAndFollowAgainOnceItFalls() {
+        raceTo(6_000, 3_000);
+        assertEquals(List.of("hunt " + FENNA_ID, "hunt " + DORRAN_ID), hands.orders,
+                "following the owner, they never touched a foe that wandered off (live 11-07)");
+
+        hands.listeners.get(0).monsterKilled(0);
+        tickAfter(1000);
+
+        assertEquals(List.of("hunt " + FENNA_ID, "hunt " + DORRAN_ID, "follow " + FENNA_ID, "follow " + DORRAN_ID),
+                hands.orders);
+    }
+
+    @Test
+    void racersStillAfterTheFoeFollowAgainWhenTheSceneEndsEarly() {
+        raceTo(0, 0);
+
+        scenes.abortAll("test");
+
+        assertEquals(List.of("hunt " + FENNA_ID, "hunt " + DORRAN_ID, "follow " + FENNA_ID, "follow " + DORRAN_ID),
+                hands.orders);
     }
 
     @Test

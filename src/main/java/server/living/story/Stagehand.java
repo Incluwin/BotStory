@@ -2,7 +2,11 @@ package server.living.story;
 
 import client.Character;
 import scripting.event.EventManager;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.runtime.AgentMailboxRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.LifeFactory;
 import server.life.Monster;
 import server.life.MonsterListener;
@@ -49,6 +53,12 @@ interface Stagehand {
 
     /** The channel's own map the owner returns to. */
     MapleMap channelMap(Character owner, int mapId);
+
+    /** A companion hunts its map: a race's racers go after the foe, which can wander far from the owner. */
+    void hunt(Character bot);
+
+    /** A companion follows its owner again. */
+    void follow(Character bot);
 
     Stagehand LIVE = new Stagehand() {
         @Override
@@ -121,6 +131,30 @@ interface Stagehand {
         @Override
         public MapleMap channelMap(Character owner, int mapId) {
             return owner.getClient().getChannelServer().getMapFactory().getMap(mapId);
+        }
+
+        @Override
+        public void hunt(Character bot) {
+            AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+            if (runtime == null) {
+                return;
+            }
+            AgentMailboxRuntime.dispatch(runtime, entry -> {
+                AgentMovementCommandRuntime.grind(runtime);
+                return null;
+            });
+        }
+
+        @Override
+        public void follow(Character bot) {
+            AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+            if (runtime == null) {
+                return;
+            }
+            AgentMailboxRuntime.dispatch(runtime, entry -> {
+                AgentMovementCommandRuntime.followConfiguredTarget(runtime);
+                return null;
+            });
         }
     };
 

@@ -84,6 +84,7 @@ public final class StoryScenes {
         final Map<Integer, Integer> shares = new ConcurrentHashMap<>();
         volatile boolean disconnected;
         volatile boolean racing;
+        volatile boolean hunting; // the racers were sent after the foe and are not following yet
         volatile boolean foeDown;
         volatile boolean banner;
         String outcome;
@@ -408,6 +409,7 @@ public final class StoryScenes {
                 Point at = new Point(owner.getPosition().x + 120, owner.getPosition().y);
                 if (spawn(run, foe.mobId(), ground(run.stage.map(), at, owner.getPosition()), true)) {
                     run.racing = true;
+                    huntFoe(run);
                 }
             }
             return;
@@ -474,6 +476,34 @@ public final class StoryScenes {
         };
     }
 
+    /**
+     * The racers go after the foe. Following the owner, they only fight what comes near them: live 11-07 Griffey
+     * wandered off along the floor and took no damage in five minutes.
+     */
+    private void huntFoe(Run run) {
+        for (int racer : List.of(run.lead(), run.cast.getOrDefault(run.rival, 0))) {
+            Character bot = racer == 0 ? null : character(run, racer);
+            if (bot != null) {
+                hands.hunt(bot);
+            }
+        }
+        run.hunting = true;
+    }
+
+    /** The racers follow their owner again: the foe is down, or the scene is over. */
+    private void followAgain(Run run) {
+        if (!run.hunting) {
+            return;
+        }
+        run.hunting = false;
+        for (int racer : List.of(run.lead(), run.cast.getOrDefault(run.rival, 0))) {
+            Character bot = racer == 0 ? null : character(run, racer);
+            if (bot != null) {
+                hands.follow(bot);
+            }
+        }
+    }
+
     /** The first foe band that fits the racers' average level. */
     private SceneFoe foeFor(Run run) {
         int total = 0;
@@ -513,6 +543,9 @@ public final class StoryScenes {
         }
         run.outcome = key;
         run.racing = false;
+        if (forfeitTo == null) { // the foe is down; after a forfeit it still has to fall
+            followAgain(run);
+        }
         run.beats.addAll(run.beat, run.scene.outcome().getOrDefault(key, List.of()));
         String raced = StoryState.rivalryFlag(lead, run.rival);
         String result = raced + "." + (key.equals("even") ? "even" : "won." + key.substring(key.indexOf('.') + 1));
@@ -602,6 +635,7 @@ public final class StoryScenes {
             }
             index++;
         }
+        followAgain(run);
         Commitments commitments = world.commitments();
         if (commitments != null) {
             commitments.releaseKey(run.key());
