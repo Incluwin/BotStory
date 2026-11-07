@@ -4223,20 +4223,20 @@ public class PacketCreator {
     }
 
     public static Packet updateBuddylist(Collection<BuddylistEntry> buddylist) {
+        // A request still open is on the list unseen: counted, the client would read past the packet's end and crash.
+        List<BuddylistEntry> visible = buddylist.stream().filter(BuddylistEntry::isVisible).toList();
         OutPacket p = OutPacket.create(SendOpcode.BUDDYLIST);
         p.writeByte(7);
-        p.writeByte(buddylist.size());
-        for (BuddylistEntry buddy : buddylist) {
-            if (buddy.isVisible()) {
-                p.writeInt(buddy.getCharacterId()); // cid
-                p.writeFixedString(getRightPaddedStr(buddy.getName(), '\0', 13));
-                p.writeByte(0); // opposite status
-                p.writeInt(buddy.getChannel() - 1);
-                p.writeFixedString(getRightPaddedStr(buddy.getGroup(), '\0', 13));
-                p.writeInt(0);//mapid?
-            }
+        p.writeByte(visible.size());
+        for (BuddylistEntry buddy : visible) {
+            p.writeInt(buddy.getCharacterId()); // cid
+            p.writeFixedString(getRightPaddedStr(buddy.getName(), '\0', 13));
+            p.writeByte(0); // opposite status
+            p.writeInt(buddy.getChannel() - 1);
+            p.writeFixedString(getRightPaddedStr(buddy.getGroup(), '\0', 13));
+            p.writeInt(0);//mapid?
         }
-        for (int x = 0; x < buddylist.size(); x++) {
+        for (int x = 0; x < visible.size(); x++) {
             p.writeInt(0);//mapid?
         }
         return p;
