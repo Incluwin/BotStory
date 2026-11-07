@@ -1493,7 +1493,7 @@ population:
     # board and by whisper, once per RIVALS_HELP_GAP_HOURS, open RIVALS_HELP_OPEN_MINUTES.
     # Technical: EventInstanceManager.clearPQ (once an instance) -> LivingWorldHooks.eventCleared -> records.ClearLog, which writes living_clear and living_clear_member on companion-ops; rivals.RivalCrews rides the 60 s social lane and keeps crews in living_rival.
     CLEAR_RECORDS_ENABLED: true
-    RIVALS_ENABLED: false
+    RIVALS_ENABLED: true
     RIVALS_MIN_LEVEL: 20
     RIVALS_CREW_MIN: 3
     RIVALS_CREW_MAX: 5
