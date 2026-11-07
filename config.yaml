@@ -735,7 +735,7 @@ living_world:
     # deaths an hour, joins Your call with a CAMP_BONUS higher prior. A skill used SKILL_MIN_USES times that lands
     # SKILL_MIN_SHARE of the owner's damage in a job starts SKILL_PRIOR_BUMP higher in a companion's combat learner.
     # Technical: OwnerHabitBook watches online owners from memory (LivingWorldHooks), learns each minute on the contracts timer and writes living_owner_habit behind; OwnerHabits.Rules holds these gates.
-    OWNER_HABITS_ENABLED: false
+    OWNER_HABITS_ENABLED: true
     OWNER_HABIT_MIN_DRINKS: 8
     OWNER_HABIT_HP_FLOOR: 0.45
     OWNER_HABIT_DEATH_WINDOW_MS: 30000
@@ -1428,7 +1428,7 @@ population:
     # citizens; drawn with weight exp((ucb - best) / SPOT_TEMPERATURE), never all to one map. false = the kill switch:
     # no stint booked and the uniform random pick, as before.
     # Technical: CitizenSpots.arms scores each field with BenchYieldModel citizen rows shrunk by BENCH_YIELD_PRIOR_SLICES toward BenchDutyChooser.fit; draw() samples by softmax.
-    CITIZEN_SPOT_LEARNING_ENABLED: false
+    CITIZEN_SPOT_LEARNING_ENABLED: true
     CITIZEN_SPOT_EXPLORE: 0.3
     CITIZEN_SPOT_CROWDING: 0.5
     CITIZEN_SPOT_TEMPERATURE: 0.15
