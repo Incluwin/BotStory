@@ -865,7 +865,7 @@ living_world:
     # RACE_EVEN_PERCENT: shares this close are even. PERSONAL_ARCS_ENABLED is the kill switch (false: nothing offered).
     # Technical: server.living.story (StoryArcs, StoryState, StoryScenes); state is living_bond.flags story.* plus the
     # chapter quests' rows; a scene is a SceneInstance (an EventInstanceManager on the no-op 0_EXAMPLE manager, no JS).
-    PERSONAL_ARCS_ENABLED: false
+    PERSONAL_ARCS_ENABLED: true
     STORY_CALM_RANGE_PX: 400
     STORY_LINE_MIN_MS: 1800
     STORY_SCENE_MAX_MINUTES: 15
@@ -877,7 +877,7 @@ living_world:
     # waits for another to close. JOB_ERRAND_ATTEND_ENABLED is the kill switch (false: every errand goes alone).
     # Technical: server.living.story.ErrandAttend at JobErrands.leave; the lead is MentorLead per leg (ErrandHands) on
     # the story sweep, off follow via CompanionFollowGuard; the advance is JobErrands.advanceAttended (changeJob).
-    JOB_ERRAND_ATTEND_ENABLED: false
+    JOB_ERRAND_ATTEND_ENABLED: true
     JOB_ERRAND_ATTEND_MAX_MINUTES: 60
     JOB_ERRAND_ATTEND_ASK_TRIES: 6
     JOB_ERRAND_ATTEND_ASK_RETRY_MS: 5000
@@ -1158,7 +1158,7 @@ living_world:
     # Persona.relationships, lore spouses and living_clear. Measuring only and not behind this switch: each companion
     # PQ or boss run now writes companion_performance.damage_share (its share of the run's damage), as
     # CLEAR_RECORDS_ENABLED measures clears. false = the kill switch: nothing is said and no mute is kept.
-    CREW_BANTER_ENABLED: false
+    CREW_BANTER_ENABLED: true
     # Technical: how often CrewBanter.tick looks at every online owner's crew on companion-ops (party time, the moment,
     # maybe an exchange); 20000 matches the ChatterEngine tick. At least 5000.
     CREW_BANTER_TICK_MS: 20000

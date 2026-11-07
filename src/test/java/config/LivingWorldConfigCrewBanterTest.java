@@ -49,7 +49,7 @@ class LivingWorldConfigCrewBanterTest {
     @Test
     void configYamlShipsTheSameDefaults() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII).replace("\r\n", "\n");
-        for (String line : new String[] {"CREW_BANTER_ENABLED: false", "CREW_BANTER_TICK_MS: 20000",
+        for (String line : new String[] {"CREW_BANTER_ENABLED: true", "CREW_BANTER_TICK_MS: 20000",
                 "CREW_BANTER_GAP_MINUTES: 10", "CREW_BANTER_CHANCE: 0.25", "CREW_BANTER_AFTER_CLEAR_WINDOW_MS: 300000",
                 "CREW_BANTER_OWNER_IDLE_MS: 300000", "CREW_BANTER_CALM_RANGE_PX: 400", "CREW_TIE_CLEAR_POINTS: 3",
                 "CREW_TIE_FRIEND_AFFINITY: 40"}) {

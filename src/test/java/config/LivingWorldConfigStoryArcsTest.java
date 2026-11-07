@@ -51,9 +51,9 @@ class LivingWorldConfigStoryArcsTest {
     @Test
     void configYamlShipsTheSameDefaults() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII).replace("\r\n", "\n");
-        for (String line : new String[] {"PERSONAL_ARCS_ENABLED: false", "STORY_CALM_RANGE_PX: 400",
+        for (String line : new String[] {"PERSONAL_ARCS_ENABLED: true", "STORY_CALM_RANGE_PX: 400",
                 "STORY_LINE_MIN_MS: 1800", "STORY_SCENE_MAX_MINUTES: 15", "STORY_RACE_EVEN_PERCENT: 10",
-                "JOB_ERRAND_ATTEND_ENABLED: false", "JOB_ERRAND_ATTEND_MAX_MINUTES: 60", "JOB_ERRAND_ATTEND_ASK_TRIES: 6",
+                "JOB_ERRAND_ATTEND_ENABLED: true", "JOB_ERRAND_ATTEND_MAX_MINUTES: 60", "JOB_ERRAND_ATTEND_ASK_TRIES: 6",
                 "JOB_ERRAND_ATTEND_ASK_RETRY_MS: 5000"}) {
             assertTrue(yaml.contains("\n    " + line + "\n"), line);
         }
