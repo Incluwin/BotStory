@@ -4,10 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import server.agents.capabilities.navigation.AgentNavigationMapLoader;
+import server.living.config.Content.Scene;
+import server.living.config.ContentLoader;
 import server.maps.MapleMap;
 
 import java.awt.Point;
+import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * had no ground below it and the scene ended as its fight began.
  */
 class StoryScenesGroundTest {
+    private static final int BOTTOM_FLOOR_Y = 195;
 
     /** {@link StoryScenes}' spots for an unplaced spawn beat: to either side of the owner, spreading by 30 px. */
     private static Point spot(Point owner, int index) {
@@ -49,5 +54,19 @@ class StoryScenesGroundTest {
         Point at = StoryScenes.ground(map, new Point(landing.x - 40, landing.y), landing);
 
         assertTrue(at.y > landing.y + 100, "the portal is about 150 px above this map's floor: " + at);
+    }
+
+    /**
+     * Iron Boar Land's first portal is in the sky over a ridge with long drops. Live 11-07 the foe landed up there, the
+     * owner fell to the bottom, and the racers, who stay with the owner, left it alone until the scene's clock ran out.
+     */
+    @Test
+    void theBetIsFoughtOnTheBottomFloorThatNoFallLeaves() throws Exception {
+        Scene bet = ContentLoader.load(Path.of("scripts/config/living-world")).scene("fenna-dorran-bet");
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(bet.mapId());
+        Point owner = map.getPointBelow(Stagehand.landing(map, bet.x(), bet.y()));
+
+        assertEquals(BOTTOM_FLOOR_Y, owner.y, "where the owner stands");
+        assertEquals(BOTTOM_FLOOR_Y, StoryScenes.ground(map, new Point(owner.x + 120, owner.y), owner).y, "where the foe comes");
     }
 }

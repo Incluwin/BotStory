@@ -58,6 +58,7 @@
 
 - id: fenna-dorran-bet
   map: 101040003            # Iron Boar Land
+  at: { x: -127, y: 190 }   # the bottom floor: the first portal is in the sky over a ridge with long drops
   cast: [fenna, dorran]
   maxMinutes: 15
   beats:
