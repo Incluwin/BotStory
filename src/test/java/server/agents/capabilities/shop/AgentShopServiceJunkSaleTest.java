@@ -7,13 +7,11 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
-import server.ItemInformationProvider;
 import server.Shop;
 import server.ShopItem;
 import server.StatEffect;
@@ -43,10 +41,8 @@ import server.agents.runtime.activity.session.AgentActivityKind;
 import server.life.NPC;
 import server.maps.MapleMap;
 import testutil.Items;
-import tools.DatabaseConnection;
 
 import java.awt.Point;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -66,10 +62,12 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -137,15 +135,6 @@ class AgentShopServiceJunkSaleTest {
     private MockedStatic<AgentQuestItemDispositionRuntime> etcSales;
     private MockedStatic<AgentUseItemClassificationPolicy> classification;
     private MockedStatic<AgentPotionService> potions;
-
-    /** AgentEtcRoomPlan reads the item data (an untradeable stack stays). */
-    @BeforeAll
-    static void itemDataWithNoDatabase() {
-        try (MockedStatic<DatabaseConnection> database = mockStatic(DatabaseConnection.class)) {
-            database.when(DatabaseConnection::getConnection).thenThrow(new SQLException("no database in this test"));
-            ItemInformationProvider.getInstance();
-        }
-    }
 
     @BeforeEach
     void aCompanionFollowingItsOwnerAtElNathsPotionShopWithNoPotions() {
@@ -758,9 +747,15 @@ class AgentShopServiceJunkSaleTest {
 
     // ---- harness ------------------------------------------------------------------------------------
 
+    /**
+     * Full stacks of one kind. Each says it is tradeable itself: Item.isUntradeable reads the item data, which cannot
+     * load in a test JVM where another test already failed to start it.
+     */
     private void carryEtc(int itemId, int stacks) {
         for (short slot = 1; slot <= stacks; slot++) {
-            etc.addItemFromDB(new Item(itemId, slot, (short) 50));
+            Item stack = spy(new Item(itemId, slot, (short) 50));
+            doReturn(false).when(stack).isUntradeable();
+            etc.addItemFromDB(stack);
         }
     }
 
