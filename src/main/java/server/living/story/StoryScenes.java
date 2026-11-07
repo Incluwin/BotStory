@@ -226,7 +226,7 @@ public final class StoryScenes {
         hands.warp(owner, map, at);
         int index = 1;
         for (Character bot : present.values()) {
-            hands.warp(bot, map, new Point(at.x + (index % 2 == 0 ? 40 : -40) * index, at.y));
+            hands.warp(bot, map, ground(map, new Point(at.x + (index % 2 == 0 ? 40 : -40) * index, at.y), at));
             index++;
         }
         world.store().event(ownerId, story.persona(), "story.scene.start", scene.id() + " (" + questId + ") cast "
@@ -395,7 +395,7 @@ public final class StoryScenes {
                     Point at = spawn.x() != 0 || spawn.y() != 0 ? new Point(spawn.x() + 25 * n, spawn.y())
                             : new Point(owner.getPosition().x + (index % 2 == 0 ? 160 : -160) + 30 * (index / 2),
                             owner.getPosition().y);
-                    spawn(run, spawn.mobId(), at, false);
+                    spawn(run, spawn.mobId(), ground(run.stage.map(), at, owner.getPosition()), false);
                     index++;
                 }
             }
@@ -405,13 +405,29 @@ public final class StoryScenes {
             SceneFoe foe = foeFor(run);
             if (foe != null) {
                 Point at = new Point(owner.getPosition().x + 120, owner.getPosition().y);
-                if (spawn(run, foe.mobId(), at, true)) {
+                if (spawn(run, foe.mobId(), ground(run.stage.map(), at, owner.getPosition()), true)) {
                     run.racing = true;
                 }
             }
             return;
         }
         run.nextAtMs = now + beat.seconds() * 1000L;
+    }
+
+    /**
+     * The floor under {@code at}, across {@code beside} when that is past the map's edge, else under {@code beside}. A
+     * scene's landing is a map's first portal, which can be at its edge and well above its floor: a companion would hang
+     * in the air there, and a monster over no ground cannot be spawned at all.
+     */
+    private static Point ground(MapleMap map, Point at, Point beside) {
+        Point floor = map.getPointBelow(at);
+        if (floor == null) {
+            floor = map.getPointBelow(new Point(2 * beside.x - at.x, at.y));
+        }
+        if (floor == null) {
+            floor = map.getPointBelow(beside);
+        }
+        return floor != null ? floor : at;
     }
 
     private boolean spawn(Run run, int mobId, Point at, boolean foe) {

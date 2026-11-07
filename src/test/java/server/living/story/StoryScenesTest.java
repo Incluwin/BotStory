@@ -99,6 +99,8 @@ class StoryScenesTest {
         final MapleMap stage = mock(MapleMap.class);
         final List<MonsterListener> listeners = new ArrayList<>();
         final List<Monster> spawned = new ArrayList<>();
+        final List<Point> spawnedAt = new ArrayList<>();
+        final Map<Integer, Point> warpedTo = new HashMap<>();
         final List<String> said = new ArrayList<>();
         boolean ended;
         SceneInstance.Exits exits;
@@ -147,6 +149,7 @@ class StoryScenesTest {
             when(mob.damageBy(DORRAN_ID)).thenAnswer(inv -> damageDorran);
             listeners.add(listener.apply(mob));
             spawned.add(mob);
+            spawnedAt.add(at);
             log.add("spawn " + mobId);
             return mob;
         }
@@ -160,6 +163,7 @@ class StoryScenesTest {
         public void warp(Character chr, MapleMap to, Point at) {
             log.add("warp " + chr.getId() + (to == stage ? " in" : " out"));
             maps.get(chr.getId()).set(to);
+            warpedTo.put(chr.getId(), at);
         }
 
         @Override
@@ -324,6 +328,40 @@ class StoryScenesTest {
         tickAfter(StoryScenes.CLOSE_DELAY_MS);
         verify(quests).sceneDone(ann, "fenna-story-3");
         assertFalse(scenes.any());
+    }
+
+    /** The stage's floor is y 500 from x 0 on; left of that is past the map's edge, as a landing portal can be beside. */
+    private void floorFromXZero() {
+        when(hands.stage.getPointBelow(any(Point.class))).thenAnswer(inv -> {
+            Point at = inv.getArgument(0);
+            return at.x < 0 ? null : new Point(at.x, 500);
+        });
+    }
+
+    @Test
+    void aMonsterDueOverNoGroundPastTheMapsEdgeComesUpAcrossTheOwner() {
+        floorFromXZero();
+        when(ann.getPosition()).thenReturn(new Point(100, 200));
+        Story story = capstone(List.of("fenna"),
+                new SceneBeat(null, null, null, null, 0, null, 0, List.of(new SceneSpawn(2230102, 2, 0, 0)), false));
+        scenes.start(ANN, story, "fenna-story-3");
+
+        tickAfter(StoryScenes.SETTLE_MS + 1000);
+
+        assertEquals(List.of(new Point(260, 500), new Point(260, 500)), hands.spawnedAt,
+                "100 + 160 stands where it was asked; 100 - 160 is off the map, so it mirrors to 260");
+    }
+
+    @Test
+    void aCompanionIsSetDownOnTheFloorNotInTheAirAtTheLandingsHeight() {
+        floorFromXZero();
+        Story story = staged("fenna-story-3", new Scene("blind", 101040001, 100, 50, List.of("fenna"),
+                List.of(line("fenna", "this is it.")), 10, List.of(), Map.of(), "test"));
+
+        assertNull(scenes.start(ANN, story, "fenna-story-3"));
+
+        assertEquals(new Point(100, 50), hands.warpedTo.get(ANN), "the owner's client falls by itself");
+        assertEquals(new Point(60, 500), hands.warpedTo.get(FENNA_ID), "a companion would hang where it was put");
     }
 
     @Test
