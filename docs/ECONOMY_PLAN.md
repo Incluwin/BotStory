@@ -256,9 +256,9 @@ growth.
 - Cost, from the 11-05 bags: a first pass of 9,736 stacks and 88.7 M mesos (138 k a visit, 1 % of citizen purses), most
   of it in the first few days, then at most about 13 M a day (under 2 % of NPC_SALE; the refill rate comes from 21
   citizens in one hour, lower level than most).
-- "No quest asks for" stays what the plan already means for CWKPQ and minigames: not in that index, 42 stacks on a full
-  tab. Counting every quest in Quest.wz would leave 3.6, and 73 full tabs nothing; citizens hold 32 started and 3 finished
-  quests between them. Log line: "sold its junk on map M: ... N etc stacks".
+- User decision 11-06: "no quest asks for" stays what the plan already means for CWKPQ and minigames: not in that index,
+  42 stacks on a full tab. Counting every quest in Quest.wz would leave 3.6, and 73 full tabs nothing; citizens hold 32
+  started and 3 finished quests between them. Log line: "sold its junk on map M: ... N etc stacks".
 
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and
