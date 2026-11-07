@@ -45,6 +45,7 @@ public final class StoryScenes {
     private static final Logger log = LoggerFactory.getLogger(StoryScenes.class);
     /** The warp in and the companions' arrival, before the first beat. */
     static final long SETTLE_MS = 2500L;
+    private static final int FLOOR_HEADROOM_PX = 30;
     /** The lead companion off the stage this long after the start: the scene cannot go on. */
     static final long LOST_MS = 12_000L;
     /** Back at the exit, then the closing window (or the abort line). */
@@ -415,19 +416,19 @@ public final class StoryScenes {
     }
 
     /**
-     * The floor under {@code at}, across {@code beside} when that is past the map's edge, else under {@code beside}. A
-     * scene's landing is a map's first portal, which can be at its edge and well above its floor: a companion would hang
-     * in the air there, and a monster over no ground cannot be spawned at all.
+     * The floor under {@code at}, across {@code beside} when there is none (past the map's edge), else under {@code
+     * beside}, each looked for from {@value #FLOOR_HEADROOM_PX} px up: the ground can rise beside the owner, whose own
+     * reported height can be just under a slope. A scene's landing is a map's first portal, which can be at its edge and
+     * well above its floor: a companion would hang in the air there, and a monster over no ground cannot be spawned.
      */
-    private static Point ground(MapleMap map, Point at, Point beside) {
-        Point floor = map.getPointBelow(at);
-        if (floor == null) {
-            floor = map.getPointBelow(new Point(2 * beside.x - at.x, at.y));
+    static Point ground(MapleMap map, Point at, Point beside) {
+        for (Point spot : List.of(at, new Point(2 * beside.x - at.x, at.y), beside)) {
+            Point floor = map.getPointBelow(new Point(spot.x, spot.y - FLOOR_HEADROOM_PX));
+            if (floor != null) {
+                return floor;
+            }
         }
-        if (floor == null) {
-            floor = map.getPointBelow(beside);
-        }
-        return floor != null ? floor : at;
+        return at;
     }
 
     private boolean spawn(Run run, int mobId, Point at, boolean foe) {
