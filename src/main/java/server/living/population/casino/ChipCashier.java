@@ -3,7 +3,11 @@ package server.living.population.casino;
 import client.Character;
 import client.inventory.InventoryType;
 import client.inventory.manipulator.InventoryManipulator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.Shop;
+import server.agents.capabilities.inventory.demand.AgentEtcRoomPlan;
+import server.agents.capabilities.inventory.demand.AgentEtcSaleCandidate;
 import server.economy.ledger.MesoAccount;
 import server.economy.ledger.MesoFlows;
 import server.life.LifeFactory;
@@ -16,6 +20,7 @@ import tools.PacketCreator;
 import java.awt.Point;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.ObjIntConsumer;
 
 /**
  * The casino's cashier (SoloMapling's CasinoChipConfig and its chip shop): stock NPC Aramia (9000055) spawned in Henesys
@@ -30,6 +35,9 @@ public final class ChipCashier {
     public static final int NPC_ID = 9000055;
     private static final int SHOP_ID = 9_999_001;
     private static final int GROUND_REACH_PX = 200;
+    private static final Logger log = LoggerFactory.getLogger(ChipCashier.class);
+    /** A citizen's junk sale at the counter: stock prices only (no chip is a monster drop). */
+    private static final Shop COUNTER = Shop.custom(SHOP_ID, NPC_ID);
 
     private final CasinoHost host;
     private final CasinoContent content;
@@ -126,16 +134,21 @@ public final class ChipCashier {
 
     /**
      * A citizen buys chips worth {@code mesos} (rounded down to the smallest chip) at the counter: false, nothing
-     * bought, when its purse or its bag cannot take it.
+     * bought, when its purse or its bag cannot take it. A full Etc tab first sells junk there, as at any shop visit.
      */
     static boolean buy(Character agent, long mesos) {
+        return buy(agent, mesos, ChipCashier::makeRoom);
+    }
+
+    static boolean buy(Character agent, long mesos, ObjIntConsumer<Character> makeRoom) {
         Map<Integer, Integer> chips = Chips.change(mesos);
         long cost = Chips.value(chips);
         if (chips.isEmpty() || agent.getMeso() < cost || agent.getClient() == null) {
             return false;
         }
-        for (Map.Entry<Integer, Integer> chip : chips.entrySet()) {
-            if (!InventoryManipulator.checkSpace(agent.getClient(), chip.getKey(), chip.getValue(), "")) {
+        if (!roomFor(agent, chips)) {
+            makeRoom.accept(agent, chips.size());
+            if (!roomFor(agent, chips)) {
                 return false;
             }
         }
@@ -146,6 +159,32 @@ public final class ChipCashier {
             InventoryManipulator.addById(agent.getClient(), chip.getKey(), (short) (int) chip.getValue());
         }
         return true;
+    }
+
+    private static boolean roomFor(Character agent, Map<Integer, Integer> chips) {
+        for (Map.Entry<Integer, Integer> chip : chips.entrySet()) {
+            if (!InventoryManipulator.checkSpace(agent.getClient(), chip.getKey(), chip.getValue(), "")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Live 2026-11-08: most citizens carry a full Etc tab, so a citizen sent to sit at blackjack could not take its chips
+     * and both tables waited with nobody seated. The counter is a shop, so it sells whole stacks of monster drops here
+     * as at any visit (AgentEtcRoomPlan, up to the room its host has it keep), through the shop's own sale.
+     */
+    private static void makeRoom(Character agent, int chipKinds) {
+        int wanted = Math.max(chipKinds, AgentEtcRoomPlan.keepsFree(agent.getId()));
+        int sold = 0;
+        for (AgentEtcSaleCandidate sale : AgentEtcRoomPlan.plan(agent, wanted)) {
+            COUNTER.sell(agent.getClient(), InventoryType.ETC, sale.item().getPosition(), sale.quantity());
+            sold++;
+        }
+        if (sold > 0) {
+            log.info("citizen {} sold {} etc stacks at the casino counter to make room for chips", agent.getName(), sold);
+        }
     }
 
     /** A citizen sells every chip it holds back at the counter; returns the mesos it got. */
