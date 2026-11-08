@@ -201,7 +201,9 @@ public final class PresenceScheduler {
                     continue;
                 }
                 if (session.citizen.state() != Citizen.State.ACTIVE || now >= session.endsAtMs) {
-                    if (!inPartyQuest(session)) { // one in a party quest logs off after it (CitizenPartyQuests)
+                    // one in a party quest logs off after it (CitizenPartyQuests), one on a casino shift when the shift
+                    // is over (CitizenCasino): live 2026-11-08 bar hosts went offline 12 min into a 20-45 min shift
+                    if (!inPartyQuest(session) && (casino() == null || !casino().holds(session))) {
                         logout(session, "session over");
                     }
                     continue;
