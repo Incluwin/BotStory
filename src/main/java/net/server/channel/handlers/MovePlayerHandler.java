@@ -44,6 +44,9 @@ public final class MovePlayerHandler extends AbstractMovementPacketHandler {
                     ? p.getBytes()
                     : null;
             updatePosition(p, c.getPlayer(), 0);
+            if (server.pvp.probe.PvpProbe.watchingMoves(c.getPlayer().getId())) {
+                server.pvp.probe.PvpProbe.onMove(c.getPlayer());
+            }
             long movementDataLength = p.getPosition() - movementDataStart; //how many bytes were read by updatePosition
             if (captureSource != null) {
                 int captureLength = Math.min(Math.toIntExact(movementDataLength), captureSource.length);

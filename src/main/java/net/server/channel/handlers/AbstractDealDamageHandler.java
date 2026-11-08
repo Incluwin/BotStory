@@ -329,6 +329,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
         if (map.isOwnershipRestricted(player)) {
             return false;
         }
+        server.pvp.probe.PvpProbe.onAttackApplied(player, attack);
 
         Skill theSkill = null;
         StatEffect attackEffect = null;
@@ -1051,6 +1052,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
             p.skip(4);
             ret.position.setLocation(p.readShort(), p.readShort());
         }
+        server.pvp.probe.PvpProbe.onAttackParsed(chr, ret);
         return ret;
     }
 

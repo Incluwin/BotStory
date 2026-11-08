@@ -208,6 +208,7 @@ import client.command.commands.gm5.LivingWorldCommand;
 import client.command.commands.gm5.CitizensCommand;
 import client.command.commands.gm5.StandingCommand;
 import client.command.commands.gm5.NeedsCommand;
+import client.command.commands.gm5.PvpCommand;
 import client.command.commands.gm5.RivalsCommand;
 import client.command.commands.gm5.BanterCommand;
 import client.command.commands.gm5.MentorCommand;
@@ -647,6 +648,7 @@ public class CommandsExecutor {
         addCommand("standing", 5, StandingCommand.class);
         addCommand("needs", 5, NeedsCommand.class);
         addCommand("rivals", 5, RivalsCommand.class);
+        addCommand("pvp", 5, PvpCommand.class);
         addCommand("mentor", 5, MentorCommand.class);
         addCommand("story", 5, StoryCommand.class);
         addCommand("banter", 5, BanterCommand.class);
