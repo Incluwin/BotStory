@@ -182,12 +182,22 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
         AgentMovementCommandRuntime.moveTo(session.entry, ground != null ? ground : spot, false);
     }
 
+    /**
+     * True when {@code said} has one of {@code words} (or phrases) as whole words, its punctuation ignored: live
+     * 2026-11-08 "drink?" never matched "drink", so the bar host never offered one.
+     */
     static boolean says(String said, String... words) {
+        String text = " " + plain(said) + " ";
         for (String word : words) {
-            if (said.equals(word) || said.startsWith(word + " ") || said.endsWith(" " + word) || said.contains(" " + word + " ")) {
+            if (text.contains(" " + plain(word) + " ")) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** Lower case, every run of characters other than letters and digits one space, trimmed. */
+    static String plain(String said) {
+        return said == null ? "" : said.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
     }
 }

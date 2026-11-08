@@ -247,8 +247,10 @@ public final class BlackjackTables implements Venue {
     }
 
     private static boolean matches(String said, String[] phrases) {
-        for (String phrase : phrases) {
-            if (said.equals(phrase) || said.startsWith(phrase + " ") || said.endsWith(" " + phrase)) {
+        String text = HostPost.plain(said); // "deal me in!" as "deal me in"
+        for (String raw : phrases) {
+            String phrase = HostPost.plain(raw);
+            if (text.equals(phrase) || text.startsWith(phrase + " ") || text.endsWith(" " + phrase)) {
                 return true;
             }
         }
