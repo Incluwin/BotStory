@@ -1,5 +1,6 @@
 package server.living.population.casino;
 
+import client.Character;
 import server.living.population.CitizenSession;
 import server.living.population.Population;
 
@@ -33,4 +34,14 @@ public interface CasinoHost {
 
     /** True while a human (not an Agent) stands on the map in that channel. */
     boolean humanOn(int channel, int mapId);
+
+    /**
+     * The citizen's character while it is logged in, else null. A post, table or seat keeps the session, and the
+     * session keeps its character on its last map after it logs off: live 2026-11-08 Neshao held the bar 21 min after
+     * logging off, and a dealer kept dealing to SilverStar's empty seat.
+     */
+    static Character online(CitizenSession session) {
+        Character agent = session == null ? null : session.agent();
+        return agent == null || !agent.isLoggedin() ? null : agent;
+    }
 }

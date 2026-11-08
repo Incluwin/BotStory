@@ -33,7 +33,7 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
         }
 
         Character agent() {
-            return session.agent();
+            return CasinoHost.online(session);
         }
     }
 
