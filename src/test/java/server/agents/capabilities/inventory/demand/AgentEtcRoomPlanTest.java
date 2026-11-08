@@ -1,6 +1,7 @@
 package server.agents.capabilities.inventory.demand;
 
 import client.inventory.Item;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -18,6 +19,23 @@ class AgentEtcRoomPlanTest {
     private static final int QUEST_DROP = 4_000_014;
     private static final int GOLD_ORE = 4_004_000;
     private static final int GAME_PIECE = 4_030_000;
+
+    @AfterEach
+    void close() {
+        AgentEtcRoomPlan.installKeepsFree(null);
+    }
+
+    @Test
+    void anAgentKeepsTheRoomItsHostAsksAndNoneWithoutARule() {
+        assertEquals(0, AgentEtcRoomPlan.keepsFree(7), "no host");
+
+        AgentEtcRoomPlan.installKeepsFree(id -> id == 7 ? 16 : 0);
+        assertEquals(16, AgentEtcRoomPlan.keepsFree(7));
+        assertEquals(0, AgentEtcRoomPlan.keepsFree(8));
+
+        AgentEtcRoomPlan.installKeepsFree(id -> -3);
+        assertEquals(0, AgentEtcRoomPlan.keepsFree(7), "never negative");
+    }
 
     @Test
     void sellsTheMostStackedMonsterDropFirstSmallestStackFirst() {

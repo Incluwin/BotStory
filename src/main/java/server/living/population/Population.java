@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.inventory.AgentStallHolds;
+import server.agents.capabilities.inventory.demand.AgentEtcRoomPlan;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.economy.ledger.EconomyLedger;
 import server.economy.ledger.MesoFlows;
@@ -176,6 +177,7 @@ public final class Population {
         AgentStallHolds.install(population.market::keepForStall); // list or vendor (docs/ECONOMY_PLAN.md E3)
         population.controller.start(); // the last applied E4 setting (docs/ECONOMY_PLAN.md E4)
         AgentLootPolicy.installSelectivity(population.controller);
+        AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
         EconomyLedger.onClose(population.controller::onClose);
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
@@ -228,6 +230,7 @@ public final class Population {
         MesoFlows.installClassifier(null);
         AgentStallHolds.install(null);
         AgentLootPolicy.installSelectivity(null);
+        AgentEtcRoomPlan.installKeepsFree(null);
         EconomyLedger.onClose(null);
         AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
@@ -407,6 +410,12 @@ public final class Population {
 
     public Citizen citizen(int characterId) {
         return registry.get(characterId);
+    }
+
+    /** The free Etc slots this character keeps at every shop visit: ETC_ROOM_FREE_SLOTS for a citizen no player hired. */
+    int etcRoomFor(int characterId) {
+        Citizen citizen = citizen(characterId);
+        return citizen == null || citizen.hired() ? 0 : config.ETC_ROOM_FREE_SLOTS;
     }
 
     public Citizen citizenByName(String name) {

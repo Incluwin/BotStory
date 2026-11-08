@@ -5,6 +5,7 @@ import client.Character;
 import client.inventory.Equip;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
+import client.inventory.Item;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.expedition.boss.AgentBossRunSession;
 import server.agents.capabilities.inventory.AgentInventorySellTrashService;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.capabilities.inventory.demand.AgentEtcRoomPlan;
 import server.agents.capabilities.inventory.demand.AgentQuestItemDispositionRuntime;
 import server.agents.capabilities.movement.AgentMapStateRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
@@ -60,10 +62,12 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -89,6 +93,10 @@ class AgentShopServiceJunkSaleTest {
     private static final int RED = 2_000_000;
     private static final int RED_PRICE = 50;
     private static final int TRASH_SWORD = 1_302_000;
+    private static final int BOT_ID = 15;
+    /** A monster's drop that is in no index of quest demand. */
+    private static final int SPARE_DROP = 4_000_207;
+    private static final int ORE = 4_010_000;
     private static final int APPROACH_TICK_MS = 100;
 
     private record Step(long atMs, long order, Runnable action) {}
@@ -237,6 +245,7 @@ class AgentShopServiceJunkSaleTest {
     @AfterEach
     void close() {
         AgentJunkSale.install(null);
+        AgentEtcRoomPlan.installKeepsFree(null);
         etcSales.close();
         trash.close();
         runtime.close();
@@ -673,7 +682,82 @@ class AgentShopServiceJunkSaleTest {
         assertEquals(List.of(), spoken);
     }
 
+    // ---- the room its host has it keep (docs/ECONOMY_PLAN.md, Etc room) ------------------------------
+
+    @Test
+    void aSupplyVisitSellsSpareDropsForTheRoomItsHostAsksSaysNoMoreAndStillBuys() {
+        carryJunk(1);
+        carryEtc(SPARE_DROP, 96);
+        AgentEtcRoomPlan.installKeepsFree(id -> id == BOT_ID ? 2 : 0);
+
+        AgentShopStateRuntime.setShopSellTrashPending(entry, true);
+        assertTrue(AgentShopService.requestVisitAtNpc(entry, bot, NPC_ID, 0));
+        runVisit();
+
+        assertEquals(2, etc.getNumFreeSlot());
+        verify(gateway, times(2)).sell(eq(bot), any(), eq(InventoryType.ETC), anyShort(), eq((short) 50));
+        assertEquals(List.of(AgentDialogueCatalog.shopSoldTrashReply(1, 0)), saleLines(), "the visit's own line alone");
+        assertFalse(bought.isEmpty(), "the room comes before the purchases, as a readiness trip's does");
+        assertEquals(AgentShopWorkflowPhase.COMPLETED, AgentShopStateRuntime.workflow(entry).phase());
+    }
+
+    @Test
+    void aSellTripsVisitSellsForRoomToo() {
+        carryEtc(SPARE_DROP, 96);
+        AgentEtcRoomPlan.installKeepsFree(id -> 3);
+
+        assertTrue(AgentShopService.requestSaleAt(entry, bot, NPC_ID));
+        runVisit();
+
+        assertEquals(3, etc.getNumFreeSlot());
+        assertEquals(AgentShopWorkflowPhase.COMPLETED, AgentShopStateRuntime.workflow(entry).phase());
+    }
+
+    @Test
+    void anAgentNoHostAsksRoomOfKeepsItsFullTab() {
+        carryEtc(SPARE_DROP, 96);
+
+        AgentShopStateRuntime.setShopSellTrashPending(entry, true);
+        assertTrue(AgentShopService.requestVisitAtNpc(entry, bot, NPC_ID, 0));
+        runVisit();
+
+        assertEquals(0, etc.getNumFreeSlot());
+        verify(gateway, never()).sell(any(), any(), eq(InventoryType.ETC), anyShort(), anyShort());
+    }
+
+    @Test
+    void oresStayAndATabWithTheRoomSellsNothing() {
+        carryEtc(ORE, 96);
+        AgentEtcRoomPlan.installKeepsFree(id -> 2);
+        AgentShopStateRuntime.setShopSellTrashPending(entry, true);
+        assertTrue(AgentShopService.requestVisitAtNpc(entry, bot, NPC_ID, 0));
+        runVisit();
+        assertEquals(0, etc.getNumFreeSlot(), "only monster drops go (AgentEtcRoomPlan)");
+
+        etc = new Inventory(bot, InventoryType.ETC, (byte) 96);
+        when(bot.getInventory(InventoryType.ETC)).thenReturn(etc);
+        carryEtc(SPARE_DROP, 94);
+        AgentShopStateRuntime.setShopSellTrashPending(entry, true);
+        assertTrue(AgentShopService.requestVisitAtNpc(entry, bot, NPC_ID, 0));
+        runVisit();
+        assertEquals(2, etc.getNumFreeSlot());
+
+        verify(gateway, never()).sell(any(), any(), eq(InventoryType.ETC), anyShort(), anyShort());
+    }
+
     // ---- harness ------------------------------------------------------------------------------------
+
+    /**
+     * Full stacks of one kind. Each says it is tradeable itself: Item.isUntradeable reads the item data, which cannot
+     * load in a test JVM where another test already failed to start it.
+     */
+    private void carryEtc(int itemId, int stacks) {
+        for (short slot = 1; slot <= stacks; slot++) {
+            Item stack = spy(new Item(itemId, slot, (short) 50));
+            doReturn(false).when(stack).isUntradeable();
+            etc.addItemFromDB(stack);
+        }
+    }
 
     private void carryJunk(int pieces) {
         for (int i = 0; i < pieces; i++) {

@@ -246,6 +246,12 @@ public class PopulationConfig {
     public boolean SELL_TRIPS_ENABLED = true;
     public int SELL_TRIP_FREE_SLOTS = 8;
     public int SELL_TRIP_EVERY_HOURS = 6;
+    /**
+     * Free Etc slots a citizen keeps at every shop visit, by selling whole stacks of monster drops AgentEtcRoomPlan lets
+     * go (never ores, crafting materials, game pieces or a quest's drop); 0 = off. A visit's own ETC sale only knows the
+     * drops of Victoria's quest index, so 611 of 982 citizens had every slot full and picked up no Etc at all (11-04).
+     */
+    public int ETC_ROOM_FREE_SLOTS = 16;
 
     /**
      * A citizen that died beside a field boss whose group is on trains elsewhere while that boss stands there, at most
