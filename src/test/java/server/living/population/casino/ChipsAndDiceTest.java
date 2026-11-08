@@ -24,6 +24,25 @@ class ChipsAndDiceTest {
         assertEquals(2_320_000L, Chips.value(Chips.change(2_324_999)));
     }
 
+    /**
+     * Live 2026-11-08 (C8): a citizen player with a 300k stack held one 250k and one 50k chip and wanted to bet ~30k,
+     * so it never bet, was skipped three hands and walked off. A player buys chips no bigger than a twentieth of its
+     * stack (its smallest bet is 5%).
+     */
+    @Test
+    void aPlayersStackIsInChipsItCanBetASliceOf() {
+        assertEquals(Map.of(Chips.SNAIL, 30), Chips.change(300_000, 30_000));
+        assertEquals(Map.of(Chips.STUMP, 36), Chips.change(9_000_000, 900_000));
+        assertEquals(Map.of(Chips.SNAIL, 5), Chips.change(50_000, 1), "the smallest chip always counts");
+        assertTrue(Chips.from(Chips.change(300_000), 30_000).isEmpty(), "the fewest chips cannot make the bet");
+        for (long stack = 100_000; stack <= 9_000_000; stack += 70_000) {
+            Map<Integer, Integer> held = Chips.change(stack, stack / 20);
+            assertEquals(Chips.value(Chips.change(stack)), Chips.value(held), "the same mesos for " + stack);
+            long fivePercent = Math.max(Chips.value(Chips.SNAIL), stack * 5 / 100);
+            assertFalse(Chips.from(held, fivePercent).isEmpty(), "a 5% bet from a " + stack + " stack");
+        }
+    }
+
     @Test
     void aBetFromAPurseUsesOnlyChipsItHoldsAndNeverMoreThanAsked() {
         Map<Integer, Integer> held = Map.of(Chips.SLIME, 1, Chips.SNAIL, 30);

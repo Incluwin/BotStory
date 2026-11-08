@@ -285,6 +285,24 @@ public final class PopulationHooks {
         }
     }
 
+    /**
+     * Human map chat said to a casino table or host near them ("deal me in", "hit", "cho", "drink?",
+     * docs/SOLOMAPLING_PORT.md); true when one took it. LivingWorldHooks asks this before a companion or Resident may
+     * answer: live 2026-11-08 a companion's reply to "drink?" and "yes" kept the bar host from ever hearing them.
+     */
+    public static boolean casino(Character speaker, String text) {
+        Population population = Population.get();
+        if (population == null || speaker == null || population.casino() == null || AgentPresence.isAgent(speaker)) {
+            return false;
+        }
+        try {
+            return population.casino().heard(speaker, text);
+        } catch (RuntimeException failure) {
+            log.debug("population casino hook failed", failure);
+            return false;
+        }
+    }
+
     /** Human map chat near citizens; true when a citizen took it. */
     public static boolean chat(Character speaker, String text) {
         Population population = Population.get();
@@ -292,9 +310,6 @@ public final class PopulationHooks {
             return false;
         }
         try {
-            if (population.casino() != null && population.casino().heard(speaker, text)) {
-                return true; // a table or host it was said to: "deal me in", "hit", "cho" (docs/SOLOMAPLING_PORT.md)
-            }
             return population.conversation().onChat(speaker, text);
         } catch (RuntimeException failure) {
             log.debug("population chat hook failed", failure);

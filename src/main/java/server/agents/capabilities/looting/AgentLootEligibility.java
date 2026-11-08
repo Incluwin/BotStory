@@ -74,6 +74,12 @@ public final class AgentLootEligibility {
         if (entry == null || bot == null || drop == null || !drop.canBePickedBy(bot)) {
             return false;
         }
+        if (drop.isPermanentOwner()) {
+            // the casino's bet, payout, dealt card or gachapon prize: the casino moves it itself (Floor.take, pickUp,
+            // sweep). Live 2026-11-08 a citizen's own loot took its bet back off the floor before the dealer could, so
+            // no citizen ever bet.
+            return false;
+        }
 
         int itemId = drop.getItemId();
         if (AgentLpqSessionRegistry.preservesRoomDoorMarker(bot, drop)) {

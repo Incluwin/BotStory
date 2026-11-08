@@ -53,11 +53,22 @@ public final class Chips {
 
     /** The fewest chips worth {@code mesos} (rounded down to the smallest chip), largest chips first. */
     public static Map<Integer, Integer> change(long mesos) {
+        return change(mesos, Long.MAX_VALUE);
+    }
+
+    /**
+     * {@link #change(long)} with no chip worth more than {@code largest} (the smallest chip always counts): a player's
+     * stack in chips it can bet a slice of.
+     */
+    public static Map<Integer, Integer> change(long mesos, long largest) {
         Map<Integer, Integer> out = new LinkedHashMap<>();
         List<Integer> ids = ids();
         long left = mesos;
         for (int i = ids.size() - 1; i >= 0; i--) {
             int chip = ids.get(i);
+            if (i > 0 && value(chip) > largest) {
+                continue;
+            }
             int count = (int) (left / value(chip));
             if (count > 0) {
                 out.put(chip, count);

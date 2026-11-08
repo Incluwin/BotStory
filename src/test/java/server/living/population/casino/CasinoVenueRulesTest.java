@@ -77,6 +77,13 @@ class CasinoVenueRulesTest {
         assertTrue(HostPost.says("i say han then", "han"));
         assertFalse(HostPost.says("white", "hit"), "a word inside another word is not a call");
         assertFalse(HostPost.says("chocolate", "cho"));
+        // live 2026-11-08 (C8): "drink?" never reached the bar host's "drink"
+        assertTrue(HostPost.says("drink?", "drink"));
+        assertTrue(HostPost.says("Yes!!", "yes"));
+        assertTrue(HostPost.says("maple cola, pls", "pls"));
+        assertTrue(HostPost.says("no, thanks.", "no thanks"));
+        assertTrue(HostPost.says("cho...", "cho"));
+        assertFalse(HostPost.says("drinking?", "drink"));
     }
 
     @Test
