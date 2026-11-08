@@ -162,7 +162,7 @@ public final class BlackjackTables implements Venue {
     @Override
     public void tick(long now) {
         for (Role role : new ArrayList<>(roles.values())) {
-            Character agent = role.session.agent();
+            Character agent = CasinoHost.online(role.session);
             boolean gone = agent == null || agent.getMapId() != content.gameParkMap() || !enabled();
             boolean broke = !role.dealer && agent != null && ChipCashier.holding(agent) < Chips.value(Chips.SNAIL)
                     && role.table.game.phase() == BlackjackGame.Phase.WAITING;
@@ -185,7 +185,7 @@ public final class BlackjackTables implements Venue {
             return;
         }
         Table table = role.table;
-        Character agent = role.session.agent();
+        Character agent = CasinoHost.online(role.session); // no walk or cash-out for one that logged off
         synchronized (table) {
             if (role.dealer) {
                 host.say(role.session, "casino.bj.closing", Map.of());
@@ -348,16 +348,14 @@ public final class BlackjackTables implements Venue {
         }
 
         Character dealerChr() {
-            CitizenSession session = dealer;
-            return session == null ? null : session.agent();
+            return CasinoHost.online(dealer);
         }
 
         Character character(BlackjackGame.Seat seat) {
             if (seat.human) {
                 return humans.get(seat.id);
             }
-            CitizenSession session = citizens.get(seat.id);
-            return session == null ? null : session.agent();
+            return CasinoHost.online(citizens.get(seat.id));
         }
 
         Point seatPoint(BlackjackGame.Seat seat) {
@@ -387,7 +385,7 @@ public final class BlackjackTables implements Venue {
         }
 
         private void citizenBet(CitizenSession citizen) {
-            Character agent = citizen.agent();
+            Character agent = CasinoHost.online(citizen);
             if (agent == null) {
                 return;
             }
