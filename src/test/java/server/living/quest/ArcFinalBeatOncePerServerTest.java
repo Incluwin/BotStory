@@ -49,7 +49,11 @@ class ArcFinalBeatOncePerServerTest {
             "shen-a-note-for-the-top-floor", "guo-the-bow",
             // wave 4, Victoria and Maple Island (docs/REGIONAL_RESIDENTS_PLAN.md section 11)
             "pernille-what-the-sea-said", "pernille-forty-years-late", "bao-the-poured-floor", "bao-the-lobby-corner",
-            "wilmot-caps-from-home", "wilmot-the-kingdoms-cake", "edmund-ossas-stone", "edmund-the-name-said-aloud");
+            "wilmot-caps-from-home", "wilmot-the-kingdoms-cake", "edmund-ossas-stone", "edmund-the-name-said-aloud",
+            // the Community Repack's towns (docs/REPACK_RESIDENTS_PLAN.md section 3.5)
+            "aksel-the-sled-in-the-ice", "marit-the-house-lit", "oharu-the-crooked-hem", "oharu-the-one-who-walked-out",
+            "oharu-a-note-comes-out", "kasper-the-door-goes-everywhere", "edda-a-year-of-letters", "heddwyn-the-last-story",
+            "ottoline-the-river-atlas");
 
     @Test
     void eachFinalBeatIsBarredByTheWorldFlagItSets() {

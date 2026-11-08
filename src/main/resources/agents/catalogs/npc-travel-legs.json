@@ -101,6 +101,8 @@
     { "id": "three-doors-to-gate-to-the-future", "fromMapId": 270000000, "npcId": 2140000, "selections": [0], "toMapId": 271000000, "fare": 0, "rideMapIds": [] },
     { "id": "three-doors-to-twilight-perion", "fromMapId": 270000000, "npcId": 2140000, "selections": [1], "toMapId": 273000000, "fare": 0, "rideMapIds": [] },
     { "id": "twilight-perion-to-three-doors", "fromMapId": 273000000, "npcId": 2142107, "selections": [], "toMapId": 270000000, "fare": 0, "rideMapIds": [] },
+    { "id": "twilight-perion-to-tribal-refugee-camp", "fromMapId": 273000000, "npcId": 2142112, "selections": [], "toMapId": 273050000, "fare": 0, "rideMapIds": [] },
+    { "id": "tribal-refugee-camp-to-twilight-perion", "fromMapId": 273050000, "npcId": 2142112, "selections": [], "toMapId": 273000000, "fare": 0, "rideMapIds": [] },
     { "id": "three-doors-to-nameless-town", "fromMapId": 270000000, "npcId": 2140000, "selections": [2, 0], "toMapId": 450001000, "fare": 0, "rideMapIds": [] },
     { "id": "three-doors-to-chu-chu-village", "fromMapId": 270000000, "npcId": 2140000, "selections": [2, 1], "toMapId": 450002000, "fare": 0, "rideMapIds": [] },
     { "id": "three-doors-to-lachelein", "fromMapId": 270000000, "npcId": 2140000, "selections": [2, 2], "toMapId": 450003000, "fare": 0, "rideMapIds": [] },

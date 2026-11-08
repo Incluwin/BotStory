@@ -1,0 +1,212 @@
+# Tribal Refugee Camp quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.3). The camp 273050000 is reached
+# by the guarded road: Three Doors, the Temple Keeper's door to Twilight Perion, and Cobie 2142112, who stands in both
+# towns, takes travellers the safe way to the camp and back. The walk itself (the Desolate Hills, the rocky roads and the
+# Forsaken Excavation Site 1 273040000, lv190-194) and the Spirit Zone Limbo 273060000 east of the camp (lv196) are never
+# step targets below level 180; the scouts' last tier is fought on the lv163-168 fields of Dark Ereve and Henesys
+# Ruins' hills (quests/henesys-ruins.yaml header). Future mobs drop only their
+# donors' potions and scrolls: collect steps carry the present, the Temple of Time's roads (quests/three-doors.yaml
+# header; the Road to Oblivion's second stretch 270030200 holds the oblivion monk trainee 8200010, red cone hat 4000455)
+# or present Victoria (orange mushroom 1210102, orange mushroom cap 4000001). The camp carries the middle of both Future
+# threads: Kasper finds where Ama's letters went (camp.answers.found, arcs/henesys-ruins.yaml) and Ama lights the old
+# fire for Heddwyn's story (camp.fire.lit, arcs/twilight-perion.yaml).
+
+# ---- Ama ----
+- id: ama-mushrooms-from-before
+  persona: ama
+  title: "Mushrooms That Don't Bite"
+  length: SHORT
+  requires: { level: { min: 125 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000001, count: 20 }
+    - { id: soup, type: DELIVER, to: ama, take: { itemId: 4000001, count: 20 } }
+  rewards: { meso: 70000, exp: 240000, bondPoints: 30, items: [{ itemId: 2000005, count: 20 }] }
+
+- id: ama-a-supper-for-the-story
+  persona: ama
+  title: "A Supper for the Story"
+  length: MEDIUM
+  requires: { level: { min: 135 }, questsCompleted: [ama-mushrooms-from-before], flags: [tperion.story.before] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: heddwyn, type: TALK_TO, persona: heddwyn, say: ["a supper by the old fire? tell her yes. tell her i'll come. i always come for her suppers and stay too late. by that fire, i'll stay later."] }
+    - { id: lit, type: DELIVER, to: ama }
+  rewards: { meso: 110000, exp: 400000, bondPoints: 45, items: [{ itemId: 2000005, count: 25 }], worldFlags: [camp.fire.lit] }
+
+# ---- Kasper (the middle of Edda's letters, arcs/henesys-ruins.yaml) ----
+- id: kasper-the-fast-way
+  persona: kasper
+  title: "Race You"
+  length: SHORT
+  requires: { level: { min: 130 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: perion, type: VISIT_MAP, mapIds: [273000000] }
+    - { id: doors, type: VISIT_MAP, mapIds: [270000000] }
+    - { id: ruins, type: VISIT_MAP, mapIds: [271010000] }
+    - { id: home, type: DELIVER, to: kasper }
+  rewards: { meso: 80000, exp: 280000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: kasper-the-door-goes-everywhere
+  persona: kasper
+  title: "The Door Goes Everywhere"
+  length: MEDIUM
+  requires: { level: { min: 135 }, flags: [ruins.letter.carried], notFlags: [camp.answers.found] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: doors, type: VISIT_MAP, mapIds: [270000000] }
+    - { id: osmund, type: TALK_TO, persona: osmund, say: ["letters? ...yes. every month something comes through the Temple Keeper's door that isn't a traveller. a boot, once. a hat. a very confused goat. and a letter, addressed 'Edda, Henesys Ruins'. Henesys is not in ruins. i filed them under 'not yet'. twelve. ...a boy sends them? then take them back to the boy. a door only goes where it's told. tell him that too."] }
+    - { id: found, type: DELIVER, to: kasper }
+  rewards: { meso: 120000, exp: 420000, bondPoints: 50, items: [{ itemId: 2000005, count: 20 }], worldFlags: [camp.answers.found] }
+
+# ---- Yrsa (recruit; dagger line, fourth tier: Vance's Dragon Kreda continued) ----
+- id: yrsa-the-three-pasts
+  persona: yrsa
+  title: "Look First"
+  length: SHORT
+  requires: { level: { min: 120 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: verdure, type: VISIT_MAP, mapIds: [270010000] }
+    - { id: frozen, type: VISIT_MAP, mapIds: [270020000] }
+    - { id: burning, type: VISIT_MAP, mapIds: [270030000] }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200009], count: 20, mapIds: [270030100] }
+    - { id: back, type: DELIVER, to: yrsa }
+  rewards: { meso: 70000, exp: 220000, bondPoints: 30, flags: [yrsa.intro.done] }
+
+- id: yrsa-reverse-killic
+  persona: yrsa
+  title: "A Quiet Grip"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [yrsa-the-three-pasts] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200004], count: 30, mapIds: [270010400] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000448, count: 15 }
+    - { id: grip, type: DELIVER, to: yrsa, take: { itemId: 4000448, count: 15 } }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1332076, scrolls: [{ success: 60 }] }
+
+- id: yrsa-timeless-killic
+  persona: yrsa
+  title: "In and Out"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [yrsa-reverse-killic] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tiru, type: KILL_MOBS, mobIds: [8600005], count: 20, mapIds: [271000200] }
+    - { id: tiguru, type: KILL_MOBS, mobIds: [8600006], count: 20, mapIds: [271000210] }
+    - { id: back, type: DELIVER, to: yrsa }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1332074, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: yrsa-the-excavation-site
+  persona: yrsa
+  title: "Where Travellers Stray"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [yrsa-timeless-killic] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tino, type: KILL_MOBS, mobIds: [8600004], count: 30, mapIds: [271000100] }
+    - { id: clear, type: DELIVER, to: yrsa }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1332074, scrolls: [{ success: 10 }] }
+
+- id: yrsa-red-cone-hats
+  persona: yrsa
+  title: "Hilt Wraps"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 121 }, questsCompleted: [yrsa-the-three-pasts] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000455, count: 10 }
+    - { id: wraps, type: DELIVER, to: yrsa, take: { itemId: 4000455, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }
+
+# ---- Vidar (recruit; gun line, fourth tier: Vesper's Dragonfire Revolver continued) ----
+- id: vidar-the-eyes-of-time
+  persona: vidar
+  title: "Time-Glass Powder"
+  length: SHORT
+  requires: { level: { min: 115 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [8200000], count: 40, mapIds: [270010100, 270010200, 270010300, 270010400, 270010500] }
+    - { id: glasses, type: COLLECT_ITEM, itemId: 4000443, count: 15 }
+    - { id: powder, type: DELIVER, to: vidar, take: { itemId: 4000443, count: 15 } }
+  rewards: { meso: 70000, exp: 200000, bondPoints: 30, flags: [vidar.intro.done] }
+
+- id: vidar-reverse-blindness
+  persona: vidar
+  title: "Don't Wait for It to Be Still"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [vidar-the-eyes-of-time] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200008], count: 30, mapIds: [270020400] }
+    - { id: vesper, type: TALK_TO, persona: vesper, say: ["a gunner from the end of days, asking about the long shot? tell him: breathe out, and don't wait for it to be still. it won't be. nothing out there is. and if he ever argues with an axeman, tell him he's right. he's always right."] }
+    - { id: back, type: DELIVER, to: vidar }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1492025, scrolls: [{ success: 60 }] }
+
+- id: vidar-timeless-blindness
+  persona: vidar
+  title: "Bring Noise"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [vidar-reverse-blindness] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tino, type: KILL_MOBS, mobIds: [8600004], count: 20, mapIds: [271000100] }
+    - { id: tiguru, type: KILL_MOBS, mobIds: [8600006], count: 20, mapIds: [271000210] }
+    - { id: loud, type: DELIVER, to: vidar }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1492023, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: vidar-spirit-zone-limbo
+  persona: vidar
+  title: "One Fight You Can Win"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [vidar-timeless-blindness] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [8600002], count: 30, mapIds: [271010300] }
+    - { id: watch, type: DELIVER, to: vidar }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1492023, scrolls: [{ success: 10 }] }
+
+- id: vidar-hourglasses
+  persona: vidar
+  title: "Low on Powder"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 115 }, questsCompleted: [vidar-the-eyes-of-time] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: glasses, type: COLLECT_ITEM, itemId: 4000443, count: 10 }
+    - { id: powder, type: DELIVER, to: vidar, take: { itemId: 4000443, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }

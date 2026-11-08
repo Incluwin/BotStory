@@ -1,0 +1,171 @@
+# Arcana cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents, none recruitable, in the
+# Grove of the Spirit Tree on Arcane River (the Temple Keeper's third door at Three Doors; the Spirit of Harmony sends
+# travellers back). The spirits all sleep in this age and Arcana keeps every leaf where it is. What the Whispering
+# Flowers say, as Sylvie hears it, is the grove's page of the River Atlas (arcs/nameless-town.yaml).
+- id: sylvie
+  name: Sylvie
+  look: { gender: female }
+  title: "Listener to the Sleeping Spirits"
+  job: BEGINNER
+  level: { min: 52, max: 54 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: arcana
+    routine:
+      - { from: 5, to: 9, spot: "venue:beside-industrious-spirit", activity: LINGER }
+      - { from: 9, to: 11, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 11, to: 14, materialize: false }
+      - { from: 14, to: 19, spot: "venue:by-industrious-spirit", activity: LINGER }
+      - { from: 19, to: 5, materialize: false }
+  recruitable: false
+  knows: [Harp, Harp's Tail Feather, Heart of the Forest]
+  questLines: [sylvie-what-the-flowers-say, sylvie-a-lullaby-for-the-tree]
+  rumors: [arcana-the-morning-tea]
+  relationships:
+    - { persona: fennimore, kind: BRINGS_TEA_TO }
+    - { persona: briar, kind: TELLS_WHAT_THE_TREES_SAY_TO }
+  giftItemIds: [2022000, 2010004]
+  dialogue:
+    greetFirst: ["shh. ...sorry. the tree was saying something. hello. welcome to Arcana. everybody here is asleep but us.", "a visitor. the small spirits turned over in their sleep when you came in. that means they like you. or they're cold."]
+    greet: ["hello. speak softly.", "you. hello. the tree's dreaming about rain today.", "hello again. (whispers) they're still asleep."]
+    idle: ["(kneels by the roots of the great tree with one ear to the bark, and smiles at whatever she hears)", "(cups a hand round a flower and holds it close, listening, and nods as if it had said something sensible)"]
+    noWork: ["nothing today. the spirits are sleeping soundly. that's the whole job, most days. listening to them do it."]
+    nothingDue: ["nothing owed. not here. the spirits don't keep accounts."]
+    who: ["Sylvie. i listen to the spirits. in this age Arcana's spirits are all asleep, from the Spirit Tree down to the smallest one. but they talk in their sleep. somebody ought to hear what they say."]
+    bye: ["tread softly on the way out."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the Whispering Flowers in the forests repeat whatever the spirits mumble. the one in the Forest of Water says 'deep, deep'. the one in the Forest of Sunlight says 'warm'. i think they're giving directions.", "the Spirit of Harmony is the only one who's half awake. it sends travellers home to Three Doors when they ask. i think it's being polite. i think it would rather sleep.", "the Spirit Tree turns over in its sleep about once a year. the whole forest creaks. Briar says that's when the best wood falls. it never falls. Arcana keeps everything."]
+    speakPlainly: ["plainly: sleeping spirits, and somebody to listen."]
+    questOffer.sylvie-what-the-flowers-say: ["Ottoline says a map of a place only keeps on this river if somebody who lives there makes it. i can't draw a forest that's asleep. but the Whispering Flowers say the name of each part of it, over and over, the way the spirits named it before they slept. walk the forests of earth, sunlight and water and listen to the flower in each. then ask Fennimore what the old names mean. he'll grumble. he knows."]
+    questAccept.sylvie-what-the-flowers-say: ["out of the grove to the Forest of Earth, then the Forest of Sunlight, then the Forest of Water. lean close to the flowers. they're quiet. then Fennimore, on the lower east street. knock first. he hates that too."]
+    questWaiting.sylvie-what-the-flowers-say: ["earth, sunlight, water, and Fennimore's grumble. i've a page ready. it's blank. it's very peaceful."]
+    questComplete.sylvie-what-the-flowers-say: ["'the root', 'the warm', 'the deep'. that's what the spirits call them. ...here. i've written it the way they say it, path by path, the way you'd walk it asleep. it's Arcana's page. carry it to Ottoline, or keep it. it'll stay. the spirits keep everything."]
+    questOffer.sylvie-a-lullaby-for-the-tree: ["the Spirit Tree sleeps badly. it's been turning over. a harp's tail feather hums when the wind goes through it. the harps in Leafre's first sky nest have them. twelve feathers, and carry them through the Heart of the Forest on the way back, so the tree hears them coming."]
+    questAccept.sylvie-a-lullaby-for-the-tree: ["the doors, down to Leafre, and up to the first sky nest. the harps fly fast and come back for you. then home, and out through the heart of the forest. walk slowly. let the feathers hum."]
+    questWaiting.sylvie-a-lullaby-for-the-tree: ["twelve feathers. the tree's still turning. i'm still listening."]
+    questComplete.sylvie-a-lullaby-for-the-tree: ["twelve. ...(she ties them into the lowest branch, and the wind goes through them, and they hum) listen. it's stopped turning. it's sighing. that's the sound of a tree going back to sleep properly. thank you."]
+    about.fennimore: ["Fennimore came here to be left alone. i bring him tea every morning. he says he doesn't want it. the cup's always empty when i come back."]
+    about.briar: ["Briar only carves wood that's fallen. in Arcana nothing falls. i tell him what the trees say. it's always no. he keeps asking. i like that about him."]
+    about.ottoline: ["Ottoline came to draw the grove and couldn't find its edges. i told her the spirits don't think in edges. she drew it round, like a sleeping thing curled up."]
+    about.corin: ["the writer from Morass came through once, chasing his own shadow. the spirits turned over in their sleep and laughed. it's the only time i've heard them laugh."]
+    aboutUnknown: ["the spirits haven't mentioned them. they mention very little."]
+    friend.close: ["the small spirits turn toward you when you come in now. even asleep. that doesn't happen for everybody."]
+    friend.best: ["if the spirits ever wake, i want you here. they should see a friendly face first. yours would do."]
+    famed: ["the flowers have been whispering your name. i don't know who told them. it wasn't me. well. it might have been me."]
+    defamed: ["people say things. the spirits don't. i listen to the spirits."]
+    gift: ["oh. thank you. how kind."]
+    gift.favorite: ["oh, that's a gentle thing. that's just right for the grove."]
+    gift.again: ["one is plenty. the grove keeps everything. it'd keep that too, and then where would i be."]
+
+- id: briar
+  name: Briar
+  look: { gender: male }
+  title: "Woodcarver of Fallen Wood"
+  job: BEGINNER
+  level: { min: 58, max: 60 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: arcana
+    routine:
+      - { from: 8, to: 16, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [Green Cornian, Wooden Shoulder Pad, Snow Cloud Clearing]
+  questLines: [briar-wood-that-fell, briar-the-fallen-branch]
+  rumors: [arcana-the-sign-on-the-door]
+  relationships:
+    - { persona: fennimore, kind: CARVES_SIGNS_FOR }
+    - { persona: sylvie, kind: ASKS_THE_TREES_THROUGH }
+  giftItemIds: [2010009, 2020001]
+  dialogue:
+    greetFirst: ["mind the shavings. hello. you've come a long way to watch a man whittle.", "a visitor. good. hold this end. ...thank you. you can let go. hello."]
+    greet: ["morning.", "you. good. hold this end.", "hello again. look at this grain. no, really look."]
+    idle: ["(turns a small block of wood over and over in his hands, not carving it yet, just listening to it)", "(shaves a long curl off a stick with a little knife and holds the curl up to the light)"]
+    noWork: ["nothing today. the wood's not ready to say what it wants to be."]
+    nothingDue: ["we're square. i don't hold with owing."]
+    who: ["Briar. woodcarver. i only carve wood that's fallen. never cut a living thing in my life. trouble is, in Arcana nothing falls. the spirits keep every leaf where it is, even asleep. i came to the finest forest in the world and there's nothing on the ground."]
+    bye: ["go well. bring me back a stick."]
+    thanks: ["good. thank you."]
+    smallTalk: ["i carved the Industrious Spirit a little stool. it put it in the shop and charged somebody for it. i'm not cross. i'm a little cross.", "Sylvie tells me what the trees are saying. mostly they're saying no. as in, no, you can't have my branch.", "Fennimore wants a sign that says 'go away'. i've carved it four times. every time i look at it, it says 'come in'. my hands don't believe him."]
+    speakPlainly: ["plainly: a knife, fallen wood, and a forest that won't drop any."]
+    questOffer.briar-wood-that-fell: ["the green cornians in Leafre's dragon forest wear shoulder pads carved out of fallen oak. i want to see how they cut it. ten pads, and i'll carve something worth the walk."]
+    questAccept.briar-wood-that-fell: ["the doors, down to Leafre, and into the dragon forest past the turtles, to the burning forest. the cornians breathe fire. stand to one side of it. i would."]
+    questWaiting.briar-wood-that-fell: ["ten pads. the knife's sharp. it's always sharp."]
+    questComplete.briar-wood-that-fell: ["ten. ...look at the grain on this. they cut with it, not across it. i've been cutting wrong for thirty years. (he laughs) good. there's still something to learn. thank you."]
+    questOffer.briar-the-fallen-branch: ["past the Heart of the Forest there are two clearings, one under snow cloud and one under thunder. if anything's ever fallen in Arcana, it'll be there. frost and lightning do what the spirits won't. my knee won't take the walk. go and look for a fallen branch, and then ask Sylvie what the trees say about it."]
+    questAccept.briar-the-fallen-branch: ["out of the grove to the heart of the forest, then the snow cloud clearing, then the thunder cloud one beyond it. look on the ground. there'll be nothing on the ground. look anyway. then Sylvie."]
+    questWaiting.briar-the-fallen-branch: ["the snow, the thunder, and Sylvie. i've cleared the bench in hope. i'm a hopeful man."]
+    questComplete.briar-the-fallen-branch: ["a struck stump, and the tree says i may have it. ...the tree said that? the tree knows about my knee? (he sits down rather suddenly) well. well. i'll carve it something. the best thing i've ever carved. thank you."]
+    about.sylvie: ["Sylvie hears the trees. she asks them for me. they say no. she tells me kindly. it's still no."]
+    about.fennimore: ["Fennimore wants to be left alone so badly that everybody comes to see if he's all right. i've carved him four signs. none of them worked. two of them weren't supposed to."]
+    about.ottoline: ["the map lady from Nameless Town asked me to carve her a clasp for her book. i said i only carve fallen wood. she said 'then i'll wait'. i liked her for that."]
+    about.bodhi: ["the cartwright from Chu Chu Village wrote asking about wheel spokes. i wrote back with drawings. he wrote back with a recipe. i think he misread the letter."]
+    aboutUnknown: ["don't know them. i know their wood, maybe."]
+    friend.close: ["i carved you something. it's small. it's from a stick you brought me. it's a little you. it's not very good. keep it anyway."]
+    friend.best: ["if a branch ever falls in Arcana, i'll carve you a chair from it. you'll sit in it and think of me. that's what chairs are for."]
+    famed: ["people are carving your name into things, i hear. badly. if you want it done properly, come to me."]
+    defamed: ["people say things. people say i'm slow. i'm careful. there's a difference."]
+    gift: ["good. thank you."]
+    gift.favorite: ["now that's a carver's snack. you can eat it with one hand."]
+    gift.again: ["one's enough. both hands are busy."]
+
+- id: fennimore
+  name: Fennimore
+  look: { gender: male }
+  title: "Hermit of the Grove"
+  job: IL_MAGE
+  level: { min: 96, max: 98 }
+  strength: SEASONED
+  loadout: aqua-staff-l93
+  personality: efficient-v1
+  home:
+    town: arcana
+    routine:
+      - { from: 9, to: 15, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 15, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:lower-east-street", activity: REST }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [Cold Shark, Frozen Shark's Fin, El Nath]
+  questLines: [fennimore-ice-that-wont-melt, fennimore-a-sign-for-the-door]
+  rumors: [arcana-the-sign-on-the-door, arcana-the-morning-tea]
+  relationships:
+    - { persona: briar, kind: ORDERS_SIGNS_FROM }
+    - { persona: sylvie, kind: IS_BROUGHT_TEA_BY }
+  giftItemIds: [2000006, 2022003]
+  dialogue:
+    greetFirst: ["go away. ...oh, you're new. go away politely, then.", "i came to the edge of the world to be left alone. you're the third visitor today. sit down, i suppose."]
+    greet: ["you again.", "hm. hello. don't touch anything.", "oh, it's you. the tolerable one."]
+    idle: ["(draws a slow circle of frost on the air with one finger and watches it melt)", "(reads a very old book, sighs at it, and turns the page as if it had personally let him down)"]
+    noWork: ["nothing today. i'm a hermit. hermits don't have errands. that's the whole point of being one."]
+    nothingDue: ["you owe me nothing. good. keep it that way."]
+    who: ["Fennimore. i was an ice mage in El Nath for forty years, and everybody wanted something. so i walked to the edge of the world, where nobody would. it's the busiest grove i've ever lived in."]
+    bye: ["go on. ...come back some time. don't tell anyone i said that."]
+    thanks: ["hm. yes. thank you."]
+    smallTalk: ["Sylvie brings me tea every morning. i've told her i don't want tea. i drink it. we've both decided not to mention it.", "the spirits are asleep and they're still better company than El Nath. they don't ask me to freeze their wells.", "ice doesn't keep here. the Snow Cloud Clearing has snow, and it never settles. Arcana won't let anything change, not even into water."]
+    speakPlainly: ["plainly: a cold old man who's warmer than he lets on."]
+    questOffer.fennimore-ice-that-wont-melt: ["a cold shark's fin stays frozen even in a fire. forty years in El Nath and i never found out how. the cold sharks swim round the Grave of a Wrecked Ship at the bottom of the Aqua Road. ten fins. i'd like to know before i'm too old to be annoyed by it."]
+    questAccept.fennimore-ice-that-wont-melt: ["the Aqua Road, all the way down, to the grave of the wrecked ship. the sharks there bite cold. you'll want something warm after. not from me."]
+    questWaiting.fennimore-ice-that-wont-melt: ["ten fins. i've a fire lit to test them. it's the first fire i've lit in years. it's very irritating."]
+    questComplete.fennimore-ice-that-wont-melt: ["ten. ...(he holds one in the flame, and it stays frozen, and he laughs out loud, surprising himself) the cold's on the inside. it isn't ice at all. it's the shark's own cold. forty years. thank you. don't tell Sylvie i laughed."]
+    questOffer.fennimore-a-sign-for-the-door: ["i want a sign for my door. 'go away'. Briar's carved it four times and every time it says something else. go and stand over him while he carves it. make sure it says go away."]
+    questAccept.fennimore-a-sign-for-the-door: ["Briar. the upper east street, in a heap of shavings. stand over him. glare. you've a good glare. i've seen it."]
+    questWaiting.fennimore-a-sign-for-the-door: ["is it done? does it say go away? it'll say come in. it always says come in."]
+    questComplete.fennimore-a-sign-for-the-door: ["'come in'. of course it does. ...(he looks at it for a long time, then hangs it on the door anyway) well. it's a good sign. well carved. people will come in. i suppose that's what i'll have to put up with."]
+    about.sylvie: ["Sylvie brings me tea i don't want and news i didn't ask for. the spirits said this, the tree said that. ...she's the best thing in the grove. don't repeat that."]
+    about.briar: ["Briar can't carve 'go away'. he's tried. i've watched him try. his hands won't do it. i've stopped being annoyed. i've started being impressed."]
+    about.ottoline: ["the cartographer from Nameless Town wanted to know what the spirits call things. i told her to ask Sylvie. people always end up asking Sylvie. then they end up asking me."]
+    about.liesl: ["the hunter at Three Doors? she came through the grove once and didn't say a word the whole afternoon. best visitor i've ever had."]
+    aboutUnknown: ["never met them. i'd like to keep it that way."]
+    friend.close: ["you may come in without knocking. don't tell anyone. i'll deny it."]
+    friend.best: ["if El Nath ever comes looking for me, tell them i'm dead. if you come looking for me, i'm here. that's the difference."]
+    famed: ["people talk about you. i don't listen to people. i heard anyway. hm. well done."]
+    defamed: ["they said worse about me in El Nath for forty years. it's just weather."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["...that's actually rather good. don't tell Sylvie. she'll start bringing them."]
+    gift.again: ["one. a hermit doesn't hoard. a hermit sulks."]

@@ -1,0 +1,84 @@
+# Chu Chu Village quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No monster spawns anywhere in
+# Arcane River in this age, so every step on the island is an errand. Walkable from the village (portals): the Eree
+# Valley's Chu Chu Village Entrance 450002011 and Torrent Zone 1 450002012; the Five-Color Hill's Hill Path 450002001
+# and Mottled Forest 1 450002002; Skywhale Mountain's Mouth 450002016, Mountainside 1 450002017 to Skywhale Peak
+# 450002019, Mountainside 2 450002018 to the Colossal Tail 450002020. (Muto's Descent and the Quiet Village Path have no
+# way in on foot.)
+# Items carried in from elsewhere (drop rows in db/data/152-drop-data.sql): sr. bellflower root 5120502 L54 100-year-old
+# bellflower 4000294 (Herb Town's 100-Year-Old Herb Garden 251010200); blue dragon turtle 8140700 L90 cracked shell
+# 4000262 (Leafre's Entrance to Dragon Forest 240030000); peach monkey 6130207 L62 peach seed 4000282 (Mu Lung's Peach
+# Farm 1 250010500). Pomona's recipe book is the village's page of the River Atlas (arcane.page.chuchu).
+
+# ---- Pomona (her recipe book is the village's page: arcane.page.chuchu) ----
+- id: pomona-something-with-taste
+  persona: pomona
+  title: "Something with Taste"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bellflowers, type: COLLECT_ITEM, itemId: 4000294, count: 12 }
+    - { id: soup, type: DELIVER, to: pomona, take: { itemId: 4000294, count: 12 } }
+  rewards: { meso: 28000, exp: 50000, bondPoints: 30, items: [{ itemId: 2020014, count: 15 }] }
+
+- id: pomona-the-recipe-book
+  persona: pomona
+  title: "The Island, as Cooked"
+  length: MEDIUM
+  requires: { level: { min: 90 }, questsCompleted: [pomona-something-with-taste] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hill, type: VISIT_MAP, mapIds: [450002001] }
+    - { id: valley, type: VISIT_MAP, mapIds: [450002011] }
+    - { id: lark, type: TALK_TO, persona: lark, say: ["where they eat? behind the falls! there's a hollow down the valley where the water goes quiet, and at noon they all go and sit in it in a row. i'm not supposed to tell. tell Pomona anyway. tell her they like her bread best."] }
+    - { id: book, type: DELIVER, to: pomona }
+  rewards: { meso: 32000, exp: 65000, bondPoints: 35, items: [{ itemId: 2000004, count: 15 }], worldFlags: [arcane.page.chuchu] }
+
+# ---- Bodhi ----
+- id: bodhi-wheels-that-dont-crack
+  persona: bodhi
+  title: "Wheels That Don't Crack"
+  length: SHORT
+  requires: { level: { min: 92 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000262, count: 10 }
+    - { id: hubs, type: DELIVER, to: bodhi, take: { itemId: 4000262, count: 10 } }
+  rewards: { meso: 30000, exp: 55000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: bodhi-up-the-skywhale
+  persona: bodhi
+  title: "Up the Skywhale"
+  length: MEDIUM
+  requires: { level: { min: 92 }, questsCompleted: [bodhi-wheels-that-dont-crack] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: peak, type: VISIT_MAP, mapIds: [450002019] }
+    - { id: tail, type: VISIT_MAP, mapIds: [450002020] }
+    - { id: pomona, type: TALK_TO, persona: pomona, say: ["he made it? with the lunch? ...he made it with the cart. the lunch never makes it. tell him i'll believe it when i see an empty cart at the top and a full Bodhi at the bottom. tell him i'm proud of him anyway. don't tell him that bit."] }
+    - { id: back, type: DELIVER, to: bodhi }
+  rewards: { meso: 32000, exp: 65000, bondPoints: 40, items: [{ itemId: 2020015, count: 10 }] }
+
+# ---- Lark ----
+- id: lark-seeds-for-the-chu-chus
+  persona: lark
+  title: "Seeds for the Chu Chus"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4000282, count: 15 }
+    - { id: buried, type: DELIVER, to: lark, take: { itemId: 4000282, count: 15 } }
+  rewards: { meso: 26000, exp: 48000, bondPoints: 30, items: [{ itemId: 2022000, count: 20 }] }
+
+- id: lark-what-they-dream
+  persona: lark
+  title: "What the Chu Chus Dream"
+  length: MEDIUM
+  requires: { level: { min: 90 }, questsCompleted: [lark-seeds-for-the-chu-chus] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: heap, type: VISIT_MAP, mapIds: [450002002] }
+    - { id: celeste, type: TALK_TO, persona: celeste, say: ["a chu chu's dream? ...yes. last week. round and warm and slow, and all about bread. and a girl's hand, held out very flat. tell her they dream of her. tell her that's why they smile in their sleep."] }
+    - { id: back, type: DELIVER, to: lark }
+  rewards: { meso: 28000, exp: 55000, bondPoints: 35, items: [{ itemId: 2020014, count: 10 }] }

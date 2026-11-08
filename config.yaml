@@ -470,6 +470,7 @@ server:
       9270030: The road over the ridge         # Ralph the wanderer: Ulu City
       2020012: The path behind the statue      # Spirit of Snow Statue: Lion King's Castle
       2140000: The doors to other times        # Temple Keeper: Three Doors' destinations
+      2142112: The scouts' way                 # Cobie: Twilight Perion <-> Tribal Refugee Camp (REPACK_RESIDENTS_PLAN 3.3)
 
     #Secondary-stat requirement removal (PLAN.md sections 95-157). When true, the server loads
     #MapleEdit/app/patches/zero-secondary-stats.json at startup and zeroes reqSTR/reqDEX/reqINT/reqLUK
@@ -1195,7 +1196,9 @@ population:
     ENABLED: true
     CONTENT_DIR: scripts/config/population
     SEED: 20260921
-    TARGET_CITIZENS: 717
+    # 717 + 20 for the Repack towns' seed after the 2026-11-08 deploy (!citizens seed coke-town 12, zipangu 8;
+    # docs/REPACK_RESIDENTS_PLAN.md 6.2)
+    TARGET_CITIZENS: 737
     ONLINE_MAX: 240
     CHANNELS: "1"
     SWEEP_MS: 60000

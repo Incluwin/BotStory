@@ -1,0 +1,15 @@
+# Esfera rumors (Repack Residents). The pair is by Shubert together in those hours (personas/esfera.yaml).
+- id: esfera-the-same-ollie
+  participants: [iris, nerissa]
+  where: { town: esfera, spot: "venue:by-shubert" }
+  when:
+    serverHours: [16, 17]
+    everyDays: 1
+  lines:
+    - { by: iris, text: "Nerissa, the Ollie at the second pool looked at me today. properly. as if it knew my name." }
+    - { by: nerissa, text: "it's an Ollie, Iris. it looks at everything properly." }
+    - { by: iris, text: "it looked at you the same way. i think it's the Ollie from the Mirror-touched Sea." }
+    - { by: nerissa, text: "it can't be. that's five pools and a sea away." }
+    - { by: iris, text: "you came up a spring from the bottom of the Aqua Road." }
+    - { by: nerissa, text: "...that's different." }
+    - { by: iris, text: "it's a little bit different. i'm writing it down as a little bit different." }

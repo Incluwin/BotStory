@@ -1,0 +1,52 @@
+# Coke Town rumors (Repack Residents). Each pair is awake together at its spot in those hours (personas/coke-town.yaml).
+- id: coke-the-valley-turn
+  participants: [aksel, ylva]
+  where: { town: coke-town, spot: "venue:middle-east-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  setsFlagOnListeners: coke.heard-ylva
+  lines:
+    - { by: ylva, text: "you came down late, Aksel. i'd counted everybody else an hour ago." }
+    - { by: aksel, text: "a big one at the back of the forest. it wouldn't stop." }
+    - { by: ylva, text: "you never stop either. that's why i count you last." }
+    - { by: aksel, text: "hm." }
+    - { by: ylva, text: "that's three 'hm's today. you're getting chatty." }
+    - { by: aksel, text: "whoever walks the valley with Ylva comes down again. she sees to it. a few PLAY cubes for Nell's arrows and a bit of pay, and she'd watch anybody's back." }
+    - { by: ylva, text: "...not everybody, Aksel." }
+    - { by: aksel, text: "everybody since i've known you. nine winters. i've been counting too." }
+
+- id: coke-the-record-run
+  participants: [nils, toivo]
+  where: { town: coke-town, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [16, 17]
+    everyDays: 1
+  lines:
+    - { by: nils, text: "Toivo! a hundred and four! again!" }
+    - { by: toivo, text: "a hundred and five. i had the watch." }
+    - { by: nils, text: "your watch is slow. it's cold. watches go slow in the cold." }
+    - { by: toivo, text: "who told you that?" }
+    - { by: nils, text: "Bartolo." }
+    - { by: toivo, text: "Bartolo collects lids." }
+    - { by: nils, text: "he knows about lids AND watches." }
+    - { by: toivo, text: "bend your knees on the last turn and you'll do a hundred and three on any watch in Coke Town." }
+    - { by: nils, text: "...really?" }
+    - { by: toivo, text: "really. then it's my record that's in trouble. go on. up the hill." }
+
+- id: coke-the-button-war
+  participants: [bartolo, inga]
+  where: { town: coke-town, spot: "venue:middle-west-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 2
+  lines:
+    - { by: bartolo, text: "Inga. that button. on Toivo's hat. that was a can." }
+    - { by: inga, text: "it's a button, Bartolo." }
+    - { by: bartolo, text: "it was a whole can. there are only so many." }
+    - { by: inga, text: "there are thousands. the Coketumps carry them about." }
+    - { by: bartolo, text: "every one is a little different. you have to look." }
+    - { by: inga, text: "i did look. it looked like a button." }
+    - { by: bartolo, text: "...i'm bringing you the dented ones tomorrow. dented ones aren't collectable." }
+    - { by: inga, text: "you said that last week, and the week before. you're a dear, Bartolo." }
+    - { by: bartolo, text: "i'm a collector." }

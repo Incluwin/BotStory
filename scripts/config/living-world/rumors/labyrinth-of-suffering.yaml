@@ -1,0 +1,17 @@
+# Labyrinth of Suffering rumors (Repack Residents). The pair is by the Temple Keeper together in those hours
+# (personas/labyrinth-of-suffering.yaml).
+- id: labyrinth-four-good-pieces
+  participants: [sorcha, cassius]
+  where: { town: labyrinth-of-suffering, spot: "venue:by-temple-keeper" }
+  when:
+    serverHours: [18, 19]
+    everyDays: 1
+  lines:
+    - { by: sorcha, text: "it wasn't a landing, Cassius." }
+    - { by: cassius, text: "we walked away from it. that makes it a landing." }
+    - { by: sorcha, text: "i walked. you were carried. by me. by the collar." }
+    - { by: cassius, text: "a landing with help is still a landing." }
+    - { by: sorcha, text: "the ship's in four pieces." }
+    - { by: cassius, text: "four good pieces." }
+    - { by: sorcha, text: "three good pieces and the tail." }
+    - { by: cassius, text: "see? we agree on three." }

@@ -1,0 +1,57 @@
+# Coke Town arc: the Empty House at the top of the hill. Marit's brother Ebbe cut the ice lamps for every window in
+# town; eleven winters ago he went up the Coke Valley with his sled for the year's ice and never came back. Aksel finds
+# the sled in the ice of a golem, every lamp for the town done and a space left for his own (aksel-the-sled-in-the-ice,
+# coke.sled.found); Ylva, who saw him last, tells why he went on up, and Marit cuts the lamp he went for from the Ice
+# Golems' ice (marit-the-last-lamp, coke.lamp.cut); the lamp goes in his window (marit-the-house-lit, coke.house.lit).
+# The sled and the lit house happen once per server (quests/coke-town.yaml, requires.notFlags).
+- id: marit-the-empty-house
+  persona: marit
+  chapters:
+    - id: chapter-1
+      title: "The Key"
+    - id: chapter-2
+      title: "The Sled"
+      enterWhen: { flags: [coke.sled.found] }
+      dialogueOverrides:
+        greet: ["hello, love. Ebbe's sled is in his porch. i keep going up to look at it.", "you. come in out of the cold. i've something to show you. no. i've shown everyone. sit."]
+        who: ["Marit. i keep the key to my brother Ebbe's house, at the top of the hill. eleven winters ago he went up the Coke Valley for the year's ice and never came back. Aksel found his sled in the ice of a golem, with a lamp in it for every house in town. every house but his. he'd finished. he should have come home. he went on up."]
+        idle: ["(unwraps an ice lamp from a square of old sacking, holds it up to the light, and wraps it again)", "(takes a key on a string from under her scarf, looks up the hill, and tucks it back)"]
+        smallTalk: ["i've given the lamps out, one to every house. Nell cried. polar bears cry big. there's a space left in the box. it's the shape of his.", "he went on past the town's lamps, up to the forest, in a storm. i want to know why. Ylva keeps the watch at the valley's turn. she'd know. i haven't asked her. i'm frightened of the answer."]
+        speakPlainly: ["plainly: a sled, a box of lamps, and one space."]
+        about.aksel: ["Aksel broke Ebbe's sled out of the ice and carried it down the whole valley on his back. he wouldn't come in for tea. he stood on the step and said 'sorry' to his boots. i made him come in."]
+        chapterEnter: ["(sits down all at once on the step of the house at the top of the hill, with one hand flat on the wood of an old sled)"]
+    - id: chapter-3
+      title: "The Clearest Ice"
+      enterWhen: { flags: [coke.lamp.cut] }
+      dialogueOverrides:
+        greet: ["hello, love. mind the table. it's all ice chips. i'm cutting a lamp. badly.", "you. sit. don't touch anything sharp. that's everything."]
+        who: ["Marit. i keep the key to my brother Ebbe's house. he went up the valley in a storm for the clearest ice there is, to cut a lamp for his own window, for once, because i'd teased him that the lamp-maker's house was the dark one. Ylva told him to turn back. he laughed. so i'm cutting the lamp he went for, from the ice he went for."]
+        idle: ["(chips at a block of clear ice with a small chisel, very carefully, and swears under her breath)", "(holds a half-cut ice lamp up to the window, squints through it, and sets it down again)"]
+        smallTalk: ["eleven tries. nine cracked. one's a bowl now. the last one's nearly right. he made it look so easy. it is not easy.", "Ylva came for tea. eleven winters she carried it up and down that valley and never said. we sat. we didn't say much. it was the best tea i've had in eleven years."]
+        speakPlainly: ["plainly: a chisel, a block of ice, and a lamp for his window."]
+        about.aksel: ["Aksel broke Ebbe's sled out of the ice and carried it down the whole valley on his back. he brings me ice now, in case i crack another lamp. i've cracked nine. he's brought twenty."]
+        about.ylva: ["Ylva was the last to see Ebbe. she told him to turn back and he laughed at her. she's carried it eleven winters. she comes for tea now, and sits with her back to the wall, like a watcher. i let her."]
+        questOffer.marit-the-last-lamp: ["the golems' ice keeps cracking under my chisel. Ylva will tell you what she told me, if you ask her. and bring me ten more blocks from the Ice Golems, the clearest ice there is. i'll get it right."]
+        questComplete.marit-the-last-lamp: ["ten more. she told you too, then. good. it's easier now it isn't only hers. this block's clearer than the last. i'll get it right this time. thank you, love."]
+        chapterEnter: ["(sets a block of clear ice on the table, takes a small chisel from her apron pocket, and starts)"]
+    - id: chapter-4
+      title: "The House Lit"
+      enterWhen: { flags: [coke.house.lit] }
+      dialogueOverrides:
+        greet: ["hello, love. come up to the house. the kettle's on. it's always on now.", "you! in, in. boots off. it's warm in here. it's warm."]
+        who: ["Marit. i live in my brother Ebbe's house now, at the top of the hill. he went up the valley eleven winters ago for the clearest ice, for his own window, and never came back. i cut the lamp from that ice. it's crooked. it's lit. it's the brightest window in Coke Town. he'd have hated that. he'd have loved it."]
+        idle: ["(trims the wick of a candle inside a crooked ice lamp in the window, and stands back to look at it)", "(sweeps the step of the house, then sits on it in the light from the window)"]
+        noWork: ["nothing today. sit in the window with me. the skiers come in to dry their mittens. i've started charging them in stories."]
+        smallTalk: ["Toivo's beginners come in from the Ski Camp to dry their mittens by Ebbe's stove. i give them cocoa. they drip on everything. the house hasn't been so wet in years. it's lovely.", "every window in Coke Town, and his. Ylva says you can see them all from the turn of the valley now. the whole town lit, and the crooked one at the top."]
+        speakPlainly: ["plainly: a house, a lamp, and a kettle on."]
+        about.aksel: ["Aksel carried Ebbe's sled down the whole valley on his back. it's in the porch now. Nils is allowed to sit on it. not ride it. sit."]
+        about.ylva: ["Ylva comes for tea. she sits with her back to the wall and looks out of the window. she says from the turn of the valley you can see Ebbe's lamp now. she says it's the first thing she counts."]
+        friend.close: ["there's a chair by the window that's yours. nobody else sits in it. i've told them."]
+        friend.best: ["you were there when the lamp went in. you'll always have a key to this house. here. it's on a string. wear it under your scarf. that's where keys go."]
+        questOffer.marit-the-weekly-sweep: ["the snails off the Ski Camp's first slopes still come in under the door. twenty-five of them, snails or slimes. and go up and open the shutters for me first. i like the house aired, even with me in it."]
+        questAccept.marit-the-weekly-sweep: ["up the hill to the house, then out through the gate on the lower street to the Ski Camp. the first slope and the one off it."]
+        questWaiting.marit-the-weekly-sweep: ["the shutters, and twenty-five."]
+        questComplete.marit-the-weekly-sweep: ["the shutters, and the snails. thank you, love. come up, the kettle's on. it's always on now."]
+        questOffer.marit-the-last-lamp: ["i'm cutting lamps for the skiers' huts now, from the golems' ice. Ylva will tell you about Ebbe, if you ask her. she tells everybody now. and ten blocks from the Ice Golems, please."]
+        questComplete.marit-the-last-lamp: ["ten. the clearest ice in the valley. i'll cut a lamp for Toivo's hut at the Ski Camp. it'll be crooked. they're all crooked. people like them crooked."]
+        chapterEnter: ["(stands in the street with her hands in her pockets and looks up at the top of the hill, where a crooked lamp burns in a window)"]

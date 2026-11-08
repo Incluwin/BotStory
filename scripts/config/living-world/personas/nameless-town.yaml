@@ -1,0 +1,189 @@
+# Nameless Town cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents, none recruitable, on the
+# Lake of Oblivion at the top of Arcane River (the Temple Keeper's third door at Three Doors; Legato sends travellers
+# back). Nothing hunts on the river in this age. Ottoline maps the river town by town for the River Atlas
+# (arcs/nameless-town.yaml): a map a stranger draws there fades by morning, one drawn by somebody who lives in a place
+# keeps, so each town makes its own page. Oren's stones are this town's page.
+- id: ottoline
+  name: Ottoline
+  look: { gender: female }
+  title: "Cartographer of the River"
+  job: BEGINNER
+  level: { min: 74, max: 76 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: nameless-town
+    routine:
+      - { from: 7, to: 11, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 11, to: 13, materialize: false }
+      - { from: 13, to: 17, spot: "venue:by-nina", activity: LINGER }
+      - { from: 17, to: 21, spot: "venue:beside-rento", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [Lakeshore, Squid, Ink Bottle]
+  questLines: [ottoline-ink-that-keeps, ottoline-the-water-between, ottoline-the-middle-reach, ottoline-the-river-atlas]
+  arc: ottoline-the-river-atlas
+  rumors: [nameless-the-row-of-stones]
+  relationships:
+    - { persona: oren, kind: COPIES_THE_STONES_OF }
+    - { persona: ilka, kind: FOUND_ON_THE_LAKESHORE }
+    - { persona: osmund, kind: WRITES_ABOUT_BINDING_TO }
+  giftItemIds: [2020009, 2022002]
+  dialogue:
+    greetFirst: ["oh. hold still. ...no, you're fine, you're not on the map yet. nobody new is. welcome to the town with no name.", "a traveller from the doors. good. tell me which way you came in. i draw everything that comes in."]
+    greet: ["hello. mind the wet ink.", "you again. good. you're on the map now. a little dot. that's you.", "(looks up from a page) oh. hello."]
+    idle: ["(draws a careful line along the edge of a page, then holds the page up toward the lake and squints, as if the line might move)", "(licks the end of a pen, makes a face, and writes something very small in a margin)"]
+    noWork: ["nothing today. the ink's drying and the river's behaving. for once."]
+    nothingDue: ["nothing owed. it's all square. i ruled it."]
+    who: ["Ottoline. i draw maps. i came down to the river to draw it, and the river doesn't like being drawn. a map a stranger makes here fades by morning. the lake takes it. so i'm making an atlas out of pages the towns make themselves. somebody who lives in a place can draw it so it stays."]
+    bye: ["mind the edges. the river's got more of them than it lets on."]
+    thanks: ["thank you. that's going in the margin."]
+    smallTalk: ["nobody here remembers what the town was called. Legato's the chief and even he doesn't. i've left a space at the top of the page. somebody will fill it in one day.", "a map is a list of places you can come back to. the lake makes people forget. i think that's why i came. somebody ought to keep the list.", "i need nine pages, one from every town on the river, made by somebody who lives there. Oren's stones for this one. Pomona in Chu Chu Village, Minna in Lachelein, Sylvie in Arcana, Corin in Morass. the four below Morass i'll beg for when i get there."]
+    speakPlainly: ["plainly: a river, nine towns, and ink that won't stay."]
+    questOffer.ottoline-ink-that-keeps: ["my ink forgets. by morning the lines i drew by the lake are just paper again. a squid's ink is made to hide in the dark at the bottom of the sea. the lake can't find it there. ten bottles of it, and walk one line out to the lakeshore for me, to see if it keeps."]
+    questAccept.ottoline-ink-that-keeps: ["the squids swim the dangerous sea gorges, all the way down the Aqua Road past Aquarium. then back through the doors, and out the east end of town to the lakeshore. Legato will see you back to Three Doors whenever you ask."]
+    questWaiting.ottoline-ink-that-keeps: ["ten bottles, and one line to the lakeshore. the page is waiting. it's very patient. i'm not."]
+    questComplete.ottoline-ink-that-keeps: ["ten. and you walked the line? ...it's still here. it's still here! all night by the water and the lake never found it. thank you. the river can be drawn after all. just not by me alone."]
+    questOffer.ottoline-the-water-between: ["three pages: this town, Chu Chu Village, Lachelein. three towns, and no water between them on my map. a river with gaps isn't a river. walk the torrent below Chu Chu Village for me, then the Lachelein Canal, and ask Dorian the clockmaker how long the canal takes to cross. he'll know. he'll be wrong. i want his answer anyway."]
+    questAccept.ottoline-the-water-between: ["the doors to Chu Chu Village, out past the village entrance into the Eree Valley and its first torrent. then the doors again to Lachelein, and down the main street to the canal. Dorian keeps the clocks by Dimo's stall."]
+    questWaiting.ottoline-the-water-between: ["the torrent, the canal, and Dorian's wrong answer. i've left the gaps white."]
+    questComplete.ottoline-the-water-between: ["'as long as you dream it.' of course. i'll draw it a nap long. ...look, now the three pages touch. that's a river. a short one. it's a start."]
+    questOffer.ottoline-the-middle-reach: ["six pages, down as far as Esfera. but the middle of my river's grey, and water ought to be blue. the chief qualm guardians on the Road of Regrets carry blue hearts, and Osmund at Three Doors grinds them into an ink that holds. twelve hearts, and ask him how he grinds them. then walk from Arcana's cavern out to the coral path into Morass, so i know the river really goes that way."]
+    questAccept.ottoline-the-middle-reach: ["the Road of Regrets' fourth stretch, past the whole of Memory Lane and the Frozen Past. Osmund's by the Temple Keeper. then Arcana: out through the clearings and the toxic forest to the Marimba Lagoon and the cavern under it, and out its far side to the path to the coral forest."]
+    questWaiting.ottoline-the-middle-reach: ["twelve hearts, Osmund's way of grinding them, and the cavern into Morass. the middle's still grey. it looks cold."]
+    questComplete.ottoline-the-middle-reach: ["twelve. and the cavern does open on the coral path. i knew it. i didn't know it. ...(she grinds a heart the way Osmund said and paints one long stroke down the middle of six pages) there. blue. now it's a river all the way to Esfera."]
+    questOffer.ottoline-the-river-atlas: ["nine pages. the whole river, top to bottom, every one made by somebody who lives there. it wants a cover. the oblivion monks on the Road to Oblivion wear red cloth that's forgotten everything already. a cover that's forgotten everything can't forget what's inside it. twelve lengths. and ask Oren to write the name on the spine. he writes names so they stay."]
+    questAccept.ottoline-the-river-atlas: ["the Road to Oblivion's first stretch, past the whole of the Road of Regrets and the Burning Past. then home to Oren. he'll want to know what name. so do i."]
+    questWaiting.ottoline-the-river-atlas: ["twelve lengths of red, and a name from Oren. the pages are stacked and waiting. they're very neat. i've never been this neat."]
+    questComplete.ottoline-the-river-atlas: ["twelve. and the name. ...'the river, as the people on it keep it.' that's long for a spine. Oren wrote it small. it fits. (she pulls the last stitch tight and closes the cover) there. the River Atlas. it'll stay. everything in it will stay. thank you. you're in it, you know. a little dot on every page."]
+    about.oren: ["Oren writes everybody's name on a stone each morning and leaves it by their door, so they can read who they are. he's never once spelled mine wrong. i've checked. i check everything."]
+    about.ilka: ["Ilka turned up on the lakeshore with a bow, good boots, and no name but the one stitched inside them. i drew her in where i found her. she's the only person on my map with a question mark beside her."]
+    about.pomona: ["Pomona cooks in Chu Chu Village. her recipe book's the only thing on that island anybody's written down. i told her it's a map. she said it's dinner. it can be both."]
+    about.minna: ["Minna plays music in her sleep in Lachelein. awake she can't remember a note. she says every street in the city has a note of its own. i believe her. i've walked them."]
+    about.dorian: ["Dorian keeps the clocks in Lachelein. ask him how far anything is and he tells you how long it takes, and it's never the same twice. i've stopped arguing. i draw whatever he says."]
+    about.sylvie: ["Sylvie listens to the spirits in Arcana. they're asleep, she says, but they talk in their sleep. that's a better source than most of my maps had."]
+    about.corin: ["Corin follows the shadows round Morass and writes down where they go. a man after my own heart. his handwriting is dreadful."]
+    about.osmund: ["Osmund at Three Doors writes to me about binding. he says a book is a promise with a spine. i think he says that to everyone."]
+    aboutUnknown: ["not on my map yet. i'll leave a space."]
+    friend.close: ["i've drawn your road in. every way you've ever come into town. it's a mess. it's my favourite part of the page."]
+    friend.best: ["when the atlas is done, you're on every page. i've decided. i don't usually decide things that fast."]
+    famed: ["your name's come down the river ahead of you. i've written it in the margin. it's the only thing in the margin spelled right."]
+    defamed: ["people say things. i only draw what i've seen. i haven't seen that."]
+    gift: ["oh. for me? thank you."]
+    gift.favorite: ["oh, that's lovely. that'll keep me drawing till dawn."]
+    gift.again: ["one's plenty. i've ink to buy, not an appetite."]
+
+- id: oren
+  name: Oren
+  look: { gender: male }
+  title: "Writer of Names on Stones"
+  job: BEGINNER
+  level: { min: 56, max: 58 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: nameless-town
+    routine:
+      - { from: 5, to: 9, spot: "venue:lower-east-street-2", activity: STROLL }
+      - { from: 9, to: 12, spot: "venue:lower-east-street-3", activity: SOCIALIZE }
+      - { from: 12, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:beside-rento", activity: SOCIALIZE }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [Deep Buffoon, Deep Buffoon's Rock Piece, Weathered Land of Happiness]
+  questLines: [oren-the-stones-of-the-street, oren-a-name-at-the-lakeshore]
+  rumors: [nameless-the-row-of-stones, nameless-read-it-twice]
+  relationships:
+    - { persona: ottoline, kind: LETS_HER_COPY_THE_STONES }
+    - { persona: ilka, kind: WRITES_A_STONE_EVERY_MORNING_FOR }
+  giftItemIds: [2010000, 2020029]
+  dialogue:
+    greetFirst: ["you'll want a stone. everybody does, after a night by the lake. what's your name? say it slow. i'll write it.", "new here? then you still know your name. hold on to it. the lake is very patient."]
+    greet: ["morning. your stone's still by the door.", "you. i remember you. that's rarer here than you'd think.", "hello again. still yourself?"]
+    idle: ["(chalks a name onto a flat grey stone, blows the dust off, and reads it aloud to nobody in particular)", "(sets a stone down by a door, straightens it twice, and steps back to see if it looks right)"]
+    noWork: ["nothing today. everybody woke up knowing who they were. it happens. not often."]
+    nothingDue: ["we're square. i'd have written it down if we weren't."]
+    who: ["Oren. i write names on stones. the lake takes people's names in the night, a little at a time. so every morning i put a stone by every door with the name of whoever's inside. they come out, read it, and go 'oh. right. that's me.'"]
+    bye: ["say your name to yourself on the way. it helps."]
+    thanks: ["that's kind. thank you."]
+    smallTalk: ["Legato's the chief. some mornings he reads his stone twice. i don't think he forgets. i think he likes being reminded.", "i wrote my own name on a stone once, the first week. then i forgot where i'd put it. i'm still Oren. i asked around.", "the stones here wear smooth. names rub off in a week. nothing on this lake keeps. that's the trouble with the place."]
+    speakPlainly: ["plainly: chalk, stones, and everybody's name."]
+    questOffer.oren-the-stones-of-the-street: ["the stones here wear out in a week. the deep buffoons in Ludibrium's clock tower carry rock that's spent years where every second gets counted. rock like that remembers the hour. it'd remember a name. fifteen pieces. lay the first at the edge of the Weathered Land of Happiness, for whoever walks in that way. then i'll copy the street out for you: every door, every stone, every name. Ottoline says it's the only true map of this town."]
+    questAccept.oren-the-stones-of-the-street: ["Ludibrium's clock tower, the second warped path of time. the buffoons there are deep ones, and grumpy. then back through the doors, and out the east end of town to the weathered land. Legato will see you to the doors."]
+    questWaiting.oren-the-stones-of-the-street: ["fifteen pieces of rock, and one at the weathered land. my chalk's ready. my arm's ready. it's always ready."]
+    questComplete.oren-the-stones-of-the-street: ["fifteen. they're heavy. heavy's good. ...here. the street, every door, every stone, every name, as of this morning. it's the town's page. carry it to Ottoline, or keep it. either way it's the only map of this town that won't forget."]
+    questOffer.oren-a-name-at-the-lakeshore: ["somebody's left a stone of their own down on the lakeshore. not one of mine. the name on it's 'Arma', in a hand i don't know, and nobody in town's called that. go and look at it, and at the mouth of the Cave of Repose past the Mirage Cliff, where the footprints go. then ask Ottoline if the name's on any map of hers."]
+    questAccept.oren-a-name-at-the-lakeshore: ["out the east end of town to the lakeshore. then on east along the shore to the Mirage Cliff, and down from the cliff to the mouth of the cave. don't go in. nobody's asked you to go in."]
+    questWaiting.oren-a-name-at-the-lakeshore: ["the stone, the cave's mouth, and what Ottoline says. i've a fresh stone ready, in case it's somebody's."]
+    questComplete.oren-a-name-at-the-lakeshore: ["a name somebody left so they'd be found. ...then i'll leave it where it is. and i'll write a second stone, 'Arma', and set it by the cave, so whoever she is knows somebody read hers. that's only manners."]
+    about.ottoline: ["Ottoline copies my stones into her book every evening. she says the row of them is the only true map of this town. she's very serious about it. i like her."]
+    about.ilka: ["Ilka. i write her stone every morning: 'Ilka, probably.' she laughs every time. that's worth the chalk."]
+    about.osmund: ["the scribe at Three Doors? he wrote to ask how i keep names from running in the rain. i don't. i write them again."]
+    about.pomona: ["Pomona in Chu Chu Village sends a loaf up with anybody coming this way. no note. you don't need a name on bread."]
+    aboutUnknown: ["no stone for them. not here."]
+    friend.close: ["i write your stone every morning now, even when you're not in town. it's by the east road. in case you come back and need it."]
+    friend.best: ["if the lake ever takes your name, i've got it. i've got it on four stones. you'll be fine."]
+    famed: ["people come in from the doors saying your name. i've started writing it bigger."]
+    defamed: ["i've heard things. names get said all kinds of ways. i just write them down."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's good. that's a morning's chalking, that is."]
+    gift.again: ["one's plenty. my pockets are full of stones as it is."]
+
+- id: ilka
+  name: Ilka
+  look: { gender: female }
+  title: "Goes by the Name on Her Boots"
+  job: RANGER
+  level: { min: 92, max: 94 }
+  strength: SEASONED
+  loadout: kft-bow-l88
+  personality: relaxed-v1
+  home:
+    town: nameless-town
+    routine:
+      - { from: 8, to: 12, spot: "venue:lower-east-street-3", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:by-kao", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [Lakeshore, Weathered Land of Sorrow, Leafre]
+  questLines: [ilka-the-name-in-the-boots, ilka-what-she-came-for]
+  rumors: [nameless-read-it-twice]
+  relationships:
+    - { persona: oren, kind: READS_HER_STONE_FROM }
+    - { persona: ottoline, kind: IS_A_QUESTION_MARK_ON_THE_MAP_OF }
+    - { persona: dovan, kind: WEARS_THE_BOOTS_OF }
+  giftItemIds: [2000004, 2020015]
+  dialogue:
+    greetFirst: ["hi. don't ask my name. i'll tell you what it says in my boots. it says Ilka.", "a new face! i've got one of those. i just don't know whose it is."]
+    greet: ["hey, you.", "you came back. i remember you. i remember things that happened after the lake. it's before that's the trouble.", "hi. still Ilka. probably."]
+    idle: ["(pulls off a boot, reads the inside of it, nods, and puts it back on)", "(restrings a bow from memory, fast and without looking, and then stares at her own hands as if they'd surprised her)"]
+    noWork: ["nothing today. i'm trying to remember something. it's going badly."]
+    nothingDue: ["we're even. i'd remember. that kind of thing i remember."]
+    who: ["i woke on the lakeshore with a bow, good boots, and nothing else. 'Ilka' is stitched inside the boots. it might be my name. it might be the cobbler's. i go by it either way. a name's a name."]
+    bye: ["if you see anybody looking for an Ilka, send them my way."]
+    thanks: ["thanks. really."]
+    smallTalk: ["my hands know how to string a bow. my feet know the way to the lakeshore. the rest of me is still catching up.", "Oren writes 'Ilka, probably' on my stone every morning. i'd like to make him take the 'probably' off. i'd like that very much.", "i must have walked a long way to get here. the boots say so. look at the heels."]
+    speakPlainly: ["plainly: good boots, a bow, and a name on loan."]
+    questOffer.ilka-the-name-in-the-boots: ["there's a cobbler's mark inside these. a little wyvern, burnt into the leather. somebody told me that's Leafre work. find whoever makes boots there and ask him who he made these for. if it's me, i'm Ilka. if it isn't... i'll think of something."]
+    questAccept.ilka-the-name-in-the-boots: ["back through the doors, Corba's flight down to Leafre Station, and into Leafre itself. look for the man who taps nails into heels without looking at the hammer."]
+    questWaiting.ilka-the-name-in-the-boots: ["did he know them? did he know me? you can tell me if it's bad news. i'm used to not knowing. i can get used to anything."]
+    questComplete.ilka-the-name-in-the-boots: ["his. and he made them for a girl called Ilka, who paid up front and said she was walking to the end of the world. ...that's me. that's me! i'm Ilka. no 'probably'. i'm going to go and tell Oren right now. no, wait. tell me again first."]
+    questOffer.ilka-what-she-came-for: ["i said i was walking to the end of the world. people don't say that unless they're walking for something. i came through Three Doors, i must have. the knight who guards them sees everybody through. ask him about a girl with a bow who asked for the keeper's third door. then go out to the Weathered Land of Sorrow. that's where my boots point when i'm not paying attention."]
+    questAccept.ilka-what-she-came-for: ["the doors first, to the knight. he stands on the east street at Three Doors in the mornings. then home, and east out of town through the weathered lands, past happiness and rage, to sorrow. i'm sorry. that's the order they come in."]
+    questWaiting.ilka-what-she-came-for: ["the knight, and the weathered land. i'm trying not to guess. i'm guessing."]
+    questComplete.ilka-what-she-came-for: ["somebody i'd lost to the river, and i came to fetch them back. ...i don't know who. but i know i loved them, because i came this far, and my feet still go to sorrow when i don't watch them. that's something. that's a lot, actually. thank you. i'll keep looking. i'm good at walking. the boots say so."]
+    about.oren: ["Oren writes my stone every morning. his is the first face i remember, which makes him my oldest friend. he's been my oldest friend for about a year."]
+    about.ottoline: ["Ottoline found me on the lakeshore and drew me in right where i was lying. there's a question mark next to me. she says she'll rub it out when i know."]
+    about.dovan: ["the cobbler in Leafre who made my boots? i'd like to go and thank him myself one day. i'd like to remember the way first."]
+    about.caedmon: ["the knight at Three Doors? he calls everybody 'friend' and says it as if he means it. i think i walked past him once. i think i walked past him too fast."]
+    aboutUnknown: ["don't know them. don't know a lot of people. working on it."]
+    friend.close: ["you're the second person i remember. Oren's first. you're a close second."]
+    friend.best: ["if i ever find out who i came for, you're the first i'll tell. after them. you know what i mean."]
+    famed: ["people say your name like they know you. i'm jealous. nobody says mine like that. nobody's sure of it."]
+    defamed: ["people say things. i don't remember most of what anybody's said to me. it's handy, sometimes."]
+    gift: ["oh! thanks."]
+    gift.favorite: ["ooh, that's a good one. that's for the road."]
+    gift.again: ["one's enough. i travel light. the boots insist."]

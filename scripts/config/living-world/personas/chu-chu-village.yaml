@@ -1,0 +1,174 @@
+# Chu Chu Village cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents, none recruitable, on
+# Chu Chu Island in Arcane River (the Temple Keeper's third door at Three Doors; Lyon the elder sends travellers back).
+# Everything on the island grows in five colours and, while the island sleeps in this age, tastes of nothing. Pomona's
+# recipe book is the village's page of the River Atlas (arcs/nameless-town.yaml).
+- id: pomona
+  name: Pomona
+  look: { gender: female }
+  title: "Cook of Chu Chu Village"
+  job: BEGINNER
+  level: { min: 60, max: 62 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: chu-chu-village
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-master-lyck", activity: LINGER }
+      - { from: 11, to: 14, spot: "venue:by-madam-popo", activity: SOCIALIZE }
+      - { from: 14, to: 18, spot: "venue:beside-master-lyck", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:lower-west-street", activity: REST }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [Sr. Bellflower Root, 100-Year-Old Bellflower, Herb Town]
+  questLines: [pomona-something-with-taste, pomona-the-recipe-book]
+  rumors: [chuchu-second-helpings, chuchu-crusts-on-the-sill]
+  relationships:
+    - { persona: bodhi, kind: FEEDS }
+    - { persona: lark, kind: SAVES_THE_CRUSTS_FOR }
+    - { persona: ottoline, kind: FED_THREE_BOWLS_TO }
+  giftItemIds: [2010005, 2020002]
+  dialogue:
+    greetFirst: ["you look hungry. everybody who comes off the doors looks hungry. sit. no, sit.", "a visitor! good. i made too much. i always make too much. it's the island. it makes you think big."]
+    greet: ["hello, love. eaten?", "you. sit down, i've a spoon somewhere.", "back! good. taste this. no, tell me the truth."]
+    idle: ["(stirs a pot the size of a bathtub with a spoon the size of an oar, tastes it, and frowns)", "(shakes something from a little jar into the pot, tastes again, and sighs at the sky)"]
+    noWork: ["nothing today. the pot's on. the pot's always on."]
+    nothingDue: ["you owe me nothing but an empty plate."]
+    who: ["Pomona. i cook. i came to Chu Chu Village because Master Lyck is the best chef at the edge of the world and i wanted to learn from him. then i tasted the island's food. everything here grows in five colours, and in this age, while the island's asleep, it all tastes of nothing at all."]
+    bye: ["take something for the road. you'll want it."]
+    thanks: ["oh, you're a dear."]
+    smallTalk: ["Master Lyck says the island's food will taste of something again when the island wakes. i asked him when that'll be. he said 'eat your vegetables'. i don't think he knows.", "Bodhi eats everything i make. that's not a compliment. he'd eat the pot if it was warm.", "a chu chu ate a whole loaf off my sill this morning and looked so pleased with itself i couldn't even be cross."]
+    speakPlainly: ["plainly: a big pot, a bland island, and a cook who won't give up."]
+    questOffer.pomona-something-with-taste: ["i need something with taste in it. a bellflower root that's lived a hundred years tastes of every one of them. the old roots in Herb Town's hundred-year garden grow them. twelve, and i'll make a soup this island has never had."]
+    questAccept.pomona-something-with-taste: ["the doors, and the long way round to Herb Town, below Mu Lung. the hundred-year-old herb garden. the roots there are old and they know it."]
+    questWaiting.pomona-something-with-taste: ["twelve bellflowers. the water's boiling. the water's been boiling for a week."]
+    questComplete.pomona-something-with-taste: ["twelve. smell that. that's a hundred years. ...oh. oh, taste. that's soup. Bodhi! no. not you. you'll have it all."]
+    questOffer.pomona-the-recipe-book: ["Ottoline says a map of a place only keeps on this river if somebody who lives there makes it. i don't draw. but my recipe book's all named for where things grow: five-colour hill salad, torrent broth, mottled forest pie. it's a map if you squint. walk the hill path and the valley entrance for me, and ask Lark where the chu chus go to eat. then i'll copy it out fair."]
+    questAccept.pomona-the-recipe-book: ["out of the village to the Five-Color Hill's path, then round to the Eree Valley's entrance. Lark's always about the village somewhere, feeding something."]
+    questWaiting.pomona-the-recipe-book: ["the hill, the valley, and what Lark says. i've the ink out. it's got gravy on it already."]
+    questComplete.pomona-the-recipe-book: ["the hill, the valley, and the chu chus' secret pantry behind the falls. ...here. 'the island, as cooked.' every dish, drawn where its food grows. it's Chu Chu Village's page. carry it to Ottoline, or keep it. don't eat it. Bodhi tried."]
+    about.bodhi: ["Bodhi builds carts to carry my cooking up the Skywhale Mountain. not one lunch has ever reached the top. he says the mountain's very steep. it isn't the mountain."]
+    about.lark: ["Lark feeds the chu chus. i save her my crusts, and the ends of loaves, and the burnt ones. the chu chus don't mind burnt. Lark minds a bit."]
+    about.ottoline: ["Ottoline came through with a pen behind each ear, drawing the river. she ate three bowls and said 'this is a very accurate soup'. i've decided that's praise."]
+    about.oren: ["the stone man from Nameless Town? i send a loaf up with anybody going that way. a man who remembers everybody's name for them ought to have bread."]
+    aboutUnknown: ["never fed them. send them round."]
+    friend.close: ["there's a bowl with your name on it. not really. Oren would. i just keep it at the back for you."]
+    friend.best: ["if the island ever wakes and the food tastes of something, you're getting the first spoonful. before Master Lyck. don't tell him."]
+    famed: ["people come in off the doors talking about you. i give them a second helping for the news."]
+    defamed: ["i heard what they said. nobody who eats like you do is that bad."]
+    gift: ["oh, for me? thank you, love."]
+    gift.favorite: ["oh, that's just right. that's going straight in something."]
+    gift.again: ["one's lovely, dear. i've a pot to fill, not a pantry."]
+
+- id: bodhi
+  name: Bodhi
+  look: { gender: male }
+  title: "Cartwright with an Appetite"
+  job: BEGINNER
+  level: { min: 64, max: 66 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: chu-chu-village
+    routine:
+      - { from: 7, to: 11, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 11, to: 14, spot: "venue:by-madam-popo", activity: SOCIALIZE }
+      - { from: 14, to: 19, materialize: false }
+      - { from: 19, to: 22, spot: "venue:lower-west-street-2", activity: REST }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [Blue Dragon Turtle, Cracked Shell, Skywhale Peak]
+  questLines: [bodhi-wheels-that-dont-crack, bodhi-up-the-skywhale]
+  rumors: [chuchu-second-helpings]
+  relationships:
+    - { persona: pomona, kind: EATS_THE_COOKING_OF }
+    - { persona: lark, kind: BREAKS_WHEELS_THAT_ARE_NAMED_BY }
+  giftItemIds: [2020004, 2020003]
+  dialogue:
+    greetFirst: ["oh, hello. you're not carrying food, are you? no reason. just asking.", "a traveller! good. i build carts. you look like somebody who needs things carried. everybody does."]
+    greet: ["hey! eaten?", "you! come and look at this axle. no, look.", "hello, hello. is that a sandwich? no? fine."]
+    idle: ["(spins a cart wheel on its axle and listens to it, taking a bite of something while he listens)", "(measures a plank with his thumb, loses count, and starts again, chewing a bread roll)"]
+    noWork: ["nothing today. the carts are built. i'm thinking about lunch. i'm always thinking about lunch."]
+    nothingDue: ["we're square. i'd say if we weren't. i'm honest. hungry, but honest."]
+    who: ["Bodhi. cartwright. i build carts to carry Pomona's cooking up the Skywhale Mountain, so there's lunch at the top. it's a big mountain and it's a lot of lunch. i've never once got a cart to the top full. i eat on the way. i'm not proud of it."]
+    bye: ["if you see anything to eat, think of me."]
+    thanks: ["oh, thanks! you're good people."]
+    smallTalk: ["Pomona says i'd eat the cart if it was warm. i've never tried. i've thought about it.", "the wheels crack on the Skywhale road. it's steep and it's all roots. i've been through eleven wheels this month. Lark named them all.", "Muto's the biggest eater on this island, they say. i'm the second. we've never met. i think we'd get along."]
+    speakPlainly: ["plainly: carts, wheels, and lunch."]
+    questOffer.bodhi-wheels-that-dont-crack: ["my wheels crack on the mountain road. a dragon turtle's shell takes a fall off a cliff and doesn't mind. the blue ones at the entrance to Leafre's dragon forest shed it. ten cracked shells and i'll make hubs that never crack twice."]
+    questAccept.bodhi-wheels-that-dont-crack: ["back through the doors, down to Leafre, and out to the dragon forest's entrance. the turtles are slow and they bite. take snacks. for you, i mean. well. for me."]
+    questWaiting.bodhi-wheels-that-dont-crack: ["ten shells. i've got the spokes cut. i've eaten my lunch. i'm waiting."]
+    questComplete.bodhi-wheels-that-dont-crack: ["ten! look at this, look, you can drop it. go on, drop it. ...see? not a scratch. these'll go all the way to the top. probably. if i don't stop for lunch."]
+    questOffer.bodhi-up-the-skywhale: ["new wheels, new cart, and Pomona's packed a lunch for the top. walk ahead of me and tell me the road goes all the way: the peak, and the colossal tail round the other side. then tell Pomona i made it. i'll be right behind you. i'll be eating, but i'll be right behind."]
+    questAccept.bodhi-up-the-skywhale: ["out through the mountain's mouth, up the first mountainside to the peak. then back down and round the second mountainside to the tail. it's a whale. it's got a tail. don't ask me, i just build carts."]
+    questWaiting.bodhi-up-the-skywhale: ["the peak, the tail, and Pomona. i'm on my way. i stopped for lunch."]
+    questComplete.bodhi-up-the-skywhale: ["she said that? 'an empty cart at the top and a full Bodhi at the bottom.' ...that's fair. that's very fair. and she's proud of me? she said not to tell me? then don't tell her you told me. the road goes all the way! next time i'm not eating till the tail."]
+    about.pomona: ["Pomona cooks like the whole island's coming to dinner. some nights i'm the whole island. she pretends to be cross. she always makes extra."]
+    about.lark: ["Lark names my broken wheels. Crunch, Wobble, Poor Thing. she held a little funeral for Poor Thing. i cried a bit. it was a good wheel."]
+    about.ottoline: ["the map lady from Nameless Town wanted to know how far it is to the top of the mountain. i said two lunches. she wrote it down."]
+    aboutUnknown: ["don't know them. are they a cook?"]
+    friend.close: ["i've built you a little cart. for your things. it's got a lunch compartment. it's mostly lunch compartment."]
+    friend.best: ["if i ever get a full cart to the top of that mountain, we're eating it together. up there. both of us. the whole cart."]
+    famed: ["people at Madam Popo's say your name like it's something good to eat. that's the highest praise i've got."]
+    defamed: ["people say things. people say i eat too much. some things people say are true. that one's not about you."]
+    gift: ["for me? oh, you shouldn't. but thanks!"]
+    gift.favorite: ["oh! oh, that's the best thing. that won't make it to the mountain."]
+    gift.again: ["one! i'll take one. two and i'd never get any carts built."]
+
+- id: lark
+  name: Lark
+  look: { gender: female }
+  title: "Girl Who Feeds the Chu Chus"
+  job: BEGINNER
+  level: { min: 18, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: chu-chu-village
+    routine:
+      - { from: 8, to: 12, spot: "venue:upper-west-street", activity: STROLL }
+      - { from: 12, to: 15, spot: "venue:by-lyon", activity: LINGER }
+      - { from: 15, to: 18, spot: "venue:beside-master-lyck", activity: LINGER }
+      - { from: 18, to: 8, materialize: false }
+  recruitable: false
+  knows: [Peach Monkey, Peach Seed, Mottled Forest 1]
+  questLines: [lark-seeds-for-the-chu-chus, lark-what-they-dream]
+  rumors: [chuchu-crusts-on-the-sill]
+  relationships:
+    - { persona: pomona, kind: GETS_THE_CRUSTS_OF }
+    - { persona: bodhi, kind: NAMES_THE_BROKEN_WHEELS_OF }
+    - { persona: celeste, kind: WONDERS_ABOUT_THE_DREAMS_OF }
+  giftItemIds: [2020026, 2001001]
+  dialogue:
+    greetFirst: ["hi! are you here to see the chu chus? they're shy. hold your hand out flat. no, flatter.", "hello! have you got any crusts? the chu chus aren't fussy. i am a bit."]
+    greet: ["hi!", "you're back! the round one remembers you. i can tell.", "hello! shh. that one's napping."]
+    idle: ["(crouches by the path holding out a crust, very still, whispering 'come on, come on' to something small and round)", "(counts on her fingers up to eleven, and announces 'and that one's Wobble' to nobody)"]
+    noWork: ["nothing today. the chu chus are napping. they nap a lot. so do i."]
+    nothingDue: ["we're square! i counted."]
+    who: ["Lark. i feed the chu chus. somebody has to. they're always hungry, and the island's food tastes of nothing right now, so they like ours better. Pomona saves me her crusts."]
+    bye: ["bye! wave at the round ones on your way."]
+    thanks: ["thank you thank you!"]
+    smallTalk: ["the chu chus bury things. bread, seeds, my shoe once. nothing grows. Pomona says the island's asleep. i think it's just shy.", "i've named every wheel Bodhi's broken. there's Crunch, and Wobble, and Poor Thing, and Crunch Two.", "Lyon the elder says the chu chus were here before the village. i asked if they mind us. he said 'ask them'. i did. they want bread."]
+    speakPlainly: ["plainly: crusts, seeds, and chu chus."]
+    questOffer.lark-seeds-for-the-chu-chus: ["the chu chus bury seeds and nothing grows. Pomona says it's the island. but peach seeds are stubborn. the peach monkeys on Mu Lung's peach farms drop them everywhere. fifteen? i'll give them to the round ones to bury. maybe one will be stubborn enough."]
+    questAccept.lark-seeds-for-the-chu-chus: ["Mu Lung! that's so far. the peach farms are out past the town. the monkeys throw things. duck."]
+    questWaiting.lark-seeds-for-the-chu-chus: ["fifteen seeds. the chu chus have dug the holes already. they're very keen."]
+    questComplete.lark-seeds-for-the-chu-chus: ["fifteen! the round ones are going to be so pleased. ...look, look, that one's burying one already. it patted it down. it's going to sit on it. i think it's going to sit on it till it grows."]
+    questOffer.lark-what-they-dream: ["the chu chus nap in the Mottled Forest past the hill path, all in a heap. they smile in their sleep. i want to know what they dream about. there's a lady in Lachelein who dreams other people's dreams. Celeste. go and see the heap, and then ask her if she's ever dreamt a chu chu's."]
+    questAccept.lark-what-they-dream: ["out to the Five-Color Hill and into the Mottled Forest. tiptoe. then the doors to Lachelein. Celeste's the one who looks like she's only just woken up. she always looks like that."]
+    questWaiting.lark-what-they-dream: ["did you see the heap? did she dream them? i've been guessing. i guessed bread."]
+    questComplete.lark-what-they-dream: ["bread! i KNEW it! ...and me? they dream about me? (goes very pink) i'm going to go and sit with them for a bit. thank you. don't tell Bodhi. he'll want to know if they dream about him. they don't. they're scared of his carts."]
+    about.pomona: ["Pomona saves me crusts and pretends she doesn't. she leaves them on the sill in a little cloth and says 'oh, look, crusts, how did those get there'."]
+    about.bodhi: ["Bodhi's broken eleven wheels this month. i name them. we had a funeral for Poor Thing. he cried. i didn't. a bit."]
+    about.celeste: ["Celeste in Lachelein dreams other people's dreams. i'd like her to dream mine. it's mostly about chu chus. she'd like it."]
+    about.ottoline: ["the map lady drew the chu chus on her page as little circles. i told her they're not circles. she said 'what are they then'. i said 'chu chus'. she wrote that."]
+    aboutUnknown: ["don't know them. do they like chu chus?"]
+    friend.close: ["the round one lets you hold it now. it doesn't let anyone hold it. it let you. that means you're mine too."]
+    friend.best: ["if a seed ever grows here, i'm naming the tree after you. not out loud. it'd be embarrassing. but i'll know."]
+    famed: ["everybody's saying your name! i told the chu chus. they don't know what it means. they were very impressed."]
+    defamed: ["somebody said something mean about you at Madam Popo's. i put a chu chu in his hat."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh! oh, those are the best ones! i'm not sharing this one. well. a little bit."]
+    gift.again: ["just one! i'll get a tummy ache. Pomona says."]

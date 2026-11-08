@@ -1,0 +1,479 @@
+# Outside Ninja Castle cast (docs/REPACK_RESIDENTS_PLAN.md section 3.2): 7 Residents at the castle gate
+# (ninja-castle), 2 recruitable. Oharu's boy went into the castle as a genin trainee eight years ago; she sends a cup
+# of tea in with every visitor, and one day a note comes back out under the saucer (arcs/ninja-castle.yaml). Shinobu
+# gives class hats from a castle room nobody has mapped; the two who walked out, Hayate and Masaru, give pool armour.
+- id: oharu
+  name: Oharu
+  look: { gender: female }
+  title: "Keeper of the Tea Stall at the Gate"
+  job: BEGINNER
+  level: { min: 40, max: 42 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ninja-castle
+    routine:
+      - { from: 6, to: 20, spot: "venue:by-hoshi", activity: LINGER }
+      - { from: 20, to: 23, spot: "venue:middle-central-street-2", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [genin, chunin, inside the castle gate]
+  questLines: [oharu-a-cup-sent-in, oharu-the-crooked-hem, oharu-the-one-who-walked-out, oharu-a-note-comes-out]
+  arc: oharu-the-boy-who-went-in
+  rumors: [nc-the-cup-at-the-gate]
+  relationships:
+    - { persona: goro, kind: WAS_CARRIED_THE_FIRST_CUP_BY }
+    - { persona: kenta, kind: WORRIES_ABOUT }
+    - { persona: fumiko, kind: BUYS_TEA_FROM }
+    - { persona: hayate, kind: BRINGS_TEA_TO }
+    - { persona: isamu, kind: BOUGHT_A_MASK_FROM }
+  giftItemIds: [2022001, 2022023]
+  dialogue:
+    greetFirst: ["tea? sit. it's free for anyone going in. it's free for anyone coming out, too. not many do.", "a traveller. Perry brought you over from the shrine? he drops everyone at my stall. i think he likes the tea."]
+    greet: ["tea?", "you again. sit.", "the kettle's on. it's always on."]
+    idle: ["(pours a cup of tea, sets it on a tray by the castle gate, and covers it with a little cloth)", "(looks at the castle gate for a long moment, then wipes a cup that is already dry)"]
+    noWork: ["nothing today. sit. have a cup. one for you, one for the gate."]
+    nothingDue: ["you owe me nothing. bring the cup back. that's all i ever ask."]
+    who: ["Oharu. i keep the tea stall at the castle gate. my boy Sota went in as a genin eight years ago. he was eleven. i send a cup of tea in with everyone who goes through. somebody in there gets thirsty."]
+    bye: ["bring the cup back."]
+    thanks: ["thank you, dear."]
+    smallTalk: ["the genin inside the gate are boys. little ones, most of them. knock them down if you must. don't knock them down hard.", "Fumiko on the hill path blends my tea. she says i put in too much sugar. a boy likes sugar. that's what i tell her."]
+    speakPlainly: ["plainly: a kettle, a gate, and a boy on the other side of it."]
+    questOffer.oharu-a-cup-sent-in: ["carry a cup in for me. just inside the gate, where the genin drill. twenty of them, knocked down gently, and set the cup where somebody thirsty will find it. one of them might be mine."]
+    questAccept.oharu-a-cup-sent-in: ["through the gate behind my stall. Inside the Castle Gate, they call it. the genin are small and quick. carry the cup level."]
+    questWaiting.oharu-a-cup-sent-in: ["did you set it down? somewhere it won't get kicked?"]
+    questComplete.oharu-a-cup-sent-in: ["you set it on the step? good. somebody will drink it. somebody always does. here. for the walk. thank you."]
+    questOffer.oharu-the-crooked-hem: ["if my boy's still in there, he's a chunin by now. the chunin wear headbands. i sewed his, and i sewed the hem crooked on purpose, so i'd know it. thirty chunin in the third and fourth corridors. look at every headband. please."]
+    questAccept.oharu-the-crooked-hem: ["past the gate, then the first two corridors. the third's all chunin. the fourth has kunoichi too. look, and come back. whatever you find."]
+    questWaiting.oharu-the-crooked-hem: ["anything? a crooked hem. it looks like i sewed it in the dark. i did."]
+    questComplete.oharu-the-crooked-hem: ["a crooked hem? on a peg in the fourth corridor? ...beside a teacup. one of mine. you left it there? good. that's his. somebody in there keeps my cups. thank you. i'm going to sit down."]
+    questOffer.oharu-the-one-who-walked-out: ["Hayate walked out of the castle. a shinobi. they don't, as a rule. if anyone knows whose peg that is, he does. he won't look at me. would you ask him? and whatever he says, ask it twice."]
+    questAccept.oharu-the-one-who-walked-out: ["he sits at the east end of the street at dawn, and the middle of it at night. back to the gate. always back to the gate."]
+    questWaiting.oharu-the-one-who-walked-out: ["did he say anything? did he say a name?"]
+    questComplete.oharu-the-one-who-walked-out: ["Sota. he said Sota. a chunin, two winters under Hayate. and he went to Isamu at the shrine for a bigger fox. last spring. at night. paid in throwing stars. ...he's grown out of the mask i bought him. he's alive. he's tall enough to outgrow a mask. thank you."]
+    questOffer.oharu-a-note-comes-out: ["Hayate says the ninto stand at the very end, where the corridor turns back toward the gate, and the chunin sleep past them. carry one more cup that far. set it on the step where the corridor turns. clear the ninto. then bring the cup home. empty or full."]
+    questAccept.oharu-a-note-comes-out: ["all the way in. the jonin hold the seventh corridor and the ninto the eighth. it's a long way to carry tea. carry it anyway."]
+    questWaiting.oharu-a-note-comes-out: ["is it still level? the cup. not you. well. you too."]
+    questComplete.oharu-a-note-comes-out: ["it's empty. ...and there's something under the saucer. it's his hand. it's worse than it was. 'mum. the tea's too sweet. it always was. i'm a chunin. i'm all right. don't stand at the gate in the rain.' ...too sweet. cheeky boy. thank you. i'm going to make another pot."]
+    about.kenta: ["Kenta wants to go in. he's twelve. Sota was eleven. i give him tea and i don't say anything. it's the hardest thing i do all day."]
+    about.goro: ["Goro carried rice through that gate for forty years. he carried the first cup i ever sent in. spilled half. half got there."]
+    about.fumiko: ["Fumiko blends my tea from the hill. she says i put in too much sugar. she's right. i'll keep doing it."]
+    about.shinobu: ["Shinobu maps the corridors. i look at her maps longer than anyone. i'm looking for one room. she's never drawn it."]
+    about.hayate: ["Hayate walked out of the castle three winters back. a shinobi. they don't, as a rule. i bring him tea. he drinks it facing the other way."]
+    about.masaru: ["Masaru was an ashigaru. hired. he walked out the front gate past my stall one night without his spear. i said 'evening, Masaru.' he sat down and had a cup. he cried a bit. we don't mention it."]
+    about.isamu: ["Isamu at the shrine carves the fox masks. i bought one for Sota the week before he went in. a terrible mask, Isamu said. Sota loved it."]
+    aboutUnknown: ["never had a cup at my stall? they will."]
+    friend.close: ["your cup's the blue one now. nobody else gets the blue one."]
+    friend.best: ["if i had to send anybody in after him, i'd send you. that's the most i can say about a person."]
+    famed: ["people say your name at the stall. between cups."]
+    defamed: ["talk's cheap. tea's cheaper. have some."]
+    gift: ["oh. thank you, dear."]
+    gift.favorite: ["oh, that's lovely. that'll go with the next pot."]
+    gift.again: ["one a day, dear. i've a stall to keep."]
+
+- id: kenta
+  name: Kenta
+  look: { gender: male }
+  title: "Boy Who Wants to Be a Ninja"
+  job: BEGINNER
+  level: { min: 14, max: 16 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ninja-castle
+    routine:
+      - { from: 7, to: 11, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 11, to: 14, spot: "venue:by-hoshi", activity: STROLL }
+      - { from: 14, to: 16, materialize: false }
+      - { from: 16, to: 19, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 19, to: 7, materialize: false }
+  recruitable: false
+  knows: [genin, crow, ashigaru]
+  questLines: [kenta-a-ninja-hood, kenta-does-a-ninja-need-a-spear]
+  rumors: [nc-the-spear-lesson]
+  relationships:
+    - { persona: oharu, kind: IS_GIVEN_TEA_BY }
+    - { persona: masaru, kind: PESTERS }
+    - { persona: goro, kind: LISTENS_TO }
+    - { persona: shinobu, kind: BOUGHT_A_MAP_FROM }
+    - { persona: hayate, kind: FOLLOWED_FOR_TWO_STEPS }
+  giftItemIds: [2022021, 2001001]
+  dialogue:
+    greetFirst: ["hi! are you a ninja? you walk like a ninja. a bit. not really. hi!", "shh. i'm being stealthy. ...you saw me? i was right here. that's fair."]
+    greet: ["hi!", "you're back! did you see a ninja?", "shh. stealth."]
+    idle: ["(creeps along the street on tiptoe, very slowly, past a man who watches him the whole way)", "(throws a folded-paper star at a post, misses, and goes to fetch it, looking round in case anyone saw)"]
+    noWork: ["nothing today. i'm practising being invisible. how am i doing? don't answer."]
+    nothingDue: ["we're square! ninja's honour."]
+    who: ["Kenta! i'm going to be a ninja. Oharu says over her dead body. Goro says over his knees. Masaru says nothing, which means yes."]
+    bye: ["bye! i'm vanishing now. don't look."]
+    thanks: ["thanks! ninja's thanks."]
+    smallTalk: ["the genin inside the gate jump off the walls. off them! i jumped off the tea stall once. Oharu didn't talk to me for a day.", "Shinobu sold me a map of the castle for ten mesos. i can't read it. it's upside down. she says it isn't. it is."]
+    speakPlainly: ["plainly: i want to be a ninja. i'm twelve. that's old."]
+    questOffer.kenta-a-ninja-hood: ["every ninja has a hood. mine's a hat. i want feathers on it. black ones. the crows in the crow forest by the shrine drop them. twenty-five crows, ten feathers. ninjas have feathers. probably."]
+    questAccept.kenta-a-ninja-hood: ["the crow forest, past the Mushroom Shrine. Perry takes you to the shrine. the crows are mean. be meaner. quietly."]
+    questWaiting.kenta-a-ninja-hood: ["ten feathers! the hat's waiting. it's very plain."]
+    questComplete.kenta-a-ninja-hood: ["ten! black as night. look. ...is it stealthy? it's stealthy. here, my fish cakes. ninjas share."]
+    questOffer.kenta-does-a-ninja-need-a-spear: ["watch the genin for me in the first two corridors. thirty of them. see if any of them carry a spear. then ask Masaru if a ninja ever needs one. he won't tell me. he'll tell you."]
+    questAccept.kenta-does-a-ninja-need-a-spear: ["through the gate and the first corridor and the second. count spears. then Masaru. he's on the east street in the evening, looking at the castle."]
+    questWaiting.kenta-does-a-ninja-need-a-spear: ["any spears? what did Masaru say?"]
+    questComplete.kenta-does-a-ninja-need-a-spear: ["no spears. and he said i don't want to be either? ...he said i wouldn't listen. i'm listening. i'm just not agreeing. here. dango. thank you."]
+    about.oharu: ["Oharu says ninjas don't get to come home for tea. i said i'd come home for tea. she gave me a cup and didn't say anything."]
+    about.goro: ["Goro carried things into the castle for forty years. he says he never saw a ninja. not once. that's how good they are."]
+    about.masaru: ["Masaru used to be an ashigaru. a spear one. he threw it down. he won't say why. i asked nine times."]
+    about.shinobu: ["Shinobu draws maps of the castle. she goes in! with paper! she's not even a ninja. she says that's the trick."]
+    about.hayate: ["Hayate's a real ninja. a real one. i followed him once. for two steps. then he wasn't there."]
+    about.fumiko: ["Fumiko puts stingy stuff on my knees when i fall off things. i fall off a lot of things."]
+    aboutUnknown: ["are they a ninja? no? oh."]
+    friend.close: ["you can be in my ninja clan. it was me. now it's you too. that's two."]
+    friend.best: ["when i'm a ninja i'm going to be the kind that comes home for tea. you can come too."]
+    famed: ["everyone says your name! even Goro! he never says names."]
+    defamed: ["people say stuff. ninjas don't listen. i'm practising."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["WOW. that's ninja food. probably. thank you!"]
+    gift.again: ["one a day! Oharu's rule. she says it's everybody's rule."]
+
+- id: goro
+  name: Goro
+  look: { gender: male }
+  title: "Old Porter of the Castle Gate"
+  job: BEGINNER
+  level: { min: 46, max: 48 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ninja-castle
+    routine:
+      - { from: 8, to: 12, spot: "venue:middle-west-street", activity: REST }
+      - { from: 12, to: 15, materialize: false }
+      - { from: 15, to: 21, spot: "venue:by-hoshi", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [ashigaru, castle corridor, inside the castle gate]
+  questLines: [goro-the-porters-bench]
+  rumors: [nc-the-cup-at-the-gate]
+  relationships:
+    - { persona: oharu, kind: CARRIED_THE_FIRST_CUP_FOR }
+    - { persona: masaru, kind: CARRIED_THE_SPEAR_OF }
+    - { persona: kenta, kind: IS_PESTERED_BY }
+    - { persona: fumiko, kind: IS_SALVED_BY }
+  giftItemIds: [2022020, 2022003]
+  dialogue:
+    greetFirst: ["hm. a traveller. you've a pack. you're carrying it wrong. weight on the hips, not the shoulders. forty years i carried. listen to me.", "sit. my knees won't let me stand for strangers. they won't let me stand for friends either."]
+    greet: ["hm.", "you. sit.", "hips, not shoulders."]
+    idle: ["(rubs both knees slowly with the heels of his hands, winces, and does it again)", "(watches the castle gate, counting something under his breath, and loses count at the same number every time)"]
+    noWork: ["nothing today. the rice is in. it's always in. somebody else carries it now. badly."]
+    nothingDue: ["nothing owed. i was paid forty years. it was enough."]
+    who: ["Goro. i carried rice, salt and lamp oil through that gate for forty years. the castle never once said thank you. the ninjas never once said anything. i never once saw one. that's how you know they're good."]
+    bye: ["hips, not shoulders."]
+    thanks: ["hm. thank you."]
+    smallTalk: ["there's a bench in the second corridor where i set my load down every trip for forty years. the ashigaru sit on it now. there's a spear lying under it nobody will pick up.", "Kenta wants to be a ninja. i told him: forty years i walked those corridors and never saw one. he said that's how good they are. he's not wrong. he's twelve."]
+    speakPlainly: ["plainly: an old back, and a good bench i can't get to."]
+    questOffer.goro-the-porters-bench: ["the bench in the second corridor. my bench. forty years. the ashigaru sit on it now and spit. twenty of them, shooed off. i can't walk in there any more. i'd like to know it's empty. just once."]
+    questAccept.goro-the-porters-bench: ["through the gate, the first corridor, then the second. the bench is by the far wall. there's a spear under it. leave the spear."]
+    questWaiting.goro-the-porters-bench: ["twenty. is it empty?"]
+    questComplete.goro-the-porters-bench: ["empty. good. it won't stay empty. that's all right. it was empty once. here. for the knees. yours, not mine. mine are past it."]
+    about.oharu: ["Oharu's kept the tea stall since her boy went in. eight years. i carried the first cup in for her. spilled half. she says half got there."]
+    about.kenta: ["Kenta wants to be a ninja. he walks like a porter. i haven't told him. it's a compliment."]
+    about.masaru: ["Masaru came in at fifteen. i carried his spear for him the first day. it was taller than he was. he came out last year without it. i didn't carry it out. nobody did."]
+    about.fumiko: ["Fumiko puts salve on my knees and tells me to stop carrying things. i stopped. they still hurt. she says that's the knees' business."]
+    about.shinobu: ["Shinobu maps the corridors. she asked me where the walls used to be. i told her. she says they've moved. walls don't move. ...they do in there."]
+    about.hayate: ["Hayate? walked out, they say. i never saw him go in. i never saw any of them. i'm told he was one."]
+    aboutUnknown: ["never carried anything for them."]
+    friend.close: ["you can have my bench. this one, out here. it's not as good. it's what i've got."]
+    friend.best: ["forty years i carried for a castle that never said thank you. you say it every time. that's worth more than the castle."]
+    famed: ["people say your name at the gate. hm. good."]
+    defamed: ["talk weighs nothing. i'd know. i've carried everything else."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["that's the stuff. that'll see me to supper."]
+    gift.again: ["one a day. i'm watching my load."]
+
+- id: shinobu
+  name: Shinobu
+  look: { gender: female }
+  title: "Cartographer of the Castle Corridors"
+  job: BEGINNER
+  level: { min: 56, max: 58 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ninja-castle
+    routine:
+      - { from: 8, to: 12, spot: "venue:middle-central-street-2", activity: REST }
+      - { from: 12, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [castle corridor, kunoichi, jonin]
+  questLines: [shinobu-counting-doors, shinobu-the-kunoichi-corridor, shinobu-the-shifting-screens, shinobu-the-room-nobody-mapped]
+  relationships:
+    - { persona: hayate, kind: HAS_HER_MAPS_CORRECTED_BY }
+    - { persona: kenta, kind: SOLD_A_MAP_TO }
+    - { persona: goro, kind: ASKS_WHERE_THE_WALLS_WERE }
+    - { persona: oharu, kind: SHOWS_HER_MAPS_TO }
+  giftItemIds: [2022008, 2022000]
+  dialogue:
+    greetFirst: ["don't step on that. it's the third corridor. well. it was, on tuesday.", "a traveller. good. you have feet. i need feet. mine are tired."]
+    greet: ["hello. mind the map.", "you. good. sit. not on the map.", "the corridors moved again last night."]
+    idle: ["(unrolls a long paper map across her knees, frowns, and rubs out a whole wall with her thumb)", "(holds a brush in her teeth while she counts doors on her fingers, and comes out with a different number each time)"]
+    noWork: ["nothing today. the map's up to date. for about another hour."]
+    nothingDue: ["we're square. it's on the map. little square. there."]
+    who: ["Shinobu. i map the corridors of the castle. i've mapped it twelve times. it's been a different castle every time. the screens move at night. the clan says they don't. the clan moves them."]
+    bye: ["count the doors on your way."]
+    thanks: ["thank you. noted. in ink."]
+    smallTalk: ["i'm not a ninja. that's the trick. ninjas look for ninjas. nobody looks twice at a woman with a brush and a roll of paper. i walk right past them.", "there's a room in the castle that isn't on any map. full of hats. people go in with hats and come out without. i've the key to a door they forgot. don't tell them."]
+    speakPlainly: ["plainly: paper, ink, and a castle that won't hold still."]
+    questOffer.shinobu-counting-doors: ["walk the first three corridors for me, one after another. count the doors. don't tell me the number, i'll only argue. and clear twenty chunin out of the third so i can get a brush in there."]
+    questAccept.shinobu-counting-doors: ["through the gate, then the corridors in order. the first, the second, the third. the third's all chunin. they don't like ink."]
+    questWaiting.shinobu-counting-doors: ["three corridors, and twenty chunin. the brush is wet."]
+    questComplete.shinobu-counting-doors: ["you walked them? and the third had... no. don't tell me. i'll go in tonight and see. thank you. here. for the feet."]
+    questOffer.shinobu-the-kunoichi-corridor: ["the fourth corridor's the kunoichi's. they move the screens there more than anywhere. thirty kunoichi, and then step through into the fifth, so i know there's still a fifth. there's a hat in the room nobody's mapped. it might be yours."]
+    questAccept.shinobu-the-kunoichi-corridor: ["past the chunin in the third. the kunoichi are in the fourth. they're quicker than the screens. then on into the fifth. just a step."]
+    questWaiting.shinobu-the-kunoichi-corridor: ["thirty, and a step into the fifth. is there still a fifth?"]
+    questComplete.shinobu-the-kunoichi-corridor: ["still a fifth! good. i'd drawn it. here, from the room. every safe scroll it would take, and every one took. somebody wore it in. the castle won't miss it."]
+    questOffer.shinobu-the-shifting-screens: ["the fifth corridor's got jonin in it now. they weren't there last month. twenty of them. then the sixth, where everything's awake at once. twenty kunoichi there. i want to know what moves first. there's another hat."]
+    questAccept.shinobu-the-shifting-screens: ["the fifth for the jonin. then step into the sixth and clear the kunoichi. watch the screens while you do. tell me nothing. i'll guess."]
+    questWaiting.shinobu-the-shifting-screens: ["twenty jonin, twenty kunoichi. what moved first?"]
+    questComplete.shinobu-the-shifting-screens: ["the screens moved first? ...i knew it. here, from the room. scrolled at sixty, every one took. somebody wore it in. they came out without it. most do."]
+    questOffer.shinobu-the-room-nobody-mapped: ["the deep corridors. thirty jonin in the seventh, then a step into the eighth, where the ninto stand. then ask Hayate the one thing he'll never tell me: which way the screens turn at night. he'll tell you. the best hat in the room is in it."]
+    questAccept.shinobu-the-room-nobody-mapped: ["the seventh corridor, past the sixth. the jonin are thick there. then just a step into the eighth. don't stay. then Hayate, back out here. he sits with his back to the gate."]
+    questWaiting.shinobu-the-room-nobody-mapped: ["the seventh, the eighth, and Hayate. which way do they turn?"]
+    questComplete.shinobu-the-room-nobody-mapped: ["toward the gate. always toward the gate, at night, so anyone who runs runs in circles. ...of course. here. the best hat in the room. two tens and a sixty, every one took. i've drawn the room on the map now. just on yours."]
+    about.hayate: ["Hayate knows the corridors better than i do. he won't tell me anything. he corrects my maps with one finger when he thinks i'm not looking."]
+    about.kenta: ["Kenta bought a map off me for ten mesos. he holds it upside down. it's not upside down. ...it might be. the castle turns."]
+    about.goro: ["Goro remembers where the walls were forty years ago. none of them are there now. i draw his walls in pencil. for history."]
+    about.oharu: ["Oharu looks at my maps longer than anyone. she's looking for one room. i've never drawn it. i'd like to."]
+    about.fumiko: ["Fumiko gives me something green to drink before i go in. it keeps me awake. it keeps me awake for two days."]
+    about.masaru: ["Masaru stood guard in the second corridor for nine years. he says the bench was always there. Goro says it was his. they're both right. that's maps."]
+    aboutUnknown: ["not on my map."]
+    friend.close: ["i've put you on the map. a little figure by the gate. it's you. it's mostly hat."]
+    friend.best: ["if i ever find a way out of that castle that isn't the front gate, you'll be the first to know. you'll be the only one who knows."]
+    famed: ["your name's in the margin of my map now. people keep asking whose it is."]
+    defamed: ["people say things. the map doesn't. the map's only ever wrong about walls."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's good. that'll see me through the fourth corridor."]
+    gift.again: ["one a day. i need both hands for the brush."]
+
+- id: fumiko
+  name: Fumiko
+  look: { gender: female }
+  title: "Herbalist of the Hill Path"
+  job: BEGINNER
+  level: { min: 34, max: 36 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ninja-castle
+    routine:
+      - { from: 6, to: 11, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 11, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [cloud fox, cloud foxtail, crow forest]
+  questLines: [fumiko-the-salve-round]
+  rumors: [nc-the-one-who-walked-out]
+  relationships:
+    - { persona: hayate, kind: PATCHES_UP }
+    - { persona: oharu, kind: BLENDS_THE_TEA_OF }
+    - { persona: goro, kind: SALVES_THE_KNEES_OF }
+    - { persona: kenta, kind: SALVES_THE_KNEES_OF }
+  giftItemIds: [2020014, 2022009]
+  dialogue:
+    greetFirst: ["mind the basket. that's dinner. that one's medicine. that one's both.", "hello! you've a scrape on your elbow. no? you will. everyone does, round here."]
+    greet: ["hello!", "you again. any cuts?", "hello. smell that? that's the hill."]
+    idle: ["(sorts a basket of leaves into three piles, sniffs one, and moves it to a fourth)", "(dabs a little green paste on the back of her own hand, waits, and nods)"]
+    noWork: ["nothing today. the jars are full and the knees are all salved. it's a good day for weeds."]
+    nothingDue: ["nothing owed. it was only leaves."]
+    who: ["Fumiko. i gather on the hill path between here and the shrine. salve for knees, tea for the gate, something green for anyone going into the castle. i've a cure for most things. not for wanting to go in."]
+    bye: ["mind your knees."]
+    thanks: ["oh, thank you!"]
+    smallTalk: ["the cloud foxes on the mountain shed tails soft as smoke. i dust the pollen off flowers with them. a fox's tail never bruises a petal.", "Hayate leaves a throwing star on my sill when he's grateful. he doesn't say it. i've got forty-one stars. he's very grateful. he's very bad at saying so."]
+    speakPlainly: ["plainly: leaves, jars, and other people's knees."]
+    questOffer.fumiko-the-salve-round: ["my pollen brush is bald. the cloud foxes on the mountain carry tails like smoke. twenty-five foxes, ten tails. and on your way back, take this jar to Goro at the gate. he'll say he doesn't need it. he needs it."]
+    questAccept.fumiko-the-salve-round: ["The Mountain of Cloud Fox, straight off the Mushroom Shrine. Perry takes you across. then Goro, out here. make him take the jar."]
+    questWaiting.fumiko-the-salve-round: ["ten tails. did Goro take the jar?"]
+    questComplete.fumiko-the-salve-round: ["ten! soft as anything. and he took it? and said it smelled? it does smell. it works. here. for your own knees, later. you'll want them."]
+    about.hayate: ["Hayate came down my hill path three winters back bleeding from somewhere he wouldn't show me. i patched him anyway. he still won't say where. he leaves a star on my sill."]
+    about.oharu: ["i blend Oharu's tea from the hill. she puts in too much sugar. i've told her. she says a boy likes sugar. i stopped telling her."]
+    about.goro: ["Goro's knees carried forty years of rice. they've earned the salve. he says it smells. it does. he keeps it anyway."]
+    about.kenta: ["Kenta falls off things. walls, carts, the tea stall. i salve his knees. he says ninjas don't need salve. he holds still for it."]
+    about.shinobu: ["Shinobu goes into the castle with a brush. i give her something green first so she stays awake. she stays awake for two days. it's a strong green."]
+    about.masaru: ["Masaru has hands like baskets. he carries mine up the hill and won't take a coin. he takes dumplings. i've stopped offering coins."]
+    aboutUnknown: ["never salved them. give them time."]
+    friend.close: ["you can have the first jar of every batch. it's the strongest. don't put it near your eyes."]
+    friend.best: ["there's a tea i only make for three people. you're the fourth."]
+    famed: ["people say your name on the hill path. the foxes don't. they're jealous."]
+    defamed: ["there's a salve for most things. talk heals on its own."]
+    gift: ["oh! thank you."]
+    gift.favorite: ["oh, lovely. that's lunch on the hill."]
+    gift.again: ["one a day. i'm only one herbalist."]
+
+- id: hayate
+  name: Hayate
+  look: { gender: male }
+  title: "Shinobi Who Walked Out of the Castle"
+  job: HERMIT
+  level: { min: 78, max: 80 }
+  strength: ELITE
+  loadout: ninja-claw-l70
+  personality: efficient-v1
+  home:
+    town: ninja-castle
+    routine:
+      - { from: 5, to: 9, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 9, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 23, to: 5, materialize: false }
+  recruitable: true
+  knows: [jonin, ninto, kunoichi]
+  contract: hayate-the-night-wage
+  questLines: [hayate-the-way-out, hayate-soft-soles, hayate-quiet-hands, hayate-a-cup-on-the-way-out, hayate-the-patrol]
+  rumors: [nc-the-one-who-walked-out]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: oharu, kind: DRINKS_THE_TEA_OF }
+    - { persona: fumiko, kind: IS_PATCHED_UP_BY }
+    - { persona: shinobu, kind: CORRECTS_THE_MAPS_OF }
+    - { persona: masaru, kind: RESPECTS }
+  giftItemIds: [2022022, 2000006]
+  dialogue:
+    greetFirst: ["you came up behind me. almost quietly. almost.", "hm. a traveller. don't stand between me and the road. stand anywhere else."]
+    greet: ["hm.", "you.", "quiet morning."]
+    idle: ["(sits with his back to the castle gate and his eyes on the road out, perfectly still)", "(turns a throwing star over in his fingers, sets it on the ground beside him, and doesn't pick it up again)"]
+    noWork: ["nothing today. the castle's quiet. that's when it's busiest."]
+    nothingDue: ["nothing owed."]
+    who: ["Hayate. i was born to the clan. jonin at nineteen. i taught the genin to walk without a sound. three winters ago i walked out the front gate without one. nobody walks out. i'm told i'm nobody now. it suits me."]
+    bye: ["walk quiet."]
+    thanks: ["hm. thank you."]
+    smallTalk: ["the kunoichi in the fourth and sixth corridors were my year. they'll know my step. they'll know yours by the time you've cleared twenty.", "the screens in the corridors turn at night. the clan says they don't. Shinobu's the only one outside the castle who's noticed. she's very good. don't tell her."]
+    speakPlainly: ["plainly: a claw, and the road out."]
+    offer: ["forty-five thousand for a day of my time. a day, not an hour. i don't do hours. you've walked out the way i did, and you've heard what Fumiko says. that'll do."]
+    join: ["go. i'll be where you aren't looking."]
+    bench: ["three days. then i go back to the road."]
+    leave: ["back to the road."]
+    refuse.bond: ["i don't walk with people i don't know. i walked with a clan for twenty years. look how that went."]
+    refuse.flags: ["walk out the way i did first, from the kunoichi corridors back to the gate. and some evening on the middle central street, hear what Fumiko says about me. then ask."]
+    refuseOwnErrand: ["the way out first."]
+    questOffer.hayate-the-way-out: ["the kunoichi hold the fourth corridor and the sixth. thirty of them. then walk back out to the gate the way i did, without stopping. if you can walk out of there, i'll walk with you."]
+    questAccept.hayate-the-way-out: ["in through the gate and the corridors to the kunoichi. then back out to Inside the Castle Gate, and don't look back. looking back is how they get you."]
+    questWaiting.hayate-the-way-out: ["thirty, and out. no looking back."]
+    questComplete.hayate-the-way-out: ["you walked out. good. most people only ever walk in. you can sit with me, if you like. back to the gate."]
+    questOffer.hayate-soft-soles: ["your feet are loud. thirty kunoichi in the sixth corridor and fifteen jonin with them. you'll learn to walk soft or you'll learn to walk fast. either will do. there are soft soles in it for you."]
+    questAccept.hayate-soft-soles: ["the sixth corridor. everything's awake there at once. listen for the jonin. they breathe out before they move."]
+    questWaiting.hayate-soft-soles: ["thirty and fifteen. softer."]
+    questComplete.hayate-soft-soles: ["softer. here. every safe scroll they'd take, every one took. walk in them a week. you won't hear yourself."]
+    questOffer.hayate-quiet-hands: ["thirty jonin in the fifth and sixth corridors. the jonin were my rank. they'll come at you two at a time. keep your hands quiet. there's a pair of gloves for quiet hands."]
+    questAccept.hayate-quiet-hands: ["the fifth, and the sixth past it. don't let the jonin get behind you. they'll try."]
+    questWaiting.hayate-quiet-hands: ["thirty. quiet hands."]
+    questComplete.hayate-quiet-hands: ["thirty. your hands are quieter. here. scrolled at sixty, every one took. don't clench them. clenching's loud."]
+    questOffer.hayate-a-cup-on-the-way-out: ["the ninto stand at the deep end, in the seventh corridor and the eighth. twenty of them. then carry a message for me to Oharu at the tea stall. i've owed it to her three winters. i'll give you the words."]
+    questAccept.hayate-a-cup-on-the-way-out: ["the seventh and the eighth. the ninto don't speak. don't speak back. then Oharu. tell her: the night i walked out, i drank one of her cups on the way. it was too sweet. it was the best one she ever sent in."]
+    questWaiting.hayate-a-cup-on-the-way-out: ["twenty ninto. and Oharu. did you tell her?"]
+    questComplete.hayate-a-cup-on-the-way-out: ["she said that? ...a pot to myself. no sugar. hm. here. the last of them. two tens and a sixty, every one took. i walked out with nothing. you'll walk out with these."]
+    questOffer.hayate-the-patrol: ["twenty-five kunoichi in the fourth corridor? they're getting bold. i'd like them less bold."]
+    questAccept.hayate-the-patrol: ["the fourth corridor."]
+    questWaiting.hayate-the-patrol: ["twenty-five."]
+    questComplete.hayate-the-patrol: ["twenty-five. less bold. thanks."]
+    about.oharu: ["Oharu sends tea in with everyone. i drank her cups for years in there, cold, after the drills. the night i walked out i drank one on the way. she brings me tea now. i drink it facing the road."]
+    about.fumiko: ["Fumiko patched me up three winters ago and didn't ask where i'd come from. she knew. she leaves the door unlatched. i leave a star on the sill."]
+    about.shinobu: ["Shinobu maps the castle. her maps are better than the clan's. i fix them when she isn't looking. she knows. she leaves them out for me."]
+    about.masaru: ["Masaru put his spear down in the second corridor. an ashigaru can. he was hired. i was born to it. we nod at each other. that's plenty."]
+    about.kenta: ["Kenta followed me once. two steps. he's got good feet. i hope he never uses them for that."]
+    about.goro: ["Goro carried rice through the corridors for forty years and never saw one of us. we saw him every time. he said good morning to the empty walls. we liked him for it."]
+    aboutUnknown: ["don't know them. that's usually good."]
+    friend.close: ["you can sit with me in the mornings. back to the gate. you don't have to talk. i won't."]
+    friend.best: ["i walked out with nothing. i've got a friend now. that's more than the clan gave me in twenty years."]
+    famed: ["people say your name on the road. loudly. you'll get used to it. i didn't."]
+    defamed: ["talk is noise. noise tells me where people are."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["hm. that's a good one. that's a whole night's watch."]
+    gift.again: ["one. i travel light."]
+
+- id: masaru
+  name: Masaru
+  look: { gender: male }
+  title: "Ashigaru Who Threw Down His Spear"
+  job: DRAGON_KNIGHT
+  level: { min: 82, max: 84 }
+  strength: VETERAN
+  loadout: kft-polearm-l88
+  personality: relaxed-v1
+  home:
+    town: ninja-castle
+    routine:
+      - { from: 7, to: 12, spot: "venue:middle-central-street-2", activity: REST }
+      - { from: 12, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: true
+  knows: [ashigaru, chunin, ninto]
+  contract: masaru-the-standing-oath
+  questLines: [masaru-the-spear-under-the-bench, masaru-plain-armour, masaru-a-cloak-for-walking-out, masaru-all-the-way-in, masaru-the-drill]
+  rumors: [nc-the-spear-lesson]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: goro, kind: HAD_HIS_SPEAR_CARRIED_BY }
+    - { persona: kenta, kind: IS_PESTERED_BY }
+    - { persona: hayate, kind: RESPECTS }
+    - { persona: fumiko, kind: CARRIES_THE_BASKETS_OF }
+    - { persona: oharu, kind: WAS_GIVEN_TEA_BY }
+  giftItemIds: [2022026, 2000005]
+  dialogue:
+    greetFirst: ["evening. or morning. i stopped keeping hours when i stopped keeping a spear.", "you're tall. good. i get tired of looking down."]
+    greet: ["evening.", "you. sit. there's room.", "hm. hello."]
+    idle: ["(sits on an upturned crate with his big hands open on his knees, looking up at the castle)", "(picks up a long stick, holds it like a spear out of habit, notices, and puts it down)"]
+    noWork: ["nothing today. i'm resting. nine years of standing. i've a lot of sitting to catch up on."]
+    nothingDue: ["we're even. i'd tell you."]
+    who: ["Masaru. i was an ashigaru. hired. nine years in the second corridor with a spear. one night they told me to stop a genin running for the gate. he was ten. i put my spear down under the bench. he went back on his own. i didn't. i kept walking."]
+    bye: ["evening."]
+    thanks: ["thank you. that's kind."]
+    smallTalk: ["the ashigaru in the second corridor still stand round my spear like it's a shrine. nobody's picked it up. i'd like somebody to. not me.", "Kenta wants me to teach him the spear. i told him i threw mine down. he wants me to teach him that. ...that's the only bit worth teaching."]
+    speakPlainly: ["plainly: a big man who used to stand in a corridor."]
+    offer: ["thirty thousand, and sixty chunin knocked down where i can count them. i stood nine years watching chunin go past. i'd like to see somebody stop them. then i'll stand beside you instead."]
+    join: ["right. i'll stand at your shoulder. it's what i'm good for."]
+    bench: ["four days. then i go and sit on my crate."]
+    leave: ["back to my crate."]
+    refuse.bond: ["i don't stand beside people i don't know. i did that nine years. look where it got me. a crate."]
+    refuse.flags: ["go and see where i put my spear down first. the second corridor, under the bench. then ask."]
+    refuseOwnErrand: ["the bench first. go and look."]
+    questOffer.masaru-the-spear-under-the-bench: ["go to the second corridor. there's a bench by the far wall. under it there's a spear. mine. it isn't mine. look at it for me. twenty ashigaru stand round it. then go one corridor further than i ever went, and knock down thirty chunin. don't bring the spear back."]
+    questAccept.masaru-the-spear-under-the-bench: ["through the gate and the first corridor. the second's the ashigaru. the third's chunin. i never went into the third. i stood at its door nine years."]
+    questWaiting.masaru-the-spear-under-the-bench: ["is it still there? don't tell me. ...is it?"]
+    questComplete.masaru-the-spear-under-the-bench: ["still there. good. ...no. i don't know. good. you went further than i ever did. sit, if you like. there's room on the crate."]
+    questOffer.masaru-plain-armour: ["an ashigaru wears what the castle gives him. it's thin. twenty kunoichi in the fourth corridor and thirty chunin in the fifth, and i'll get you something better than thin. plain. good. plain's good."]
+    questAccept.masaru-plain-armour: ["the fourth, then the fifth. the kunoichi come from above. the chunin come from everywhere. stand wide."]
+    questWaiting.masaru-plain-armour: ["twenty and thirty. stand wide."]
+    questComplete.masaru-plain-armour: ["here. plain, good. every safe scroll it would take, and every one took. it's better than anything the castle gave me. it's better than the castle."]
+    questOffer.masaru-a-cloak-for-walking-out: ["i walked out at night with nothing on my back. i've thought about that cloak a lot since. the one i didn't have. thirty jonin in the fifth corridor, and it's yours."]
+    questAccept.masaru-a-cloak-for-walking-out: ["the fifth corridor. the jonin are the clan's own. they don't hire. they don't quit. be careful."]
+    questWaiting.masaru-a-cloak-for-walking-out: ["thirty jonin."]
+    questComplete.masaru-a-cloak-for-walking-out: ["here. scrolled at sixty, every one took. dark, like a night you walk out in. you won't need it for that. i hope."]
+    questOffer.masaru-all-the-way-in: ["thirty jonin in the seventh corridor. ten ninto in the eighth. then tell Goro at the gate you went all the way in, where he never carried and i never stood. i want him to hear it from somebody. the best armour i can find is yours after."]
+    questAccept.masaru-all-the-way-in: ["the seventh, then the eighth. the ninto are the deep end. then Goro. he's on the west street in the mornings and by the tea stall after."]
+    questWaiting.masaru-all-the-way-in: ["thirty, ten, and Goro."]
+    questComplete.masaru-all-the-way-in: ["he said hips, not shoulders? he says that to everyone. he said it to me the day i came in. ...here. two tens and a sixty, every one took. you went all the way in, and you came all the way out. that's the bit that counts."]
+    questOffer.masaru-the-drill: ["thirty chunin in the third corridor? i stood at its door nine years. i like to know it's quieter."]
+    questAccept.masaru-the-drill: ["the third corridor."]
+    questWaiting.masaru-the-drill: ["thirty."]
+    questComplete.masaru-the-drill: ["thirty. quieter. thanks."]
+    about.goro: ["Goro carried my spear in for me the day i came. i was fifteen. it was taller than me. he didn't say a word. he walked slow so i could keep up."]
+    about.kenta: ["Kenta wants to learn the spear. i've taught him how to put one down. he says that's not a lesson. it's the only lesson."]
+    about.hayate: ["Hayate walked out. a shinobi. i was hired; i could quit. he was born to it. we nod. that's enough for two men like us."]
+    about.oharu: ["i walked out past Oharu's stall that night without my spear. she said 'evening, Masaru,' as if i did it every night, and gave me tea. i don't mention what happened next. neither does she."]
+    about.fumiko: ["Fumiko's baskets weigh nothing. i carry them up the hill anyway. she pays in dumplings. i'd carry them for nothing. don't tell her."]
+    about.shinobu: ["Shinobu asked me where my bench was. i showed her. she drew it. it's the only thing on her map that never moves."]
+    aboutUnknown: ["never stood beside them."]
+    friend.close: ["you can have the crate. i'll stand. i'm good at standing."]
+    friend.best: ["nine years i stood beside people i didn't choose. i chose you. that's the difference."]
+    famed: ["people say your name on the street. good things. i nod along."]
+    defamed: ["people talk. i stood in a corridor nine years. i've heard worse said about walls."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, now that's a meal. that's a proper meal."]
+    gift.again: ["one a day. i'm trying to stay the size of the crate."]

@@ -1,0 +1,176 @@
+# Lachelein cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents, none recruitable, in the
+# city of dreams on Arcane River (the Temple Keeper's third door at Three Doors; the Protective Mask on the main street
+# sends travellers back). The townsfolk wear masks, time is dreamt, and dreams leak by the Subconscious Crack. Minna's
+# score of the streets is the city's page of the River Atlas (arcs/nameless-town.yaml).
+- id: minna
+  name: Minna
+  look: { gender: female }
+  title: "Musician Who Plays in Her Sleep"
+  job: BEGINNER
+  level: { min: 46, max: 48 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: lachelein
+    routine:
+      - { from: 10, to: 13, spot: "venue:by-subconscious-crack", activity: SOCIALIZE }
+      - { from: 13, to: 15, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 15, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:canal-entrance", activity: SOCIALIZE }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: false
+  knows: [Hankie, Hankie's Pan Flute, Lachelein Canal]
+  questLines: [minna-a-flute-that-plays-nothing, minna-the-score-of-the-streets]
+  rumors: [lachelein-the-tune-at-midnight, lachelein-hum-it-again]
+  relationships:
+    - { persona: dorian, kind: IS_WOKEN_BY_THE_CLOCK_OF }
+    - { persona: celeste, kind: HEARS_HER_OWN_TUNES_FROM }
+  giftItemIds: [2022001, 2020013]
+  dialogue:
+    greetFirst: ["oh! sorry. was i playing? i do that. in my sleep. was it any good? nobody ever tells me.", "hello. you've come in through the doors. you've got that awake look. it doesn't last, here."]
+    greet: ["hello. did you hear me last night? everyone did. i didn't.", "you. hi. i'm awake, i think. pinch me. no, don't.", "hello again. hum something. i'll tell you if i've played it."]
+    idle: ["(holds a flute to her lips, takes a breath, and lowers it again without a note, frowning at it)", "(sways a little to something nobody else can hear, eyes half closed, fingers moving on nothing)"]
+    noWork: ["nothing today. i'm going to have a nap. for the music."]
+    nothingDue: ["we're square. i think. ask me again when i'm asleep."]
+    who: ["Minna. musician. asleep, i play the most beautiful things. the masks on the main street stop and listen. the Flutist Mask cried once. awake, i can't play a note. i've never heard a single thing i've played."]
+    bye: ["sleep well. listen out for me."]
+    thanks: ["oh. thank you. truly."]
+    smallTalk: ["Lachelein's a city of dreams. everybody wears a mask because in a dream you're never quite sure whose face you've got on. i don't wear one. i'm never awake long enough to choose.", "Dorian made me a clock that rings when i start playing in my sleep, so somebody can come and write the tune down. it rings every night. nobody's ever got there in time.", "Celeste says she dreams my tunes. she hums them to me in the mornings. it's the strangest thing, hearing your own song from somebody else."]
+    speakPlainly: ["plainly: a flute, a nap, and a tune i've never heard."]
+    questOffer.minna-a-flute-that-plays-nothing: ["my flute's too good. it only plays what you mean, and asleep i don't mean anything, i just play. a hankie's pan flute is tuned to nothing in particular. that's the tune i play in my sleep, i think. the hankies in Leafre's forests carry them. eight. i'll try one awake."]
+    questAccept.minna-a-flute-that-plays-nothing: ["back through the doors, down to Leafre, out into the Minar Forest. the hankies are in the cranky forest and up the steep hill. they whistle when they move. follow the whistling."]
+    questWaiting.minna-a-flute-that-plays-nothing: ["eight flutes. i've been practising being asleep. it's going well."]
+    questComplete.minna-a-flute-that-plays-nothing: ["eight. ...(she puts one to her lips, wide awake, and plays three wobbling notes) did you hear that? that was me. awake! it was awful. it was wonderful. thank you."]
+    questOffer.minna-the-score-of-the-streets: ["Ottoline says a map of a place only keeps on this river if somebody who lives there makes it. i can't draw. but every street here has its own note. the night market's a high one, the ballroom's a waltz, the clocktower's a tick. written down, that's a score. walk them for me and listen. then ask Celeste what i played last night. she'll have dreamt it. i'll write it all out."]
+    questAccept.minna-the-score-of-the-streets: ["off the main street to the night market's chicken festival, then the ballroom's revelation place, then the foot of the clocktower. stand a moment in each. you'll hear it. then Celeste, by the crack in the main street."]
+    questWaiting.minna-the-score-of-the-streets: ["the market, the ballroom, the clocktower, and Celeste. i've ruled the staves. i ruled them in my sleep. they're very straight."]
+    questComplete.minna-the-score-of-the-streets: ["the market's note, the waltz, the tick, and what i played last night the way Celeste dreamt it. ...here. 'Lachelein, as played.' every street a bar of music. it's the city's page. hum it and you'll never get lost here. carry it to Ottoline, or keep it. and if you ever hum it near me while i'm asleep, i'll play along."]
+    about.dorian: ["Dorian built me a clock that rings when i start playing. he's never once complained about being woken. he says it's the only clock in the city that's never wrong about anything."]
+    about.celeste: ["Celeste dreams my tunes and hums them back to me. the first time, i cried. she said that was in the dream too."]
+    about.ottoline: ["Ottoline from Nameless Town came to draw Lachelein. i told her it's different every night. she said 'so am i, and i manage'."]
+    about.lark: ["the girl from Chu Chu Village who feeds the chu chus? i've never met her. i'd like to play the chu chus something one day. i think they'd sleep through it. most people do."]
+    aboutUnknown: ["i don't know them. maybe i've played for them. i wouldn't know."]
+    friend.close: ["i played something for you last night. Celeste told me. she says it was the nicest thing i've played this year."]
+    friend.best: ["if i ever hear myself play, i'll want you there. you'll have to tell me if it was really me."]
+    famed: ["the masks are saying your name. in Lachelein that means you're in somebody's dream. maybe everybody's."]
+    defamed: ["people say things. in Lachelein half of what's said was dreamt. i don't believe the other half either."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's lovely. that's a good-night thing. i'll sleep well on that."]
+    gift.again: ["one's enough. any more and i'll sleep through the music."]
+
+- id: dorian
+  name: Dorian
+  look: { gender: male }
+  title: "Clockmaker of Lachelein"
+  job: BEGINNER
+  level: { min: 66, max: 68 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: lachelein
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-dimo", activity: LINGER }
+      - { from: 12, to: 13, spot: "venue:lower-east-street", activity: REST }
+      - { from: 13, to: 19, spot: "venue:by-dimo", activity: LINGER }
+      - { from: 19, to: 23, spot: "venue:canal-entrance", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  knows: [Eye of Time, Cracked Hourglass, Nightmare Clocktower 1F]
+  questLines: [dorian-sand-that-runs-straight, dorian-the-right-time]
+  rumors: [lachelein-the-tune-at-midnight]
+  relationships:
+    - { persona: minna, kind: BUILT_A_WAKING_CLOCK_FOR }
+    - { persona: celeste, kind: TIMES_THE_DREAMS_OF }
+    - { persona: osmund, kind: ASKS_THE_RIGHT_TIME_OF }
+  giftItemIds: [2020010, 2020028]
+  dialogue:
+    greetFirst: ["you're late. ...no. i'm early. no. it's Lachelein. nobody's ever on time here. welcome.", "a visitor from the doors. you've the Temple's time on you. may i? (he checks a watch on your wrist that isn't there) ah. the right time. lucky."]
+    greet: ["good day. or night. it's hard to say.", "you're back. right on time. somebody is, for once.", "ah, hello. don't mind the ticking. it's all of them."]
+    idle: ["(holds a pocket watch to one ear, then the other, and frowns at both)", "(winds a small clock, sets it on the stall, and watches its second hand go backwards a moment before it changes its mind)"]
+    noWork: ["nothing today. every clock in the city's wound. they're all wrong, but they're wound."]
+    nothingDue: ["our accounts are square. to the minute."]
+    who: ["Dorian. clockmaker. in a city of dreams, time's dreamt too. the Nightmare Clocktower runs fast when the city's frightened and slow when it's happy, and every clock i make picks up the habit. i'd like to make one clock in Lachelein that just tells the time."]
+    bye: ["mind the time."]
+    thanks: ["much obliged. noted, to the second."]
+    smallTalk: ["the masks don't care what time it is. the Protective Mask on the main street told me 'it's always now, Dorian'. i said that's not a time. he said it's the only one.", "i built Minna a clock that rings when she starts playing in her sleep, so somebody can get there and write the tune down. nobody ever has. it rings every night. it's the best clock i've ever made.", "a dreamt spring stretches. a dreamt cog skips teeth. i need parts made somewhere awake."]
+    speakPlainly: ["plainly: springs, cogs, and the right time, if there is one."]
+    questOffer.dorian-sand-that-runs-straight: ["every hourglass in Lachelein runs whichever way it likes. the Eyes of Time on the Temple's Memory Lane carry hourglasses whose sand runs straight down, every time. a dozen cracked ones. and on your way back, stand at the foot of our clocktower and listen. tell me if it's fast or slow today."]
+    questAccept.dorian-sand-that-runs-straight: ["the doors, then the Past of the Verdure and Memory Lane's first stretch. the Eyes are everywhere there. then home, and into the clocktower's first floor. listen to it. don't argue with it."]
+    questWaiting.dorian-sand-that-runs-straight: ["twelve glasses, and the tower's mood. i've the bench cleared."]
+    questComplete.dorian-sand-that-runs-straight: ["twelve. ...(he tips one over, and the sand runs down, straight and steady) look at that. it doesn't care what anybody dreams. and the tower's slow today, you say? good. the city's happy. i'll build the first honest clock in Lachelein round one of these. thank you."]
+    questOffer.dorian-the-right-time: ["my honest clock wants setting, and i won't set it by a dreamt hour. there's a scribe at Three Doors, by the Temple Keeper, who writes down everything that happens in time. he'd know the right time if anybody does. ask him. then walk our canal end to end, so i know how long it takes in real time. Ottoline's asked me that. i want a better answer for her."]
+    questAccept.dorian-the-right-time: ["the doors to the Temple, and Osmund by the Temple Keeper. then home, and down the main street to the canal. walk it at your own pace. that's the point."]
+    questWaiting.dorian-the-right-time: ["the scribe's answer, and the canal. the clock's waiting. it's very good at waiting. it's a clock."]
+    questComplete.dorian-the-right-time: ["'now.' ...he's right. that's insufferable. i'll set it to now, then. (he sets the hands, and the clock ticks, once, twice, steadily) there. a clock in Lachelein that tells the time. and the canal took you exactly as long as it took. that's the honest answer. Ottoline will hate it."]
+    about.minna: ["Minna plays like nobody i've ever heard, and only when she can't hear it. i built her a clock to wake the street when she starts. it rings every night. i get there at ten past. she's always stopped."]
+    about.celeste: ["Celeste dreams a year in a night and wakes up surprised it's tuesday. i've told her dreams don't keep time. she says that's what she likes about them."]
+    about.ottoline: ["Ottoline from Nameless Town draws the river. she wants to know how far everything is, and i keep telling her how long. we get on very well, considering."]
+    about.osmund: ["the scribe at Three Doors writes down everything that happens in time. i'd like to ask him what time it is. i suspect he'd say 'now'. i suspect he'd be right."]
+    aboutUnknown: ["never met them. i'd know the hour they were born, but not their name."]
+    friend.close: ["i've set a clock to your time. when you're in the city it runs. when you're not it waits. it's a silly thing. i like it."]
+    friend.best: ["if i ever build a clock that keeps the right time in Lachelein, it's yours. you'd look after it. most people just look at clocks."]
+    famed: ["your name's going round the city. in Lachelein, that happens about the time things are dreamt. take it as a compliment."]
+    defamed: ["i heard it. a dreamt hour's not a real one. i've decided the same goes for gossip."]
+    gift: ["most kind. thank you."]
+    gift.favorite: ["now that's a treat. that's a long night at the bench made shorter."]
+    gift.again: ["one's sufficient. i keep regular hours, and a regular waistcoat."]
+
+- id: celeste
+  name: Celeste
+  look: { gender: female }
+  title: "Dreamer of Other People's Dreams"
+  job: BEGINNER
+  level: { min: 34, max: 36 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: lachelein
+    routine:
+      - { from: 9, to: 13, spot: "venue:by-subconscious-crack", activity: LINGER }
+      - { from: 13, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:by-subconscious-crack", activity: REST }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [Bubble Fish, Bubble Fish's Thoughts, Big Fish Valley]
+  questLines: [celeste-small-thoughts, celeste-the-ladys-nap]
+  rumors: [lachelein-hum-it-again]
+  relationships:
+    - { persona: minna, kind: HUMS_THE_TUNES_OF }
+    - { persona: dorian, kind: LOSES_TRACK_OF_TIME_WITH }
+    - { persona: ilsabet, kind: DREAMT_THE_LONG_NAP_OF }
+  giftItemIds: [2020022, 2001002]
+  dialogue:
+    greetFirst: ["oh. it's you. i dreamt you'd come. you had different shoes in the dream.", "hello. you're awake. that's nice. it's rare around here."]
+    greet: ["hello. you were in somebody's dream again. you were a teapot. it was lovely.", "you. hello. i'm still half in last night.", "(yawns) hello. sorry. hello."]
+    idle: ["(sits very still with her eyes shut, smiling at something, then opens them and looks surprised to be here)", "(writes something in a little book, crosses it out, and writes it again the other way round)"]
+    noWork: ["nothing today. i'm still finishing a dream from tuesday."]
+    nothingDue: ["we're square. i dreamt we weren't. it was a silly dream."]
+    who: ["Celeste. in Lachelein the dreams leak, by the Subconscious Crack on the main street, and i catch them. other people's. a baker's, a soldier's, a dog's once. i never dream my own. i don't know what mine would be like."]
+    bye: ["sleep well. i might see you there."]
+    thanks: ["thank you. that's a nice thing to be awake for."]
+    smallTalk: ["i dreamt Minna's tune last night. she played it in her sleep and i dreamt it in mine. in the morning i hummed it to her and she cried. she's never heard herself play.", "other people's dreams are very big. a soldier's dream is a whole war. i'd like to dream something small. a teacup. a bean.", "Dorian says dreams don't keep time. i've dreamt a whole year in a night. he says that's exactly what he means."]
+    speakPlainly: ["plainly: other people's dreams, and none of mine."]
+    questOffer.celeste-small-thoughts: ["i'd like to dream something small for a change. a bubble fish's thoughts are very small. they're all about water and which way is up. the bubble fish in the Aqua Road's big fish valley carry them about. fifteen. i'll sleep on them."]
+    questAccept.celeste-small-thoughts: ["the Aqua Road, down from Orbis, to the big fish valley. the bubble fish won't mind. they'll have forgotten you before you've gone."]
+    questWaiting.celeste-small-thoughts: ["fifteen little thoughts. i've plumped the pillow."]
+    questComplete.celeste-small-thoughts: ["fifteen. ...(she holds one to her ear, smiling) 'up. up. water. up.' that's all. that's perfect. i'm going to sleep for a week. thank you."]
+    questOffer.celeste-the-ladys-nap: ["i keep dreaming somebody's nap. a lady in a green hat, asleep in a ship's hold for years and years. it's the longest dream i've ever had, and it isn't mine. the porters tell a story about a lady like that, who woke at Three Doors. Ilsabet. find her, and tell her i'm looking after her dream for her."]
+    questAccept.celeste-the-ladys-nap: ["the doors, to Three Doors itself. a lady in a hat that's thirty years behind. she'll be on the east street somewhere, talking."]
+    questWaiting.celeste-the-ladys-nap: ["did you find her? i dreamt you'd find her. i dreamt you'd take a while."]
+    questComplete.celeste-the-ladys-nap: ["she wants the nice parts back. ...there are a lot of nice parts. the ship rocks, and it's warm, and somebody keeps a lamp lit in the hold for her the whole thirty years. i'll write them all down for her. it's the first dream i've ever given back."]
+    about.minna: ["Minna plays in her sleep and i dream it in mine. we've never once been awake for the same song."]
+    about.dorian: ["Dorian lends me a clock so i'll know how long i've slept. it says four hours. i've been gone a year. we're both right."]
+    about.ilsabet: ["Ilsabet at Three Doors? i've never met her awake. i think it's her nap i dream: a ship, a green hat, years and years of it. it's the longest dream i've ever had, and the kindest."]
+    about.lark: ["Lark? from Chu Chu Village? i don't think i've met her. i might have dreamt her. i dream a lot of people i haven't met."]
+    about.ottoline: ["Ottoline from Nameless Town asked if i'd ever dreamt a map. i have. it was hers. it was all blank pages and a lot of hope."]
+    aboutUnknown: ["i don't know them. i might have dreamt them. i wouldn't know their face."]
+    friend.close: ["i've started dreaming yours. only sometimes. you're very brave in them. and you've always got the right shoes."]
+    friend.best: ["if i ever dream my own dream, i hope you're in it. i think you would be."]
+    famed: ["i've dreamt your name three times this week, in three different people's dreams. you're getting about."]
+    defamed: ["somebody had a bad dream about you. i was in it. it wasn't true. dreams aren't, mostly."]
+    gift: ["oh. thank you. that's sweet."]
+    gift.favorite: ["oh, that's a dreaming thing. i'll have something sweet tonight. somebody's."]
+    gift.again: ["one's lovely. two and i'll dream about nothing but that."]

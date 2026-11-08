@@ -1,0 +1,49 @@
+# Twilight Perion contracts (Repack Residents, fourth tier; maxLevelGap 20 for the Future's high-level recruits): an
+# axeman's day rate; a spearman's item price once his errand is walked and Brand has been heard on him; a paladin's kill
+# proof on his intro quest's qualm monks, counted after the offer.
+- id: brand-the-west-road-day
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [brand.intro.done]
+  price:
+    meso: 300000
+  terms:
+    durationHours: 24
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 90000 }
+
+- id: eskil-the-long-reach
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [eskil.intro.done, tperion.heard-eskil]
+  price:
+    meso: 90000
+    items: [{ itemId: 4000450, count: 25 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 30000 }
+
+- id: ottmar-the-oath-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ottmar.intro.done]
+  price:
+    meso: 100000
+    proof: { killMobs: { mobIds: [8200005], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 35000 }

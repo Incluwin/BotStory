@@ -1,0 +1,85 @@
+# Arcana quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No monster spawns anywhere in Arcane River
+# in this age, so every step in the grove is an errand. Walkable from the Grove of the Spirit Tree (portals): the Forest
+# of Earth 450005130, the Forest of Sunlight 450005120, the Forest of Water 450005110 (Whispering Flowers in each); the
+# Heart of the Forest 450005200, the Snow Cloud Clearing 450005210, the Thunder Cloud Clearing 450005220; on through the
+# Forest of Toxins and the Volatile Forest to the Marimba Lagoon 450005300, the Cavernous Cavern 450005400 and out of it
+# Morass's Path to the Coral Forest 450006000.
+# Items carried in from elsewhere (drop rows in db/data/152-drop-data.sql): harp 8140001 L80 tail feather 4000238
+# (Leafre's Sky Nest I 240010700); green cornian 8150200 L100 wooden shoulder pad 4000266 (Leafre's Burning Forest
+# 240030101); cold shark 8150101 L102 frozen fin 4000181 (Aqua Road's Grave of a Wrecked Ship 230040400). What the
+# Whispering Flowers say is the grove's page of the River Atlas (arcane.page.arcana).
+
+# ---- Sylvie (the flowers' names are the grove's page: arcane.page.arcana) ----
+- id: sylvie-what-the-flowers-say
+  persona: sylvie
+  title: "What the Flowers Say"
+  length: MEDIUM
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: earth, type: VISIT_MAP, mapIds: [450005130] }
+    - { id: sunlight, type: VISIT_MAP, mapIds: [450005120] }
+    - { id: water, type: VISIT_MAP, mapIds: [450005110] }
+    - { id: fennimore, type: TALK_TO, persona: fennimore, say: ["the old names? 'the root', 'the warm', 'the deep'. the spirits named things by what they do, not what they look like. ...yes, i know. i walked to the edge of the world to be left alone and i still get asked. tell her the deep one runs on under the cavern into Morass. nobody asked me that. i'm telling her anyway."] }
+    - { id: page, type: DELIVER, to: sylvie }
+  rewards: { meso: 32000, exp: 65000, bondPoints: 35, items: [{ itemId: 2000004, count: 15 }], worldFlags: [arcane.page.arcana] }
+
+- id: sylvie-a-lullaby-for-the-tree
+  persona: sylvie
+  title: "A Lullaby for the Tree"
+  length: SHORT
+  requires: { level: { min: 90 }, questsCompleted: [sylvie-what-the-flowers-say] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4000238, count: 12 }
+    - { id: heart, type: VISIT_MAP, mapIds: [450005200] }
+    - { id: hum, type: DELIVER, to: sylvie, take: { itemId: 4000238, count: 12 } }
+  rewards: { meso: 30000, exp: 58000, bondPoints: 35, items: [{ itemId: 2022000, count: 20 }] }
+
+# ---- Briar ----
+- id: briar-wood-that-fell
+  persona: briar
+  title: "Wood That Fell"
+  length: SHORT
+  requires: { level: { min: 100 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pads, type: COLLECT_ITEM, itemId: 4000266, count: 10 }
+    - { id: grain, type: DELIVER, to: briar, take: { itemId: 4000266, count: 10 } }
+  rewards: { meso: 36000, exp: 90000, bondPoints: 30, items: [{ itemId: 2000005, count: 10 }] }
+
+- id: briar-the-fallen-branch
+  persona: briar
+  title: "The Fallen Branch"
+  length: MEDIUM
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snow, type: VISIT_MAP, mapIds: [450005210] }
+    - { id: thunder, type: VISIT_MAP, mapIds: [450005220] }
+    - { id: sylvie, type: TALK_TO, persona: sylvie, say: ["a fallen branch? (she listens at the bark for a long while) ...the tree says nothing has fallen here in a thousand years, and it isn't about to start. but it says there's a stump in the thunder clearing that was struck before it fell asleep, and he may have that. it says mind the knee. tell him. the tree said it."] }
+    - { id: back, type: DELIVER, to: briar }
+  rewards: { meso: 32000, exp: 70000, bondPoints: 40, items: [{ itemId: 2020014, count: 10 }] }
+
+# ---- Fennimore ----
+- id: fennimore-ice-that-wont-melt
+  persona: fennimore
+  title: "Ice That Won't Melt"
+  length: SHORT
+  requires: { level: { min: 102 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fins, type: COLLECT_ITEM, itemId: 4000181, count: 10 }
+    - { id: fire, type: DELIVER, to: fennimore, take: { itemId: 4000181, count: 10 } }
+  rewards: { meso: 38000, exp: 100000, bondPoints: 30, items: [{ itemId: 2000006, count: 15 }] }
+
+- id: fennimore-a-sign-for-the-door
+  persona: fennimore
+  title: "A Sign for the Door"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: briar, type: TALK_TO, persona: briar, say: ["a sign. 'go away'. ...there. i carved it. you watched me. look at it. it says 'go away'. ...look again, in this light. (it says 'come in') my hands don't believe him. give it to him. tell him i tried. tell him the wood didn't."] }
+    - { id: hung, type: DELIVER, to: fennimore }
+  rewards: { meso: 26000, exp: 50000, bondPoints: 40, items: [{ itemId: 2022000, count: 15 }] }

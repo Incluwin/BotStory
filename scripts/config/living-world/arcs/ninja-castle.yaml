@@ -1,0 +1,48 @@
+# Outside Ninja Castle arc: Oharu's boy Sota went into the castle as a genin trainee eight years ago, and she sends a
+# cup of tea in with every visitor. A traveller finds his headband on a peg beside one of her cups, Hayate (who walked
+# out) and Isamu the fox-mask carver at the Mushroom Shrine put a name and a height to him, and at last a note comes
+# back out under a saucer. Its three beats happen once per server (quests/ninja-castle.yaml).
+- id: oharu-the-boy-who-went-in
+  persona: oharu
+  chapters:
+    - id: chapter-1
+      title: "A Cup Sent In"
+    - id: chapter-2
+      title: "The Crooked Hem"
+      enterWhen: { flags: [nc.headband.found] }
+      dialogueOverrides:
+        greet: ["a peg. beside one of my cups. i keep saying it to the kettle.", "you. sit. i made a pot with less sugar. i couldn't do it. it's the same."]
+        who: ["Oharu. i keep the tea stall at the castle gate. my boy went in as a genin eight years ago. his headband hangs on a peg in the fourth corridor, beside one of my cups. somebody in there drinks my tea."]
+        smallTalk: ["a headband on a peg isn't a boy. i know that. it's a peg somebody keeps. a boy keeps a peg.", "Hayate knows the corridors. he walked out of them. he looks at the ground when i bring him his tea now. he knows something."]
+        speakPlainly: ["plainly: his headband, my cup, one peg."]
+        about.hayate: ["Hayate walked out of the castle. if anyone knows whose peg that is, he does. he looks at the ground when i bring him tea."]
+        questOffer.oharu-a-cup-sent-in: ["carry a cup in for me. just inside the gate, where the genin drill. twenty of them, knocked down gently, and set the cup where somebody thirsty will find it. mine's past the genin now, with a peg of his own. but somebody carries my cups that far. be gentle with whoever it is."]
+        chapterEnter: ["(sets two cups on the tray by the castle gate instead of one, and covers them both)"]
+    - id: chapter-3
+      title: "Tall Enough to Outgrow a Mask"
+      enterWhen: { flags: [nc.sota.known] }
+      dialogueOverrides:
+        greet: ["he's tall enough to outgrow a mask. i've been saying that all morning.", "you. sit. have the blue cup. no, have it anyway."]
+        who: ["Oharu. i keep the tea stall at the castle gate. my boy Sota went in as a genin eight years ago. he's a chunin now. Hayate taught him two winters. he went to Isamu at the shrine last spring for a bigger fox mask. he's alive. he's tall."]
+        smallTalk: ["a bigger mask. at night. paid in throwing stars. he could have walked one more hill to my stall. ...he couldn't. i know. they'd see.", "Hayate taught him to walk without a sound. he still drops his cups, i bet. he dropped everything."]
+        speakPlainly: ["plainly: he's alive, and he's grown, and he hasn't written."]
+        about.hayate: ["Hayate taught my boy two winters. he told you, not me. that's all right. i still bring him tea. he still drinks it facing the other way."]
+        about.isamu: ["Isamu carved Sota a bigger fox last spring and never said a word to me. men. he says it's a terrible mask. Sota wanted it anyway."]
+        questOffer.oharu-a-cup-sent-in: ["carry a cup in for me. just inside the gate, where the genin drill. twenty of them, knocked down gently, and set the cup where somebody thirsty will find it. Sota's a chunin now. the little ones carry my cups along to him. be gentle with them. they're carrying for my boy."]
+        chapterEnter: ["(takes a tall cup down from the shelf, looks at it a long while, and sets it on the tray by the gate)"]
+    - id: chapter-4
+      title: "Too Sweet"
+      enterWhen: { flags: [nc.note.out] }
+      dialogueOverrides:
+        greet: ["he says it's too sweet. i've made it sweeter. he can complain in writing.", "you. sit. there's a note under the saucer some mornings now. not every morning. some."]
+        who: ["Oharu. i keep the tea stall at the castle gate. my boy Sota went in as a genin eight years ago. he's a chunin. he writes, under the saucer, when a cup comes back out. he spells worse than he did. he's all right."]
+        idle: ["(lifts a returned saucer, looks underneath it, and smiles, or doesn't, and puts the kettle on either way)", "(writes a short note in careful letters and tucks it under a cup on the tray by the gate)"]
+        smallTalk: ["'don't stand at the gate in the rain.' i don't. i stand under the awning. he can't see the awning from in there.", "i send a note in with every cup now. not long ones. 'eat something.' 'your hem's crooked on purpose.' that kind of thing."]
+        speakPlainly: ["plainly: a cup goes in, a cup comes out, and sometimes a note."]
+        noWork: ["nothing today. sit. one cup for you, one for the gate, one for the note."]
+        about.hayate: ["Hayate taught my boy. Sota wrote that Hayate was the only one who never shouted. i told Hayate. he looked at the road for a long time."]
+        about.isamu: ["Isamu carved Sota a bigger fox last spring. i've asked him for a bigger one again, for next year. Isamu says it'll be terrible. i said good."]
+        friend.best: ["Sota asked who carried the cup that far. under the saucer. 'who carried it.' i wrote your name back. he knows it now."]
+        questOffer.oharu-a-cup-sent-in: ["carry a cup in for me. just inside the gate, where the genin drill. twenty of them, knocked down gently, and set it where somebody thirsty will find it. there's a note under the saucer. it isn't for you. don't read it."]
+        questComplete.oharu-a-cup-sent-in: ["you set it on the step? good. it'll get where it's going. they pass them along in there now. here. for the walk."]
+        chapterEnter: ["(reads a scrap of paper from under a returned saucer three times, folds it very small, and tucks it inside her sleeve)"]

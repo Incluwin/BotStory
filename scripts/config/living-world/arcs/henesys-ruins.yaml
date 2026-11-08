@@ -1,0 +1,55 @@
+# Henesys Ruins arc: a medic in the ruins has written to her sister at the Tribal Refugee Camp every month for a year and
+# never had an answer. The player carries a letter east by hand (ruins.letter.carried, quests/henesys-ruins.yaml), the
+# camp's runner turns out to have put a year of answers through the door by Claudine in Twilight Perion, and a scribe at
+# Three Doors filed them under 'not yet' (camp.answers.found, quests/tribal-refugee-camp.yaml); the year of letters comes
+# west at last (ruins.letters.read, once per server).
+- id: edda-letters-to-the-camp
+  persona: edda
+  chapters:
+    - id: chapter-1
+      title: "Three Lines a Month"
+    - id: chapter-2
+      title: "The Long Way Round"
+      enterWhen: { flags: [ruins.letter.carried] }
+      dialogueOverrides:
+        greet: ["hello. somebody saw her. i keep thinking about that.", "you. sit. tell me again what her face did."]
+        who: ["Edda. i keep the sick in Henesys Ruins. my sister Ama says she's answered every letter i've sent her: four pages a month, a year of them. not one has come. letters don't just fall out of the world. ...here, they might."]
+        idle: ["(takes her folded letters out of her apron, counts them, and puts them back in a different order)", "(starts a letter, writes 'where are yours', crosses it out, and writes it again smaller)"]
+        smallTalk: ["Ama gives her answers to a boy at the camp who runs them west. a boy. twelve letters. where does a boy take twelve letters? somewhere the stumps aren't, i hope.", "she called me a goose. it's the first word i've had from her in a year. i'm keeping it."]
+        speakPlainly: ["plainly: a year of answers, somewhere between here and the camp."]
+        questOffer.edda-a-letter-east: ["another letter for Ama. by hand. and ask her who she gives hers to. no. don't. i'll ask in the letter. you just carry it."]
+        about.ama: ["Ama's my sister. she cooks for the camp past Twilight Perion. she says she's answered every letter. she always did write too much. i'd like to read some of it."]
+        about.kasper: ["a boy at the camp runs Ama's letters. Kasper, she says. fast, she says. fast where?"]
+        chapterEnter: ["(sits down with a letter in her lap and doesn't open it, because it's one of her own)"]
+    - id: chapter-3
+      title: "Not Yet"
+      enterWhen: { flags: [camp.answers.found] }
+      dialogueOverrides:
+        greet: ["hello. have you heard? my sister's letters went into the past. i'm told it's very funny. it is, a little.", "you. sit. i laughed this morning. out loud. i'd forgotten how."]
+        who: ["Edda. i keep the sick in Henesys Ruins. the boy at the camp put my sister's answers through the door by Claudine in Twilight Perion, because somebody told him it goes everywhere. it does. they came out in your years, and a scribe at Three Doors filed them under 'not yet', because Henesys isn't in ruins in his years. he's right. it isn't. not yet."]
+        idle: ["(laughs, once, out loud, at nothing, then puts a hand over her mouth and looks round)", "(clears a shelf above the bandages and stands back to look at the empty space)"]
+        smallTalk: ["a whole year of letters is in a boy's shirt at the camp. he keeps them there so nothing eats them. i'd like them before something does.", "a scribe in your years filed my sister under 'not yet'. i've told all my patients. half of them laughed. the other half were asleep. it's the best medicine i've had all year."]
+        speakPlainly: ["plainly: twelve letters in a boy's shirt, and a shelf to put them on."]
+        questOffer.edda-a-letter-east: ["another letter for Ama. by hand. tell her i know where hers went. tell her to stop giving them to doors."]
+        questComplete.edda-a-letter-east: ["she called me a goose again? good. and the boy still has hers, in his shirt? somebody bring them west. please."]
+        about.ama: ["Ama's my sister. she cooks for the camp past Twilight Perion. she's answered every letter for a year. they've just been somewhere else. like her, at that age."]
+        about.osmund: ["the scribe at Three Doors, in your years. he kept my sister's letters a year in a drawer because they were addressed to a place that hasn't happened. i'd like to shake his hand. i'd check it first. scribes never wash."]
+        about.kasper: ["Kasper. the boy who ran my sister's letters through a door into the past. he meant well. they all mean well at that age. it's why i keep bandages."]
+        chapterEnter: ["(laughs, once, out loud, then sits down hard and laughs again, quieter)"]
+    - id: chapter-4
+      title: "Read Aloud"
+      enterWhen: { flags: [ruins.letters.read] }
+      dialogueOverrides:
+        greet: ["hello. sit. i'll read you one. no, you'll like it.", "you! come here. listen to this. 'the stew is thin and the camp is fat on it.' that's my sister."]
+        who: ["Edda. i keep the sick in Henesys Ruins. my sister Ama writes to me every month from the camp past Twilight Perion: four pages, by hand, with travellers from before. i have a shelf of her. i read her to my patients. they get better faster. it might be the letters. it might be that they want me to stop."]
+        idle: ["(reads a letter aloud to a sleeping patient, laughs at a line, and reads it again)", "(writes a long letter, for once, and has to fold it in four)"]
+        smallTalk: ["Ama sent a recipe in March. stew for forty. i've never cooked for forty. i've never cooked. i've pinned it up anyway.", "the letters go by hand now, with travellers from before who come round by the doors and Cobie's road. they're slower. they arrive. i'll take slower. i've had a year of fast."]
+        speakPlainly: ["plainly: a shelf of letters, and an answer every month."]
+        noWork: ["nothing today. nobody's bleeding. sit and i'll read you November. sitting down, she says."]
+        questOffer.edda-a-letter-east: ["this month's letter to Ama. by hand, round by the doors. she'll make you eat something. let her."]
+        questComplete.edda-a-letter-east: ["she's well? she's always well. she says so in every letter. i've a shelf now that says so. thank you."]
+        about.ama: ["Ama's my sister. she cooks for the camp past Twilight Perion and writes me four pages a month. i write her three lines. i'm working up to four."]
+        about.osmund: ["the scribe at Three Doors, in your years, who kept my sister's letters under 'not yet'. tell him they're 'now'. he'll want to re-file them."]
+        about.kasper: ["Kasper gives my sister's letters to travellers now, not to doors. they're slower. he hates it. he's never once lost one."]
+        friend.best: ["if i ever write you a letter, i'll give it to you by hand. i've learned that much."]
+        chapterEnter: ["(sets twelve letters on a cleared shelf in order, March first, and stands back to look at them)"]

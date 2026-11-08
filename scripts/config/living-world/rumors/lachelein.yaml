@@ -1,0 +1,32 @@
+# Lachelein rumors (Repack Residents). The pair is awake together at its spot in those hours (personas/lachelein.yaml).
+- id: lachelein-the-tune-at-midnight
+  participants: [dorian, minna]
+  where: { town: lachelein, spot: "venue:canal-entrance" }
+  when:
+    serverHours: [20, 21, 22]
+    everyDays: 2
+  lines:
+    - { by: dorian, text: "the clock rang at two last night, Minna. you were playing." }
+    - { by: minna, text: "was i? was it any good?" }
+    - { by: dorian, text: "i was there by ten past. you'd stopped. you were asleep on the canal steps with the flute in your lap." }
+    - { by: minna, text: "you could have woken me." }
+    - { by: dorian, text: "and stopped the tune? i'm a clockmaker, not a monster." }
+    - { by: minna, text: "what did it sound like? the bit you heard." }
+    - { by: dorian, text: "like the canal at night. like a second hand that isn't in any hurry." }
+    - { by: minna, text: "...that's the nicest thing anybody's ever said about something i've never heard." }
+
+- id: lachelein-hum-it-again
+  participants: [celeste, minna]
+  where: { town: lachelein, spot: "venue:by-subconscious-crack" }
+  when:
+    serverHours: [10, 11, 12]
+    everyDays: 1
+  lines:
+    - { by: celeste, text: "you played last night. i dreamt it." }
+    - { by: minna, text: "hum it. please." }
+    - { by: celeste, text: "hm hm hmm. hm hmm hm. hmm." }
+    - { by: minna, text: "...that's mine? that's what i sound like?" }
+    - { by: celeste, text: "that's what you sound like in my sleep. you might sound different in yours." }
+    - { by: minna, text: "i don't sound like anything in mine. i'm asleep." }
+    - { by: celeste, text: "then this is the only place you've ever heard yourself." }
+    - { by: minna, text: "hum it again. slower. i want to keep it." }

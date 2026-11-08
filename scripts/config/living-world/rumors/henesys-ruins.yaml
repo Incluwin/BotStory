@@ -1,0 +1,50 @@
+# Henesys Ruins rumors (Repack Residents). Each pair is awake together at its spot in those hours
+# (personas/henesys-ruins.yaml).
+- id: ruins-the-last-watch
+  participants: [thorne, seraphine]
+  where: { town: henesys-ruins, spot: "venue:middle-west-street-3" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: ruins.heard-seraphine
+  lines:
+    - { by: thorne, text: "you were up on the wall again last night." }
+    - { by: seraphine, text: "somebody's always hurt on the wall, dear." }
+    - { by: thorne, text: "nobody's died up there with you behind them. four years. i've counted." }
+    - { by: seraphine, text: "don't count those out loud. it's bad luck." }
+    - { by: thorne, text: "it's a count. it isn't luck." }
+    - { by: seraphine, text: "everything's luck at the end of days, Thorne." }
+    - { by: thorne, text: "then whoever takes you with them is lucky. i'll say that to anyone who asks." }
+    - { by: seraphine, text: "...bless you. now hush." }
+
+- id: ruins-the-medics-tent
+  participants: [edda, lumi]
+  where: { town: henesys-ruins, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 2
+  lines:
+    - { by: lumi, text: "Edda! i found a bell!" }
+    - { by: edda, text: "let me see your hands." }
+    - { by: lumi, text: "it hasn't got a clapper. i'm giving it to Seraphine." }
+    - { by: edda, text: "hands, Lumi." }
+    - { by: lumi, text: "...it's only a little bite. the snail didn't mean it." }
+    - { by: edda, text: "the snail meant every bit of it. sit." }
+    - { by: lumi, text: "am i still your best customer?" }
+    - { by: edda, text: "you're the only one who comes back smiling. sit still." }
+
+- id: ruins-the-east-wall
+  participants: [dagny, lumi]
+  where: { town: henesys-ruins, spot: "venue:by-athena-pierce" }
+  when:
+    serverHours: [9, 10]
+    everyDays: 2
+  lines:
+    - { by: lumi, text: "what was the hill, before?" }
+    - { by: dagny, text: "the Hill North? flowers, i think. and slimes. little green ones." }
+    - { by: lumi, text: "little ones?" }
+    - { by: dagny, text: "little enough to sit on." }
+    - { by: lumi, text: "you're making it up." }
+    - { by: dagny, text: "half of it. you can pick which half." }
+    - { by: lumi, text: "the flowers. i pick the flowers." }
+    - { by: dagny, text: "good choice. that's the true half." }

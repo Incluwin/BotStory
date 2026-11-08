@@ -1,0 +1,179 @@
+# Moonbridge, the Maple Alliance Outpost (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents,
+# none recruitable. The three of them remember a war on this river that nobody else remembers; they say little about it.
+# The Outpost has no way out on foot: the White Spear's decks are walked from the Labyrinth of Suffering's Crash Site
+# (quests/moonbridge.yaml). Hadrian's campaign map is Moonbridge's page of the River Atlas (arcane.page.moonbridge).
+- id: hadrian
+  name: Hadrian
+  look: { gender: male }
+  title: "Old Soldier of the Outpost"
+  job: DRAGONKNIGHT
+  level: { min: 110, max: 112 }
+  strength: VETERAN
+  loadout: masteria-spear-l100
+  personality: efficient-v1
+  home:
+    town: moonbridge
+    routine:
+      - { from: 5, to: 11, spot: "venue:by-cygnus-soldier", activity: LINGER }
+      - { from: 11, to: 14, materialize: false }
+      - { from: 14, to: 18, spot: "venue:by-temple-keeper", activity: LINGER }
+      - { from: 18, to: 22, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  knows: [White Spear Deck 1, Void Current 1, Rexton]
+  questLines: [hadrian-the-white-rails, hadrian-the-roll-call, hadrian-the-campaign-map]
+  rumors: [moonbridge-the-one-that-didnt-happen]
+  relationships:
+    - { persona: bryn, kind: STOOD_THE_LINE_WITH }
+    - { persona: kaito, kind: KNOWS_THE_WALK_OF }
+    - { persona: caedmon, kind: WAS_ANSWERED_PLAINLY_BY }
+    - { persona: ottoline, kind: GIVES_HIS_MAP_TO }
+  giftItemIds: [2022001, 2020011]
+  dialogue:
+    greetFirst: ["halt. ...at ease. you're not the enemy. there isn't one. sorry. old habit.", "a new face at the Outpost. the empress is by the rail. don't salute her. she won't know why. i do it anyway."]
+    greet: ["at ease.", "you again. good. the line's quiet.", "(nods once, like a man counting heads) hello."]
+    idle: ["(salutes the empress at the rail, sharply, and goes back to watching the river)", "(runs a whetstone down a spear that is already as sharp as it will ever be)"]
+    noWork: ["nothing today. the line holds. it always holds now. that's the strange part."]
+    nothingDue: ["square, soldier. as you were."]
+    who: ["Hadrian. i stood on a line here, on this river, under these colours. we held it. that's what i remember. nobody else seems to. i'm not sure that's their fault."]
+    bye: ["keep your head down."]
+    thanks: ["obliged."]
+    smallTalk: ["the White Spear had rails you could see from the far bank, white as a promise. i can't go aboard. not again. i look at her from here.", "i ask people about the war. they ask, what war. i've stopped saying which one. there's only ever the one, if you were in it."]
+    speakPlainly: ["plainly: an old soldier, a long memory, and nobody to check it against."]
+    questOffer.hadrian-the-white-rails: ["the White Spear lies below the Labyrinth of Suffering. three decks. walk on the third and on the first for me, and tell me: are the rails still white? i can't go aboard. i've tried. my feet won't."]
+    questAccept.hadrian-the-white-rails: ["the Temple Keeper at Three Doors sends you to the Crash Site in the Labyrinth. the way down from there comes out on the White Spear's third deck, and the ships between the decks carry you on to the first. the rails. look at the rails."]
+    questWaiting.hadrian-the-white-rails: ["the third deck and the first. are they white?"]
+    questComplete.hadrian-the-white-rails: ["still white. ...good. that's good. we scrubbed those rails every morning, whatever came. somebody's still doing it. or nobody ever needed to. thank you, soldier."]
+    questOffer.hadrian-the-roll-call: ["i've the roll of the line in my head. i'd like one other person to know it's there. ask Bryn, our scout, what she remembers. then ask a knight, a real one, at Three Doors: Caedmon. ask him if he ever heard of a war on this river."]
+    questAccept.hadrian-the-roll-call: ["Bryn's on the middle street of an evening, drawing on her knee. Caedmon keeps the doors at Three Doors. ask them plain. don't make a story of it."]
+    questWaiting.hadrian-the-roll-call: ["what did they say? ...no. tell me both at once."]
+    questComplete.hadrian-the-roll-call: ["Bryn remembers the bridge. Caedmon remembers nothing, and stood up straighter saying so. that's two answers and both of them are right. ...i'll take it. a war with two witnesses, and one of them polite about it. thank you."]
+    questOffer.hadrian-the-campaign-map: ["the cartographer in Nameless Town keeps the river in an atlas, a page from every town on it. i've a map. the old one. it shows where we stood, and it was drawn as a front, not as a river, and its case is cracked through. twelve rexton hides from Leafre's Dragon Forest to mend it. then walk the Void Current past the third deck, where our line ran. after that i'll give it over."]
+    questAccept.hadrian-the-campaign-map: ["Leafre's Dragon Forest, the second wood: rextons. then the Crash Site, the way down to the White Spear's third deck, and east off it onto the Void Current. walk it like a river. we walked it like a front."]
+    questWaiting.hadrian-the-campaign-map: ["twelve hides, and the Void Current. take your time. we didn't have any."]
+    questComplete.hadrian-the-campaign-map: ["twelve. and you walked it. ...here. the map, in a new case. the line's still on it. tell the cartographer she can rub it out. a river shouldn't have a line drawn across it. it's yours to carry now. carry it like a page, not a flag."]
+    about.kaito: ["Kaito wandered in with a sword and a dream of a bridge. he stands with the Sengoku men by the envoy as if he'd always stood there. maybe he did."]
+    about.bryn: ["Bryn scouted for us. she remembers the ground, not the faces. that's a scout's mercy."]
+    about.caedmon: ["a knight at Three Doors. he holds his doors the way we held the line, as if something's coming through tonight. a knight like that is worth asking anything."]
+    about.ottoline: ["a cartographer in Nameless Town. she draws the river. i hope she draws it without lines across. there were enough of those."]
+    aboutUnknown: ["not on my roll."]
+    friend.close: ["you'd have stood the line. i don't say that to many. i don't say it to anyone, lately."]
+    friend.best: ["if there's ever a war again, i'll want you on my left. if there isn't, i'll want you at supper. same place at the table."]
+    famed: ["they say your name with respect up the river. i heard it. i stood up straighter."]
+    defamed: ["i heard what was said. i've heard worse said about better soldiers. let it go by."]
+    gift: ["obliged, soldier."]
+    gift.favorite: ["that's a proper ration. i haven't had one since the line. thank you."]
+    gift.again: ["one's my ration. a soldier doesn't take two."]
+
+- id: kaito
+  name: Kaito
+  look: { gender: male }
+  title: "Wandering Swordsman"
+  job: CRUSADER
+  level: { min: 100, max: 102 }
+  strength: VETERAN
+  loadout: zip-sword-l98
+  personality: relaxed-v1
+  home:
+    town: moonbridge
+    routine:
+      - { from: 6, to: 10, spot: "venue:by-sengoku-warrior", activity: LINGER }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 18, spot: "venue:by-resistance-soldier", activity: STROLL }
+      - { from: 18, to: 22, spot: "venue:by-sengoku-warrior", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [Mysterious Fog 1, Mushroom Shrine, White Spear Deck 2]
+  questLines: [kaito-the-fog-bell, kaito-word-from-the-gate]
+  relationships:
+    - { persona: genzo, kind: TRAINED_UNDER }
+    - { persona: hadrian, kind: BOWS_BESIDE }
+    - { persona: bryn, kind: DREAMED_THE_SAME_BRIDGE_AS }
+  giftItemIds: [2022008, 2022019]
+  dialogue:
+    greetFirst: ["ah. a traveller. sit if you like. the river doesn't mind company.", "you came the long way? good. it's the only way that counts."]
+    greet: ["hello, friend.", "you again. good.", "(bows slightly, as if to an old opponent) hello."]
+    idle: ["(draws his sword a hand's width, looks at the edge, and slides it home without a sound)", "(stands among the Sengoku warriors as if he were one of them, then, catching himself, takes a step to the side)"]
+    noWork: ["nothing today. i'm practising standing still. it's harder than it looks."]
+    nothingDue: ["nothing owed. not a hair."]
+    who: ["Kaito. of Zipangu, once. i learned the sword at a shrine gate. one spring i dreamed of a bridge over a river at the end of the world, and in the dream i stood on it with my sword, and i wasn't afraid. i walked here to see if i would be. i'm not. so far."]
+    bye: ["walk well."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the Sengoku warriors by the envoy wear armour i've never seen in Zipangu. i know every buckle of it. i couldn't tell you how.", "there's a fog past the White Spear's second deck. in my dream there was a bell in it. if there's a bell, i dreamed true. if there isn't, i dreamed well. either's fine."]
+    speakPlainly: ["plainly: a sword, a dream, and the bridge in it."]
+    questOffer.kaito-the-fog-bell: ["east of the White Spear's second deck lies the Mysterious Fog. walk into the first of it and listen. is there a bell? i'd go myself. i'm afraid of the answer. that's new."]
+    questAccept.kaito-the-fog-bell: ["the Temple Keeper's door to the Crash Site, the way down to the third deck, the ship back to the second, then east into the fog. listen. don't call out."]
+    questWaiting.kaito-the-fog-bell: ["the fog. did you hear anything?"]
+    questComplete.kaito-the-fog-bell: ["no bell? just quiet, and your own feet. ...then i dreamed well, not true. that's better, i think. a true dream would want something from me. thank you."]
+    questOffer.kaito-word-from-the-gate: ["my teacher sits at the shrine gate at the Mushroom Shrine, in Zipangu. Genzo. i left without saying where. tell him i'm at the end of the world, well, and not afraid. then tell Hadrian what Genzo said. Hadrian likes to know who's standing where."]
+    questAccept.kaito-word-from-the-gate: ["Zipangu, then the Mushroom Shrine. Genzo's by the benches of an evening, with tea he didn't ask for. then back here to Hadrian at the Outpost."]
+    questWaiting.kaito-word-from-the-gate: ["did he say anything? he doesn't, usually."]
+    questComplete.kaito-word-from-the-gate: ["'stand up straight. finish your tea.' ...that's all? that's everything. he said it before every bout. thank you. and Hadrian says there was a man with my walk on the line. i'll think about that for a while. i've got a while."]
+    about.hadrian: ["Hadrian salutes the empress every morning. she never salutes back. he says that's correct. i've started bowing to her too. it seems the least we can do."]
+    about.bryn: ["Bryn draws the decks from memory and gets the rails right. she's never been aboard. neither have i. we don't talk about that."]
+    about.genzo: ["Genzo keeps the shrine gate at the Mushroom Shrine. he taught me to hold a sword by never once telling me how. i still hold it the way he didn't tell me."]
+    about.ottoline: ["a cartographer upriver. i hope her map has a bridge on it. then i'll know where i'm standing."]
+    aboutUnknown: ["i don't know them. i've walked a long way and met very few."]
+    friend.close: ["if you ever want to spar, i'll lose politely. once."]
+    friend.best: ["if i ever find the bridge from the dream, i'll want you on it. i'd like to be not afraid together."]
+    famed: ["they speak well of you upriver. a sword's name travels slower than the sword. yours is quick."]
+    defamed: ["talk. a blade doesn't care what's said about it. i try to be a blade."]
+    gift: ["ah. thank you."]
+    gift.favorite: ["this tastes like home. how strange, out here. thank you."]
+    gift.again: ["one. a swordsman travels light."]
+
+- id: bryn
+  name: Bryn
+  look: { gender: female }
+  title: "Scout of the Outpost"
+  job: RANGER
+  level: { min: 92, max: 94 }
+  strength: SEASONED
+  loadout: kft-bow-l88
+  personality: efficient-v1
+  home:
+    town: moonbridge
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-resistance-soldier", activity: LINGER }
+      - { from: 11, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 23, spot: "venue:by-temple-keeper", activity: REST }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [Last Horizon 1, Harp, Sky Nest I]
+  questLines: [bryn-both-ends-of-the-deck, bryn-straight-fletching]
+  rumors: [moonbridge-the-one-that-didnt-happen]
+  relationships:
+    - { persona: hadrian, kind: SCOUTED_FOR }
+    - { persona: kaito, kind: DREW_THE_BRIDGE_FOR }
+  giftItemIds: [2020015, 2020005]
+  dialogue:
+    greetFirst: ["you. new. came by the keeper? good. the other way's longer.", "stand there. no, there. you were in the light."]
+    greet: ["you.", "back. good.", "hm. hello."]
+    idle: ["(draws the outline of a ship's deck on her knee with a charcoal stub, without looking, and gets the rails right)", "(sights along an arrow, turns it, sights again, and puts it back in the quiver as if it failed a test)"]
+    noWork: ["nothing today. the ground's where i left it."]
+    nothingDue: ["even."]
+    who: ["Bryn. scout. i know the ground from here to the last horizon: decks, fogs, currents. i've never set foot on most of it. i still know it. don't ask me how. i've asked myself. i don't answer."]
+    bye: ["watch your footing."]
+    thanks: ["thanks."]
+    smallTalk: ["the White Spear's first deck opens onto the Last Horizon both ways. east and west. it's the same horizon. i've drawn it both ways. it comes out the same.", "Hadrian asks me about the bridge. i draw it for him. i don't know where i saw it. he says it doesn't matter. he's wrong. he's also right."]
+    speakPlainly: ["plainly: a scout who knows the way to places she's never been."]
+    questOffer.bryn-both-ends-of-the-deck: ["the White Spear's first deck opens onto the Last Horizon both ways: east, the first of it; west, the fourth. stand at both ends and tell me if they match my drawing. if they do, i'm not making it up. if they don't, i'm a liar with good charcoal."]
+    questAccept.bryn-both-ends-of-the-deck: ["the Temple Keeper to the Crash Site, the way down to the third deck, and the ships back to the first. east off the deck for the first horizon, then back across and west for the fourth."]
+    questWaiting.bryn-both-ends-of-the-deck: ["both ends. east and west."]
+    questComplete.bryn-both-ends-of-the-deck: ["they match. ...of course they match. i'm not sure that's better. thanks. i'll stop rubbing out the west end."]
+    questOffer.bryn-straight-fletching: ["my arrows fly crooked out here. the air's thin, or tired. the harps in Leafre's Sky Nest drop tail feathers that cut the wind straight. twenty. i'll refletch the quiver."]
+    questAccept.bryn-straight-fletching: ["the Temple Keeper back to Three Doors, Corba's flight down to Leafre Station, and out to Sky Nest I. harps. they scream. let them."]
+    questWaiting.bryn-straight-fletching: ["twenty feathers. the quiver's half bare."]
+    questComplete.bryn-straight-fletching: ["twenty. ...look. down the street and into the post. first true arrow out here in a year. thanks. i owe you a shot. a good one."]
+    about.hadrian: ["Hadrian. he remembers names. i remember ground. between us we've got most of a war. nobody else wants it."]
+    about.kaito: ["Kaito says he dreamed the bridge. i drew it before he got here. we've compared. it's the same bridge. we don't talk about that much."]
+    about.ottoline: ["the cartographer upriver. i'd like to see her map. i'd like to see if it matches mine. i'm a bit afraid it will."]
+    aboutUnknown: ["don't know them. i might know the ground they stand on."]
+    friend.close: ["i've drawn you on the deck. small. by the rail. so i know where you are."]
+    friend.best: ["if you ever get lost out here, i'll find you. i always know the ground. now i know you."]
+    famed: ["your name's on the river. good ground for it."]
+    defamed: ["people talk. ground doesn't. i trust the ground."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["that's a good one. i'll keep it for the long watch."]
+    gift.again: ["one. i carry what i need."]

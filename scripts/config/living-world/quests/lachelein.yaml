@@ -1,0 +1,83 @@
+# Lachelein quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No monster spawns anywhere in Arcane
+# River in this age, so every step in the city is an errand. Walkable from Lachelein Main Street (portals): the Hideout
+# 450003100, the Night Market's Chicken Festival 1 450003300, the Ballroom's Revelation Place 1 450003400, the
+# Nightmare Clocktower 1F 450003500, the Lachelein Canal 450003010 (and from it Arcana's Forest Entrance 450005010);
+# Outlaw's Street 1 450003200 is through the Hideout's west00.
+# Items carried in from elsewhere (drop rows in db/data/152-drop-data.sql): hankie 7130004 L78 pan flute 4000231
+# (Leafre's Cranky Forest 240010200, Steep Hill 240010300); eye of time 8200000 L80 cracked hourglass 4000443 (Memory
+# Lane 1 270010100 and every stretch after it); bubble fish 2230109 L28 thoughts 4000164 (Aqua Road's Big Fish Valley
+# 230020300). Minna's score of the streets is the city's page of the River Atlas (arcane.page.lachelein).
+
+# ---- Minna (her score of the streets is the city's page: arcane.page.lachelein) ----
+- id: minna-a-flute-that-plays-nothing
+  persona: minna
+  title: "A Flute That Plays Nothing"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flutes, type: COLLECT_ITEM, itemId: 4000231, count: 8 }
+    - { id: awake, type: DELIVER, to: minna, take: { itemId: 4000231, count: 8 } }
+  rewards: { meso: 28000, exp: 50000, bondPoints: 30, items: [{ itemId: 2000006, count: 15 }] }
+
+- id: minna-the-score-of-the-streets
+  persona: minna
+  title: "Lachelein, as Played"
+  length: MEDIUM
+  requires: { level: { min: 90 }, questsCompleted: [minna-a-flute-that-plays-nothing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: market, type: VISIT_MAP, mapIds: [450003300] }
+    - { id: ballroom, type: VISIT_MAP, mapIds: [450003400] }
+    - { id: clocktower, type: VISIT_MAP, mapIds: [450003500] }
+    - { id: celeste, type: TALK_TO, persona: celeste, say: ["what she played last night? i dreamt it. it went up like the canal and round like the ballroom and stopped like the clock. here, i'll hum it. ...hm hm, hmm hm hm. tell her that's the city. she plays the city in her sleep. she always has."] }
+    - { id: score, type: DELIVER, to: minna }
+  rewards: { meso: 32000, exp: 65000, bondPoints: 35, items: [{ itemId: 2000004, count: 15 }], worldFlags: [arcane.page.lachelein] }
+
+# ---- Dorian ----
+- id: dorian-sand-that-runs-straight
+  persona: dorian
+  title: "Sand That Runs Straight"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: glasses, type: COLLECT_ITEM, itemId: 4000443, count: 12 }
+    - { id: tower, type: VISIT_MAP, mapIds: [450003500] }
+    - { id: bench, type: DELIVER, to: dorian, take: { itemId: 4000443, count: 12 } }
+  rewards: { meso: 30000, exp: 55000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: dorian-the-right-time
+  persona: dorian
+  title: "The Right Time"
+  length: SHORT
+  requires: { level: { min: 90 }, questsCompleted: [dorian-sand-that-runs-straight] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: osmund, type: TALK_TO, persona: osmund, say: ["the right time? it's always the right time at Three Doors. that's rather the point of the place. ...oh, very well. tell him: now. it's now, and it was now a moment ago, and it'll be now when he hears this. he won't like it. clockmakers never do."] }
+    - { id: canal, type: VISIT_MAP, mapIds: [450003010] }
+    - { id: set, type: DELIVER, to: dorian }
+  rewards: { meso: 28000, exp: 52000, bondPoints: 35, items: [{ itemId: 2020015, count: 10 }] }
+
+# ---- Celeste ----
+- id: celeste-small-thoughts
+  persona: celeste
+  title: "Small Thoughts"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: thoughts, type: COLLECT_ITEM, itemId: 4000164, count: 15 }
+    - { id: pillow, type: DELIVER, to: celeste, take: { itemId: 4000164, count: 15 } }
+  rewards: { meso: 25000, exp: 45000, bondPoints: 30, items: [{ itemId: 2022000, count: 20 }] }
+
+- id: celeste-the-ladys-nap
+  persona: celeste
+  title: "The Lady's Nap"
+  length: SHORT
+  requires: { level: { min: 90 }, questsCompleted: [celeste-small-thoughts] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ilsabet, type: TALK_TO, persona: ilsabet, say: ["somebody dreamt my nap? all thirty years of it? ...was it a good one? i don't remember a thing. i've always wondered what i was doing all that time. tell her thank you for keeping it. tell her i'd like it back one day. the nice parts."] }
+    - { id: back, type: DELIVER, to: celeste }
+  rewards: { meso: 25000, exp: 48000, bondPoints: 35, items: [{ itemId: 2020014, count: 10 }] }

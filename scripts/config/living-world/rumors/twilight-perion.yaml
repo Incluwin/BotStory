@@ -1,0 +1,53 @@
+# Twilight Perion rumors (Repack Residents). Each pair is awake together at its spot in those hours
+# (personas/twilight-perion.yaml).
+- id: tperion-the-two-weapons
+  participants: [brand, eskil]
+  where: { town: twilight-perion, spot: "venue:middle-west-street" }
+  when:
+    serverHours: [18, 19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: tperion.heard-eskil
+  lines:
+    - { by: brand, text: "you came in off the hills with a split shaft again, Eskil." }
+    - { by: eskil, text: "the stumps came in again." }
+    - { by: brand, text: "how many?" }
+    - { by: eskil, text: "all of them." }
+    - { by: brand, text: "ha! and the town slept through it. i'll tell you what. anyone who walks the hills with Eskil comes home. i'd say it to anyone." }
+    - { by: eskil, text: "don't." }
+    - { by: brand, text: "i'm saying it now. loudly. people are listening." }
+    - { by: eskil, text: "...hm." }
+
+- id: tperion-the-forge-fire
+  participants: [heddwyn, ashe]
+  where: { town: twilight-perion, spot: "venue:by-christopher" }
+  when:
+    serverHours: [20, 21]
+    everyDays: 1
+  lines:
+    - { by: heddwyn, text: "how's the fire tonight, Ashe?" }
+    - { by: ashe, text: "fed. banked. same as every night." }
+    - { by: heddwyn, text: "i've a story for it." }
+    - { by: ashe, text: "it doesn't listen, Heddwyn." }
+    - { by: heddwyn, text: "it crackles in the right places." }
+    - { by: ashe, text: "it crackles when the wood's wet." }
+    - { by: heddwyn, text: "then the wood's a good listener too." }
+    - { by: ashe, text: "...go on, then. a short one." }
+    - { by: heddwyn, text: "they're all short, the way i tell them." }
+    - { by: ashe, text: "nobody believes that." }
+
+- id: tperion-the-old-oath
+  participants: [ottmar, ashe]
+  where: { town: twilight-perion, spot: "venue:middle-central-street-2" }
+  when:
+    serverHours: [12, 13]
+    everyDays: 2
+  lines:
+    - { by: ashe, text: "the dent's back in your shield, Ottmar." }
+    - { by: ottmar, text: "is it." }
+    - { by: ashe, text: "same corner. same depth. i took it out three days ago." }
+    - { by: ottmar, text: "the door's a hard place." }
+    - { by: ashe, text: "the door doesn't dent shields. you lean it on the wall by the door, in the same place, every night." }
+    - { by: ottmar, text: "...it's a good place." }
+    - { by: ashe, text: "bring it by after. i'll take it out." }
+    - { by: ottmar, text: "and i'll put it back. it's how we talk, Ashe." }
+    - { by: ashe, text: "i know. bring it by anyway." }

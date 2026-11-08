@@ -37,6 +37,10 @@ class RepackNpcScriptableTest {
         RepackMaps.ENTRIES.forEach(entry -> travel.add(entry.npcId()));
         travel.add(TEMPLE_KEEPER);
         travel.addAll(RepackGuide.WAY_BACK.values());
+        RepackGuide.ESCORTS.values().forEach(escort -> travel.add(escort[0]));
+        // Cobie has no quest in the server's Quest.wz, but the Repack client's own Quest.wz may give him post-v83 ones:
+        // he is listed anyway (docs/REPACK_RESIDENTS_PLAN.md 3.3)
+        assertTrue(scriptable.contains(2142112), "Cobie, the scouts' way to the Tribal Refugee Camp");
 
         Set<Integer> unreachable = new TreeSet<>();
         for (int npc : travel) {

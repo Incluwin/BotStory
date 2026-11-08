@@ -1,0 +1,289 @@
+# Tribal Refugee Camp cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.3): 4 Residents, 2 recruitable, at
+# the camp north of the Forsaken Excavation Site, past Twilight Perion; Cobie 2142112 takes travellers the safe way
+# between Twilight Perion and the camp (quests/tribal-refugee-camp.yaml header). The camp carries the middle of both Future
+# threads: its cook is the sister Edda writes to from Henesys Ruins (arcs/henesys-ruins.yaml), its runner put a year of
+# her answers through the wrong door, and the cook lights the old fire for Heddwyn's last story (arcs/twilight-perion.yaml).
+# The camp's scouts carry the fourth weapon tier: Vance's dagger and Vesper's gun continued with the Reverse and Timeless
+# pieces.
+- id: ama
+  name: Ama
+  look: { gender: female }
+  title: "Cook of the Refugee Camp"
+  job: BEGINNER
+  level: { min: 50, max: 52 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: tribal-refugee-camp
+    routine:
+      - { from: 5, to: 10, spot: "venue:by-ayan", activity: LINGER }
+      - { from: 10, to: 12, spot: "venue:middle-central-street", activity: REST }
+      - { from: 12, to: 16, spot: "venue:by-ayan", activity: LINGER }
+      - { from: 16, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:by-blackbull", activity: SOCIALIZE }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [Orange Mushroom, Orange Mushroom Cap, Tribal Refugee Camp]
+  questLines: [ama-mushrooms-from-before, ama-a-supper-for-the-story]
+  rumors: [camp-the-supper]
+  relationships:
+    - { persona: edda, kind: SISTER_OF }
+    - { persona: kasper, kind: FEEDS }
+    - { persona: heddwyn, kind: COOKS_FOR }
+    - { persona: yrsa, kind: SAVES_A_BOWL_FOR }
+  giftItemIds: [2001002, 2022003]
+  dialogue:
+    greetFirst: ["you made it to the camp! sit. eat. no, eat first. then talk.", "from before? you look it. here. stew. it's thin. it's hot. those are the two things a stew has to be."]
+    greet: ["sit! eat!", "you again! good. there's stew.", "hello, love. bowl?"]
+    idle: ["(stirs an enormous pot with a paddle, tastes, frowns, and adds a pinch of something from her apron)", "(counts bowls on a plank, comes up two short, and sighs in Kasper's general direction)"]
+    noWork: ["nothing today. the pot's on. the pot's always on."]
+    nothingDue: ["you're square, love. eat something anyway."]
+    who: ["Ama. i cook for the camp. when Henesys fell, half of us went east to the tribe's camp out here, and somebody had to feed everybody, so it was me. it was always going to be me. my sister Edda stayed in the ruins to keep the sick. we write every month. she writes three lines. i write four pages. that's us."]
+    bye: ["take a bowl for the road!"]
+    thanks: ["oh, you're a love."]
+    smallTalk: ["the mushrooms round here bite. i won't cook a thing that bites back. your years had mushrooms you could just eat, i'm told. orange ones. caps like hats.", "Heddwyn comes over from Twilight Perion on Cobie's road for my suppers and stays too late. i let him. the children sit round him like he's the fire."]
+    speakPlainly: ["plainly: a pot, a camp, and a sister who writes three lines."]
+    questOffer.ama-mushrooms-from-before: ["your years had orange mushrooms that didn't bite. twenty caps. i'll make a soup the camp hasn't had since Henesys. no. longer. since never."]
+    questAccept.ama-mushrooms-from-before: ["the orange mushrooms in your years. round the old Henesys, the real one, i'm told. twenty caps. don't let them bite you. they won't. that's the point."]
+    questWaiting.ama-mushrooms-from-before: ["twenty caps. the pot's waiting."]
+    questComplete.ama-mushrooms-from-before: ["twenty! they don't even twitch. look at that. a mushroom that just lies there and lets you cook it. the camp's having soup tonight. you're having two bowls."]
+    questOffer.ama-a-supper-for-the-story: ["i'm making a supper by the old fire tonight, the storytelling fire from Perion, and the camp wants a story with it. a proper one, the way it was. Heddwyn tells them best. go and ask him to come. tell him it's the old fire. he'll know."]
+    questAccept.ama-a-supper-for-the-story: ["Cobie will take you back to Twilight Perion, the safe way. Heddwyn will be by Christopher of an evening, or by the old tribe's stones in the morning. tell him the old fire. then come and tell me."]
+    questWaiting.ama-a-supper-for-the-story: ["is he coming? he's coming. tell me he's coming."]
+    questComplete.ama-a-supper-for-the-story: ["he'll come? and stay too late. good. the old fire's lit tonight. the children will sit round it like it's the first time. for some of them it always is."]
+    about.edda: ["my sister. she keeps the sick in Henesys Ruins. we write every month. she writes like she's taking a pulse: three lines, to the point. i write like i cook: too much, and you'll be glad of it."]
+    about.kasper: ["Kasper runs the camp's letters. he's fast. he's twelve. he's sure about everything. he's right about half of it. that's good going, at twelve."]
+    about.yrsa: ["Yrsa scouts the road. she eats standing up and says thank you with her eyes. i save her a bowl. she always comes for it."]
+    about.vidar: ["Vidar scouts east, toward the golems. he eats three bowls and tells me the second was the best. it's never the second. he's being kind."]
+    about.heddwyn: ["Heddwyn comes over for my suppers and stays too late. i let him. his stories are better than my stew. don't tell him i said so."]
+    aboutUnknown: ["never fed them. send them by."]
+    friend.close: ["you've your own bowl now. it's the one with the chip. i'll know if anyone else uses it."]
+    friend.best: ["if you're ever hungry, anywhere, in any year, think of my pot. it won't feed you. it'll help."]
+    famed: ["the camp talks about you over supper. good things. the stew's better for it."]
+    defamed: ["somebody said something about you. i gave them the thin end of the pot."]
+    gift: ["oh, for me? you're a love."]
+    gift.favorite: ["oh, that's a proper treat. i'll put it in the pot. no. i'll eat it myself. just this once."]
+    gift.again: ["one's plenty, love. i'm the one who's meant to feed you."]
+
+- id: kasper
+  name: Kasper
+  look: { gender: male }
+  title: "Runner of the Refugee Camp"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: tribal-refugee-camp
+    routine:
+      - { from: 7, to: 10, spot: "venue:by-cobie", activity: STROLL }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 19, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 19, to: 21, spot: "venue:by-blackbull", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [Twilight Perion, Henesys Ruins, Pillaging Iron Boar]
+  questLines: [kasper-the-fast-way, kasper-the-door-goes-everywhere]
+  rumors: [camp-the-supper]
+  relationships:
+    - { persona: ama, kind: IS_FED_BY }
+    - { persona: heddwyn, kind: KEEPS_THE_TALLY_FOR }
+    - { persona: yrsa, kind: LEARNED_THE_HIDING_HOLES_FROM }
+    - { persona: vidar, kind: CLEANS_THE_GUN_OF }
+  giftItemIds: [2001002, 2020017]
+  dialogue:
+    greetFirst: ["you're from before! i can tell. you've got clean everything. race you to the fire! no? fine.", "hello! i'm the fastest thing on the road. the boars are faster. i'm the fastest thing that isn't a boar."]
+    greet: ["hi!", "you're back! did you run? you should run. everything's faster running.", "hello! i've been to Twilight Perion and back since breakfast. probably."]
+    idle: ["(runs a lap of the camp for no reason, arrives back out of breath, and looks pleased)", "(makes a mark on a stick with a knife, counts the marks, and makes another)"]
+    noWork: ["nothing today. nothing to run. i'm running anyway."]
+    nothingDue: ["we're even! i'd race you for it but we're even."]
+    who: ["Kasper. i run the camp's letters to Twilight Perion and back. Cobie's road is the safe way. Cobie's slow. i run ahead and wait for him in the hiding holes. the masks don't see me. the boars... we don't talk about the boars."]
+    bye: ["run!"]
+    thanks: ["thanks! that's a good one!"]
+    smallTalk: ["Heddwyn says every story is his last. i keep the tally on a stick. it's a long stick. i'm saving room.", "Yrsa scouted Cobie's road with me once, all the way to Twilight Perion, and didn't say one word. i said all of them. it was the best walk ever."]
+    speakPlainly: ["plainly: legs, and letters."]
+    questOffer.kasper-the-fast-way: ["i bet you can't get to Henesys Ruins and back before i count to a thousand. not over the ridge. nobody goes over the ridge. the long way, through the doors. i'm not allowed through the doors, Ama says. so you go. i'll count. i can count really fast."]
+    questAccept.kasper-the-fast-way: ["Cobie to Twilight Perion. Claudine's door to the temple in your years. the Temple Keeper's door to the Gate to the Future, and in to the ruins. touch the ruins, and all the way back. go!"]
+    questWaiting.kasper-the-fast-way: ["...four hundred and twelve, four hundred and thirteen... you're not back yet! that means you're not back!"]
+    questComplete.kasper-the-fast-way: ["you're back! through two doors and back? that's... a lot of counting. i'd have been faster. probably. definitely. fine, you're quite fast. for somebody from before. what are the ruins like? no. don't tell me. i'll see them one day."]
+    questOffer.kasper-the-door-goes-everywhere: ["Edda says Ama never answers? Ama answers every month! i run them myself! the road west is all stumps, so i take them to the door by Claudine in Twilight Perion and put them through. Claudine says it goes everywhere. so where do they go? go and see!"]
+    questAccept.kasper-the-door-goes-everywhere: ["Cobie to Twilight Perion, then the door by Claudine. it comes out at a temple, in your years. three doors, she says. somebody there must have them. ask everybody. and come back and tell me!"]
+    questWaiting.kasper-the-door-goes-everywhere: ["did you find them? all of them? i ran fast every time. every single time."]
+    questComplete.kasper-the-door-goes-everywhere: ["twelve! all of them! a man in the past kept them in a drawer? under 'not yet'? ...i sent Ama's letters into the past. i'm going to be in so much trouble. i'll keep them in my shirt till somebody's going west who won't get eaten. you, maybe."]
+    about.ama: ["Ama feeds everybody. she fed me before she knew my name. she still calls me 'you'. she means it nicely."]
+    about.edda: ["Edda in the ruins? Ama's sister. i've never met her. i've carried her name a hundred times. she writes very small."]
+    about.yrsa: ["Yrsa's the best scout in the world. she taught me the hiding holes. she says if i ever get caught she'll pretend she never met me. she won't."]
+    about.vidar: ["Vidar's got a gun that goes BANG. he lets me clean it. he says i'm the best gun-cleaner in the camp. i'm the only gun-cleaner in the camp."]
+    about.heddwyn: ["Heddwyn tells the best stories. he says every one's his last. i keep the tally on a stick. he doesn't like the stick."]
+    aboutUnknown: ["never raced them. are they fast?"]
+    friend.close: ["you can have the second-best hiding hole. i'm keeping the best one."]
+    friend.best: ["if you ever need anything run anywhere, i'll run it. even past the boars. well. round the boars."]
+    famed: ["everybody knows your name! i run it about with the letters. that's how."]
+    defamed: ["somebody said something about you. i ran away from them. that's what i do with people i don't like."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["that's the best thing! i'm eating it running!"]
+    gift.again: ["one! Ama says i'll be sick! i won't! one."]
+
+- id: yrsa
+  name: Yrsa
+  look: { gender: female }
+  title: "Scout of the Rocky Road"
+  job: SHADOWER
+  level: { min: 168, max: 170 }
+  strength: ELITE
+  loadout: future-dagger-l110
+  personality: efficient-v1
+  home:
+    town: tribal-refugee-camp
+    routine:
+      - { from: 4, to: 9, spot: "venue:upper-east-street-2", activity: LINGER }
+      - { from: 9, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 22, to: 4, materialize: false }
+  recruitable: true
+  knows: [Sinister Wooden Mask, Forsaken Excavation Site 1, Mutant Tiru]
+  contract: yrsa-the-scouts-cut
+  questLines: [yrsa-the-three-pasts, yrsa-reverse-killic, yrsa-timeless-killic, yrsa-the-excavation-site, yrsa-red-cone-hats]
+  rumors: [camp-the-scouts-fire]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: vidar, kind: WORKS_WITH }
+    - { persona: kasper, kind: TAUGHT_THE_HIDING_HOLES_TO }
+    - { persona: ama, kind: EATS_STANDING_UP_AT_THE_POT_OF }
+    - { persona: vance, kind: HEARD_OF }
+  giftItemIds: [2000005, 2050004]
+  dialogue:
+    greetFirst: ["you came on Cobie's road. good. the other way's got masks on it. sit.", "from before. quiet, please. the masks hear well."]
+    greet: ["you.", "hm.", "back. good."]
+    idle: ["(sits so still on the edge of the camp that the eye slides right past her, and then she is somewhere else)", "(turns a short dagger over and over across her knuckles, watching the road south)"]
+    noWork: ["nothing."]
+    nothingDue: ["even."]
+    who: ["Yrsa. i scout ahead of Cobie's road between the camp and Twilight Perion: the rocky roads, the excavation site, the masks. Cobie takes people the safe way. i'm why it's safe."]
+    bye: ["quiet, now."]
+    thanks: ["hm."]
+    smallTalk: ["the dagger i carry was a hustler's, in a city of your years. he sold maps. honest ones, mostly. the dagger's honest. it goes where i put it.", "the masks in the excavation site were masks, once. in your years they're wood, and stone. here they look at you. don't look back."]
+    speakPlainly: ["plainly: a road, and nobody on it but me."]
+    offer: ["a hundred and thirty thousand. you've walked my road, and you've heard Vidar on me. that's what you're paying for. then i'm at your back."]
+    join: ["go. i'm behind you. you won't see me. that's right."]
+    bench: ["three days. then the road."]
+    leave: ["back to the road."]
+    refuse.bond: ["no. i don't know your step yet."]
+    refuse.flags: ["walk my road first: the three Pasts and the first stretch of Oblivion. and some evening on the middle east street, hear what Vidar says of me. then ask."]
+    refuseOwnErrand: ["my road first."]
+    questOffer.yrsa-the-three-pasts: ["scout for me, in your years. stand in each of the Temple's three Pasts: the Verdure, the Frozen, the Burning. then twenty oblivion monks on the first stretch of the Road to Oblivion. a scout looks first. then she cuts."]
+    questAccept.yrsa-the-three-pasts: ["the Temple Keeper's door. the Past of the Verdure, then Memory Lane to the Frozen Past, the Road of Regrets to the Burning Past, and the first stretch beyond. look at each. then cut."]
+    questWaiting.yrsa-the-three-pasts: ["three Pasts. twenty monks."]
+    questComplete.yrsa-the-three-pasts: ["you looked first. good. most people don't. you'd do on my road."]
+    questOffer.yrsa-reverse-killic: ["the chief guardians on Memory Lane's fourth stretch carry green hearts. thirty chiefs, fifteen hearts. i rub the hilt with the green. it keeps the grip quiet. a quiet grip's a quiet cut."]
+    questAccept.yrsa-reverse-killic: ["Memory Lane, the fourth stretch. the chiefs are loud. be the other thing."]
+    questWaiting.yrsa-reverse-killic: ["fifteen."]
+    questComplete.yrsa-reverse-killic: ["fifteen. quiet. the Reverse Killic. every slot at sixty, every one took. it doesn't make a sound. neither should you."]
+    questOffer.yrsa-timeless-killic: ["Dark Ereve, past the Gate to the Future. twenty tiru in the tiru forest, twenty tiguru in the tiguru forest. in and out. nobody sees you."]
+    questAccept.yrsa-timeless-killic: ["the Gate to the Future, east into Dark Ereve. the tiru forest, then the tiguru forest off it. in and out."]
+    questWaiting.yrsa-timeless-killic: ["twenty, twenty."]
+    questComplete.yrsa-timeless-killic: ["forty, and i didn't hear about it. good. the Timeless Killic. two tens and the rest at sixty, every one took. hm. you'll do."]
+    questOffer.yrsa-the-excavation-site: ["my road's worst stretch won't clear. not yet. not by you. the forest past the Gate to the Future will: the tino forest, where travellers from before stray in when they miss the ruins. thirty tino. so the next one walks in quiet."]
+    questAccept.yrsa-the-excavation-site: ["the Temple Keeper's door to the Gate to the Future, then east into the Mutant Tino Forest. they swarm. don't stand still. cut."]
+    questWaiting.yrsa-the-excavation-site: ["thirty."]
+    questComplete.yrsa-the-excavation-site: ["thirty. the next one walks in quiet. the Timeless Killic, and this one every slot a ten, every one took. no quieter blade in any year. ...thank you. i mean it."]
+    questOffer.yrsa-red-cone-hats: ["ten red cone hats? the hilt wraps."]
+    questAccept.yrsa-red-cone-hats: ["the Road to Oblivion, the second stretch."]
+    questWaiting.yrsa-red-cone-hats: ["ten."]
+    questComplete.yrsa-red-cone-hats: ["ten. thanks."]
+    about.vidar: ["Vidar makes a lot of noise for a scout. he's the best shot i know. i'd never say it where he could hear."]
+    about.kasper: ["Kasper. i taught him the hiding holes. i told him if he's ever caught i never met him. he knows i'm lying."]
+    about.ama: ["Ama saves me a bowl. i eat it standing. she doesn't mind. she knows why."]
+    about.heddwyn: ["Heddwyn comes over on Cobie's road for Ama's suppers. i scout ahead. he talks the whole way. i don't mind. the masks don't like it. good."]
+    about.vance: ["Vance. a hustler in a city of your years, they say. this dagger was his, once. he sold honest maps. it's an honest blade."]
+    aboutUnknown: ["no."]
+    friend.close: ["i'd walk you anywhere on my road. quietly."]
+    friend.best: ["if you're ever on a road you can't see the end of, i'll scout it. you won't see me. i'll be there."]
+    famed: ["people say your name at the fire. hm."]
+    defamed: ["talk."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["that's a good one. i'll take it on the road."]
+    gift.again: ["one."]
+
+- id: vidar
+  name: Vidar
+  look: { gender: male }
+  title: "Gunner of the East Watch"
+  job: CORSAIR
+  level: { min: 170, max: 172 }
+  strength: ELITE
+  loadout: future-gun-l110
+  personality: relaxed-v1
+  home:
+    town: tribal-refugee-camp
+    routine:
+      - { from: 6, to: 11, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 11, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [Ancient Golem, Spirit Zone Limbo, Eye of Time]
+  contract: vidar-the-powder-share
+  questLines: [vidar-the-eyes-of-time, vidar-reverse-blindness, vidar-timeless-blindness, vidar-spirit-zone-limbo, vidar-hourglasses]
+  rumors: [camp-the-scouts-fire]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: yrsa, kind: VOUCHES_FOR }
+    - { persona: kasper, kind: LETS_CLEAN_HIS_GUN }
+    - { persona: ama, kind: EATS_THREE_BOWLS_FROM }
+    - { persona: vesper, kind: HEARD_OF }
+  giftItemIds: [2000004, 2020015]
+  dialogue:
+    greetFirst: ["ho! a face from before! came on Cobie's road? smart. the masks would've had you. i'm bored. talk to me.", "welcome to the camp, traveller. careful where you stand. that's my gun-cleaning spot. Kasper's in it."]
+    greet: ["ho!", "you again! good. the golems are dull company.", "hello! got any news from before? any at all?"]
+    idle: ["(spins a pistol on one finger, catches it, and pretends that was the plan)", "(squints east toward the golems through a cracked spyglass, and then the other way, for fairness)"]
+    noWork: ["nothing today! the golems are napping. so am i, nearly."]
+    nothingDue: ["square! like a good powder charge."]
+    who: ["Vidar. i keep the east watch, out past the camp to the Spirit Zone Limbo, where the golems stand about pretending to be hills. i shoot them when they stop pretending. Yrsa does the west. she's better. don't tell her."]
+    bye: ["keep your powder dry!"]
+    thanks: ["ho, thanks!"]
+    smallTalk: ["the gun i carry was a marksman's, on a base in your years. she held a watch, like me. somebody kept it oiled a long, long time before it came to me. i keep it oiled. it's the least i can do.", "the Eyes of Time on your Temple's roads crack little hourglasses. i grind them for powder. time-glass powder. it doesn't make the shot faster. it makes it feel faster. that's half of it."]
+    speakPlainly: ["plainly: one gun, one watch, a great many golems."]
+    offer: ["a hundred thousand, and thirty cracked hourglasses for my powder. then i'm yours. loud, mind. i'm always loud."]
+    join: ["ho! let's go! i'll be behind you making noise. it's a strategy."]
+    bench: ["three days, then the east watch wants me back. the golems miss me."]
+    leave: ["back to the watch!"]
+    refuse.bond: ["not yet. i like to know who i'm shooting past."]
+    refuse.flags: ["walk Memory Lane for me first: forty Eyes of Time, fifteen hourglasses. then ask."]
+    refuseOwnErrand: ["the hourglasses first! come on."]
+    questOffer.vidar-the-eyes-of-time: ["the Eyes of Time on Memory Lane, in your years. forty of them, any stretch, and fifteen of their cracked hourglasses. i grind them for powder. don't ask. it works."]
+    questAccept.vidar-the-eyes-of-time: ["the Temple Keeper's door, the Past of the Verdure, and Memory Lane. the Eyes are on every stretch. they blink at you. ignore it."]
+    questWaiting.vidar-the-eyes-of-time: ["forty, and fifteen glasses!"]
+    questComplete.vidar-the-eyes-of-time: ["fifteen! ho, listen to them. somebody's moments. i'll grind them gently. you shoot straight, friend from before. i'd shoot past you."]
+    questOffer.vidar-reverse-blindness: ["the chief guardians on the Road of Regrets' fourth stretch. thirty of them. and there's a marksman on a base in your years whose gun this was. Vesper. ask her about the long shot. i've been guessing for years."]
+    questAccept.vidar-reverse-blindness: ["the Road of Regrets, the fourth stretch. then Omega Sector, the base under the tower. she holds the Kulan watch. she'll see you before you see her."]
+    questWaiting.vidar-reverse-blindness: ["thirty, and Vesper's word!"]
+    questComplete.vidar-reverse-blindness: ["'don't wait for it to be still. it won't be.' ...ho. that's it. that's what i've been doing wrong. and i'm right about axemen? i knew it. here. the Reverse Blindness. every slot at sixty, every one took. don't wait for things to be still."]
+    questOffer.vidar-timeless-blindness: ["Dark Ereve, past the Gate to the Future. twenty tino in the tino forest, twenty tiguru at the far end. bring noise. it's the only way to do Dark Ereve."]
+    questAccept.vidar-timeless-blindness: ["the Gate to the Future, east into the tino forest, then on through the tiru forest to the tiguru. make noise. they come to you. it saves walking."]
+    questWaiting.vidar-timeless-blindness: ["twenty tino, twenty tiguru! was it loud?"]
+    questComplete.vidar-timeless-blindness: ["forty! and loud, i bet. the Timeless Blindness. two tens and the rest at sixty, every one took. heavy, isn't it? that's the good kind of heavy."]
+    questOffer.vidar-spirit-zone-limbo: ["the golems out east don't fall. not for you, not for me. the slimes on the Hill North of Henesys Ruins do. thirty of them. one fight you can win, before the end of days. there's an archer on the ruins' wall who'll watch you do it. wave at her."]
+    questAccept.vidar-spirit-zone-limbo: ["the Temple Keeper's door to the Gate to the Future, in to Henesys Ruins, and east out of the square onto the hill. the archer's Dagny, i'm told. she'll see you."]
+    questWaiting.vidar-spirit-zone-limbo: ["thirty! did you wave?"]
+    questComplete.vidar-spirit-zone-limbo: ["thirty! and you waved, i bet. a fight you can win, won. the Timeless Blindness, and this one every slot a ten, every one took. there's no better gun in any year. ho. i'm going to fire it at the sky. once. for luck."]
+    questOffer.vidar-hourglasses: ["ten hourglasses? the powder's low."]
+    questAccept.vidar-hourglasses: ["Memory Lane. any stretch."]
+    questWaiting.vidar-hourglasses: ["ten!"]
+    questComplete.vidar-hourglasses: ["ten! ho, thanks!"]
+    about.yrsa: ["Yrsa scouts the west road. she's the best scout alive. anyone who walks behind Yrsa gets where they're going and never once hears a mask. i'd say that to anyone. i do. she hates it."]
+    about.kasper: ["Kasper cleans my gun. he's the best gun-cleaner in the camp. he's the only one. don't tell him that part."]
+    about.ama: ["Ama makes the stew. i eat three bowls and say the second was best. it's never the second. it's always the third."]
+    about.heddwyn: ["Heddwyn tells stories at the fire when he comes over. i've heard the boar one forty times. i laugh every time. it's a good boar."]
+    about.vesper: ["Vesper. a marksman in your years, on a base under a tower. this gun was hers, once. somebody kept it oiled a long, long time before me. i'd like to think it was her."]
+    aboutUnknown: ["never shot past them."]
+    friend.close: ["you can stand in my gun-cleaning spot. tell Kasper i said."]
+    friend.best: ["if you're ever on a watch you can't hold, fire twice at the sky. i'll hear it. i'll come loud."]
+    famed: ["ho! they're saying your name at the fire! loud! good!"]
+    defamed: ["somebody said something. i fired at the sky. they stopped."]
+    gift: ["ho! thanks!"]
+    gift.favorite: ["ho! now that's the good stuff. straight into the watch kit."]
+    gift.again: ["one's plenty, friend!"]

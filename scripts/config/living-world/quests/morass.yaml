@@ -1,0 +1,83 @@
+# Morass quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No monster spawns anywhere in Arcane
+# River in this age, so every step on the square is an errand. Walkable from Trueffet Square (portals): Shadowdance
+# Hall 450006200 and Shadowdance Hall 2 450006210; Street Cat Area 2 450006120 and Street Cat Area 450006110 (Jean and
+# the Nameless Cat); Bully Blvd. 450006140 and Bully Blvd. 2 450006150; the Path to the Coral Forest 5 450006040 down
+# to the Path to the Coral Forest 450006000, which opens on Arcana's Cavernous Cavern 450005400.
+# Items carried in from elsewhere (drop rows in db/data/152-drop-data.sql): lucida 7130000 L73 lucida tail 4000074
+# (Orbis's Garden of Darkness I 200010301); red kentaurus 8140102 L88 kentaurus's flame 4000232 (Leafre's Area of Red
+# Kentaurus 240020000); roid 5110301 L54 wires 4000364 (Alcadno Lab Area C-1 261020300). Where the shadows walk at
+# night is the square's page of the River Atlas (arcane.page.morass).
+
+# ---- Corin (where the shadows walk is the square's page: arcane.page.morass) ----
+- id: corin-ink-made-of-dark
+  persona: corin
+  title: "Ink Made of Dark"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000074, count: 10 }
+    - { id: ink, type: DELIVER, to: corin, take: { itemId: 4000074, count: 10 } }
+  rewards: { meso: 28000, exp: 50000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: corin-where-the-shadows-go
+  persona: corin
+  title: "Morass, as the Shadows Walk It"
+  length: MEDIUM
+  requires: { level: { min: 90 }, questsCompleted: [corin-ink-made-of-dark] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hall, type: VISIT_MAP, mapIds: [450006200] }
+    - { id: cat, type: VISIT_MAP, mapIds: [450006110] }
+    - { id: lucan, type: TALK_TO, persona: lucan, say: ["where they go after the cats? home. every night, after the dancing and the cats, they walk to where the houses stood before that day in Trueffet and stand in the doorways. i don't catch them then. you don't catch somebody at their own door. tell Corin that's his ending. he's been walking past it for a year."] }
+    - { id: page, type: DELIVER, to: corin }
+  rewards: { meso: 32000, exp: 65000, bondPoints: 35, items: [{ itemId: 2000004, count: 15 }], worldFlags: [arcane.page.morass] }
+
+# ---- Anouk ----
+- id: anouk-lamps-for-the-inn
+  persona: anouk
+  title: "Lamps for the Inn"
+  length: SHORT
+  requires: { level: { min: 92 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flames, type: COLLECT_ITEM, itemId: 4000232, count: 12 }
+    - { id: lamps, type: DELIVER, to: anouk, take: { itemId: 4000232, count: 12 } }
+  rewards: { meso: 30000, exp: 58000, bondPoints: 30, items: [{ itemId: 2020015, count: 15 }] }
+
+- id: anouk-the-long-stay
+  persona: anouk
+  title: "The Long Stay"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: corin, type: TALK_TO, persona: corin, say: ["the rent? ...yes. yes, of course. tell her the book's nearly finished. tell her she's in it. she's the hero, actually. chapter nine's about a woman who keeps a lamp lit for people who aren't there. tell her i'm sorry, and i'll pay. tell her chapter nine first."] }
+    - { id: lucan, type: TALK_TO, persona: lucan, say: ["a shadow that owes money? ...hm. there's one that follows Corin about. his own. the only shadow in Morass still attached to its owner. it looks embarrassed most of the time. tell Anouk that's the one. she'll know what i mean."] }
+    - { id: back, type: DELIVER, to: anouk }
+  rewards: { meso: 26000, exp: 50000, bondPoints: 40, items: [{ itemId: 2022000, count: 15 }] }
+
+# ---- Lucan ----
+- id: lucan-a-net-of-wire
+  persona: lucan
+  title: "A Net of Wire"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wires, type: COLLECT_ITEM, itemId: 4000364, count: 15 }
+    - { id: net, type: DELIVER, to: lucan, take: { itemId: 4000364, count: 15 } }
+  rewards: { meso: 28000, exp: 50000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: lucan-the-boulevard-shadow
+  persona: lucan
+  title: "The Boulevard Shadow"
+  length: MEDIUM
+  requires: { level: { min: 92 }, questsCompleted: [lucan-a-net-of-wire] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boulevard, type: VISIT_MAP, mapIds: [450006140] }
+    - { id: boulevard-2, type: VISIT_MAP, mapIds: [450006150] }
+    - { id: anouk, type: TALK_TO, persona: anouk, say: ["the low lamp? it's lit. it's always lit. ...a small one, he says? oh. tell him i'll put a cushion by it. tell him i'll sit up. i've sat up for smaller things."] }
+    - { id: back, type: DELIVER, to: lucan }
+  rewards: { meso: 30000, exp: 60000, bondPoints: 40, items: [{ itemId: 2020014, count: 10 }] }

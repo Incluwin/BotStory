@@ -69,7 +69,9 @@ class ContentLintLootTermsTest {
     void everyShippedContractAuthorsItsTermsAndLintsClean() {
         LivingContent content = ContentLoader.load(Path.of("scripts/config/living-world"));
 
-        assertEquals(100, content.contracts().size()); // 44, wave 3 and Masteria's 25 (merged 2026-10-26), Malaysia's 4, wave 4 Ossyria's 17 and Victoria's 10
+        // 44, wave 3 and Masteria's 25 (merged 2026-10-26), Malaysia's 4, wave 4 Ossyria's 17 and Victoria's 10, the Repack
+        // towns' 12 (docs/REPACK_RESIDENTS_PLAN.md)
+        assertEquals(112, content.contracts().size());
         for (Contract contract : content.contracts().values()) {
             Terms terms = contract.terms();
             assertTrue(terms.splitsLoot(), contract.id());

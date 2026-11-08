@@ -1,0 +1,309 @@
+# Henesys Ruins quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.3). The Future's fields: Henesys Ruins
+# Market 271010100 and Park 271010200 (mutant snail 8600000 lv162); Hill North of Henesys Ruins 271010300 (mutant slime
+# 8600002 lv166); Suspicious Hill 271010301 (mutant slime, mutant ribbon pig 8600003 lv168); Dark Spore Hill 271020000
+# and Creepy Humming Forest Trail 271020100 (mutant orange mushroom 8600001 lv164); Dark Ereve 271000100/200/210 (mutant
+# tino 8600004 lv163, tiru 8600005 lv165, tiguru 8600006 lv167) and the Ereve Forked Road 271000300. The way in is the
+# Temple Keeper's door to the Gate to the Future 271000000 (a swim, then in00 to the town). The old road east over the
+# Six Path Crossway Ruins 271010500 and the Deserted Southern Ridge 273010000 (lv190 stumps) is impassable in the story
+# (Edda's letters) and no quest step uses it; Twilight Perion is reached by the Temple Keeper's other door.
+# Future mobs drop only their donors' potions and scrolls, so collect steps carry the present: the Temple of Time's roads
+# (quests/three-doors.yaml header; the Road to Oblivion's oblivion monk 8200009 red cloth 4000454 on 270030100), and
+# present Henesys (blue snail 100101 blue snail shell 4000000; Henesys Market 100000100, Henesys Park 100000200).
+# Edda's thread (arcs/henesys-ruins.yaml) runs through the camp: quests/tribal-refugee-camp.yaml sets camp.answers.found.
+
+# ---- Edda: letters to the camp (arcs/henesys-ruins.yaml) ----
+- id: edda-clean-bandages
+  persona: edda
+  title: "Cloth That Boils White"
+  length: SHORT
+  requires: { level: { min: 120 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200009], count: 25, mapIds: [270030100] }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000454, count: 15 }
+    - { id: bandages, type: DELIVER, to: edda, take: { itemId: 4000454, count: 15 } }
+  rewards: { meso: 60000, exp: 200000, bondPoints: 30, items: [{ itemId: 2000005, count: 20 }] }
+
+- id: edda-a-letter-east
+  persona: edda
+  title: "A Letter East"
+  length: MEDIUM
+  requires: { level: { min: 130 }, questsCompleted: [edda-clean-bandages] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ama, type: TALK_TO, persona: ama, say: ["a letter from Edda! by hand! give it here. ...three lines. she writes like she's taking a pulse. i answer every month, you know. four pages. Kasper runs them west for me. tell her she's a goose. tell her i said it fondly. mostly."] }
+    - { id: back, type: DELIVER, to: edda }
+  rewards: { meso: 90000, exp: 300000, bondPoints: 40, items: [{ itemId: 2000005, count: 20 }], worldFlags: [ruins.letter.carried] }
+
+- id: edda-a-year-of-letters
+  persona: edda
+  title: "A Year of Letters"
+  length: LONG
+  requires: { level: { min: 140 }, questsCompleted: [edda-a-letter-east], flags: [camp.answers.found], notFlags: [ruins.letters.read] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kasper, type: TALK_TO, persona: kasper, say: ["the letters? here. all twelve. i kept them in my shirt so nothing'd eat them. tell her sorry. tell her i ran fast every time. it was the door that was slow."] }
+    - { id: ama, type: TALK_TO, persona: ama, say: ["you're taking them west? at last. tell her to read the March one first. it's got the stew in it. and tell her the November one's mostly about her, so she's to read that one sitting down."] }
+    - { id: read, type: DELIVER, to: edda }
+  rewards: { meso: 160000, exp: 500000, bondPoints: 60, items: [{ itemId: 2050004, count: 10 }], worldFlags: [ruins.letters.read] }
+
+# ---- Lumi ----
+- id: lumi-a-snail-from-before
+  persona: lumi
+  title: "A Snail From Before"
+  length: SHORT
+  requires: { level: { min: 120 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000000, count: 20 }
+    - { id: see, type: DELIVER, to: lumi, take: { itemId: 4000000, count: 20 } }
+  rewards: { meso: 50000, exp: 160000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: lumi-what-henesys-was
+  persona: lumi
+  title: "What Henesys Was"
+  length: MEDIUM
+  requires: { level: { min: 125 }, questsCompleted: [lumi-a-snail-from-before] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: market, type: VISIT_MAP, mapIds: [100000100] }
+    - { id: park, type: VISIT_MAP, mapIds: [100000200] }
+    - { id: tell, type: DELIVER, to: lumi }
+  rewards: { meso: 70000, exp: 240000, bondPoints: 40, items: [{ itemId: 2000005, count: 15 }] }
+
+- id: lumi-the-market-sign
+  persona: lumi
+  title: "The Sign Over the Stall"
+  length: MEDIUM
+  requires: { level: { min: 140 }, questsCompleted: [lumi-what-henesys-was] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [8600000], count: 30, mapIds: [271010100] }
+    - { id: sign, type: DELIVER, to: lumi }
+  rewards: { meso: 110000, exp: 420000, bondPoints: 50, items: [{ itemId: 2000005, count: 20 }] }
+
+# ---- Dagny (recruit; bow line, fourth tier: Seori's Dragon Shiner Bow continued) ----
+- id: dagny-the-east-wall
+  persona: dagny
+  title: "The East Wall"
+  length: SHORT
+  requires: { level: { min: 120 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200009], count: 30, mapIds: [270030100] }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000454, count: 10 }
+    - { id: wraps, type: DELIVER, to: dagny, take: { itemId: 4000454, count: 10 } }
+  rewards: { meso: 70000, exp: 220000, bondPoints: 30, flags: [dagny.intro.done] }
+
+- id: dagny-reverse-engaw
+  persona: dagny
+  title: "A Little Above the Moon"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [dagny-the-east-wall] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dodo, type: KILL_MOBS, mobIds: [8220004], count: 1, mapIds: [270010500] }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200004], count: 20, mapIds: [270010500] }
+    - { id: seori, type: TALK_TO, persona: seori, say: ["an archer from the years to come wants to know how i shoot at the moon? ...tell her you don't aim at the moon. you aim a little above it. it's always higher than it looks. and tell her hello from me. it's strange, saying hello forward. nice, though."] }
+    - { id: back, type: DELIVER, to: dagny }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1452059, scrolls: [{ success: 60 }] }
+
+- id: dagny-timeless-engaw
+  persona: dagny
+  title: "The Park at Dusk"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [dagny-reverse-engaw] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [8600000], count: 40, mapIds: [271010200] }
+    - { id: clear, type: DELIVER, to: dagny }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1452057, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: dagny-the-hill-north
+  persona: dagny
+  title: "The Hill North"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [dagny-timeless-engaw] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [8600002], count: 40, mapIds: [271010300] }
+    - { id: trail, type: VISIT_MAP, mapIds: [271010400] }
+    - { id: watch, type: DELIVER, to: dagny }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1452057, scrolls: [{ success: 10 }] }
+
+- id: dagny-bowstring-wraps
+  persona: dagny
+  title: "Red for the Grip"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 120 }, questsCompleted: [dagny-the-east-wall] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000454, count: 10 }
+    - { id: wraps, type: DELIVER, to: dagny, take: { itemId: 4000454, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }
+
+# ---- Thorne (recruit; crossbow line, fourth tier: Kael's Dragon Shiner Cross continued) ----
+- id: thorne-a-clean-line
+  persona: thorne
+  title: "A Clean Line"
+  length: SHORT
+  requires: { level: { min: 115 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guardians, type: KILL_MOBS, mobIds: [8200007], count: 30, mapIds: [270020300] }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000452, count: 12 }
+    - { id: count, type: DELIVER, to: thorne, take: { itemId: 4000452, count: 12 } }
+  rewards: { meso: 70000, exp: 200000, bondPoints: 30, flags: [thorne.intro.done] }
+
+- id: thorne-reverse-black-beauty
+  persona: thorne
+  title: "You Have to Mean It"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [thorne-a-clean-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200009], count: 40, mapIds: [270030100] }
+    - { id: kael, type: TALK_TO, persona: kael, say: ["a crossbowman from up ahead in time, asking about the long shot? tell him what i tell everybody. you can shoot anything, anywhere. you just have to mean it. and tell him to keep his string dry. that one isn't wisdom. that's just strings."] }
+    - { id: back, type: DELIVER, to: thorne }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1462051, scrolls: [{ success: 60 }] }
+
+- id: thorne-timeless-black-beauty
+  persona: thorne
+  title: "Forty in the Market"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [thorne-reverse-black-beauty] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [8600000], count: 40, mapIds: [271010100] }
+    - { id: counted, type: DELIVER, to: thorne }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1462050, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: thorne-suspicious-hill
+  persona: thorne
+  title: "The Suspicious Hill"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [thorne-timeless-black-beauty] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [8600003], count: 30, mapIds: [271010301] }
+    - { id: back, type: DELIVER, to: thorne }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1462050, scrolls: [{ success: 10 }] }
+
+- id: thorne-blue-helmets
+  persona: thorne
+  title: "Twelve Was Last Week"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 115 }, questsCompleted: [thorne-a-clean-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000452, count: 10 }
+    - { id: count, type: DELIVER, to: thorne, take: { itemId: 4000452, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }
+
+# ---- Seraphine (recruit; wand line, fourth tier: Delphine's Dragon Wand continued) ----
+- id: seraphine-hearts-that-hold
+  persona: seraphine
+  title: "Hearts That Hold"
+  length: SHORT
+  requires: { level: { min: 115 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200008], count: 25, mapIds: [270020400] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000453, count: 12 }
+    - { id: salve, type: DELIVER, to: seraphine, take: { itemId: 4000453, count: 12 } }
+  rewards: { meso: 70000, exp: 200000, bondPoints: 30, flags: [seraphine.intro.done] }
+
+- id: seraphine-reverse-enreal-tear
+  persona: seraphine
+  title: "Moments in the Glass"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [seraphine-hearts-that-hold] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [8200000], count: 40, mapIds: [270020100, 270020200, 270020300, 270020400, 270020500] }
+    - { id: glasses, type: COLLECT_ITEM, itemId: 4000443, count: 15 }
+    - { id: rest, type: VISIT_MAP, mapIds: [270020110] }
+    - { id: listen, type: DELIVER, to: seraphine, take: { itemId: 4000443, count: 15 } }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1372045, scrolls: [{ success: 60 }] }
+
+- id: seraphine-timeless-enreal-tear
+  persona: seraphine
+  title: "The Forked Road"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [seraphine-reverse-enreal-tear] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tiru, type: KILL_MOBS, mobIds: [8600005], count: 35, mapIds: [271000200] }
+    - { id: fork, type: VISIT_MAP, mapIds: [271000300] }
+    - { id: back, type: DELIVER, to: seraphine }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1372044, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: seraphine-dark-spore-hill
+  persona: seraphine
+  title: "The Humming Trail"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [seraphine-timeless-enreal-tear] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [8600001], count: 40, mapIds: [271020100] }
+    - { id: quiet, type: DELIVER, to: seraphine }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1372044, scrolls: [{ success: 10 }] }
+
+- id: seraphine-blue-hearts
+  persona: seraphine
+  title: "Salve for the Watch"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 115 }, flags: [seraphine.intro.done] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000453, count: 10 }
+    - { id: salve, type: DELIVER, to: seraphine, take: { itemId: 4000453, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }

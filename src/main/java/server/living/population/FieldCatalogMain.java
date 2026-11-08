@@ -20,8 +20,10 @@ import java.util.stream.Stream;
  * every open-world map whose id prefix maps to a regions.yaml id (see {@link #region}) with its name, region,
  * town flag, mob spawn count, average mob level and a grinder capacity ({@code spawn entries / 4}, clamped 1..6),
  * with the Victoria field-capacity catalog's recommended maxima layered on top.
- * Instanced maps (a {@code forcedReturn}), maps with fewer than four spawns and the Community Repack maps
- * ({@link server.mods.RepackMaps}: a stock-client player can never see who stands in them) are skipped.
+ * Instanced maps (a {@code forcedReturn}), maps with fewer than four spawns and the Community Repack maps the Repack
+ * client itself cannot draw ({@link server.mods.RepackMaps#incomplete}: no player can ever stand there) are skipped.
+ * The other Repack maps are listed (docs/REPACK_RESIDENTS_PLAN.md 6.2): only a Repack-client player sees who stands
+ * in them, which the user accepted on 2026-11-08.
  * A map already in the output file keeps the capacity it has there, so hand edits survive; the estimate and the
  * Victoria catalog therefore only seed maps that are not listed yet.
  *
@@ -34,6 +36,7 @@ public final class FieldCatalogMain {
     private static final String LIFE_MOB = "<string name=\"type\" value=\"m\"/>";
     private static final Pattern KEPT_CAPACITY = Pattern.compile("mapId:\\s*(\\d+).*capacity:\\s*(-?\\d+)");
     private static final Pattern INT = Pattern.compile("<int name=\"%s\" value=\"(-?\\d+)\"/>");
+    private static final Pattern INFO_LEVEL = Pattern.compile("(?m)^ {4}<int name=\"level\" value=\"(-?\\d+)\"/>");
     private static final Pattern MAP_NAME = Pattern.compile(
             "<imgdir name=\"(\\d+)\">\\s*(?:<string name=\"streetName\" value=\"([^\"]*)\"/>\\s*)?(?:<string name=\"mapName\" value=\"([^\"]*)\"/>)?");
     private static final int MIN_SPAWNS = 4;
@@ -71,7 +74,7 @@ public final class FieldCatalogMain {
                 int town = intOf(xml, "town", 0);
                 int forcedReturn = intOf(xml, "forcedReturn", 999999999);
                 String region = region(mapId);
-                if (region == null || RepackMaps.listed(mapId)) {
+                if (region == null || RepackMaps.incomplete(mapId)) {
                     continue;
                 }
                 List<Integer> mobs = new ArrayList<>();
@@ -125,22 +128,31 @@ public final class FieldCatalogMain {
      * regions.yaml id by map id prefix; null for maps citizens should not consider (events, PQs, GM maps). The ids are
      * KnowledgeExportMain.region's, except that side towns join a hub's region (Florina, Nautilus, Omega Sector,
      * Korean Folk Town, Herb Town, Magatia, Showa) and Amoria takes its 670 Purplewood fields. The Temple of Time's
-     * roads (Memory Lane, Road of Regrets, Road to Oblivion) are its own region.
+     * roads (Memory Lane, Road of Regrets, Road to Oblivion) are its own region, and the Community Repack's Future
+     * behind its Three Doors (Dark Ereve, Henesys Ruins, Twilight Perion) joins it: no citizen is born at lv160+, so
+     * those fields serve the temple's citizens who outgrow its roads. Coke Town is its own region; Ninja Castle joins
+     * Zipangu, Ulu City Singapore and Lion King's Castle El Nath. Crack in Time (272) and the Knight Stronghold
+     * (271030000-271049999, behind quest portals) are left out: no player walks into them; so are the Ruins of Krexel
+     * (541020700-541020899), the boss's rooms.
      */
     static String region(int mapId) {
         int prefix = mapId / 1_000_000;
+        if (mapId >= 271_030_000 && mapId <= 271_049_999 || mapId >= 541_020_700 && mapId <= 541_020_899) {
+            return null;
+        }
         return switch (prefix) {
             case 100, 101, 102, 103, 104, 105, 106, 110, 120 -> "victoria";
             case 130 -> "ereve";
             case 140 -> "rien";
             case 200 -> "orbis";
             case 211 -> "el-nath";
+            case 219 -> "coke-town";
             case 220, 221, 222 -> "ludibrium";
             case 230 -> "aquarium";
             case 240 -> "leafre";
             case 250, 251 -> "mu-lung";
             case 260, 261 -> "ariant";
-            case 270 -> "temple-of-time";
+            case 270, 271, 273 -> "temple-of-time";
             case 300 -> "ellin-forest";
             case 540, 541 -> "singapore";
             case 550, 551 -> "malaysia";
@@ -160,10 +172,24 @@ public final class FieldCatalogMain {
     private static int mobLevel(Path wz, int mobId) {
         Path file = wz.resolve(String.format("Mob.wz/%07d.img.xml", mobId));
         try {
-            return Files.exists(file) ? intOf(Files.readString(file, StandardCharsets.UTF_8), "level", 0) : 0;
+            return Files.exists(file) ? infoLevel(Files.readString(file, StandardCharsets.UTF_8)) : 0;
         } catch (IOException failure) {
             return 0;
         }
+    }
+
+    /**
+     * The mob's own {@code info/level}: a direct child of the top-level {@code info} (four spaces in), not the
+     * {@code level} of a skill listed inside it, which some files (the Future's mutants, 8220017) put first.
+     */
+    static int infoLevel(String xml) {
+        int start = xml.indexOf("<imgdir name=\"info\">");
+        if (start < 0) {
+            return 0;
+        }
+        int end = xml.indexOf("\n  </imgdir>", start);
+        Matcher m = INFO_LEVEL.matcher(end < 0 ? xml.substring(start) : xml.substring(start, end));
+        return m.find() ? Integer.parseInt(m.group(1)) : 0;
     }
 
     private static Map<Integer, String[]> mapNames(Path stringMap) throws IOException {

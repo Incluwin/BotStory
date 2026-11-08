@@ -1,0 +1,17 @@
+# Limina rumors (Repack Residents). The pair is on the lower east street together in those hours
+# (personas/limina.yaml).
+- id: limina-the-left-boot
+  participants: [tam, mourne]
+  where: { town: limina, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [16, 17]
+    everyDays: 1
+  lines:
+    - { by: tam, text: "Mourne! a boot washed up. just the one." }
+    - { by: mourne, text: "the left?" }
+    - { by: tam, text: "how'd you know?" }
+    - { by: mourne, text: "it's always the left. the right ones go on." }
+    - { by: tam, text: "on to where?" }
+    - { by: mourne, text: "past the edge. it moved in the night. a hand's width east." }
+    - { by: tam, text: "is that good?" }
+    - { by: mourne, text: "it's a hand's width. that's all it is. put the boot with the others." }

@@ -3,7 +3,7 @@
   "profileId": "ninja-castle",
   "mapId": 800040000,
   "admission": {
-    "mode": "MANUAL_ONLY",
+    "mode": "AMBIENT",
     "maxAmbientAgents": 36,
     "minVisitMs": 60000,
     "maxVisitMs": 900000,

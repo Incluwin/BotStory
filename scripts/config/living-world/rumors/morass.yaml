@@ -1,0 +1,35 @@
+# Morass rumors (Repack Residents). The pair is awake together at its spot in those hours (personas/morass.yaml).
+- id: morass-the-rent
+  participants: [anouk, corin]
+  where: { town: morass, spot: "venue:beside-michelin" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  lines:
+    - { by: anouk, text: "Corin. the back room. a year." }
+    - { by: corin, text: "is it a year? it doesn't feel like a year." }
+    - { by: anouk, text: "it feels like a year to the ledger." }
+    - { by: corin, text: "the book's nearly done." }
+    - { by: anouk, text: "you said that in the spring." }
+    - { by: corin, text: "it was nearly done in the spring. it's more nearly done now." }
+    - { by: anouk, text: "...eat your soup. it's Michelin's. it's very grand." }
+    - { by: corin, text: "you're very kind to me, Anouk." }
+    - { by: anouk, text: "i'm kind to the ledger. it's had a hard year." }
+
+- id: morass-ask-me-in-a-year
+  participants: [corin, lucan]
+  where: { town: morass, spot: "venue:upper-east-street" }
+  when:
+    serverHours: [13, 14, 15]
+    everyDays: 2
+  lines:
+    - { by: corin, text: "what did you catch today?" }
+    - { by: lucan, text: "nothing yet." }
+    - { by: corin, text: "can i write that down?" }
+    - { by: lucan, text: "you write everything down." }
+    - { by: corin, text: "where do they go, when you let them go?" }
+    - { by: lucan, text: "to the lamps." }
+    - { by: corin, text: "and after the lamps?" }
+    - { by: lucan, text: "...ask me again in a year." }
+    - { by: corin, text: "it's been a year." }
+    - { by: lucan, text: "then ask me again in another one." }

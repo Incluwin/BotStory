@@ -428,6 +428,39 @@ fields:
   - { mapId: 211041300, name: "Forest of Dead Trees III", street: "El Nath", region: el-nath, town: false, mobs: 19, mobLevel: 58, capacity: 4 }
   - { mapId: 211041400, name: "Forest of Dead Trees IV", street: "El Nath", region: el-nath, town: false, mobs: 17, mobLevel: 58, capacity: 4 }
   - { mapId: 211050000, name: "Icy Cold Field", street: "El Nath", region: el-nath, town: false, mobs: 27, mobLevel: 58, capacity: 6 }
+  - { mapId: 211060100, name: "Under the Castle Walls 1", street: "Lion King's Castle", region: el-nath, town: false, mobs: 7, mobLevel: 117, capacity: 1 }
+  - { mapId: 211060201, name: "Roof of the First Tower", street: "Lion King's Castle", region: el-nath, town: false, mobs: 6, mobLevel: 117, capacity: 1 }
+  - { mapId: 211060300, name: "Under the Castle Walls 2", street: "Lion King's Castle", region: el-nath, town: false, mobs: 6, mobLevel: 119, capacity: 1 }
+  - { mapId: 211060401, name: "Roof of the Second Tower", street: "Lion King's Castle", region: el-nath, town: false, mobs: 6, mobLevel: 117, capacity: 1 }
+  - { mapId: 211060410, name: "Short Castle Walls 1", street: "Lion King's Castle", region: el-nath, town: false, mobs: 6, mobLevel: 125, capacity: 1 }
+  - { mapId: 211060500, name: "Under the Castle Walls 3", street: "Lion King's Castle", region: el-nath, town: false, mobs: 6, mobLevel: 120, capacity: 1 }
+  - { mapId: 211060601, name: "Roof of the Third Tower", street: "Lion King's Castle", region: el-nath, town: false, mobs: 6, mobLevel: 117, capacity: 1 }
+  - { mapId: 211060610, name: "Short Castle Walls 2", street: "Lion King's Castle", region: el-nath, town: false, mobs: 4, mobLevel: 125, capacity: 1 }
+  - { mapId: 211060620, name: "Tall Castle Walls 1", street: "Lion King's Castle", region: el-nath, town: false, mobs: 4, mobLevel: 127, capacity: 1 }
+  - { mapId: 211060700, name: "Under the Castle Walls 4", street: "Lion King's Castle", region: el-nath, town: false, mobs: 4, mobLevel: 122, capacity: 1 }
+  - { mapId: 211060810, name: "Short Castle Walls 3", street: "Lion King's Castle", region: el-nath, town: false, mobs: 4, mobLevel: 125, capacity: 1 }
+  - { mapId: 211060820, name: "Tall Castle Walls 2", street: "Lion King's Castle", region: el-nath, town: false, mobs: 4, mobLevel: 127, capacity: 1 }
+  - { mapId: 211060830, name: "Very Tall Castle Walls", street: "Lion King's Castle", region: el-nath, town: false, mobs: 4, mobLevel: 127, capacity: 1 }
+  - { mapId: 211060900, name: "Under the Castle Walls 5", street: "Lion King's Castle", region: el-nath, town: false, mobs: 6, mobLevel: 122, capacity: 1 }
+  - { mapId: 219000000, name: "Coke Town", street: "Hidden Street", region: coke-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 219000001, name: "Coke Town Sundry Goods Shop", street: "Hidden Street", region: coke-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 219000002, name: "House of Pouch", street: "Hidden Street", region: coke-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 219000003, name: "House of Lolo", street: "Hidden Street", region: coke-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 219000004, name: "Empty House in Coke Town", street: "Hidden Street", region: coke-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 219000005, name: "House of Puch", street: "Hidden Street", region: coke-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 219010000, name: "Coke Ski Camp", street: "Hidden Street", region: coke-town, town: false, mobs: 20, mobLevel: 12, capacity: 5 }
+  - { mapId: 219010001, name: "Coke Ski Camp", street: "Hidden Street", region: coke-town, town: false, mobs: 31, mobLevel: 18, capacity: 6 }
+  - { mapId: 219010100, name: "Coke Ski Camp", street: "Hidden Street", region: coke-town, town: false, mobs: 20, mobLevel: 22, capacity: 5 }
+  - { mapId: 219010101, name: "Coke Ski Camp", street: "Hidden Street", region: coke-town, town: false, mobs: 26, mobLevel: 28, capacity: 6 }
+  - { mapId: 219010200, name: "Coke Ski Camp", street: "Hidden Street", region: coke-town, town: false, mobs: 23, mobLevel: 33, capacity: 5 }
+  - { mapId: 219010201, name: "Coke Ski Camp", street: "Hidden Street", region: coke-town, town: false, mobs: 15, mobLevel: 35, capacity: 3 }
+  - { mapId: 219010300, name: "Coke Ski Camp B1648", street: "Hidden Street", region: coke-town, town: false, mobs: 23, mobLevel: 28, capacity: 5 }
+  - { mapId: 219020000, name: "Coke ValleyI", street: "Hidden Street", region: coke-town, town: false, mobs: 17, mobLevel: 39, capacity: 4 }
+  - { mapId: 219020001, name: "Small Alley", street: "Hidden Street", region: coke-town, town: false, mobs: 21, mobLevel: 40, capacity: 5 }
+  - { mapId: 219020100, name: "Coke ValleyII", street: "Hidden Street", region: coke-town, town: false, mobs: 22, mobLevel: 44, capacity: 5 }
+  - { mapId: 219020200, name: "Coke ValleyIII", street: "Hidden Street", region: coke-town, town: false, mobs: 9, mobLevel: 49, capacity: 2 }
+  - { mapId: 219020300, name: "Coke ValleyIV", street: "Hidden Street", region: coke-town, town: false, mobs: 12, mobLevel: 70, capacity: 3 }
+  - { mapId: 219020301, name: "Forest of Coke Golem", street: "Hidden Street", region: coke-town, town: false, mobs: 16, mobLevel: 60, capacity: 4 }
   - { mapId: 220000000, name: "Ludibrium", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000001, name: "Ludibrium Weapon Store", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000002, name: "Ludibrium Pharmacy", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
@@ -762,6 +795,38 @@ fields:
   - { mapId: 270030300, name: "Road to Oblivion3", street: "Time Lane", region: temple-of-time, town: false, mobs: 17, mobLevel: 122, capacity: 4 }
   - { mapId: 270030400, name: "Road to Oblivion4", street: "Time Lane", region: temple-of-time, town: false, mobs: 18, mobLevel: 128, capacity: 4 }
   - { mapId: 270030500, name: "Road to Oblivion5", street: "Time Lane", region: temple-of-time, town: false, mobs: 16, mobLevel: 132, capacity: 4 }
+  - { mapId: 271000000, name: "Gate to the Future", street: "Gate to the Future", region: temple-of-time, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 271000100, name: "Mutant Tino Forest", street: "Dark Ereve", region: temple-of-time, town: false, mobs: 16, mobLevel: 163, capacity: 4 }
+  - { mapId: 271000200, name: "Mutant Tiru Forest", street: "Dark Ereve", region: temple-of-time, town: false, mobs: 12, mobLevel: 165, capacity: 3 }
+  - { mapId: 271000210, name: "Mutant Tiguru Forest", street: "Dark Ereve", region: temple-of-time, town: false, mobs: 13, mobLevel: 167, capacity: 3 }
+  - { mapId: 271010000, name: "Henesys Ruins", street: "Henesys Ruins", region: temple-of-time, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 271010100, name: "Henesys Ruins Market", street: "Henesys Ruins", region: temple-of-time, town: false, mobs: 10, mobLevel: 162, capacity: 2 }
+  - { mapId: 271010200, name: "Henesys Ruins Park", street: "Henesys Ruins", region: temple-of-time, town: false, mobs: 14, mobLevel: 162, capacity: 3 }
+  - { mapId: 271010300, name: "Hill North of Henesys Ruins", street: "Ravaged Forest", region: temple-of-time, town: false, mobs: 16, mobLevel: 166, capacity: 4 }
+  - { mapId: 271010301, name: "Suspicious Hill", street: "Ravaged Forest", region: temple-of-time, town: false, mobs: 12, mobLevel: 167, capacity: 3 }
+  - { mapId: 271010400, name: "Dreamy Forest Trail", street: "Ravaged Forest", region: temple-of-time, town: false, mobs: 8, mobLevel: 168, capacity: 2 }
+  - { mapId: 271020000, name: "Dark Spore Hill", street: "Singing Mushroom Forest Ruins", region: temple-of-time, town: false, mobs: 10, mobLevel: 164, capacity: 2 }
+  - { mapId: 271020100, name: "Creepy Humming Forest Trail", street: "Singing Mushroom Forest Ruins", region: temple-of-time, town: false, mobs: 10, mobLevel: 164, capacity: 2 }
+  - { mapId: 273000000, name: "Twilight Perion", street: "Twilight Perion", region: temple-of-time, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 273010000, name: "Deserted Southern Ridge", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 20, mobLevel: 190, capacity: 5 }
+  - { mapId: 273020000, name: "Desolate Hills", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 19, mobLevel: 190, capacity: 4 }
+  - { mapId: 273020100, name: "Desolate Rocky Road", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 18, mobLevel: 190, capacity: 4 }
+  - { mapId: 273020200, name: "Lonely Rocky Road", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 20, mobLevel: 191, capacity: 5 }
+  - { mapId: 273020300, name: "Weathered Rocky Zone", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 28, mobLevel: 192, capacity: 6 }
+  - { mapId: 273020400, name: "Tempest Grave", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 25, mobLevel: 192, capacity: 6 }
+  - { mapId: 273030000, name: "Fiery Ravine", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 21, mobLevel: 192, capacity: 5 }
+  - { mapId: 273030100, name: "Fiery Rocky Hills", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 25, mobLevel: 193, capacity: 6 }
+  - { mapId: 273030200, name: "Fevered Land", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 31, mobLevel: 193, capacity: 6 }
+  - { mapId: 273030300, name: "Gale Pleateau", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 27, mobLevel: 194, capacity: 6 }
+  - { mapId: 273040000, name: "Forsaken Excavation Site 1", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 22, mobLevel: 194, capacity: 5 }
+  - { mapId: 273040100, name: "Forsaken Excavation Site 2", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 27, mobLevel: 195, capacity: 6 }
+  - { mapId: 273040200, name: "Forsaken Excavation Site 3", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 31, mobLevel: 196, capacity: 6 }
+  - { mapId: 273040300, name: "Forsaken Excavation Site 4", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 27, mobLevel: 196, capacity: 6 }
+  - { mapId: 273050000, name: "Tribal Refugee Camp", street: "Twilight Perion", region: temple-of-time, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 273060000, name: "Spirit Zone Limbo", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 13, mobLevel: 196, capacity: 3 }
+  - { mapId: 273060100, name: "Rough Wilderness", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 21, mobLevel: 197, capacity: 5 }
+  - { mapId: 273060200, name: "Rough Canyon", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 21, mobLevel: 197, capacity: 5 }
+  - { mapId: 273060300, name: "Warrior Grounds", street: "Twilight Perion", region: temple-of-time, town: false, mobs: 22, mobLevel: 198, capacity: 5 }
   - { mapId: 300000000, name: "Altaire Camp", street: "Ellin Forest", region: ellin-forest, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 300000001, name: "Tent House 1", street: "Altaire Camp", region: ellin-forest, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 300000002, name: "Tent House 2", street: "Altaire Camp", region: ellin-forest, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
@@ -791,6 +856,14 @@ fields:
   - { mapId: 541010010, name: "Ghost Ship 2", street: "Singapore", region: singapore, town: false, mobs: 29, mobLevel: 63, capacity: 6 }
   - { mapId: 541010040, name: "Ghost Ship 5", street: "Singapore", region: singapore, town: false, mobs: 29, mobLevel: 60, capacity: 6 }
   - { mapId: 541010050, name: "Ghost Ship 6", street: "Singapore", region: singapore, town: false, mobs: 23, mobLevel: 68, capacity: 5 }
+  - { mapId: 541020000, name: "Ulu City Entrance", street: "Singapore", region: singapore, town: false, mobs: 37, mobLevel: 85, capacity: 6 }
+  - { mapId: 541020100, name: "Ulu Estate I", street: "Singapore", region: singapore, town: false, mobs: 52, mobLevel: 87, capacity: 6 }
+  - { mapId: 541020200, name: "Ulu Estate II", street: "Singapore", region: singapore, town: false, mobs: 30, mobLevel: 92, capacity: 6 }
+  - { mapId: 541020300, name: "Ulu Estate III", street: "Singapore", region: singapore, town: false, mobs: 27, mobLevel: 105, capacity: 6 }
+  - { mapId: 541020400, name: "Along Ulu City", street: "Singapore", region: singapore, town: false, mobs: 37, mobLevel: 108, capacity: 6 }
+  - { mapId: 541020500, name: "Ulu City Center", street: "Singapore", region: singapore, town: false, mobs: 36, mobLevel: 110, capacity: 6 }
+  - { mapId: 541020600, name: "Destroyed Park I", street: "Singapore", region: singapore, town: false, mobs: 29, mobLevel: 109, capacity: 6 }
+  - { mapId: 541020610, name: "Destroyed Park II", street: "Singapore", region: singapore, town: false, mobs: 23, mobLevel: 115, capacity: 5 }
   - { mapId: 550000000, name: "Trend Zone Metropolis", street: "Malaysia", region: malaysia, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 550000100, name: "Outskirts of Muddy Banks", street: "Malaysia", region: malaysia, town: false, mobs: 29, mobLevel: 46, capacity: 6 }
   - { mapId: 550000200, name: "Muddy Banks 1", street: "Malaysia", region: malaysia, town: false, mobs: 28, mobLevel: 54, capacity: 6 }
@@ -907,6 +980,17 @@ fields:
   - { mapId: 800020300, name: "Cemetery Full of Ghosts", street: "Zipangu", region: zipangu, town: false, mobs: 31, mobLevel: 58, capacity: 6 }
   - { mapId: 800020400, name: "WanWan Spa of Hell", street: "Zipangu", region: zipangu, town: false, mobs: 21, mobLevel: 90, capacity: 5 }
   - { mapId: 800030000, name: "Forest of Animals", street: "Zipangu", region: zipangu, town: false, mobs: 41, mobLevel: 30, capacity: 6 }
+  - { mapId: 800040000, name: "Outside Ninja Castle", street: "Zipangu", region: zipangu, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 800040100, name: "Inside the Castle Gate", street: "Zipangu", region: zipangu, town: false, mobs: 39, mobLevel: 25, capacity: 6 }
+  - { mapId: 800040200, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 23, mobLevel: 25, capacity: 5 }
+  - { mapId: 800040201, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 25, mobLevel: 26, capacity: 6 }
+  - { mapId: 800040202, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 21, mobLevel: 50, capacity: 5 }
+  - { mapId: 800040203, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 26, mobLevel: 55, capacity: 6 }
+  - { mapId: 800040204, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 43, mobLevel: 53, capacity: 6 }
+  - { mapId: 800040205, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 41, mobLevel: 53, capacity: 6 }
+  - { mapId: 800040206, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 37, mobLevel: 85, capacity: 6 }
+  - { mapId: 800040207, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 43, mobLevel: 65, capacity: 6 }
+  - { mapId: 800040208, name: "Castle Corridor", street: "Zipangu", region: zipangu, town: false, mobs: 35, mobLevel: 86, capacity: 6 }
   - { mapId: 801000000, name: "Showa Town", street: "Zipangu", region: zipangu, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 801000001, name: "Hair Salon", street: "Zipangu", region: zipangu, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 801000002, name: "Plastic Surgery", street: "Zipangu", region: zipangu, town: true, mobs: 0, mobLevel: 0, capacity: 0 }

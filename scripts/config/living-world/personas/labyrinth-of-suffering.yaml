@@ -1,0 +1,170 @@
+# Labyrinth of Suffering, the Crash Site (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents,
+# none recruitable, by the little ship that came down on the Labyrinth's roof. The Crash Site has two venues (by the
+# Temple Keeper, by the Cygnus Soldier, two places each): the three take turns there. Cassius's last flight chart is the
+# Labyrinth's page of the River Atlas (arcane.page.labyrinth).
+- id: cassius
+  name: Cassius
+  look: { gender: male }
+  title: "Pilot of the Fallen Ship"
+  job: OUTLAW
+  level: { min: 90, max: 92 }
+  strength: SEASONED
+  loadout: omega-gun-l88
+  personality: relaxed-v1
+  home:
+    town: labyrinth-of-suffering
+    routine:
+      - { from: 6, to: 12, spot: "venue:by-cygnus-soldier", activity: SHOW_OFF }
+      - { from: 12, to: 15, materialize: false }
+      - { from: 15, to: 20, spot: "venue:by-temple-keeper", activity: SOCIALIZE }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: false
+  knows: [Crash Site, Zeta Gray, Small Spaceship]
+  questLines: [cassius-gyros-from-kulan, cassius-the-last-flight-chart]
+  rumors: [labyrinth-four-good-pieces]
+  relationships:
+    - { persona: sorcha, kind: OWES_A_LANDING_TO }
+    - { persona: tilde, kind: WAS_LIT_DOWN_BY }
+    - { persona: ottoline, kind: GIVES_HIS_CHART_TO }
+  giftItemIds: [2020003, 2022002]
+  dialogue:
+    greetFirst: ["welcome to the Crash Site! it's named after me. well. after the event. i was the event.", "a visitor! mind the wreck, it's still a bit proud."]
+    greet: ["hey, you!", "back again! the ship's missed you. it creaks when it's happy.", "hello! still grounded. temporarily."]
+    idle: ["(polishes a cracked flight helmet with his sleeve, holds it up to the light, and polishes it again)", "(draws a flight path in the air with one finger, ends it with a steep downward swoop, and winces)"]
+    noWork: ["nothing today. i'm grounded. it's restful. i hate it."]
+    nothingDue: ["all square, co-pilot."]
+    who: ["Cassius. pilot. i flew the fastest little ship ever to leave Omega Sector, straight up past the moon and a bit to the left. then the sky ended. it does that, out here. we came down on the Labyrinth's roof. i call it a landing."]
+    bye: ["fly safe! or walk. walking's safer, i'm told."]
+    thanks: ["you're a star. a small bright one."]
+    smallTalk: ["the sky over the river doesn't go up forever. it stops. you feel it in the stick, a sort of shrug, and then you're coming down whether you agreed to or not.", "Sorcha says the ship's in four pieces. i say it's a ship with four good bits. she says that's three. we're both stubborn. one of us is right. it's her."]
+    speakPlainly: ["plainly: a pilot without a sky, and a ship in pieces."]
+    questOffer.cassius-gyros-from-kulan: ["the gyros are shot. the zeta grays in Omega Sector's Kulan Field carry small spaceships. toys, they say. the gyros in those toys are better than anything i ever flew with. ten, please. and show them to Sorcha before you bring them to me. she'll want to frown at them first."]
+    questAccept.cassius-gyros-from-kulan: ["out through the Temple Keeper's door and round to Omega Sector. Kulan Field, the second and third stretches: zeta grays. they're small. don't let that fool you. it fooled me."]
+    questWaiting.cassius-gyros-from-kulan: ["ten little ships, and Sorcha's frown. both."]
+    questComplete.cassius-gyros-from-kulan: ["she frowned? good. she frowns when a thing will work. ...ten. look at the size of these gyros. we'll fly again. not soon. but again. thank you, co-pilot."]
+    questOffer.cassius-the-last-flight-chart: ["the cartographer in Nameless Town keeps the river in an atlas, a page from every town on it. ours is my last flight chart: the line we came in on. it's half burnt. walk it for me so i can finish it: over the White Spear's third deck, and down into the Labyrinth's first interior, where we hit. and ask Tilde what she saw. she was lighting lamps that night."]
+    questAccept.cassius-the-last-flight-chart: ["the way down from the Crash Site to the third deck, then back up and into the Labyrinth's interiors: the first one, by us. that's where the roof gave. Tilde's by the Temple Keeper before dawn, or with the soldiers in the afternoon."]
+    questWaiting.cassius-the-last-flight-chart: ["the deck, the first interior, and Tilde. the chart's on my knee."]
+    questComplete.cassius-the-last-flight-chart: ["'a falling star with somebody singing in it.' i was singing. i'd forgotten that. ...here. the chart, finished. every turn: the deck, the roof, the landing. it's yours to keep, or the cartographer's. a river should know what fell into it."]
+    about.sorcha: ["Sorcha's my mechanic. she pulled me out of the wreck by the collar and said 'you owe me a landing.' i'm working on it."]
+    about.tilde: ["Tilde lights the lamps round the Labyrinth so nobody gets lost. she lit one for the ship. it's still lit. i don't know how. i don't ask."]
+    about.ottoline: ["the cartographer upriver keeps a page from every town. ours is a flight chart, and half of it's sky. sky counts. a river should know what fell into it."]
+    aboutUnknown: ["never flown with them."]
+    friend.close: ["when she flies again, you're in the second seat. that's the good seat. it's the only other seat."]
+    friend.best: ["if the sky ever ends on you, i'll come and get you. i know how it ends. i've been there."]
+    famed: ["your name's going round the river like a good engine. i like the sound of it."]
+    defamed: ["people say things. people said i couldn't fly. i flew. off the top, but still."]
+    gift: ["oh! thanks, co-pilot!"]
+    gift.favorite: ["now that's pilot's fuel. you've got good instincts."]
+    gift.again: ["one! i've a weight limit. had. had a weight limit."]
+
+- id: sorcha
+  name: Sorcha
+  look: { gender: female }
+  title: "Mechanic of the Fallen Ship"
+  job: BEGINNER
+  level: { min: 64, max: 66 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: labyrinth-of-suffering
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-cygnus-soldier", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:by-temple-keeper", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [Clock Spring, Master Robo, Mechanical Heart]
+  questLines: [sorcha-springs-for-the-gauges, sorcha-a-heart-for-the-engine]
+  rumors: [labyrinth-four-good-pieces]
+  relationships:
+    - { persona: cassius, kind: PULLED_OUT_OF_THE_WRECK }
+    - { persona: tilde, kind: TAKES_TEA_FROM }
+  giftItemIds: [2020004, 2020010]
+  dialogue:
+    greetFirst: ["mind the wire. that one. and that one. no, that's a snake. kidding. it's a wire.", "you're not here to fly anything, are you? good."]
+    greet: ["hey.", "you again. hand me that.", "hello. don't touch the ship."]
+    idle: ["(taps a cracked gauge with a fingernail until the needle jumps, and nods at it as if it owed her)", "(lies on her back under nothing in particular, out of habit, and looks up at a sky that stops)"]
+    noWork: ["nothing today. the ship's in pieces. the pieces are in order. that's a good day."]
+    nothingDue: ["we're square. i checked twice."]
+    who: ["Sorcha. mechanic. i kept Cassius's ship together for six years. then he flew it off the top of the sky. now i keep the pieces together. it's the same job, slower."]
+    bye: ["don't crash."]
+    thanks: ["thanks. good work."]
+    smallTalk: ["the gauges all stopped at the moment we hit. every one. i've wound them on since. they keep wanting to go back to that moment. machines have long memories.", "Cassius calls it a landing. i'll call it a landing when it can do it twice."]
+    speakPlainly: ["plainly: a mechanic, a pilot, and the pieces."]
+    questOffer.sorcha-springs-for-the-gauges: ["the gauges need springs. the ticks on the Crossroad of Time in Ludibrium carry clock springs that don't give up. fifteen, please. i'll have the needles honest again."]
+    questAccept.sorcha-springs-for-the-gauges: ["Ludibrium, up the clock tower to the Crossroad of Time. ticks. they're small and very punctual. be quicker."]
+    questWaiting.sorcha-springs-for-the-gauges: ["fifteen springs. the needles are lying to me."]
+    questComplete.sorcha-springs-for-the-gauges: ["fifteen. ...look at that. the needle's on now. not on then. first time in a year. thanks. you'd make a mechanic, if you stopped being heroic. it slows you down."]
+    questOffer.sorcha-a-heart-for-the-engine: ["the engine wants a heart. the master robos in Ludibrium's Toy Factory carry mechanical ones, better than they deserve. ten. Cassius doesn't know i'm doing this. he thinks the engine's sleeping. it's dead. i'm fixing dead."]
+    questAccept.sorcha-a-heart-for-the-engine: ["the Toy Factory in Ludibrium, Process 1, Zone 1. master robos. take the hearts. leave the speeches."]
+    questWaiting.sorcha-a-heart-for-the-engine: ["ten hearts. don't tell Cassius."]
+    questComplete.sorcha-a-heart-for-the-engine: ["ten. ...listen. it's turning over. it won't fly. it'll hum. he'll hear it tonight and think he dreamt it. let him. thank you."]
+    about.cassius: ["Cassius flew us off the top of the sky, singing. he says it was a landing. i pulled him out by the collar. he still owes me a landing."]
+    about.tilde: ["Tilde brings me tea when i've been under the wreck too long. she knows how long that is better than i do."]
+    about.ottoline: ["the cartographer upriver. Cassius says our page for her should be his flight chart. i say my repair log. it's longer and it's true."]
+    aboutUnknown: ["never worked on them."]
+    friend.close: ["you can hold the wrench. nobody holds the wrench."]
+    friend.best: ["when she flies again, i'll want you checking the straps. i trust your hands. i don't trust anyone's hands."]
+    famed: ["people say good things about you. i checked them. they hold."]
+    defamed: ["people say things. most of it's loose bolts. i tighten what i can and leave the rest."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["that's good fuel. for me. i run on it."]
+    gift.again: ["one. i can't work full."]
+
+- id: tilde
+  name: Tilde
+  look: { gender: female }
+  title: "Lamp-Keeper of the Labyrinth"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: labyrinth-of-suffering
+    routine:
+      - { from: 4, to: 7, spot: "venue:by-temple-keeper", activity: LINGER }
+      - { from: 7, to: 12, materialize: false }
+      - { from: 12, to: 17, spot: "venue:by-cygnus-soldier", activity: REST }
+      - { from: 17, to: 21, materialize: false }
+      - { from: 21, to: 24, spot: "venue:by-cygnus-soldier", activity: LINGER }
+      - { from: 0, to: 4, materialize: false }
+  recruitable: false
+  knows: [Red Kentaurus, Labyrinth of Suffering Interior 2, Kentaurus's Flame]
+  questLines: [tilde-oil-for-the-lamps, tilde-the-second-turning]
+  relationships:
+    - { persona: sorcha, kind: BRINGS_TEA_TO }
+    - { persona: cassius, kind: SAW_COME_DOWN }
+  giftItemIds: [2020016, 2020013]
+  dialogue:
+    greetFirst: ["oh, hello, dear. you came by the keeper's door? sit. you've the look of someone who's been on a long road.", "a new face. welcome to the Crash Site. it's quieter than it sounds."]
+    greet: ["hello, dear.", "there you are. the lamps are lit.", "(lifts her lantern a little, to see you better) hello again."]
+    idle: ["(trims a lamp wick with a tiny pair of scissors, tuts at it, and trims it again)", "(holds her lantern out toward the Labyrinth's mouth, as if showing someone the way)"]
+    noWork: ["nothing today, dear. the lamps are full. it's a good day for sitting."]
+    nothingDue: ["nothing owed, dear. not a drop."]
+    who: ["Tilde. i keep the lamps at the edges of the Labyrinth of Suffering, so whoever goes in knows the way out. nobody's gone in for a long while. i keep them anyway. a lamp's for the next one."]
+    bye: ["mind your way back. look for the lamps."]
+    thanks: ["bless you, dear."]
+    smallTalk: ["the Labyrinth's for suffering, they say. i've walked its first turnings for years. it's mostly echoes. you shout your worries into it and it gives them back smaller.", "the soldiers here never move. the Wounded Soldier's been wounded as long as i've been here. i bring him tea. he doesn't drink it. i bring it anyway. it's the bringing."]
+    speakPlainly: ["plainly: an old woman with lamps, at the edge of the dark."]
+    questOffer.tilde-oil-for-the-lamps: ["the lamps want oil that burns clean. the red kentaurus in Leafre carry a flame that never goes out. fifteen of them in a jar, and i'll light the turnings for a year."]
+    questAccept.tilde-oil-for-the-lamps: ["down to Leafre and out to the Area of Red Kentaurus. they're made of fire, dear. mind your eyebrows."]
+    questWaiting.tilde-oil-for-the-lamps: ["fifteen flames. the lamps are on their last."]
+    questComplete.tilde-oil-for-the-lamps: ["fifteen. look at that. they burn blue at the bottom. a year's light. bless you."]
+    questOffer.tilde-the-second-turning: ["the lamp at the Labyrinth's second turning has gone out, and my knees won't take me that far today. walk the third interior, then the second, for me. you'll find it by the soot. it lights for anyone who means it."]
+    questAccept.tilde-the-second-turning: ["out of the Crash Site into the Labyrinth's third interior, then on to the second. the lamp's by the wall. mean it."]
+    questWaiting.tilde-the-second-turning: ["the second turning. is it lit?"]
+    questComplete.tilde-the-second-turning: ["lit? good. good. somebody can find their way out of the second turning again. nobody's in there. it doesn't matter. thank you, dear."]
+    about.cassius: ["Cassius came down singing. i'll never forget it. he's a good boy. he talks to the wreck when he thinks nobody's listening. i'm always listening. i'm old."]
+    about.sorcha: ["Sorcha works too long under that ship. i bring her tea at the right moment. she says i've a sense for it. i've a clock."]
+    about.ottoline: ["a cartographer upriver, keeping every town on a page. i hope she draws the lamps. people forget to draw the lamps."]
+    aboutUnknown: ["i don't know them, dear. i'll leave a lamp lit for them."]
+    friend.close: ["there's a lamp at the first turning that's lit for you. it doesn't say so. it is."]
+    friend.best: ["if you ever get lost, dear, anywhere at all, look for a lamp. i'll have lit it. somehow."]
+    famed: ["they speak well of you, dear. even the echoes."]
+    defamed: ["i've heard things, dear. i've shouted worse into the Labyrinth. it gave them back smaller."]
+    gift: ["oh, how lovely. thank you, dear."]
+    gift.favorite: ["oh, that's a treat with the evening lamps. you know me."]
+    gift.again: ["one's plenty, dear. save the rest for someone who's walked farther."]

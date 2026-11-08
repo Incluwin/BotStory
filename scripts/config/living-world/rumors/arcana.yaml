@@ -1,0 +1,36 @@
+# Arcana rumors (Repack Residents). The pair is awake together at its spot in those hours (personas/arcana.yaml).
+- id: arcana-the-sign-on-the-door
+  participants: [fennimore, briar]
+  where: { town: arcana, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [17, 18, 19]
+    everyDays: 2
+  lines:
+    - { by: fennimore, text: "Briar. the sign." }
+    - { by: briar, text: "i carved it." }
+    - { by: fennimore, text: "it says 'come in'." }
+    - { by: briar, text: "it said 'go away' when i carved it." }
+    - { by: fennimore, text: "it said 'come in' when i hung it." }
+    - { by: briar, text: "then maybe it's the door." }
+    - { by: fennimore, text: "...the door is on my side." }
+    - { by: briar, text: "a door's on everybody's side. that's what a door's for." }
+    - { by: fennimore, text: "go away, Briar." }
+    - { by: briar, text: "i'll come in for tea, then. the sign says." }
+
+- id: arcana-the-morning-tea
+  participants: [sylvie, fennimore]
+  where: { town: arcana, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [9, 10]
+    everyDays: 1
+  lines:
+    - { by: sylvie, text: "tea, Fennimore." }
+    - { by: fennimore, text: "i don't want tea." }
+    - { by: sylvie, text: "i know. here." }
+    - { by: fennimore, text: "...it's too hot." }
+    - { by: sylvie, text: "it's the same as yesterday." }
+    - { by: fennimore, text: "yesterday was too hot as well." }
+    - { by: sylvie, text: "the tree says good morning." }
+    - { by: fennimore, text: "the tree is asleep." }
+    - { by: sylvie, text: "it talks in its sleep. it said good morning. to you." }
+    - { by: fennimore, text: "...tell it good morning, then. quietly." }

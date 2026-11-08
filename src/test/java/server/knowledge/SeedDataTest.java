@@ -35,7 +35,8 @@ class SeedDataTest {
         long ms = (System.nanoTime() - started) / 1_000_000;
 
         assertEquals(List.of(), replay.warnings());
-        assertEquals(22_157 + 1_384, replay.tables().get("drop_data").size(), "the seed and the Repack mobs' rows");
+        assertEquals(22_157 + 1_384 + 12, replay.tables().get("drop_data").size(),
+                "the seed, the Repack mobs' rows and Coke Town's own etc drops");
         assertEquals(6, replay.tables().get("drop_data_global").size());
         assertEquals(110, replay.tables().get("shops").size());
         assertEquals(3_881, replay.tables().get("shopitems").size());
@@ -55,7 +56,8 @@ class SeedDataTest {
     @Test
     void appliesChangesetsInDocumentThenExtensionOrder() throws IOException {
         assertEquals(List.of("101", "102", "151", "152", "162", "163", "200", "2026-07-15-kpq-coupon-chance",
-                "2026-08-20-kpq-coupon-chance-80", "2026-09-05-epq-poison-bottle-chance-60", "2026-10-26-repack-import-drops"),
+                "2026-08-20-kpq-coupon-chance-80", "2026-09-05-epq-poison-bottle-chance-60", "2026-10-26-repack-import-drops",
+                "2026-11-08-coke-town-drops"),
                 SeedData.replay(ROOT).applied());
     }
 
@@ -73,7 +75,8 @@ class SeedDataTest {
             oracle.add(row);
         }
         List<Map<String, String>> replayed = SeedData.replay(ROOT).tables().get("drop_data");
-        assertEquals(oracle.size() + 1_384, replayed.size(), "the seed, then the Repack mobs' rows (extensions)");
+        assertEquals(oracle.size() + 1_384 + 12, replayed.size(),
+                "the seed, then the Repack mobs' rows and Coke Town's own etc drops (extensions)");
         int edited = 0;
         for (int i = 0; i < oracle.size(); i++) {
             int[] expected = oracle.get(i);

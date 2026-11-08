@@ -1,0 +1,31 @@
+# Nameless Town rumors (Repack Residents). The pair is awake together at its spot in those hours (personas/nameless-town.yaml).
+- id: nameless-the-row-of-stones
+  participants: [ottoline, oren]
+  where: { town: nameless-town, spot: "venue:beside-rento" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  lines:
+    - { by: ottoline, text: "Oren. your stones moved again. they were along the east street this morning. now half of them are by Rento's." }
+    - { by: oren, text: "they're where the people are. people move." }
+    - { by: ottoline, text: "a stone is supposed to be the thing that stays." }
+    - { by: oren, text: "a stone with a name on it goes where the name goes. otherwise what's the point of it?" }
+    - { by: ottoline, text: "...that's going in the margin." }
+    - { by: oren, text: "you put everything in the margin." }
+    - { by: ottoline, text: "the margin's where the true things go. the middle's just for roads." }
+
+- id: nameless-read-it-twice
+  participants: [ilka, oren]
+  where: { town: nameless-town, spot: "venue:lower-east-street-3" }
+  when:
+    serverHours: [9, 10, 11]
+    everyDays: 2
+  lines:
+    - { by: ilka, text: "Oren. you were up before the lake again." }
+    - { by: oren, text: "somebody has to be. the stones don't write themselves." }
+    - { by: ilka, text: "you wrote mine. i saw it by the door." }
+    - { by: oren, text: "i write yours every morning." }
+    - { by: ilka, text: "even on the mornings i'm sure of it?" }
+    - { by: oren, text: "especially then. being sure is when the lake gets you." }
+    - { by: ilka, text: "...that's a horrible thing to say, Oren." }
+    - { by: oren, text: "it's a true thing. here. the chalk's still wet. read it twice." }

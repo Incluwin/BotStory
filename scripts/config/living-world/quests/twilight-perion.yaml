@@ -1,0 +1,298 @@
+# Twilight Perion quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.3). The Future's fields round the town
+# start at lv190: the Deserted Southern Ridge 273010000 west of town (swollen stump 8620000) on the road to the Six Path
+# Crossway Ruins 271010500 and Henesys Ruins; east of town the Desolate Hills 273020000 (swollen stump) and the Desolate
+# Rocky Road 273020100 (swollen stump, swollen dark stump 8620001), the Lonely and Weathered Rocky Roads and the Tempest
+# Grave (swollen axe stump 8620002), the Fiery Ravine and the boar plateaus 273030000-273030300 (pillaging boars
+# 8620003-8620005), the Forsaken Excavation Sites 273040000-273040300 (sinister masks) north to the Tribal Refugee Camp.
+# No step of a quest below level 180 enters those lv190+ maps: Cobie 2142112 takes the guarded road to the camp and back,
+# the door by Claudine 2142107 goes back to Three Doors, and the recruits' last tier is fought on the lv163-168 fields of
+# Dark Ereve and Henesys Ruins' hills (quests/henesys-ruins.yaml header). Future mobs drop only their donors' potions
+# and scrolls: collect steps carry the present, either the Temple of Time's roads (quests/three-doors.yaml header; the
+# Road to Oblivion's fourth stretch 270030400 holds the chief oblivion guardian 8200012, red heart 4000458) or the
+# present Perion whose mobs these ones became (wild boar 2230102 wild boar tooth 4000020, axe stump 1130100 firewood
+# 4000018). Heddwyn's thread (arcs/twilight-perion.yaml) waits on the camp's
+# old fire (camp.fire.lit, quests/tribal-refugee-camp.yaml).
+
+# ---- Heddwyn: the last story (arcs/twilight-perion.yaml) ----
+- id: heddwyn-a-boar-that-was-a-boar
+  persona: heddwyn
+  title: "A Boar That Was a Boar"
+  length: SHORT
+  requires: { level: { min: 120 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000020, count: 15 }
+    - { id: show, type: DELIVER, to: heddwyn, take: { itemId: 4000020, count: 15 } }
+  rewards: { meso: 60000, exp: 200000, bondPoints: 30, items: [{ itemId: 2000005, count: 20 }] }
+
+- id: heddwyn-the-sun-on-the-rocks
+  persona: heddwyn
+  title: "The Sun on the Rocks"
+  length: MEDIUM
+  requires: { level: { min: 130 }, questsCompleted: [heddwyn-a-boar-that-was-a-boar] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: perion, type: VISIT_MAP, mapIds: [102000000] }
+    - { id: moss, type: TALK_TO, persona: moss, say: ["a storyteller from the years to come wants to know how the sun falls on our rocks? ...slowly. it takes the whole day to cross the town, and the rocks keep it after it's gone. touch one at dusk. warm. tell him the rocks remember the sun. they're slow. they remember."] }
+    - { id: tell, type: DELIVER, to: heddwyn }
+  rewards: { meso: 90000, exp: 320000, bondPoints: 40, items: [{ itemId: 2000005, count: 20 }], worldFlags: [tperion.story.before] }
+
+- id: heddwyn-the-last-story
+  persona: heddwyn
+  title: "The Last Story"
+  length: LONG
+  requires: { level: { min: 150 }, questsCompleted: [heddwyn-the-sun-on-the-rocks], flags: [camp.fire.lit], notFlags: [tperion.story.told] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: solveig, type: TALK_TO, persona: solveig, say: ["a story for the end of days, from a storyteller who's never seen our years? ...tell him this. there's a cairn in the Past of the Verdure, where the roads begin. every pilgrim leaves a stone. nobody knows where the roads end. every morning the stones are still there, and somebody walks on. tell him that's how it is here. nobody knows what's coming. we walk anyway."] }
+    - { id: kasper, type: TALK_TO, persona: kasper, say: ["the old fire's lit! the whole camp's round it. Ama's made a supper you could stand a spoon in. tell him hurry. tell him i've saved him the rock nearest the fire, and i'll shout at anybody who talks."] }
+    - { id: told, type: DELIVER, to: heddwyn }
+  rewards: { meso: 180000, exp: 600000, bondPoints: 60, items: [{ itemId: 2050004, count: 10 }], worldFlags: [tperion.story.told] }
+
+# ---- Ashe ----
+- id: ashe-wood-that-burns
+  persona: ashe
+  title: "Wood That Burns"
+  length: SHORT
+  requires: { level: { min: 120 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wood, type: COLLECT_ITEM, itemId: 4000018, count: 20 }
+    - { id: yona, type: TALK_TO, persona: yona, say: ["a smith from the years to come wants to know how i bank my fire? under ash, at night, a hand deep, with one corner open so it breathes. a fire you bank is a fire you keep. tell her that. and tell her the anvil doesn't care what year it is."] }
+    - { id: fire, type: DELIVER, to: ashe, take: { itemId: 4000018, count: 20 } }
+  rewards: { meso: 60000, exp: 200000, bondPoints: 30, items: [{ itemId: 2000005, count: 20 }] }
+
+- id: ashe-the-red-hearts
+  persona: ashe
+  title: "A Heart for the Forge"
+  length: MEDIUM
+  requires: { level: { min: 130 }, questsCompleted: [ashe-wood-that-burns] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200012], count: 25, mapIds: [270030400] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000458, count: 12 }
+    - { id: fed, type: DELIVER, to: ashe, take: { itemId: 4000458, count: 12 } }
+  rewards: { meso: 120000, exp: 420000, bondPoints: 45, items: [{ itemId: 2000005, count: 25 }] }
+
+# ---- Brand (recruit; two-handed axe line, fourth tier: Rourke's Dragon Battle Axe continued) ----
+- id: brand-the-long-walk
+  persona: brand
+  title: "Something Green"
+  length: SHORT
+  requires: { level: { min: 115 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200004], count: 30, mapIds: [270010400] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000448, count: 12 }
+    - { id: shelf, type: DELIVER, to: brand, take: { itemId: 4000448, count: 12 } }
+  rewards: { meso: 70000, exp: 200000, bondPoints: 30, flags: [brand.intro.done] }
+
+- id: brand-reverse-tabarzin
+  persona: brand
+  title: "Through, Not At"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [brand-the-long-walk] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200008], count: 40, mapIds: [270020500] }
+    - { id: rourke, type: TALK_TO, persona: rourke, say: ["a big man with an axe, from the end of days? sounds like me. tell him: don't swing at the thing. swing through it. and tell him if he's got a jar of bits somewhere he can't explain, he's not the only one."] }
+    - { id: back, type: DELIVER, to: brand }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1412034, scrolls: [{ success: 60 }] }
+
+- id: brand-timeless-tabarzin
+  persona: brand
+  title: "Bring a Song"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [brand-reverse-tabarzin] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tino, type: KILL_MOBS, mobIds: [8600004], count: 40, mapIds: [271000100] }
+    - { id: sung, type: DELIVER, to: brand }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1412033, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: brand-the-southern-ridge
+  persona: brand
+  title: "The Last Good Fight"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [brand-timeless-tabarzin] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tiguru, type: KILL_MOBS, mobIds: [8600006], count: 30, mapIds: [271000210] }
+    - { id: won, type: DELIVER, to: brand }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1412033, scrolls: [{ success: 10 }] }
+
+- id: brand-green-hearts
+  persona: brand
+  title: "The Only Green Here"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 115 }, questsCompleted: [brand-the-long-walk] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000448, count: 10 }
+    - { id: shelf, type: DELIVER, to: brand, take: { itemId: 4000448, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }
+
+# ---- Eskil (recruit; polearm line, fourth tier: Gwang's Dragon Chelbird continued) ----
+- id: eskil-the-trainees-hats
+  persona: eskil
+  title: "Felt for the Spear-Rest"
+  length: SHORT
+  requires: { level: { min: 115 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trainees, type: KILL_MOBS, mobIds: [8200006], count: 30, mapIds: [270020200] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000450, count: 12 }
+    - { id: rest, type: DELIVER, to: eskil, take: { itemId: 4000450, count: 12 } }
+  rewards: { meso: 70000, exp: 200000, bondPoints: 30, flags: [eskil.intro.done] }
+
+- id: eskil-reverse-diesra
+  persona: eskil
+  title: "Without Stopping to Think"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [eskil-the-trainees-hats] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trainees, type: KILL_MOBS, mobIds: [8200006], count: 20, mapIds: [270020200] }
+    - { id: guardians, type: KILL_MOBS, mobIds: [8200007], count: 20, mapIds: [270020300] }
+    - { id: chiefs, type: KILL_MOBS, mobIds: [8200008], count: 20, mapIds: [270020400] }
+    - { id: back, type: DELIVER, to: eskil }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1442067, scrolls: [{ success: 60 }] }
+
+- id: eskil-timeless-diesra
+  persona: eskil
+  title: "The Worst of the Three"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [eskil-reverse-diesra] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tiguru, type: KILL_MOBS, mobIds: [8600006], count: 35, mapIds: [271000210] }
+    - { id: back, type: DELIVER, to: eskil }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1442063, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: eskil-the-desolate-hills
+  persona: eskil
+  title: "A Week of Sleep"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [eskil-timeless-diesra] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [8600001], count: 30, mapIds: [271020000] }
+    - { id: quiet, type: DELIVER, to: eskil }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1442063, scrolls: [{ success: 10 }] }
+
+- id: eskil-blue-cone-hats
+  persona: eskil
+  title: "Worn Felt"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 115 }, questsCompleted: [eskil-the-trainees-hats] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000450, count: 10 }
+    - { id: rest, type: DELIVER, to: eskil, take: { itemId: 4000450, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }
+
+# ---- Ottmar (recruit; one-handed blunt line, fourth tier: Brody's Battle Hammer continued) ----
+- id: ottmar-the-first-stretch
+  persona: ottmar
+  title: "The Colour of the Order"
+  length: SHORT
+  requires: { level: { min: 115 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monks, type: KILL_MOBS, mobIds: [8200005], count: 30, mapIds: [270020100] }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000449, count: 12 }
+    - { id: grip, type: DELIVER, to: ottmar, take: { itemId: 4000449, count: 12 } }
+  rewards: { meso: 70000, exp: 200000, bondPoints: 30, flags: [ottmar.intro.done] }
+
+- id: ottmar-reverse-allargando
+  persona: ottmar
+  title: "Knights Who Forgot"
+  length: MEDIUM
+  requires: { level: { min: 120 }, friendship: 5, questsCompleted: [ottmar-the-first-stretch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guardians, type: KILL_MOBS, mobIds: [8200003], count: 40, mapIds: [270010300] }
+    - { id: brody, type: TALK_TO, persona: brody, say: ["a paladin from up ahead in time, asking how to hold a line? ...tell him what the Sheriff told me. you hold it by turning up. every night. even the dull ones. especially those. and tell him to do his paperwork. somebody ought to."] }
+    - { id: back, type: DELIVER, to: ottmar }
+  rewards:
+    meso: 420000
+    exp: 650000
+    bondPoints: 35
+    gear:
+      - { itemId: 1322061, scrolls: [{ success: 60 }] }
+
+- id: ottmar-timeless-allargando
+  persona: ottmar
+  title: "Something Else at the Door"
+  length: LONG
+  requires: { level: { min: 140 }, friendship: 7, questsCompleted: [ottmar-reverse-allargando] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: snails, type: KILL_MOBS, mobIds: [8600000], count: 40, mapIds: [271010100, 271010200] }
+    - { id: back, type: DELIVER, to: ottmar }
+  rewards:
+    meso: 520000
+    exp: 950000
+    bondPoints: 50
+    gear:
+      - { itemId: 1322060, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ottmar-the-rocky-road
+  persona: ottmar
+  title: "Anne's Vigil"
+  length: LONG
+  requires: { level: { min: 160 }, friendship: 10, questsCompleted: [ottmar-timeless-allargando] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tiru, type: KILL_MOBS, mobIds: [8600005], count: 30, mapIds: [271000200] }
+    - { id: sat, type: DELIVER, to: ottmar }
+  rewards:
+    meso: 650000
+    exp: 1400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1322060, scrolls: [{ success: 10 }] }
+
+- id: ottmar-blue-cloth
+  persona: ottmar
+  title: "Blue for the Shield"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 115 }, questsCompleted: [ottmar-the-first-stretch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000449, count: 10 }
+    - { id: grip, type: DELIVER, to: ottmar, take: { itemId: 4000449, count: 10 } }
+  rewards: { meso: 30000, exp: 90000, bondPoints: 10 }
