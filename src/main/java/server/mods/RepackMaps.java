@@ -34,12 +34,17 @@ import java.util.function.Predicate;
  * report of the feature {@value #FEATURE} (none sends it yet), else from the account's answer to the entry NPCs'
  * question ({@code account_client_files}). A warp made on an answer stays pending until the client says the field
  * loaded; a client that closes first marks its account Cosmic. Switch {@link ServerMods#REPACK_MAPS}: off, nobody
- * enters and the entry NPCs are not spawned.
+ * enters and the entry NPCs are not spawned. The maps of {@value #INCOMPLETE_RESOURCE} close even a Repack client (the
+ * Repack's own Map.wz lacks their art), so no player goes in at all.
  */
 public final class RepackMaps {
     private static final Logger log = LoggerFactory.getLogger(RepackMaps.class);
 
     static final String RESOURCE = "/mods/repack-maps.txt";
+    /** Written by tools/repack-import/incomplete.js: listed maps whose background, object or tile the Repack lacks. */
+    static final String INCOMPLETE_RESOURCE = "/mods/repack-incomplete-maps.txt";
+    static final String INCOMPLETE_LINE = "That place was never finished in the Community Repack game files: its"
+            + " pictures are missing, and your game would close there. You stay here.";
     /** The P5 feature id a Kaentake.dll on the Repack files would report active. */
     public static final String FEATURE = "repack_wz";
 
@@ -117,7 +122,8 @@ public final class RepackMaps {
             Map.entry("chaos-zakum", new WayOut(211000000, "")),
             Map.entry("maple-misc", new WayOut(104000000, "")));
 
-    private static final Map<Integer, String> AREAS = load();
+    private static final Map<Integer, String> AREAS = load(RESOURCE);
+    private static final Map<Integer, String> INCOMPLETE = load(INCOMPLETE_RESOURCE);
 
     private static volatile RepackMaps instance;
 
@@ -172,6 +178,11 @@ public final class RepackMaps {
 
     public static boolean listed(int mapId) {
         return AREAS.containsKey(mapId);
+    }
+
+    /** Whether even the Repack client closes in this map: its own files lack some of the map's art. */
+    public static boolean incomplete(int mapId) {
+        return INCOMPLETE.containsKey(mapId);
     }
 
     /** Whether an entry NPC stands on this shared map. */
@@ -300,15 +311,22 @@ public final class RepackMaps {
             return true;
         }
         if (!admits(chr)) {
-            chr.dropMessage(5, refusal(chr));
-            chr.sendPacket(PacketCreator.enableActions());
-            return false;
+            return refuse(chr, refusal(chr));
         }
         Client client = chr.getClient();
+        if (!isBot(client) && incomplete(toMap)) {
+            return refuse(chr, INCOMPLETE_LINE);
+        }
         if (!isBot(client) && !clientReportsRepack.test(client)) {
             pending.put(client.getAccID(), new Pending(toMap, clock.getAsLong()));
         }
         return true;
+    }
+
+    private static boolean refuse(Character chr, String line) {
+        chr.dropMessage(5, line);
+        chr.sendPacket(PacketCreator.enableActions());
+        return false;
     }
 
     /** PLAYER_MAP_TRANSFER: the client has the field it was sent to. */
@@ -342,8 +360,8 @@ public final class RepackMaps {
         if (!listed(mapId)) {
             return mapId;
         }
-        boolean admitted = open() && (isBot(client)
-                || answer(accountId).map(Answer::files).orElse(Files.UNKNOWN) == Files.REPACK);
+        boolean admitted = open() && (isBot(client) || !incomplete(mapId)
+                && answer(accountId).map(Answer::files).orElse(Files.UNKNOWN) == Files.REPACK);
         return admitted ? mapId : wayOut(mapId).map();
     }
 
@@ -381,10 +399,10 @@ public final class RepackMaps {
         return Collections.unmodifiableMap(out);
     }
 
-    private static Map<Integer, String> load() {
-        try (InputStream in = RepackMaps.class.getResourceAsStream(RESOURCE)) {
+    private static Map<Integer, String> load(String resource) {
+        try (InputStream in = RepackMaps.class.getResourceAsStream(resource)) {
             if (in == null) {
-                throw new IllegalStateException(RESOURCE + " is missing from the classpath");
+                throw new IllegalStateException(resource + " is missing from the classpath");
             }
             return parse(new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().toList());
         } catch (IOException e) {

@@ -1,0 +1,37 @@
+# Repack maps the Repack client cannot draw: a background, object or tile is missing from its own Map.wz, so the
+# client closes there (tools/repack-import/incomplete.js; do not edit by hand). server.mods.RepackMaps closes them.
+# <map id> <the first missing piece>
+272000000 Obj/acc10.img/timeTemple/pillar_old/7
+272000310 Back/event2.img/ani/1
+272010000 Obj/acc10.img/timeTemplePast/acc/6
+272010100 Obj/acc10.img/timeTemplePast/pillar/33
+272010200 Obj/acc10.img/timeTemplePast/acc/3
+272020000 Obj/acc10.img/timeTemplePast/pillar/33
+272020100 Obj/acc10.img/timeTemplePast/pillar/33
+272020110 Back/timeCrack.img/ani/0
+272020200 Back/timeCrack.img/ani/0
+272020400 Back/timeCrack.img/ani/0
+272030000 Obj/acc10.img/timeTemplePast/pillar/33
+272030100 Obj/acc10.img/timeTemplePast/pillar/33
+272030200 Obj/acc10.img/timeTemplePast/acc/0
+272030300 Back/timeCrack.img/ani/0
+272030400 Back/timeCrack.img/ani/0
+272030420 Back/timeCrack.img/ani/0
+280030001 Back/newzakum.img/back/13
+450000000 Back/horizon.img/back/1
+450000010 Back/horizon.img/back/1
+450000020 Back/horizon.img/back/1
+450000100 Back/horizon.img/back/0
+450000110 Back/horizon.img/back/0
+450000120 Back/horizon.img/back/0
+450000200 Back/horizon.img/back/0
+450013100 Obj/spinOff1.img/city/acc/8
+450013300 Obj/spinOff1.img/city/acc/8
+450013500 Obj/spinOff1.img/city/acc/8
+450013700 Obj/spinOff1.img/city/acc/8
+450013750 Obj/spinOff1.img/city/acc/8
+450013810 Obj/spinOff1.img/city/acc/8
+450013820 Obj/spinOff1.img/city/acc/8
+450013830 Obj/spinOff1.img/city/acc/8
+450013850 Obj/spinOff1.img/city/acc/8
+450013870 Obj/spinOff1.img/city/acc/8

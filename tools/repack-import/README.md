@@ -9,6 +9,7 @@ Needs Node (18 or newer); no other packages. Run from the server directory:
 node tools/repack-import/export.js [--repack <folder with the Repack .wz files>] [--server <server directory>]
 node tools/repack-import/export.js --check     # writes nothing; exit 1 when the tree differs from a fresh export
 node tools/repack-import/drops.js              # the drop rows changeset for the huntable areas
+node tools/repack-import/incomplete.js [--check]   # the Repack maps whose art the Repack itself lacks
 ```
 
 `--repack` defaults to `C:\Users\ganre\Desktop\MapleServer\Community Repack` (the untouched Repack download; the
@@ -23,6 +24,7 @@ deterministic: a second run writes nothing.
 | `export.js` | the import (below) |
 | `export-report.json` | written by `export.js`: source sizes and SHA-256, per-area counts and towns, imported and reused ids, left-out spawns, map and portal scripts the maps call and whether `scripts/` has them |
 | `drops.js` | drop rows for the huntable areas' mobs, from the closest stock mob by level |
+| `incomplete.js` | writes `src/main/resources/mods/repack-incomplete-maps.txt`: listed maps with a background, object or tile missing from the Repack's own Map.wz, which close the client (the gate keeps players out) |
 
 What `export.js` does:
 

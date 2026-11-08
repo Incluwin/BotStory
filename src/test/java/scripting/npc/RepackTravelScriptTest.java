@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -137,12 +138,13 @@ class RepackTravelScriptTest {
     @Test
     void theTempleKeeperOpensTheFutureAndArcaneRiver() throws Exception {
         rows.put(ACCOUNT, new Answer(RepackMaps.Files.REPACK, RepackMaps.Source.PLAYER));
-        talk("2140000", 2140000, 270000000, 3);
-        assertTrue(windows.get(0).contains("#L4##bArcane River#k"), windows.toString());
+        talk("2140000", 2140000, 270000000, 1);
+        assertTrue(windows.get(0).contains("#L2##bArcane River#k"), windows.toString());
+        assertFalse(windows.get(0).contains("Crack in Time"), "the Repack lacks its art: " + windows);
         verify(cm).warp(273000000, 0);
 
         windows.clear();
-        talk("2140000", 2140000, 270000000, 4, 2);
+        talk("2140000", 2140000, 270000000, 2, 2);
         assertTrue(windows.get(1).contains("#L2#Lachelein#l"), windows.toString());
         verify(cm).warp(450003000, 0);
     }

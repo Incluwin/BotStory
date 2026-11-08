@@ -105,12 +105,21 @@ config.yaml `NPCS_SCRIPTABLE`, which the server sends at login; the client then 
 | Ninja Castle 800040000 | Mushroom Shrine 800000000 (GMS: an NPC at Zipangu) | Perry 9110000 | Perry in Outside Ninja Castle |
 | Ulu City 541020000 | Suburban Area 2 540020100 (GMS: a portal top right) | Ralph the wanderer 9270030 | the map's own portal west00 |
 | Lion King's Castle 211060000 | Wolf Territory II 211040600 (GMS: a portal) | Spirit of Snow Statue 2020012 | the map's own portal out00 |
-| Gate to the Future, Crack in Time, Dimensional Schism, Twilight Perion, Arcane River towns | Three Doors 270000000 | Temple Keeper 2140000 (already there) | the maps' own exits to 270000000; elsewhere a town guide |
+| Gate to the Future, Twilight Perion, Arcane River towns | Three Doors 270000000 | Temple Keeper 2140000 (already there) | the maps' own exits to 270000000; elsewhere a town guide |
 
 Scripts: `scripts/npc/9001000.js`, `9110000.js`, `9270030.js`, `2020012.js` (each: ask an unknown account, refuse a
 Cosmic one, offer the trip to a Repack one; the Cokebear operator and Perry also take you home from inside; away from
-their entry map they only talk), `2140000.js` (the Temple Keeper's menu: Gate to the Future, Crack in Time,
-Dimensional Schism, Twilight Perion around level 160-190, and the nine Arcane River towns, "nothing hunts there now").
+their entry map they only talk), `2140000.js` (the Temple Keeper's menu: Gate to the Future and Twilight Perion around
+level 160-190, and the nine Arcane River towns, "nothing hunts there now").
+
+Maps the Repack itself cannot draw (found live 2026-11-08): 34 of the 579 maps name a background, object or tile that
+the Repack's own Map.wz lacks, and the client closes as it loads one (all 16 Crack in Time maps, including Dimensional
+Schism 272030000; the 7 Arcane horizon maps 4500000xx-4500002xx; 10 Limina maps 450013xxx; Chaos Zakum's 280030001).
+`tools/repack-import/incomplete.js` lists them in `src/main/resources/mods/repack-incomplete-maps.txt`, and
+`RepackMaps` refuses every player's warp into one ("never finished in the Community Repack game files") and starts a
+character saved there at its area's way out. Bots still go in: they have no client. A missing bgm only leaves a map
+silent (Lachelein 450003700 loaded live), so it does not count. Before this, a Repack player who reached one crashed
+and the crash net then marked the account Cosmic.
 
 ## 4. Scripts, drops
 

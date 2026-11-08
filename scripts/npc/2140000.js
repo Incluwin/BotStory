@@ -1,8 +1,9 @@
 /*
- * Temple Keeper at Three Doors: the doors to the Future (Gate to the Future, Crack in Time, Dimensional Schism,
- * Twilight Perion) and to the towns of Arcane River. All are Community Repack maps, so only an account that has the
- * Repack game files goes through (server.mods.RepackMaps, docs/REPACK_IMPORT_PLAN.md); the keeper asks an account he
- * does not know yet. Arcane River is quiet in this age: no monster walks there.
+ * Temple Keeper at Three Doors: the doors to the Future (Gate to the Future, Twilight Perion) and to the towns of
+ * Arcane River. All are Community Repack maps, so only an account that has the Repack game files goes through
+ * (server.mods.RepackMaps, docs/REPACK_IMPORT_PLAN.md); the keeper asks an account he does not know yet. Arcane River
+ * is quiet in this age: no monster walks there. Crack in Time and Dimensional Schism are not offered: the Repack's own
+ * files lack their art (mods/repack-incomplete-maps.txt), so the game closes there.
  */
 var RepackMaps = Java.type("server.mods.RepackMaps");
 var RepackGuide = Java.type("server.mods.RepackGuide");
@@ -10,8 +11,6 @@ var RepackGuide = Java.type("server.mods.RepackGuide");
 var PLACE = "The world beyond these doors";
 var FUTURE = [
     [271000000, "Gate to the Future", "Ereve and Henesys in ruins, around level 160 to 185"],
-    [272000000, "Crack in Time", "Leafre of the past and the Dark Temple of Time, around level 160"],
-    [272030000, "Dimensional Schism", "the Path of Darkness, around level 165"],
     [273000000, "Twilight Perion", "Perion at the end of days, around level 190"]
 ];
 var ARCANE = [

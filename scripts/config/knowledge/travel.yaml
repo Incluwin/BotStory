@@ -101,8 +101,6 @@ legs:
   - { from: 540020100, to: 541020000, npc: 9270030, kind: guide, cost: 0, note: "Suburban Area 2 -> Ulu City Entrance" }
   - { from: 211040600, to: 211060000, npc: 2020012, kind: guide, cost: 0, note: "Wolf Territory II -> Desolate Moor (Lion King's Castle)" }
   - { from: 270000000, to: 271000000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Gate to the Future" }
-  - { from: 270000000, to: 272000000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Crack in Time" }
-  - { from: 270000000, to: 272030000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Dimensional Schism" }
   - { from: 270000000, to: 273000000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Twilight Perion" }
   - { from: 273000000, to: 270000000, npc: 2142107, kind: guide, cost: 0, note: "Twilight Perion -> Three Doors" }
   - { from: 270000000, to: 450001000, npc: 2140000, kind: guide, cost: 0, note: "Three Doors -> Nameless Town (Arcane River)" }

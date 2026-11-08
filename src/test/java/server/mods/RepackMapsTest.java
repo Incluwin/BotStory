@@ -223,6 +223,50 @@ class RepackMapsTest {
         assertFalse(RepackMaps.hasEntry(270000000), "Three Doors' Temple Keeper is in the map already");
     }
 
+    @Test
+    void aMapTheRepackCannotDrawIsClosedToEveryPlayer() {
+        int crackInTime = 272000000;
+        assertTrue(RepackMaps.incomplete(crackInTime), "its objects are missing from the Repack's Map.wz (live 11-08)");
+        assertTrue(RepackMaps.incomplete(450000100), "its background is missing (live 11-08)");
+        assertFalse(RepackMaps.incomplete(450003700), "a missing bgm only leaves it silent (live 11-08)");
+        assertFalse(RepackMaps.incomplete(COKE_TOWN));
+
+        maps.record(ACCOUNT, Files.REPACK, Source.PLAYER);
+        assertFalse(maps.beforeWarp(chr, crackInTime));
+        verify(chr).dropMessage(eq(5), contains("never finished"));
+        maps.clientClosed(client, false);
+        assertEquals(Files.REPACK, maps.files(client), "a refused warp leaves nothing pending to mark Cosmic");
+        assertEquals(270000000, maps.loginMap(client, ACCOUNT, crackInTime), "a character saved there starts outside");
+
+        BotClient bot = mock(BotClient.class);
+        Character botChr = mock(Character.class);
+        when(botChr.getClient()).thenReturn(bot);
+        assertTrue(maps.beforeWarp(botChr, crackInTime), "a bot has no client to close");
+    }
+
+    @Test
+    void everyIncompleteMapIsARepackMapAndNoWayInLeadsToOne() throws IOException {
+        Map<Integer, String> incomplete = RepackMaps.parse(java.nio.file.Files.readAllLines(
+                Path.of("src", "main", "resources", "mods", "repack-incomplete-maps.txt"), StandardCharsets.UTF_8));
+        assertEquals(34, incomplete.size(), "tools/repack-import/incomplete.js over the 579 Repack maps");
+        for (int map : incomplete.keySet()) {
+            assertTrue(RepackMaps.listed(map), map + " is a Repack map");
+            assertTrue(RepackMaps.incomplete(map));
+        }
+        for (RepackMaps.Entry entry : RepackMaps.ENTRIES) {
+            assertFalse(RepackMaps.incomplete(entry.toMap()), entry + " leads into a map the Repack cannot draw");
+        }
+        String keeper = java.nio.file.Files.readString(Path.of("scripts", "npc", "2140000.js"), StandardCharsets.UTF_8);
+        Matcher destination = Pattern.compile("\\[(\\d{9}),").matcher(keeper);
+        int offered = 0;
+        while (destination.find()) {
+            int map = Integer.parseInt(destination.group(1));
+            assertFalse(RepackMaps.incomplete(map), "the Temple Keeper offers " + map);
+            offered++;
+        }
+        assertEquals(11, offered, "two doors to the Future and nine Arcane River towns");
+    }
+
     private static Path mapFile(int map) {
         String id = String.format("%09d", map);
         return Path.of("wz", "Map.wz", "Map", "Map" + id.charAt(0), id + ".img.xml");
