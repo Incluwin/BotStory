@@ -137,11 +137,22 @@ public final class ChipCashier {
      * bought, when its purse or its bag cannot take it. A full Etc tab first sells junk there, as at any shop visit.
      */
     static boolean buy(Character agent, long mesos) {
-        return buy(agent, mesos, ChipCashier::makeRoom);
+        return buy(agent, Chips.change(mesos), ChipCashier::makeRoom);
+    }
+
+    /**
+     * {@link #buy(Character, long)} in chips no bigger than {@code largest}: a seated player bets a slice of its stack,
+     * so it buys chips it can bet with (live 2026-11-08: a 300k stack as one 250k and one 50k chip never bet ~30k).
+     */
+    static boolean buy(Character agent, long mesos, long largest) {
+        return buy(agent, Chips.change(mesos, largest), ChipCashier::makeRoom);
     }
 
     static boolean buy(Character agent, long mesos, ObjIntConsumer<Character> makeRoom) {
-        Map<Integer, Integer> chips = Chips.change(mesos);
+        return buy(agent, Chips.change(mesos), makeRoom);
+    }
+
+    private static boolean buy(Character agent, Map<Integer, Integer> chips, ObjIntConsumer<Character> makeRoom) {
         long cost = Chips.value(chips);
         if (chips.isEmpty() || agent.getMeso() < cost || agent.getClient() == null) {
             return false;
@@ -171,9 +182,9 @@ public final class ChipCashier {
     }
 
     /**
-     * Live 2026-11-08: most citizens carry a full Etc tab, so a citizen sent to sit at blackjack could not take its chips
-     * and both tables waited with nobody seated. The counter is a shop, so it sells whole stacks of monster drops here
-     * as at any visit (AgentEtcRoomPlan, up to the room its host has it keep), through the shop's own sale.
+     * Live 2026-11-08: most citizens carry a full Etc tab, so a citizen sent to sit at blackjack could not take its
+     * chips and both tables waited with nobody seated. The counter is a shop, so it sells whole stacks of monster drops
+     * here as at any visit (AgentEtcRoomPlan, up to the room its host has it keep), through the shop's own sale.
      */
     private static void makeRoom(Character agent, int chipKinds) {
         int wanted = Math.max(chipKinds, AgentEtcRoomPlan.keepsFree(agent.getId()));
@@ -183,7 +194,8 @@ public final class ChipCashier {
             sold++;
         }
         if (sold > 0) {
-            log.info("citizen {} sold {} etc stacks at the casino counter to make room for chips", agent.getName(), sold);
+            log.info("citizen {} sold {} etc stacks at the casino counter to make room for chips", agent.getName(),
+                    sold);
         }
     }
 

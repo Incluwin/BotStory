@@ -108,10 +108,14 @@ public final class BlackjackTables implements Venue {
         return false;
     }
 
-    /** It walks to the cashier, buys its chips, then walks to its spot at the table. */
+    /**
+     * It walks to the cashier, buys its chips, then walks to its spot at the table. A player buys chips of at most a
+     * twentieth of its stack, so even its smallest (5%) bet can be made from them; a dealer's float stays in the
+     * fewest chips.
+     */
     private boolean seat(CitizenSession session, Table table, boolean dealer, long chips, long now) {
         Character agent = session.agent();
-        if (!ChipCashier.buy(agent, chips)) {
+        if (!(dealer ? ChipCashier.buy(agent, chips) : ChipCashier.buy(agent, chips, chips / 20))) {
             return false;
         }
         Role role = new Role(session, table, dealer, now + host.shiftMs());
