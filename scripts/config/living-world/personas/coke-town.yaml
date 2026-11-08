@@ -1,0 +1,483 @@
+# Coke Town cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.1): 7 Residents, 2 recruitable. Always
+# winter, at the end of a hidden street from Henesys; the polar bears Poch, Nell (the Sundry Goods Shop), Lolo and Puch
+# keep house there. Marit keeps the key of her brother Ebbe's house, the Empty House at the top of the hill: he cut the
+# ice lamps for every window in town and went up the Coke Valley one winter for the year's ice and never came back
+# (arcs/coke-town.yaml). Inga gives hats made for the player's class (L35 / L40 / L50); the two recruits give capes
+# (Aksel, L50 / L60 / L65) and earrings (Ylva, L50 / L55 / L60).
+- id: marit
+  name: Marit
+  look: { gender: female }
+  title: "Keeper of the Empty House's Key"
+  job: BEGINNER
+  level: { min: 38, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: coke-town
+    routine:
+      - { from: 7, to: 11, spot: "venue:empty-house-in-coke-town-door", activity: LINGER }
+      - { from: 11, to: 14, spot: "venue:sundry-goods-shop-door", activity: SOCIALIZE }
+      - { from: 14, to: 17, materialize: false }
+      - { from: 17, to: 20, spot: "venue:empty-house-in-coke-town-door", activity: LINGER }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [Empty House in Coke Town, Forest of Coke Golem, Coke Ice Block]
+  questLines: [marit-the-weekly-sweep, marit-the-last-lamp, marit-the-house-lit]
+  arc: marit-the-empty-house
+  relationships:
+    - { persona: inga, kind: SITS_BY_THE_DOOR_WITH }
+    - { persona: nils, kind: LENT_A_SLED_TO }
+    - { persona: toivo, kind: BRINGS_A_FLASK_TO }
+    - { persona: ylva, kind: FINDS_ICE_ON_HER_STEP_FROM }
+  giftItemIds: [2020013, 2022001]
+  dialogue:
+    greetFirst: ["you came in by the Cokebear operator, from Henesys. everybody does, once. stamp your boots. the snow's real.", "a new face in Coke Town. mind the ice on the steps. mind the polar bears. they're very polite. that's not the same as small."]
+    greet: ["hello, love.", "you again. stamp your boots.", "(nods) the snow's the same. so am i."]
+    idle: ["(takes a key on a string from under her scarf, looks at it, and tucks it back)", "(sweeps the step of the house at the top of the hill with a short broom, though there's no snow on it)"]
+    noWork: ["nothing today. the step's swept. it's always swept."]
+    nothingDue: ["nothing owed. not between us."]
+    who: ["Marit. i keep the key to the Empty House, at the top of the hill. it's my brother Ebbe's. he cut the ice lamps for every window in Coke Town. eleven winters ago he went up the Coke Valley with his sled for the year's ice and never came back. i air his house every week. i don't light his lamp. that's his to do."]
+    bye: ["mind the ice."]
+    thanks: ["thank you, love."]
+    smallTalk: ["every window in town has one of Ebbe's lamps in it. clear ice, a candle inside. nothing melts here. you'd think that would be a comfort.", "Ebbe's window was always the last lit and the darkest in town. i used to tease him. the lamp-maker's house is the dark one. i said it that very morning."]
+    speakPlainly: ["plainly: a key, a broom, and a house with nobody in it."]
+    questOffer.marit-the-weekly-sweep: ["i air Ebbe's house every week. take the key, go up and open the shutters for me. mind the third step, it's loose. he was going to fix it. then the snails off the Ski Camp's first slopes. twenty-five of them, snails or slimes. they come in under his door and leave trails on the floor."]
+    questAccept.marit-the-weekly-sweep: ["up the hill, the house at the very top. then out through the gate on the lower street to the Ski Camp. the first slope and the one off it. they're slow. so am i."]
+    questWaiting.marit-the-weekly-sweep: ["the shutters, and twenty-five. and my key back."]
+    questComplete.marit-the-weekly-sweep: ["the shutters, and the snails, and my key. thank you. you've the same way with a door he had. firm. he'd have liked you."]
+    questOffer.marit-the-last-lamp: ["Aksel found Ebbe's sled up in the Forest of Coke Golem. every lamp for the town done and wrapped, and a space in the box for one more. his own. he'd finished. he should have come home. he went on up. Ylva keeps the watch at the valley's turn. if anybody saw him go by, she did. ask her. and bring me ten blocks of the Ice Golems' ice. the ice he went up for."]
+    questAccept.marit-the-last-lamp: ["Ylva's on the east streets, mornings and evenings. then out the east end, all the way up the valley to the turn, past the Yetis on their stumps, to the forest door at the far end. mind them. ten blocks. the clearest there is."]
+    questWaiting.marit-the-last-lamp: ["did she see him? ...and the ice. ten blocks."]
+    questComplete.marit-the-last-lamp: ["she told him to turn back, and he laughed. he was cutting the clearest lamp in the valley for his own window. for once. because i teased him. ...ten blocks. the clearest ice there is. it's what he went for. thank you, love."]
+    questOffer.marit-the-house-lit: ["it's cut. it took eleven tries and most of my temper. it's crooked. it's his. Inga's been knitting something for it, and Toivo carried Ebbe's lamps up the hill every year. go and see them both. then set it in his window. i'll stay down here. i want to see it from the street first."]
+    questAccept.marit-the-house-lit: ["Inga's at Nell's door. Toivo's by the Ski Camp gate on the lower street. then up the hill to the house. the window by the door. he always put it there."]
+    questWaiting.marit-the-house-lit: ["is it in the window? don't tell me. i'm looking at my boots."]
+    questComplete.marit-the-house-lit: ["...there. look. the top of the hill. it's lit. it's crooked and it's lit. eleven winters. every window in Coke Town, and his. i'm going up to sit in it a while. you come too. i'll put the kettle on in his kitchen. our kitchen."]
+    about.inga: ["Inga and i have sat by Nell's door every winter for thirty years. she tells me my scarf's on crooked. i tell her her stitches are. we're both right."]
+    about.toivo: ["Toivo carried Ebbe's lamps up the hill every year, two at a time, and never dropped one. he teaches skiing now. he still walks like he's carrying something."]
+    about.nils: ["Nils has Ebbe's old boy-sled. it was under the stairs in the house. a sled should go fast. so should a boy. i lent him the sled. the fast he had already."]
+    about.bartolo: ["Bartolo came down from Henesys for a weekend twenty years ago and never went home. he once asked me, very politely, for the lid off my kettle. i gave it him. i boil water in a pan now."]
+    about.aksel: ["Aksel comes down from the Forest of Coke Golem with ice in his beard and doesn't say much. Nell says he's shy. a man that size, shy. i like him."]
+    about.ylva: ["Ylva keeps the watch at the valley's turn. every winter she leaves a block of clear ice on my step and doesn't knock."]
+    aboutUnknown: ["never had them in for tea. send them round."]
+    friend.close: ["sit on Ebbe's step whenever you like. nobody else does. i'd like somebody to."]
+    friend.best: ["if i ever light that lamp, you'll be the first to see it. i've decided."]
+    famed: ["they say your name down at Nell's. i'm glad. Nell's hard to impress. she's a bear."]
+    defamed: ["i've heard. people say things in the cold they'd never say by a fire. i don't believe them."]
+    gift: ["oh. thank you, love."]
+    gift.favorite: ["oh, that's a proper winter treat. that'll warm the whole afternoon."]
+    gift.again: ["one's plenty, love. keep the rest for the walk."]
+
+- id: toivo
+  name: Toivo
+  look: { gender: male }
+  title: "Instructor of the Coke Ski Camp"
+  job: FIGHTER
+  level: { min: 32, max: 34 }
+  strength: SEASONED
+  loadout: perion-warrior-l30
+  personality: efficient-v1
+  home:
+    town: coke-town
+    routine:
+      - { from: 7, to: 10, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 19, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 19, to: 21, spot: "venue:by-cokebear-operator", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [Coke Ski Camp, Coke Slime, Coke Pig]
+  questLines: [toivo-the-bunny-slope, toivo-the-slalom-gates]
+  rumors: [coke-the-record-run]
+  relationships:
+    - { persona: nils, kind: HOLDS_THE_RECORD_AGAINST }
+    - { persona: marit, kind: CARRIED_LAMPS_FOR }
+    - { persona: inga, kind: WEARS_A_HAT_BY }
+  giftItemIds: [2020008, 2020006]
+  dialogue:
+    greetFirst: ["new? you've got the knees of a beginner. that's fine. everyone does. bend them.", "welcome to Coke Town. the Ski Camp's through the gate on the lower street. first lesson's free. second lesson's also free. nobody gets to a third."]
+    greet: ["knees!", "you again. bend them.", "hey. good stance."]
+    idle: ["(bends his knees, leans forward, and holds it, as if showing somebody who isn't there)", "(waxes a ski with long, even strokes, then sights along it against the snow)"]
+    noWork: ["nothing today. the slopes are clear. lean forward anyway. it's good for you."]
+    nothingDue: ["we're square. like a good stance."]
+    who: ["Toivo. i teach skiing at the Coke Ski Camp. people come down from Henesys to fight things, and i teach them to stop without a tree. the sword's for the slimes. the skis are for everything else."]
+    bye: ["knees bent. always."]
+    thanks: ["good. thanks."]
+    smallTalk: ["the slimes on the bunny slope sit right where my beginners fall over. i don't know if they sit there because people fall, or people fall because they sit there. i've thought about it a lot.", "i carried Ebbe's lamps up the hill every year. two at a time, one in each arm, knees bent. people ask why i walk like this. that's why."]
+    speakPlainly: ["plainly: skis, a sword, and bent knees."]
+    questOffer.toivo-the-bunny-slope: ["my beginners keep landing on the Coke Slimes on the Ski Camp's first slopes. the slimes don't mind. the beginners do. twenty-five, please. the first slope and the one off it."]
+    questAccept.toivo-the-bunny-slope: ["through the gate on the lower street. the bunny slope's right there. you'll know it by the people lying in the snow."]
+    questWaiting.toivo-the-bunny-slope: ["twenty-five. my class is waiting. in a heap."]
+    questComplete.toivo-the-bunny-slope: ["twenty-five. look at that. a clean slope. my beginners are falling over nothing now. that's progress. here."]
+    questOffer.toivo-the-slalom-gates: ["i'm setting a slalom down the middle of the camp. red flags against snow. the Coke Pigs carry red Coca-Cola cards. thirty pigs, ten cards, and i'll pin them on the gates. you'll see them from the top."]
+    questAccept.toivo-the-slalom-gates: ["down the camp to the middle runs, where the pigs are, and the slope off it. they're slow downhill. so are my students."]
+    questWaiting.toivo-the-slalom-gates: ["ten cards. the gates are bare."]
+    questComplete.toivo-the-slalom-gates: ["ten. red as anything. look at them flap. first one down without missing a gate gets a sausage. it's never anyone. here, for you."]
+    about.marit: ["Marit brings me a flask at the Ski Camp gate some mornings. she won't say what's in it. it's always hot, and it's always just what i needed. i don't ask how she knows."]
+    about.inga: ["Inga knitted me a hat with earflaps that tie under the chin. i wear it. i look like a dumpling. she says that's the point."]
+    about.nils: ["Nils goes down the sled run faster than anybody i've ever taught, and i've never taught him. he says he's going to beat my record. he might. don't tell him."]
+    about.bartolo: ["Bartolo walks the camp picking up lids. he's found every lid i've ever dropped. he gives each one back with a little speech about care."]
+    about.aksel: ["Aksel's the only man i know who walks up the valley instead of skiing down something. he's got a stance like a wall. i asked him to teach balance at the camp. he said 'no' and then 'thank you', a minute apart."]
+    about.ylva: ["Ylva skis like an arrow. straight down, no turns, no brakes. i've given up telling her. she's never fallen."]
+    aboutUnknown: ["never had them in a class."]
+    friend.close: ["you can have the good skis. the ones by the door. nobody gets the good skis."]
+    friend.best: ["if i ever open a proper school, your name goes over the door. second, after mine. it's a big door."]
+    famed: ["your name's going round the Ski Camp. good things. even my beginners have heard, and they hear nothing."]
+    defamed: ["i've heard. i don't teach rumours. they fall over on their own."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["now that's a proper lunch for the slopes. thanks."]
+    gift.again: ["one a day. i've got to fit in my boots."]
+
+- id: inga
+  name: Inga
+  look: { gender: female }
+  title: "Knitter of the Sundry Goods Shop Door"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: coke-town
+    routine:
+      - { from: 8, to: 13, spot: "venue:sundry-goods-shop-door", activity: REST }
+      - { from: 13, to: 14, materialize: false }
+      - { from: 14, to: 19, spot: "venue:sundry-goods-shop-door", activity: REST }
+      - { from: 19, to: 22, spot: "venue:middle-west-street", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [Coca-Cola Can, CokePLAY Cube, Igloo Turtle]
+  questLines: [inga-buttons-for-the-door, inga-a-hat-for-your-trade, inga-a-warmer-hat, inga-the-warmest-hat]
+  rumors: [coke-the-button-war]
+  relationships:
+    - { persona: marit, kind: SITS_BY_THE_DOOR_WITH }
+    - { persona: bartolo, kind: ARGUES_BUTTONS_WITH }
+    - { persona: toivo, kind: KNITTED_A_HAT_FOR }
+  giftItemIds: [2020016, 2020012]
+  dialogue:
+    greetFirst: ["sit, sit. you're blue. here, hold this yarn. no, both hands. good.", "a new face! and no hat. in Coke Town. dear me."]
+    greet: ["hello, dear.", "you again! where's your hat?", "(waves a knitting needle) hello!"]
+    idle: ["(knits very fast without looking down, then looks down, frowns, and pulls back three rows)", "(holds a half-made hat up against the sky to check the colour)"]
+    noWork: ["nothing today. i'm knitting. i'm always knitting. it doesn't count as work. tell Nell."]
+    nothingDue: ["nothing owed. not a stitch."]
+    who: ["Inga. i sit by Nell's door and knit. hats, mostly, and a hat made for your trade when you've earned one, with a lining knitted in so it's warm. Nell sells the honey. i keep the bears' ears warm. Lolo's got three of mine."]
+    bye: ["keep your ears in."]
+    thanks: ["oh, thank you, dear."]
+    smallTalk: ["the polar bears hate hats. Lolo wears mine to be polite. he takes it off round the corner. i know. i've seen.", "i punch buttons out of the cans the Coketumps carry. Bartolo goes pale. he says a can's for keeping. a can's for buttons."]
+    speakPlainly: ["plainly: needles, yarn, and nobody leaving here with cold ears."]
+    questOffer.inga-buttons-for-the-door: ["i'm out of buttons. the Coketumps on the Ski Camp carry cans, and i punch the buttons out of the tops. twenty Coketumps, twelve cans. don't tell Bartolo. he'll want to look at them first."]
+    questAccept.inga-buttons-for-the-door: ["through the gate on the lower street, then down the camp past the mushrooms. the Coketumps are stumps. they fizz. it's the cans."]
+    questWaiting.inga-buttons-for-the-door: ["twelve cans. the cardigan's open at the front."]
+    questComplete.inga-buttons-for-the-door: ["twelve! lovely tin. i'll get forty buttons out of these, and Bartolo's not seen. thank you, dear. go on, take these."]
+    questOffer.inga-a-hat-for-your-trade: ["you've been about Coke Town long enough. you want a hat. a proper one, made for your trade, and i'll knit the lining in. the Coke Pigs down the middle of the camp keep trampling my yarn when i dry it on the line. thirty pigs. and ask Bartolo for one lid, for the crown. he'll make a speech."]
+    questAccept.inga-a-hat-for-your-trade: ["down the middle of the camp, where Toivo's put his red flags. the pigs are by the flags. then Bartolo. he's on the west streets, or wherever there's a lid on the ground."]
+    questWaiting.inga-a-hat-for-your-trade: ["thirty pigs, and one lid. the lining's ready."]
+    questComplete.inga-a-hat-for-your-trade: ["thirty, and he gave you one? a dented one. of course. there, sewn in where it's safe. here's your hat, dear, cut for your trade. safe scrolls in every slot, every one took. ears in."]
+    questOffer.inga-a-warmer-hat: ["a warmer hat. the Coke Seals in Coke Valley carry PLAY cubes, soft as anything. i chop them up for the earflaps. thirty seals, fifteen cubes. out the east end of town."]
+    questAccept.inga-a-warmer-hat: ["out the east end of the middle street, into the first valley and the Small Alley off it. the seals bark. bark back. they like it."]
+    questWaiting.inga-a-warmer-hat: ["fifteen cubes. the earflaps are flat."]
+    questComplete.inga-a-warmer-hat: ["fifteen. feel that, squashy. there, a warmer hat, cut for your trade. sixties in every slot, every one took. you'll be warm to the eyebrows."]
+    questOffer.inga-the-warmest-hat: ["the warmest hat i've ever made, cut for your trade. a good hat wants blocking, so it keeps its shape. the Igloo Turtles up the valley carry ice blocks, flat and true. thirty-five turtles, fifteen blocks, and i'll block it over them. a hat block. you see? i've waited years to say that."]
+    questAccept.inga-the-warmest-hat: ["up the valley past the seals, to the second valley and the third. the turtles are slow. they carry their houses on their backs. so do i, really."]
+    questWaiting.inga-the-warmest-hat: ["fifteen blocks. the hat's waiting to be blocked."]
+    questComplete.inga-the-warmest-hat: ["fifteen. look how it holds its shape. the warmest hat in Coke Town, cut for your trade. two tens and the rest sixties, every one took. i've never made a better one. don't tell Lolo."]
+    about.marit: ["Marit and i have sat by Nell's door every winter for thirty years. she keeps a key on a string round her neck and touches it when she thinks nobody's looking. i'm always looking. i'm knitting. it's the same thing."]
+    about.toivo: ["Toivo wears the hat i made him, earflaps tied under his chin. he looks like a dumpling. a dumpling who can ski. it's a good look."]
+    about.nils: ["i made Nils a hat with a bobble. a big bobble. so i can see him on the sled run from Nell's door. i can. i always can."]
+    about.bartolo: ["Bartolo's been cross with me about buttons for twenty years. he brings me cans anyway. dented ones. he says those aren't collectable. he says it every time."]
+    about.aksel: ["Aksel's head is too big for any hat i've made. i'm working on one. it's more of a tent."]
+    about.ylva: ["Ylva won't wear a hat. she says it gets in the way of her ears. her ears are always red. i knitted her a band. she wears it in her pocket."]
+    aboutUnknown: ["never knitted them anything. send them round. i'll measure their heads."]
+    friend.close: ["i'm knitting you something. no, you can't see. sit still. i'm measuring your head with my eyes."]
+    friend.best: ["every hat i make, i think: would this keep your ears warm? that's how you know you've a friend. you think about their ears."]
+    famed: ["they say your name in Nell's shop. the bears nod. a bear nodding is very high praise."]
+    defamed: ["pff. people talk. i knit. one of those keeps you warm."]
+    gift: ["oh! thank you, dear."]
+    gift.favorite: ["oh, that's just the thing for a long afternoon at the door. thank you."]
+    gift.again: ["one's lovely, dear. i've only two hands, and they're busy."]
+
+- id: nils
+  name: Nils
+  look: { gender: male }
+  title: "Boy of the Sled Run"
+  job: BEGINNER
+  level: { min: 12, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: coke-town
+    routine:
+      - { from: 9, to: 12, spot: "venue:house-of-lolo-door", activity: STROLL }
+      - { from: 12, to: 15, materialize: false }
+      - { from: 15, to: 19, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 19, to: 9, materialize: false }
+  recruitable: false
+  knows: [Coke Mushroom, Coketump, Coke Ski Camp]
+  questLines: [nils-the-sled-bell, nils-the-record-run]
+  rumors: [coke-the-record-run]
+  relationships:
+    - { persona: toivo, kind: CHASES_THE_RECORD_OF }
+    - { persona: marit, kind: BORROWS_A_SLED_FROM }
+    - { persona: bartolo, kind: FINDS_LIDS_FOR }
+  giftItemIds: [2001001, 2001002]
+  dialogue:
+    greetFirst: ["are you new? the sled run's the best thing here. i'm the second best thing here.", "hi! you came on the Cokebear thing! i've never been to Henesys. is it warm? is it boring?"]
+    greet: ["hi!", "you came back! want to see the sled?", "hi hi."]
+    idle: ["(lies on his back in the snow and makes an angel, then jumps up to look at it)", "(polishes the runners of a small wooden sled with his sleeve)"]
+    noWork: ["nothing today! i'm sledding. you can watch."]
+    nothingDue: ["we're even! even-steven!"]
+    who: ["Nils! i do the sled run down the Ski Camp every day. my sled's the fastest in Coke Town. it was Ebbe's, when he was a boy. Marit lent it me. lent, not given. i'm very careful. mostly."]
+    bye: ["watch me go!"]
+    thanks: ["thanks! thanks thanks."]
+    smallTalk: ["Toivo's record down the sled run is a hundred and four seconds. i'm going to do a hundred and three. one day. soon. tuesday.", "the polar bears let me sit by their stove if i don't touch the honey. i haven't touched the honey. much."]
+    speakPlainly: ["plainly: a sled, a hill, and Toivo's record."]
+    questOffer.nils-the-sled-bell: ["people don't hear me coming on the sled run. Toivo says i need a bell. i'm making one out of cans on a string. the Coke Mushrooms on the Ski Camp carry cans. twenty mushrooms, ten cans. it'll be very loud."]
+    questAccept.nils-the-sled-bell: ["through the gate! the mushrooms are on the slope off the first one, and the next one down. they bounce. don't bounce back."]
+    questWaiting.nils-the-sled-bell: ["ten cans! it has to be loud!"]
+    questComplete.nils-the-sled-bell: ["ten! listen! ...see? you can hear me from the House of Lolo now. Lolo says that's a problem. Lolo's wrong. here, for you!"]
+    questOffer.nils-the-record-run: ["i'm going to beat Toivo's record. but the bottom of the run's full of Coketumps. go all the way down to the end of the Ski Camp and clear twenty out of my way. then tell Toivo to get his watch out."]
+    questAccept.nils-the-record-run: ["all the way down the camp to the end of the run. the Coketumps there are big and the Lites are fizzy. then Toivo, at the gate on the lower street."]
+    questWaiting.nils-the-record-run: ["did you tell Toivo? is the run clear?"]
+    questComplete.nils-the-record-run: ["a hundred and four! the same as Toivo! a tie! Toivo said 'hm.' that's the biggest 'hm' he's ever said. next time a hundred and three. that's for you. a bit. mostly me."]
+    about.marit: ["Marit lent me Ebbe's sled. she says if i break it she'll be very quiet at me. that's worse than shouting."]
+    about.toivo: ["Toivo says bend your knees. he says it to everybody. he says it to the polar bears. they bend their knees."]
+    about.inga: ["Inga made me a hat with a bobble. the bobble's bigger than my head. i can't see where i'm going on the sled run. i go anyway."]
+    about.bartolo: ["Bartolo gives me a coin for every lid i find on the sled run. i've found ninety-one. he says i'm his best employee. i'm his only employee."]
+    about.aksel: ["Aksel let me hold his axe once. i couldn't. it's that heavy. he said it's lighter when you need it. i think that's a lie for kids."]
+    about.ylva: ["Ylva shot an apple off a stick from the other end of the street. a real apple. she ate it after."]
+    aboutUnknown: ["don't know them! are they fast?"]
+    friend.close: ["you can have a go on the sled. a short go. a short medium go."]
+    friend.best: ["when i beat Toivo's record properly, you can be on the camp board too. next to me. i'm saving the space."]
+    famed: ["everybody's saying your name! i say it too! loudest!"]
+    defamed: ["that's a fib. Marit says people who tell fibs in the cold get frostbite on their tongues."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["wow! that's the best one! i'm not sharing it! okay, a bit."]
+    gift.again: ["one a day! Marit says. Marit has rules."]
+
+- id: bartolo
+  name: Bartolo
+  look: { gender: male }
+  title: "Collector of Lids and Cans"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: coke-town
+    routine:
+      - { from: 7, to: 11, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 11, to: 17, materialize: false }
+      - { from: 17, to: 19, spot: "venue:sundry-goods-shop-entrance", activity: BROWSE }
+      - { from: 19, to: 22, spot: "venue:middle-west-street", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [Coke Bottle Lid, Coca-Cola Light Can, Coke Snail]
+  questLines: [bartolo-the-lid-wall, bartolo-the-light-ones]
+  rumors: [coke-the-button-war]
+  relationships:
+    - { persona: inga, kind: ARGUES_BUTTONS_WITH }
+    - { persona: nils, kind: PAYS_A_COIN_A_LID_TO }
+    - { persona: ylva, kind: KEEPS_A_SHOT_LID_FROM }
+  giftItemIds: [2022035, 2020004]
+  dialogue:
+    greetFirst: ["ah! a visitor! you haven't any lids on you? bottle lids? no? never mind. you will.", "welcome, welcome. Bartolo. i came here for a weekend twenty years ago. the weekend's going very well."]
+    greet: ["ah! hello!", "you! any lids?", "my friend. come, come."]
+    idle: ["(holds a bottle lid up to the light, turns it, and files it in a small tin with great ceremony)", "(polishes a flattened can with a cloth and stands it on its edge to admire it)"]
+    noWork: ["nothing today. the collection is catalogued. it's never catalogued. today it is."]
+    nothingDue: ["we're square. i've written it on a lid."]
+    who: ["Bartolo. i collect lids and cans. Coke Bottle Lids, the cans, the light cans, the red cards the pigs drop. two thousand and eleven lids at the last count. each one is a little different. you have to look. nobody looks."]
+    bye: ["eyes on the ground, my friend. that's where the lids are."]
+    thanks: ["grazie. thank you. both."]
+    smallTalk: ["the Coke Snails on the first slope carry lids on their backs like little hats. they don't know what they've got.", "the polar bear Pouch lets me keep the collection in the back room of his house. he's stopped asking how big it's getting. so have i."]
+    speakPlainly: ["plainly: lids, cans, and a back room full of both."]
+    questOffer.bartolo-the-lid-wall: ["the lid wall in my back room has a gap. a big gap. the Coke Snails and Coke Slimes on the Ski Camp's first slopes carry bottle lids. twenty of them, fifteen lids. the snails' lids are better. don't tell the slimes."]
+    questAccept.bartolo-the-lid-wall: ["through the gate on the lower street. the first slope, and the one off it. the snails are slow, the slimes are bouncy. the lids are the same."]
+    questWaiting.bartolo-the-lid-wall: ["fifteen lids. the gap is staring at me."]
+    questComplete.bartolo-the-lid-wall: ["fifteen! look, this one's bent. that's a story, that is. and this one's got a scratch like a smile. thank you. the wall's whole. well. wholer."]
+    questOffer.bartolo-the-light-ones: ["the light cans. silver, thinner, lighter. i keep them on their own shelf, by weight. the Coketump Lites carry them, down the far runs of the Ski Camp. twenty-five Lites, twelve light cans."]
+    questAccept.bartolo-the-light-ones: ["all the way down the Ski Camp, the side run off the second slope and the end of the run. the Lites fizz when you hit them. that's normal."]
+    questWaiting.bartolo-the-light-ones: ["twelve. the shelf is light. lighter than the cans."]
+    questComplete.bartolo-the-light-ones: ["twelve. ah. feel that. you can hardly tell you're holding it. that's the whole point of them. on the shelf they go. by weight. here, for your trouble."]
+    about.marit: ["Marit gave me the first lid i ever kept in Coke Town. off her kettle. i asked very politely. she's never let me forget it."]
+    about.toivo: ["Toivo drops lids on the slopes and i bring them back. he says 'keep it.' i say a lid isn't a gift, it's a responsibility."]
+    about.inga: ["Inga punches buttons out of cans. good cans. she says a can's for using. i say a can's for keeping. we've had this argument twenty years. i'm winning."]
+    about.nils: ["Nils finds lids on the sled run for a coin each. ninety-one so far. he has an eye. i'm training it."]
+    about.aksel: ["Aksel brought me a lid from the Forest of Coke Golem once, frozen in a piece of ice. he put it on the table and went. i've never chipped it out. it's on the shelf, ice and all."]
+    about.ylva: ["Ylva shot a lid off a post at a hundred paces for me. it's got a hole through the middle now. best lid i own. i keep it in a velvet box."]
+    aboutUnknown: ["never traded a lid with them."]
+    friend.close: ["you may choose a lid from the wall. any lid. not that one. any other lid."]
+    friend.best: ["when i'm gone, the collection's yours. all two thousand. you'll need a bigger room. sorry."]
+    famed: ["your name! i hear it everywhere. like a good lid. everybody wants one."]
+    defamed: ["pah. talk is like a bent lid. some people throw it away. i keep it and look at it closely. it's not what they say."]
+    gift: ["ah! grazie. thank you."]
+    gift.favorite: ["oh, now that's a treat. i'll enjoy it slowly. i might keep the wrapper."]
+    gift.again: ["one, my friend. one is a gift. two is a collection, and i have enough of those."]
+
+- id: aksel
+  name: Aksel
+  look: { gender: male }
+  title: "Ice Golem Hunter of the Coke Valley"
+  job: CRUSADER
+  level: { min: 62, max: 64 }
+  strength: VETERAN
+  loadout: ice-valley-axe-l60
+  personality: efficient-v1
+  home:
+    town: coke-town
+    routine:
+      - { from: 5, to: 9, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 9, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: true
+  knows: [Ice Golem, Coke Golem, Yeti and Coketump]
+  contract: aksel-the-forest-watch
+  questLines: [aksel-the-golem-forest, aksel-the-sled-in-the-ice, aksel-the-third-valley, aksel-the-clear-ice, aksel-the-whole-valley, aksel-ice-for-nell]
+  rumors: [coke-the-valley-turn]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: ylva, kind: HUNTS_WITH }
+    - { persona: marit, kind: CARRIED_A_SLED_FOR }
+    - { persona: nils, kind: IS_FOLLOWED_BY }
+  giftItemIds: [2000004, 2020005]
+  dialogue:
+    greetFirst: ["hm. you're new. stand out of the wind.", "...hello. i'm not good at hello. Aksel."]
+    greet: ["hm. hello.", "you.", "(nods)"]
+    idle: ["(knocks ice out of his beard with the back of a gauntlet)", "(runs a whetstone along an axe in slow strokes, then tests the edge on a fleck of ice)"]
+    noWork: ["nothing today. the golems will keep."]
+    nothingDue: ["square."]
+    who: ["Aksel. i hunt the Ice Golems in the Forest of Coke Golem, at the top of the valley. i came down from El Nath nine winters ago for the hardest ice there is. i stayed for Nell's cocoa. don't tell anyone that part."]
+    bye: ["out of the wind."]
+    thanks: ["hm. thanks."]
+    smallTalk: ["the Ice Golems grow ice round anything they find. a glove. a branch. a bird, once. it flew off when i broke it out. it didn't say thank you. birds don't.", "the Coke Golems lower down are made of something sweet. they sweat when they're angry. i don't eat it. Nils does."]
+    speakPlainly: ["plainly: an axe, a shield, and a lot of ice."]
+    offer: ["sixty Ice Golems, counted from today, and thirty thousand. the golems are the proof. the mesos are for Nell. i owe her for cocoa. then i'll walk with you."]
+    join: ["go on. i'll take the wind side."]
+    bench: ["three days. then the forest."]
+    leave: ["back to the forest."]
+    refuse.bond: ["no. i don't know your swing yet."]
+    refuse.flags: ["come up to the Forest of Coke Golem with me first. thirty Ice Golems. then ask."]
+    refuseOwnErrand: ["the forest first. come up with me."]
+    questOffer.aksel-the-golem-forest: ["come up to the Forest of Coke Golem. thirty Ice Golems. i'll watch how you hit. it'll tell me more than talking. most things do."]
+    questAccept.aksel-the-golem-forest: ["out the east end, up all four valleys. the forest door's at the far end of the turn, past the Yetis. they ride Coketumps. don't stop for them. it's cold in the forest. colder than here. yes. that's possible."]
+    questWaiting.aksel-the-golem-forest: ["thirty."]
+    questComplete.aksel-the-golem-forest: ["thirty. you hit like you mean it, and then you stop. good. most people don't stop. i'd walk with you."]
+    questOffer.aksel-the-sled-in-the-ice: ["there's a golem at the back of the forest bigger than the rest. it's grown round something long, with a curl at the front. i thought it was a branch for years. it's a sled runner. help me thin the others, twenty-five of them, and we'll break it free. then i want Marit to see it. i think it's her brother's."]
+    questAccept.aksel-the-sled-in-the-ice: ["the Forest of Coke Golem, past the Yetis at the turn. the big one keeps to the back. we clear the rest, then we take it apart. carefully. then Marit, down in town."]
+    questWaiting.aksel-the-sled-in-the-ice: ["twenty-five. then the big one. then Marit."]
+    questComplete.aksel-the-sled-in-the-ice: ["she knew it at once. his name burnt in the runner. ...i've walked past that golem nine winters. i should have looked closer, sooner. thank you for coming up."]
+    questOffer.aksel-the-third-valley: ["the Coke Golems block the path in the third valley. they're sweet and they're stubborn. thirty of them. there's a cloak in it for you. Nell got it from Henesys for me. too small. everything is."]
+    questAccept.aksel-the-third-valley: ["up the valley to the third one. the golems there are brown and they sweat. don't lick your axe."]
+    questWaiting.aksel-the-third-valley: ["thirty. the path's still shut."]
+    questComplete.aksel-the-third-valley: ["thirty. the path's open. here. a cloak for the wind. every safe scroll it would take, every one took. wear it with the collar up."]
+    questOffer.aksel-the-clear-ice: ["the Ice Golems' ice is the clearest there is. thirty of them, and fifteen blocks of it. Nell sends it down to Henesys, and something better comes back. this time, a better cloak. it'll be yours."]
+    questAccept.aksel-the-clear-ice: ["the forest at the top, past the Yetis at the turn. keep the blocks out of the sun. there isn't any sun. keep them out of it anyway."]
+    questWaiting.aksel-the-clear-ice: ["fifteen blocks."]
+    questComplete.aksel-the-clear-ice: ["fifteen. clear as water. here, the cloak. scrolled at sixty, every one took. it keeps the wind off. mine's the same. bigger."]
+    questOffer.aksel-the-whole-valley: ["the Yetis at the valley's turn ride Coketumps into anybody coming up the path. thirty of them. then twenty Ice Golems, for the walk home. the best cloak i can get you. it's for somebody who's walked the whole valley with me."]
+    questAccept.aksel-the-whole-valley: ["the fourth valley, where it turns, and then the forest above it. the yetis are fast. the stumps they ride are faster. watch the stumps."]
+    questWaiting.aksel-the-whole-valley: ["thirty, and twenty. the whole valley."]
+    questComplete.aksel-the-whole-valley: ["thirty, and twenty. here. the best cloak i've ever been able to get. two tens and the rest at sixty, every one took. you've walked the whole valley with me. nobody has, before."]
+    questOffer.aksel-ice-for-nell: ["ten blocks of golem ice? Nell keeps the honey cold in it."]
+    questAccept.aksel-ice-for-nell: ["the forest at the top, past the Yetis. or the turtles lower down, if you're not fussy. Nell's fussy."]
+    questWaiting.aksel-ice-for-nell: ["ten."]
+    questComplete.aksel-ice-for-nell: ["ten. Nell says thank you. she says it with cocoa."]
+    about.marit: ["Marit nods at me in the street. i come down from the forest with ice in my beard and most people cross the road. she nods. i like her."]
+    about.toivo: ["Toivo wants me to teach balance at the Ski Camp. i stand still. that's all balance is. he says it's not that simple. it is."]
+    about.inga: ["Inga's knitting me a hat. she measures my head with her eyes every time i pass. it's been a year. i think the hat is very big now."]
+    about.nils: ["Nils follows me to the valley gate and no further. i told him no further. he's good at no further. he says it out loud, every step."]
+    about.bartolo: ["Bartolo wanted a lid from the forest. i found one in a block of ice and brought it down as it was. he cried. i didn't know what to do. i left."]
+    about.ylva: ["Ylva watches the valley's turn. if she's there, i don't look behind me. i've never needed to."]
+    aboutUnknown: ["never met them."]
+    friend.close: ["you can have the wind side. i'll take the other. that's a big thing, for me."]
+    friend.best: ["if you're ever up the valley and it goes bad, shout. i'll hear. i always hear. i don't always answer. i'll answer you."]
+    famed: ["they say your name at Nell's. good things. i listened."]
+    defamed: ["i heard. i don't say much. this time i said something."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["that'll come up the valley with me. that's a good one. thank you."]
+    gift.again: ["one. i've got to carry it up."]
+
+- id: ylva
+  name: Ylva
+  look: { gender: female }
+  title: "Archer of the Coke Valley"
+  job: HUNTER
+  level: { min: 58, max: 60 }
+  strength: VETERAN
+  loadout: orbis-bow-l58
+  personality: efficient-v1
+  home:
+    town: coke-town
+    routine:
+      - { from: 6, to: 10, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 10, to: 18, materialize: false }
+      - { from: 18, to: 21, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: true
+  knows: [Coke Seal, Play Seal, Coca-Cola Gem]
+  contract: ylva-the-valley-share
+  questLines: [ylva-the-barking-path, ylva-the-watch, ylva-cubes-for-the-fletching, ylva-the-turn-of-the-valley, ylva-arrows-for-nell]
+  rumors: [coke-the-valley-turn]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: aksel, kind: HUNTS_WITH }
+    - { persona: marit, kind: LEAVES_ICE_ON_THE_STEP_OF }
+    - { persona: bartolo, kind: SHOT_A_LID_FOR }
+  giftItemIds: [2020014, 2020015]
+  dialogue:
+    greetFirst: ["you came in from Henesys. i saw you from the valley. i see everybody.", "new. you walk loud. that's all right here. the snow eats it."]
+    greet: ["hello.", "you. i saw you coming.", "(lifts two fingers off the bow) hello."]
+    idle: ["(counts something on her fingers, looking east toward the valley, then starts again)", "(rolls an arrow along her palm to check it's straight, and puts it back)"]
+    noWork: ["nothing today. the valley's quiet. i'll go and listen to it anyway."]
+    nothingDue: ["even."]
+    who: ["Ylva. i keep the watch at the turn of the Coke Valley, where the fourth valley bends up toward the forest. everybody who goes up passes me, and everybody who comes down. i count them. it's what i do."]
+    bye: ["come back down."]
+    thanks: ["thanks."]
+    smallTalk: ["the Play Seals bark at anybody coming up the valley. i think they think it's helping. it's not.", "Aksel stands like a wall and i shoot past him. nine winters and we've never once got in each other's way. that's a long time not to get in each other's way."]
+    speakPlainly: ["plainly: a bow, a lookout, and a count."]
+    offer: ["twenty-five PLAY cubes off the seals, and twenty-five thousand. the cubes go to Nell for arrows. the mesos go on more arrows. then i'll watch your back like i watch the valley."]
+    join: ["go on. i'll be on the high ground."]
+    bench: ["three days. then the turn of the valley."]
+    leave: ["back to the turn."]
+    refuse.bond: ["no. i haven't seen you walk the valley yet."]
+    refuse.flags: ["clear the Play Seals off the valley path with me first. and come by the middle east street of an evening, six till nine, and hear what Aksel says about me. then ask."]
+    refuseOwnErrand: ["the seals first. walk the path with me."]
+    questOffer.ylva-the-barking-path: ["the Play Seals sit on the valley path and bark at anybody coming up. the first valley, and the Small Alley off it. thirty of them. walk the path with me. i'll see how you walk."]
+    questAccept.ylva-the-barking-path: ["out the east end of the middle street. the first valley. they'll bark. don't bark back. Inga says bark back. Inga's wrong."]
+    questWaiting.ylva-the-barking-path: ["thirty. the path's still barking."]
+    questComplete.ylva-the-barking-path: ["thirty. quiet. you walk all right. you look up. most people look at their feet. i'd watch your back."]
+    questOffer.ylva-the-watch: ["walk my watch with me. the Igloo Turtles in the second valley, thirty of them. then up into the third valley and stand there a minute, looking up toward the turn. see all of it at once. then come back. i've a pair of earrings that want wearing."]
+    questAccept.ylva-the-watch: ["the second valley, past the seals. the turtles carry ice on their backs. then the third valley. stand. look up. that's my watch."]
+    questWaiting.ylva-the-watch: ["thirty, and the third valley. don't skip the standing."]
+    questComplete.ylva-the-watch: ["you stood. good. you've seen it now, the whole valley at once. the earrings. every safe scroll they'd take, every one took. i bought them in Henesys and never wore them. they catch the light. a watcher shouldn't. you should."]
+    questOffer.ylva-cubes-for-the-fletching: ["the Coke Golems in the third valley carry Coca-Cola cubes. Nell cuts them into weights for my fletching. thirty golems, twelve cubes. there's another pair of earrings in it. better."]
+    questAccept.ylva-cubes-for-the-fletching: ["the third valley. the golems are sweet and slow and they hit hard. stay out of reach. i do."]
+    questWaiting.ylva-cubes-for-the-fletching: ["twelve cubes."]
+    questComplete.ylva-cubes-for-the-fletching: ["twelve. Nell will be pleased. she won't show it. the earrings. scrolled at sixty, every one took. they catch the light. so you'll be found."]
+    questOffer.ylva-the-turn-of-the-valley: ["the Yetis ride Coketumps round the turn of the valley and knock people into the snow. thirty of them, and ten of the gems they carry. the best earrings i've got. for somebody who's held my turn."]
+    questAccept.ylva-the-turn-of-the-valley: ["the fourth valley, the turn. they come fast round the bend. shoot first. ask after. that's not advice for anywhere else."]
+    questWaiting.ylva-the-turn-of-the-valley: ["ten gems. the turn's still loud."]
+    questComplete.ylva-the-turn-of-the-valley: ["ten. you held the turn. the earrings. two tens and the rest at sixty, every one took. i'll count you up and count you down, every time. you'll always come out right."]
+    questOffer.ylva-arrows-for-nell: ["ten PLAY cubes? Nell's out of fletching again."]
+    questAccept.ylva-arrows-for-nell: ["the first valley."]
+    questWaiting.ylva-arrows-for-nell: ["ten."]
+    questComplete.ylva-arrows-for-nell: ["ten. arrows by tonight. thanks."]
+    about.marit: ["Marit's brother went up the valley one winter, past my watch, in a storm. i think of him every time the snow comes sideways."]
+    about.toivo: ["Toivo tells me to turn when i ski. i don't turn. he's stopped telling me. he still shouts 'knees.'"]
+    about.inga: ["Inga knitted me a headband. i keep it in my pocket. my pocket's warm. my ears are cold. it's a fair trade."]
+    about.nils: ["Nils asked me to teach him the bow. i said when you can stand still for a minute. he's tried. forty seconds."]
+    about.bartolo: ["i shot a lid off a post for Bartolo once. he keeps it in a velvet box. nothing i've done has ever been kept in a velvet box before."]
+    about.aksel: ["Aksel hunts the forest above my watch. he comes down past me every evening and i count him. he's always there to count. that's rare."]
+    aboutUnknown: ["never counted them up the valley."]
+    friend.close: ["i count you up the valley and i count you down. for you i check twice."]
+    friend.best: ["if you ever go up the valley in a storm, i'll stand at the turn till you come down. however long. i mean that."]
+    famed: ["people say your name in town. i hear it from the turn. the snow carries it."]
+    defamed: ["i heard. i don't count what people say. i count who comes home."]
+    gift: ["thanks."]
+    gift.favorite: ["that's a good one for a long watch. thanks."]
+    gift.again: ["one's enough. long watch, small pockets."]

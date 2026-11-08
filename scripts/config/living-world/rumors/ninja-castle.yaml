@@ -1,0 +1,44 @@
+# Outside Ninja Castle rumors. Each pair is awake together at its spot in those hours (personas/ninja-castle.yaml).
+- id: nc-the-cup-at-the-gate
+  participants: [oharu, goro]
+  where: { town: ninja-castle, spot: "venue:by-hoshi" }
+  when:
+    serverHours: [16, 17, 18]
+    everyDays: 1
+  lines:
+    - { by: goro, text: "another cup going in, Oharu?" }
+    - { by: oharu, text: "every visitor takes one. somebody in there gets thirsty." }
+    - { by: goro, text: "forty years i carried rice through that gate. never once carried tea." }
+    - { by: oharu, text: "you carried the first cup. eight years ago." }
+    - { by: goro, text: "...i did. it spilled. half of it." }
+    - { by: oharu, text: "half of it got there. that's how i think of it." }
+
+- id: nc-the-one-who-walked-out
+  participants: [fumiko, hayate]
+  where: { town: ninja-castle, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: nc.heard-hayate
+  lines:
+    - { by: fumiko, text: "hold still." }
+    - { by: hayate, text: "it's a scratch." }
+    - { by: fumiko, text: "it's a kunoichi's scratch. they put things on their blades. hold still." }
+    - { by: hayate, text: "...thank you." }
+    - { by: fumiko, text: "you walked out of that castle on your own two feet. nobody does. anyone who goes in beside you will walk out beside you. i'll tell them so, if they ask." }
+    - { by: hayate, text: "don't." }
+    - { by: fumiko, text: "i'll tell them twice." }
+
+- id: nc-the-spear-lesson
+  participants: [kenta, masaru]
+  where: { town: ninja-castle, spot: "venue:middle-east-street" }
+  when:
+    serverHours: [16, 17, 18]
+    everyDays: 2
+  lines:
+    - { by: kenta, text: "Masaru! teach me the spear." }
+    - { by: masaru, text: "i threw mine down." }
+    - { by: kenta, text: "then teach me throwing it down!" }
+    - { by: masaru, text: "...you hold it like this. and then you don't." }
+    - { by: kenta, text: "that's it?" }
+    - { by: masaru, text: "that's the hard part. it took me nine years." }

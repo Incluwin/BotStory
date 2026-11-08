@@ -1,0 +1,33 @@
+# Coke Town contracts (Repack Residents): an ice-golem hunter's kill proof on his intro quest's Ice Golems, and an
+# archer's PLAY-cube price once the player has walked her barking path and heard Aksel on her.
+- id: aksel-the-forest-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [aksel.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [9500150], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
+
+- id: ylva-the-valley-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ylva.intro.done, coke.heard-ylva]
+  price:
+    meso: 25000
+    items: [{ itemId: 4000212, count: 25 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 12000 }

@@ -1,0 +1,93 @@
+# Moonbridge quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No mob spawns on Arcane River:
+# errands. The Outpost 450009050 has no portal a player can walk; the White Spear is reached from the Labyrinth of
+# Suffering's Crash Site 450011120 (the Temple Keeper at Three Doors goes there): its portal down comes out on White Spear
+# Deck 3 450009300, whose ship portal goes to Deck 2 450009200 and on to Deck 1 450009100. Off the decks: Void Current 1
+# 450009310 (east of Deck 3), Mysterious Fog 1 450009210 (east of Deck 2), Last Horizon 1 450009110 (east of Deck 1) and
+# Last Horizon 4 450009140 (west of Deck 1). Carried in: rexton leather 4000264 (rexton 8140702, Dragon Forest II
+# 240030200), harp's tail feather 4000238 (harp 8140001, Sky Nest I 240010700). TALK_TO: caedmon (Three Doors), genzo
+# (Mushroom Shrine). Hadrian's campaign map sets arcane.page.moonbridge for Ottoline's River Atlas (Nameless Town).
+
+# ---- Hadrian: the war nobody remembers (the River Atlas page) ----
+- id: hadrian-the-white-rails
+  persona: hadrian
+  title: "The White Rails"
+  length: SHORT
+  requires: { level: { min: 95 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: third-deck, type: VISIT_MAP, mapIds: [450009300] }
+    - { id: first-deck, type: VISIT_MAP, mapIds: [450009100] }
+    - { id: rails, type: DELIVER, to: hadrian }
+  rewards: { meso: 32000, exp: 80000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: hadrian-the-roll-call
+  persona: hadrian
+  title: "The Roll Call"
+  length: MEDIUM
+  requires: { level: { min: 98 }, questsCompleted: [hadrian-the-white-rails] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bryn, type: TALK_TO, persona: bryn, say: ["the roll? i don't know names. i know a bridge, and a great many people standing on it, and that it held. i draw it sometimes without meaning to. tell him that. tell him i draw the bridge."] }
+    - { id: caedmon, type: TALK_TO, persona: caedmon, say: ["a war, on a river past the Temple Keeper's door? no, friend. none that i know of, and no knight i ever squired with stood there. ...but a man who speaks of a line like that has stood on one. tell him i'd have stood beside him. tell him plainly."] }
+    - { id: answers, type: DELIVER, to: hadrian }
+  rewards: { meso: 42000, exp: 120000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }
+
+- id: hadrian-the-campaign-map
+  persona: hadrian
+  title: "A Map Without a Line"
+  length: LONG
+  requires: { level: { min: 105 }, questsCompleted: [hadrian-the-roll-call] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000264, count: 12 }
+    - { id: current, type: VISIT_MAP, mapIds: [450009310] }
+    - { id: case, type: DELIVER, to: hadrian, take: { itemId: 4000264, count: 12 } }
+  rewards: { meso: 80000, exp: 200000, bondPoints: 50, items: [{ itemId: 2000005, count: 15 }], worldFlags: [arcane.page.moonbridge] }
+
+# ---- Kaito: the bridge in the dream ----
+- id: kaito-the-fog-bell
+  persona: kaito
+  title: "A Bell in the Fog"
+  length: SHORT
+  requires: { level: { min: 95 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fog, type: VISIT_MAP, mapIds: [450009210] }
+    - { id: listened, type: DELIVER, to: kaito }
+  rewards: { meso: 30000, exp: 75000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: kaito-word-from-the-gate
+  persona: kaito
+  title: "Word from the Shrine Gate"
+  length: MEDIUM
+  requires: { level: { min: 98 }, questsCompleted: [kaito-the-fog-bell] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: genzo, type: TALK_TO, persona: genzo, say: ["Kaito. ...i taught him to hold a sword, once, by not telling him how. he went down the shrine road one spring saying he'd dreamed of a bridge. i didn't stop him. you don't stop a dream. you make it carry its own bags. well, and not afraid? good. tell him: stand up straight. finish your tea."] }
+    - { id: hadrian, type: TALK_TO, persona: hadrian, say: ["what his teacher said? good words. ...there were swordsmen from far off on the line, with the envoy's men. i couldn't give you their names. there was a man with his walk. i'd know it anywhere. don't tell him it's a comfort. tell him it's a fact."] }
+    - { id: word, type: DELIVER, to: kaito }
+  rewards: { meso: 42000, exp: 115000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }
+
+# ---- Bryn: ground she has never walked ----
+- id: bryn-both-ends-of-the-deck
+  persona: bryn
+  title: "Both Ends of the Deck"
+  length: SHORT
+  requires: { level: { min: 95 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: east, type: VISIT_MAP, mapIds: [450009110] }
+    - { id: west, type: VISIT_MAP, mapIds: [450009140] }
+    - { id: drawing, type: DELIVER, to: bryn }
+  rewards: { meso: 32000, exp: 80000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: bryn-straight-fletching
+  persona: bryn
+  title: "Straight Fletching"
+  length: MEDIUM
+  requires: { level: { min: 98 }, questsCompleted: [bryn-both-ends-of-the-deck] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4000238, count: 20 }
+    - { id: quiver, type: DELIVER, to: bryn, take: { itemId: 4000238, count: 20 } }
+  rewards: { meso: 40000, exp: 110000, bondPoints: 35, items: [{ itemId: 2000005, count: 10 }] }

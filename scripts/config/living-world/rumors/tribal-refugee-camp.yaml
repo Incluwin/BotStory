@@ -1,0 +1,35 @@
+# Tribal Refugee Camp rumors (Repack Residents). Each pair is awake together at its spot in those hours
+# (personas/tribal-refugee-camp.yaml).
+- id: camp-the-scouts-fire
+  participants: [yrsa, vidar]
+  where: { town: tribal-refugee-camp, spot: "venue:middle-east-street" }
+  when:
+    serverHours: [18, 19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: camp.heard-yrsa
+  lines:
+    - { by: vidar, text: "you came in at dusk without a scratch again, Yrsa." }
+    - { by: yrsa, text: "mm." }
+    - { by: vidar, text: "the masks were out. i saw them from the east hill." }
+    - { by: yrsa, text: "they didn't see me." }
+    - { by: vidar, text: "they never see you. ho, listen, everyone. anyone who walks behind Yrsa gets where they're going and never once hears a mask." }
+    - { by: yrsa, text: "stop it." }
+    - { by: vidar, text: "i'll stop when it isn't true." }
+    - { by: yrsa, text: "...then don't stop." }
+
+- id: camp-the-supper
+  participants: [ama, kasper]
+  where: { town: tribal-refugee-camp, spot: "venue:by-blackbull" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+  lines:
+    - { by: ama, text: "Kasper. how many bowls did i put out?" }
+    - { by: kasper, text: "forty." }
+    - { by: ama, text: "and how many are on the plank?" }
+    - { by: kasper, text: "...thirty-eight?" }
+    - { by: ama, text: "and where are the other two?" }
+    - { by: kasper, text: "i was running. running makes you hungry. it's science." }
+    - { by: ama, text: "sit down and eat the third one, then. slowly." }
+    - { by: kasper, text: "slowly isn't science." }
+    - { by: ama, text: "slowly is supper." }

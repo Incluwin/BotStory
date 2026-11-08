@@ -1,0 +1,33 @@
+# Tribal Refugee Camp contracts (Repack Residents, fourth tier; maxLevelGap 20 for the Future's high-level recruits): a
+# scout's fee once her road is walked and Vidar has been heard on her; a gunner's item price, the hourglasses his powder
+# is ground from, once his errand is walked.
+- id: yrsa-the-scouts-cut
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [yrsa.intro.done, camp.heard-yrsa]
+  price:
+    meso: 130000
+  terms:
+    durationHours: 10
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 45000 }
+
+- id: vidar-the-powder-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [vidar.intro.done]
+  price:
+    meso: 100000
+    items: [{ itemId: 4000443, count: 30 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 35000 }

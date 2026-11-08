@@ -1,0 +1,46 @@
+# Arcane River arc: the River Atlas (docs/REPACK_RESIDENTS_PLAN.md section 3.5). Ottoline maps the river at the edge of
+# the world, town by town. A map a stranger draws there fades by morning; one drawn by somebody who lives in a place
+# keeps. So each of the nine towns makes its own page, in one of its Residents' own quests, and each page sets a world
+# flag (arcane.page.nameless, .chuchu, .lachelein, .arcana, .morass in this half of the river; .esfera, .moonbridge,
+# .labyrinth, .limina downstream). Her chapters open three pages at a time, upstream first; her own quests read the
+# same flags (quests/nameless-town.yaml), and the last, binding the atlas, happens once per server
+# (arcane.atlas.bound). No chapter is opened by one of Ottoline's own quests, and chapter 4's lines read true before
+# and after the binding.
+- id: ottoline-the-river-atlas
+  persona: ottoline
+  chapters:
+    - id: chapter-1
+      title: "Blank Pages"
+    - id: chapter-2
+      title: "Upstream"
+      enterWhen: { flags: [arcane.page.nameless, arcane.page.chuchu, arcane.page.lachelein] }
+      dialogueOverrides:
+        greet: ["hello! three pages. three! come and look.", "you. good. the top of the river's on my table and it hasn't faded once."]
+        who: ["Ottoline. i'm drawing the river. the top of it's done: this town from Oren's stones, Chu Chu Village from Pomona's recipes, Lachelein from Minna's music. three pages, and every one of them has kept through the night."]
+        idle: ["(lays three pages side by side and nudges them until their edges line up, then nudges them back)", "(holds a page up to the lake light, finds every line still there, and puts it down very gently)"]
+        smallTalk: ["Oren's page is a row of stones. Pomona's is a list of dinners. Minna's is music. none of them looks like a map. all of them are. that's the river for you.", "there's water between the towns that nobody lives on. nobody can make a page of it for me. somebody has to walk it, and then i draw it myself, carefully.", "below Lachelein the river goes on through Arcana and Morass, and four more towns after them. the middle of a river is always the slow part."]
+        speakPlainly: ["plainly: three pages kept, six to go."]
+        about.oren: ["Oren's page is the street, every door and every stone. i've looked at it every morning since. not one name has rubbed off."]
+        chapterEnter: ["(spreads three pages across the table, one beside the other, and laughs out loud at them)"]
+    - id: chapter-3
+      title: "The Middle Reach"
+      enterWhen: { flags: [arcane.page.nameless, arcane.page.chuchu, arcane.page.lachelein, arcane.page.arcana, arcane.page.morass, arcane.page.esfera] }
+      dialogueOverrides:
+        greet: ["hello! six pages. the river's half drawn. more than half.", "you. come in. mind the pages. there are a lot of pages now."]
+        who: ["Ottoline. i'm drawing the river. six towns now, top to middle: Nameless Town, Chu Chu Village, Lachelein, Arcana, Morass, and Esfera at the bottom of the blue. six pages, every one made by somebody who lives there."]
+        idle: ["(lays six pages out in a long line across two tables and walks along them slowly, the way you'd walk a river)", "(holds Esfera's depth chart up to dry, and doesn't seem to mind that it drips on her)"]
+        smallTalk: ["Sylvie's page of Arcana is what the spirits say in their sleep. Corin's of Morass is where the shadows walk at night. i keep turning them over to see if there's more on the back. there always is.", "Nerissa's depth chart came up from Esfera wet. of course it did. every knot of it. i'd drawn the river flat. it isn't. it goes down.", "the last three pages are the bottom of the river: Moonbridge, the Labyrinth, Limina. the bottom of a river is the hard part. it always is."]
+        speakPlainly: ["plainly: six pages kept, three to go."]
+        chapterEnter: ["(lays three new pages beneath the first three, stands back, and has to sit down)"]
+    - id: chapter-4
+      title: "The Whole River"
+      enterWhen: { flags: [arcane.page.nameless, arcane.page.chuchu, arcane.page.lachelein, arcane.page.arcana, arcane.page.morass, arcane.page.esfera, arcane.page.moonbridge, arcane.page.labyrinth, arcane.page.limina] }
+      dialogueOverrides:
+        greet: ["hello. it's all here. the whole river. come and see.", "you. sit. i've something to show you. nine somethings."]
+        who: ["Ottoline. i drew the river. nine towns, top to bottom, every page made by somebody who lives there, from Oren's stones in this town to the last page from Limina, where the river ends at the world's sorrow. it's all on my table. none of it has faded."]
+        idle: ["(turns nine pages one by one, from the top of the river to the bottom, and then turns them back again)", "(runs a finger down the whole river, page to page, without lifting it)"]
+        smallTalk: ["the river ends at Limina. Mourne's page has one line on it: where the water stops, and doesn't mind. i always thought a map should end at an edge. this one ends with somebody not minding. that's the bravest page of the nine.", "Hadrian's campaign map from Moonbridge still has its line across the river. he said i could rub it out. i drew the bridge over it instead. Cassius's flight chart from the Labyrinth is half sky. a river should know what fell into it, he said. so it's in.", "i came here to keep a list of places people could come back to, because the lake makes people forget. nine towns remembered themselves for me. i didn't have to keep anything. they did."]
+        speakPlainly: ["plainly: nine pages. the whole river."]
+        noWork: ["nothing today. sit with me and look at the river. it's all here. it'll keep."]
+        friend.best: ["you're on every page. i said you would be. i've checked. i check everything."]
+        chapterEnter: ["(sets the ninth page at the bottom of the pile, squares the stack with both hands, and just looks at it for a long while)"]

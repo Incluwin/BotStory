@@ -1,0 +1,378 @@
+# Henesys Ruins cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.3): 5 Residents, 3 recruitable, in the
+# Henesys of a future that may come, behind the Temple Keeper's door at Three Doors. A medic writes to her sister at the
+# Tribal Refugee Camp every month and never hears back (arcs/henesys-ruins.yaml; the camp's Residents carry the middle of
+# it). The ruins' last watch carries the fourth weapon tier: Seori's bow, Kael's crossbow and Delphine's wand continued
+# with the Reverse and Timeless pieces.
+- id: edda
+  name: Edda
+  look: { gender: female }
+  title: "Medic of the Ruins"
+  job: BEGINNER
+  level: { min: 88, max: 90 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: henesys-ruins
+    routine:
+      - { from: 6, to: 12, spot: "venue:by-maya", activity: LINGER }
+      - { from: 12, to: 13, spot: "venue:middle-west-street-2", activity: REST }
+      - { from: 13, to: 17, spot: "venue:by-maya", activity: LINGER }
+      - { from: 17, to: 18, materialize: false }
+      - { from: 18, to: 21, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [Red Cloth, Oblivion Monk, Henesys Ruins Market]
+  questLines: [edda-clean-bandages, edda-a-letter-east, edda-a-year-of-letters]
+  arc: edda-letters-to-the-camp
+  rumors: [ruins-the-medics-tent]
+  relationships:
+    - { persona: ama, kind: SISTER_OF }
+    - { persona: seraphine, kind: STITCHES_BESIDE }
+    - { persona: lumi, kind: PATCHES_UP }
+    - { persona: kasper, kind: WAITS_ON_THE_RUNNER_OF }
+  giftItemIds: [2050004, 2000005]
+  dialogue:
+    greetFirst: ["you're not hurt? good. sit anyway. everybody who comes through the gate is a little hurt.", "a traveller from before. i can tell by your boots. they've never walked on ash."]
+    greet: ["hello. let me see your hands. ...fine. go on.", "you again. good. still in one piece.", "(looks up from a bandage) hello."]
+    idle: ["(rolls a bandage tight, holds it to the light, and unrolls it to do it again)", "(writes three short lines on a letter, folds it in three, and tucks it into her apron with the others)"]
+    noWork: ["nothing today. nobody's bleeding. i'll take it."]
+    nothingDue: ["nothing owed. you came back whole. that's payment."]
+    who: ["Edda. i keep the sick in Henesys Ruins. the snails in the market bite, the slimes on the hill burn, and the watch comes down off the wall with whatever they've got. i write to my sister Ama at the refugee camp past Twilight Perion every month. her answers used to come with whoever walked west. for a year now, not one. the roads are bad. i tell myself the roads are bad."]
+    bye: ["keep your hands clean."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the cloth here won't boil clean. the ash gets into it. the cloth the monks wear on the Temple's roads, back in your years, boils white. i don't ask how you get it. i ask for fifteen.", "people come through the Temple Keeper's door from before and ask if this is how it ends. i tell them it's how it might. then i check their hands. everybody who asks that has cold hands."]
+    speakPlainly: ["plainly: bandages, and a letter nobody answers."]
+    questOffer.edda-clean-bandages: ["i need bandages that boil clean. the oblivion monks on the first stretch of the Road to Oblivion, back in your years, wear red cloth. twenty-five monks, fifteen lengths. i'll cut a month of bandages from it."]
+    questAccept.edda-clean-bandages: ["back through the Temple Keeper's door, down the roads to the Burning Past and the Road to Oblivion's first stretch. the monks there forget you as you pass. don't forget me."]
+    questWaiting.edda-clean-bandages: ["fifteen lengths. the water's on."]
+    questComplete.edda-clean-bandages: ["fifteen. look at that red. it'll boil white. thank you. somebody on the wall will keep a finger because of this."]
+    questOffer.edda-a-letter-east: ["this month's letter to Ama. by hand, this time, not with whoever happens to be going east. the camp is past Twilight Perion. give it to her yourself and watch her face. tell me what it does."]
+    questAccept.edda-a-letter-east: ["not over the ridge. nobody gets over the ridge now. back out through the Gate to the Future to Three Doors, the Temple Keeper's door to Twilight Perion, and then Cobie takes you the safe way to the camp. she'll be cooking. she's always cooking."]
+    questWaiting.edda-a-letter-east: ["did she read it? what did her face do?"]
+    questComplete.edda-a-letter-east: ["she answers every month? then where are they? not one has come. not one, in a year. ...she called me a goose. that's Ama. that's how i know you saw her."]
+    questOffer.edda-a-year-of-letters: ["a whole year of Ama's letters is in a boy's shirt at the camp. they went through a door into your years and came back. bring them to me. please. i'll pay you in anything i've got, which is bandages, mostly."]
+    questAccept.edda-a-year-of-letters: ["the camp: the Temple Keeper's door to Twilight Perion, then Cobie's safe way. the boy's called Kasper. Ama will want a word too. she always wants a word."]
+    questWaiting.edda-a-year-of-letters: ["the letters. i've cleared a shelf for them. i've never cleared a shelf for anything."]
+    questComplete.edda-a-year-of-letters: ["twelve. ...her hand. she still crosses her sevens. sit with me while i open the first one. no. the March one first, she says. she would. thank you."]
+    about.lumi: ["Lumi. she gets into the market before anyone's cleared it, and comes back with a cup, or a bell, or a bite. i've patched her four times this month. she says she's my best customer. i think that's a joke."]
+    about.dagny: ["Dagny keeps the east wall. she comes off it at dusk and lets me check her hands. warm hands. archers usually haven't."]
+    about.thorne: ["Thorne keeps the tower. he's never once come to me hurt. i check him anyway. he lets me. he counts the bandages while i do it."]
+    about.seraphine: ["Seraphine sits with the sick while i stitch them. she hums. it's terrible. they get better faster. i don't know which of those is the cause."]
+    about.ama: ["Ama's my sister. when the ruins fell she went east to the tribe's camp past Twilight Perion, to cook for it. she always did cook too much. i write to her every month."]
+    about.kasper: ["a boy at the camp runs its letters, i'm told. i've never met him. i hear he's fast."]
+    about.heddwyn: ["the storyteller at Twilight Perion? they say he tells every story as if it's his last. i'd like to hear one. i never have the evening."]
+    aboutUnknown: ["i don't know them. send them by if they're hurt."]
+    friend.close: ["i've stopped checking your hands. that's the most i trust anyone."]
+    friend.best: ["if you're ever hurt, anywhere, in any year, come here first. i'll know what to do. it's the one thing i always know."]
+    famed: ["people from before say your name kindly. i'm glad. it's a good name to have said."]
+    defamed: ["i heard. people say things when they're frightened. everybody's frightened. let me see your hands."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["that's a medic's present. i'll keep it for somebody worse off than me. there's always somebody."]
+    gift.again: ["one's enough. give the next one to somebody hurt."]
+
+- id: lumi
+  name: Lumi
+  look: { gender: female }
+  title: "Scavenger of the Ruined Market"
+  job: BEGINNER
+  level: { min: 38, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: henesys-ruins
+    routine:
+      - { from: 8, to: 11, spot: "venue:by-athena-pierce", activity: STROLL }
+      - { from: 11, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [Mutant Snail, Blue Snail Shell, Henesys Ruins Park]
+  questLines: [lumi-a-snail-from-before, lumi-what-henesys-was, lumi-the-market-sign]
+  rumors: [ruins-the-medics-tent, ruins-the-east-wall]
+  relationships:
+    - { persona: dagny, kind: FOLLOWS_UP_THE_WALL }
+    - { persona: edda, kind: IS_PATCHED_UP_BY }
+    - { persona: seraphine, kind: BRINGS_PRESENTS_TO }
+    - { persona: thorne, kind: IS_COUNTED_IN_BY }
+  giftItemIds: [2001002, 2022003]
+  dialogue:
+    greetFirst: ["you're from before! are you? you are. what's it like? is it loud? i bet it's loud.", "hello! don't step there. or there. step where i step."]
+    greet: ["hi!", "you're back! did you bring anything? you don't have to. you could, though.", "hello! i found a spoon."]
+    idle: ["(turns over a broken cup, looks inside it very seriously, and puts it in her sack)", "(sits on a fallen stall sign and swings her legs, watching the market road)"]
+    noWork: ["nothing today. the snails are sitting on all the good stuff."]
+    nothingDue: ["we're even! i counted. Thorne showed me how."]
+    who: ["Lumi. i get things out of the market. cups, bells, a whole chair once. the snails sit on everything, so you have to be quick. i'm quick. i don't remember Henesys from before it was ruins. i was little. i've seen pictures. the pictures had flowers."]
+    bye: ["step where i step!"]
+    thanks: ["thank you! that's a good one!"]
+    smallTalk: ["people from before say the snails were little once. little enough to step on. i don't believe it. i'd like to.", "Dagny says there was a park with a bench where you could watch the sun go down. the snails sit on the bench now. i've seen it from the wall. it's a nice bench."]
+    speakPlainly: ["plainly: a sack, and a market full of snails."]
+    questOffer.lumi-a-snail-from-before: ["is it true the snails in your years are small? small enough to step on? i don't believe you. bring me twenty of their shells. the blue ones. then i'll believe you."]
+    questAccept.lumi-a-snail-from-before: ["the blue snails in your years! wherever they live. somewhere with flowers, i bet. twenty shells!"]
+    questWaiting.lumi-a-snail-from-before: ["twenty! the blue ones!"]
+    questComplete.lumi-a-snail-from-before: ["...they're so small. they're so small! they'd fit in my hand! i'm keeping all twenty. i'm going to line them up on the wall and Dagny's going to say 'oh, Lumi,' the way she does."]
+    questOffer.lumi-what-henesys-was: ["go and look at the market in your Henesys. and the park. then come back and tell me. everything. is there a stall with a blue roof? is there a bench? are there pigs? normal pigs?"]
+    questAccept.lumi-what-henesys-was: ["your Henesys! the market and the park! look at everything. i'll know if you didn't."]
+    questWaiting.lumi-what-henesys-was: ["did you look? did you look properly?"]
+    questComplete.lumi-what-henesys-was: ["a bench, with people on it, and the pigs are small and they've got ribbons on and nobody's scared of them? ...and the stalls have roofs. ...i'm going to sit on my sign and think about that for a while. thank you."]
+    questOffer.lumi-the-market-sign: ["there's a stall in the market with its sign still up. a blue one. i want it. thirty snails sit round it. if you clear them i'll get it down myself. i'm quick."]
+    questAccept.lumi-the-market-sign: ["west off the square, into the Henesys Ruins Market. the sign's on the third stall. thirty snails. then i'll run in."]
+    questWaiting.lumi-the-market-sign: ["thirty! i'm ready. i've been ready all day."]
+    questComplete.lumi-the-market-sign: ["i got it! look! it says 'fresh' on it. fresh what? it doesn't say. i don't care. i'm putting it over my bed. thank you!"]
+    about.edda: ["Edda patches me up. she says i'm her best customer. i think that's a joke. she writes to her sister every month and folds the letters in three. i've seen."]
+    about.dagny: ["Dagny lets me up on the wall. she tells me what everything used to be. she makes half of it up. i know. i like that half."]
+    about.thorne: ["Thorne counts me in and out of the market. he pretends he isn't worried. he's worried. he showed me how to count. i count snails now."]
+    about.seraphine: ["Seraphine hums. it's awful. i bring her presents so she'll hum less. it doesn't work. i like bringing her presents anyway."]
+    about.ama: ["Edda's sister cooks for the camp, out past Twilight Perion. i've never been that far. i've never been past the hill."]
+    aboutUnknown: ["never met them. are they from before?"]
+    friend.close: ["you can step where you like now. i trust your feet."]
+    friend.best: ["i'm saving you the best thing i ever find. i haven't found it yet. i will."]
+    famed: ["everybody from before knows your name! i told them i knew you first. that's not true but it sounds good."]
+    defamed: ["somebody said something mean about you. i put a snail shell in their boot. a small one."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh! that's the best thing anybody's ever given me! i'm saying that every time now."]
+    gift.again: ["one a day! Edda says."]
+
+- id: dagny
+  name: Dagny
+  look: { gender: female }
+  title: "Archer of the East Wall"
+  job: BOWMASTER
+  level: { min: 162, max: 164 }
+  strength: ELITE
+  loadout: future-bow-l110
+  personality: relaxed-v1
+  home:
+    town: henesys-ruins
+    routine:
+      - { from: 5, to: 11, spot: "venue:by-athena-pierce", activity: LINGER }
+      - { from: 11, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:middle-west-street", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: true
+  knows: [Mutant Slime, Hill North of Henesys Ruins, Dodo]
+  contract: dagny-the-east-wall-watch
+  questLines: [dagny-the-east-wall, dagny-reverse-engaw, dagny-timeless-engaw, dagny-the-hill-north, dagny-bowstring-wraps]
+  rumors: [ruins-the-east-wall]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: thorne, kind: STANDS_WATCH_WITH }
+    - { persona: lumi, kind: TELLS_WHAT_THINGS_WERE_TO }
+    - { persona: seori, kind: HEARD_OF }
+  giftItemIds: [2000005, 2020015]
+  dialogue:
+    greetFirst: ["you came in by the gate? then you're from before. welcome to after. mind the snails. they're bigger than they look, and they look big.", "a traveller from before! stay a while. we don't get many visitors who aren't trying to eat us."]
+    greet: ["hello!", "you're back. good. the wall's quieter with you about.", "hi. sky's clear. well. clearer."]
+    idle: ["(sights along an arrow, turns it, sights again, and writes a name on the shaft in charcoal)", "(sits on the broken wall with her bow across her knees, watching the hill to the north)"]
+    noWork: ["nothing today. the hill's quiet. i don't trust it, but it's quiet."]
+    nothingDue: ["nothing owed. come and watch the hill with me sometime."]
+    who: ["Dagny. i keep the east wall of Henesys Ruins, over the Hill North. the slimes come down it at dusk and i send them back up. there's a story in my family about an archer, a long way back, who shot at the moon off a ridge. i've never hit the moon either. it's good to have something to aim at."]
+    bye: ["look up on your way."]
+    thanks: ["oh, thank you!"]
+    smallTalk: ["i write a name on every arrow. people who might come. people who might not. the arrow doesn't mind which. it goes where i send it.", "the bow i carry is old. older than the ruins. somebody in your years made it and somebody kept it, and kept it, and it came to me. i'd like to have met all of them. i shoot like i have."]
+    speakPlainly: ["plainly: a wall, a bow, and the hill to the north."]
+    offer: ["a hundred and twenty thousand, and sixty oblivion monks laid down on the Road to Oblivion from today, counted. then i'll keep your back like it's the east wall."]
+    join: ["let's go! i'll be just behind and a little above. it's the best place to stand."]
+    bench: ["three days. then the wall wants me back. walls are needy."]
+    leave: ["back to the wall."]
+    refuse.bond: ["i don't shoot over a stranger's shoulder. it isn't you. it's the shoulder."]
+    refuse.flags: ["walk the Road to Oblivion's first stretch for me first: thirty monks and ten lengths of their red cloth. then ask."]
+    refuseOwnErrand: ["the red cloth first. come and walk the road."]
+    questOffer.dagny-the-east-wall: ["walk a road for me. the oblivion monks on the first stretch of the Road to Oblivion, back in your years. thirty of them, and ten lengths of their red cloth for my grip. i'll see how you walk."]
+    questAccept.dagny-the-east-wall: ["the Temple Keeper's door, then the roads to the Burning Past and the Road to Oblivion's first stretch. the monks forget you as you pass. try to be memorable."]
+    questWaiting.dagny-the-east-wall: ["thirty, and ten lengths. the wall can wait. i can't."]
+    questComplete.dagny-the-east-wall: ["ten lengths. lovely. it doesn't stain. you walk well. you'd do on the wall. i'd stand beside you."]
+    questOffer.dagny-reverse-engaw: ["Dodo keeps the end of Memory Lane in your years. lay him down once, and twenty chief guardians round him. and there's an archer in your years, in a village under a mountain, who shoots at the moon. Seori. ask her how she aims. i've a bow here that wants somebody who knows."]
+    questAccept.dagny-reverse-engaw: ["Memory Lane's fifth stretch for Dodo. if somebody's beaten you to him, sit and wait. he comes back, slowly. then the Korean Folk Town, under its mountain. she's about the streets by day, and by Mr. Noh's of an evening. ask nicely. she'll be nice. i've decided."]
+    questWaiting.dagny-reverse-engaw: ["did she say how? don't tell me yet. finish the lane first."]
+    questComplete.dagny-reverse-engaw: ["'a little above it. it's always higher than it looks.' ...of course it is. here. the Reverse Engaw. every slot at sixty, and every one took. and she said hello? forward? ...hello back. you'll have to carry it. i can't."]
+    questOffer.dagny-timeless-engaw: ["the park off the square used to have a bench where you could watch the sun go down. the mutant snails sit on it now. forty of them, in the park. then i'll show you the bench."]
+    questAccept.dagny-timeless-engaw: ["Henesys Ruins Park, just off the square. they're slow. they're also enormous. both things matter."]
+    questWaiting.dagny-timeless-engaw: ["forty. the bench is waiting."]
+    questComplete.dagny-timeless-engaw: ["forty. sit. ...see? there. the sun goes down behind the ruins and just for a moment it looks like the old pictures. the Timeless Engaw. two tens and the rest at sixty, every one took. sit with me a bit."]
+    questOffer.dagny-the-hill-north: ["the Hill North of the ruins. it's mine. forty mutant slimes off it, and then walk the trail past it, just to see it clear. nobody's walked it clear in four years."]
+    questAccept.dagny-the-hill-north: ["east out of the square, onto the hill. then on to the Dreamy Forest Trail. i'll be on the wall. i'll see you the whole way."]
+    questWaiting.dagny-the-hill-north: ["forty, and the trail. i can see you from here. wave."]
+    questComplete.dagny-the-hill-north: ["you waved! i saw. forty, and the trail clear. here. the Timeless Engaw again, and this one every slot a ten, every one took. there's no better bow in any year, before or after. i'm sure. aim a little above things with it."]
+    questOffer.dagny-bowstring-wraps: ["ten lengths of red cloth? the grip's slipping again."]
+    questAccept.dagny-bowstring-wraps: ["the Road to Oblivion's first stretch."]
+    questWaiting.dagny-bowstring-wraps: ["ten."]
+    questComplete.dagny-bowstring-wraps: ["ten. good grip. thanks!"]
+    about.thorne: ["Thorne watches the tower. he counts everything. arrows, snails, steps, me. he says i'm one archer. i say i'm the one that matters. he wrote that down."]
+    about.seraphine: ["Seraphine patches the watch when we come off the wall. she hums while she does it. it's the worst humming in the ruins. it's the best thing in the ruins."]
+    about.edda: ["Edda keeps the sick. she checks my hands every time i pass. i've never once had cold hands. she checks anyway."]
+    about.lumi: ["Lumi follows me up on the wall and asks what everything used to be. i make half of it up. she knows. she asks anyway."]
+    about.seori: ["Seori. an archer in your years, under a mountain, who shoots at the moon. there's a story like her in my family. i'd like to think it's her. i'd like to think a lot of things. it keeps the arm steady."]
+    aboutUnknown: ["never shot beside them."]
+    friend.close: ["come up on the wall any evening. bring something to eat. i'll bring the view."]
+    friend.best: ["i've written your name on an arrow. i'm never going to shoot it. that's the highest honour i've got."]
+    famed: ["people from before talk about you. even here we hear it. it sounds like a song."]
+    defamed: ["oh. well. i'll aim higher."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, that's a good one. that's a wall-watch treat. i'll save it for the long night."]
+    gift.again: ["one a day. i've a wall to climb."]
+
+- id: thorne
+  name: Thorne
+  look: { gender: male }
+  title: "Marksman of the Ruined Tower"
+  job: MARKSMAN
+  level: { min: 164, max: 166 }
+  strength: ELITE
+  loadout: future-crossbow-l110
+  personality: efficient-v1
+  home:
+    town: henesys-ruins
+    routine:
+      - { from: 6, to: 12, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:middle-west-street-3", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [Mutant Ribbon Pig, Suspicious Hill, Qualm Guardian]
+  contract: thorne-the-tower-share
+  questLines: [thorne-a-clean-line, thorne-reverse-black-beauty, thorne-timeless-black-beauty, thorne-suspicious-hill, thorne-blue-helmets]
+  rumors: [ruins-the-last-watch]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: seraphine, kind: VOUCHES_FOR }
+    - { persona: dagny, kind: STANDS_WATCH_WITH }
+    - { persona: lumi, kind: COUNTS_IN_AND_OUT }
+    - { persona: kael, kind: HEARD_OF }
+  giftItemIds: [2000005, 2022003]
+  dialogue:
+    greetFirst: ["you came through the gate. one. noted.", "from before? hm. clean boots. that won't last."]
+    greet: ["you.", "back. noted.", "hm. hello."]
+    idle: ["(counts bolts into a quiver, twice, and makes a mark on the tower wall)", "(sights down the street from the tower steps, holds, breathes out, and lowers the crossbow)"]
+    noWork: ["nothing today. i counted. nothing."]
+    nothingDue: ["even."]
+    who: ["Thorne. i hold the tower over the square. the market snails come in from the west, the pigs off the Suspicious Hill from the east. i count them in and i count them down. the count's been even four years. i'd like it to be better than even."]
+    bye: ["keep count."]
+    thanks: ["hm. thanks."]
+    smallTalk: ["the crossbow i carry was a harpooner's, in your years. made for shooting under the sea. it doesn't care that there's no sea here. it shoots straight anyway.", "Dagny writes names on her arrows. i don't. bolts come back, sometimes. i don't want to read the name on one that didn't."]
+    speakPlainly: ["plainly: one tower, one crossbow, one count."]
+    offer: ["a hundred thousand, and twenty-five blue helmets off the qualm guardians in your years. i count them. then i'll cover you as far as you like."]
+    join: ["go. i'll be behind you. i'll count them down."]
+    bench: ["two days. then the tower."]
+    leave: ["back to the tower."]
+    refuse.bond: ["no. i count the people i cover. you're not in that count yet."]
+    refuse.flags: ["walk my errand on the Road of Regrets first: thirty qualm guardians, twelve helmets. then ask."]
+    refuseOwnErrand: ["the guardians first."]
+    questOffer.thorne-a-clean-line: ["the qualm guardians on the Road of Regrets' third stretch, in your years. thirty of them, and twelve of their blue helmets. i keep a count on the tower wall. i'd like to add something that isn't a snail."]
+    questAccept.thorne-a-clean-line: ["the Temple Keeper's door, the whole of Memory Lane, the Frozen Past, then the Road of Regrets to its third stretch. count as you go. it helps."]
+    questWaiting.thorne-a-clean-line: ["thirty, and twelve. i've a fresh piece of wall."]
+    questComplete.thorne-a-clean-line: ["twelve. thirty. clean line. you'd last up here."]
+    questOffer.thorne-reverse-black-beauty: ["forty oblivion monks on the Road to Oblivion's first stretch. and there's a harpooner in your years, at the Aquarium, who carried a crossbow like this one before it came down to me. Kael. ask him about the long shot. i'd like to hear it from somebody who's made one."]
+    questAccept.thorne-reverse-black-beauty: ["the Road to Oblivion first. then down to the Aquarium, under the sea past Orbis. he hunts the deep gorges. he's in town some of the day."]
+    questWaiting.thorne-reverse-black-beauty: ["forty, and Kael. don't skip Kael."]
+    questComplete.thorne-reverse-black-beauty: ["'you just have to mean it.' ...hm. and keep the string dry. here. the Reverse Black Beauty. every slot at sixty, every one took. i'll mean it. i always have. good to hear it said."]
+    questOffer.thorne-timeless-black-beauty: ["forty mutant snails in the Henesys Ruins Market. i count them in every morning. i'd like one morning where i don't have to."]
+    questAccept.thorne-timeless-black-beauty: ["west off the square, into the market. the stalls are still there. the snails sit on them."]
+    questWaiting.thorne-timeless-black-beauty: ["forty. i'll know if it's thirty-nine."]
+    questComplete.thorne-timeless-black-beauty: ["forty. i watched. the Timeless Black Beauty. two tens and the rest at sixty, every one took. tomorrow morning i'm not counting. i'm having breakfast."]
+    questOffer.thorne-suspicious-hill: ["the Suspicious Hill, off the Hill North. the ribbon pigs there are the size of carts and they've learned to come in at night. thirty of them. then come back and tell me the count. i'll write it in big numbers."]
+    questAccept.thorne-suspicious-hill: ["east to the Hill North, and in at the cave mouth to the Suspicious Hill. they're suspicious. be more suspicious."]
+    questWaiting.thorne-suspicious-hill: ["thirty."]
+    questComplete.thorne-suspicious-hill: ["thirty. big numbers. here. the Timeless Black Beauty, and this one every slot a ten, every one took. better than even. first time in four years. thanks."]
+    questOffer.thorne-blue-helmets: ["ten more blue helmets? the wall count wants them."]
+    questAccept.thorne-blue-helmets: ["the Road of Regrets, the third stretch."]
+    questWaiting.thorne-blue-helmets: ["ten."]
+    questComplete.thorne-blue-helmets: ["ten. counted."]
+    about.dagny: ["Dagny writes names on her arrows. she hasn't missed a slime on the hill in four years. if anyone wants a bow at their back, that's the one."]
+    about.seraphine: ["Seraphine patches the watch. nobody on the watch has died with her behind them. i've counted. i count everything."]
+    about.edda: ["Edda keeps the sick. she writes to the camp every month. i've counted those too. i don't say."]
+    about.lumi: ["Lumi. she gets into the market before i've counted it. i've stopped telling her not to. i count her in and out instead."]
+    about.kael: ["Kael. a harpooner in your years. he carried a crossbow like mine, a long way back. he says you can shoot underwater if you mean it. i believe him. this one shoots like it means everything."]
+    aboutUnknown: ["not in my count."]
+    friend.close: ["you're in my count. not the snails' count. the other one."]
+    friend.best: ["if you ever go down, i'll count you back up. i'm good at it."]
+    famed: ["people say your name in the square. i counted. a lot."]
+    defamed: ["people say things. i count what people do."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["that's a good one. i'll keep it for the tower."]
+    gift.again: ["one. i'm counting."]
+
+- id: seraphine
+  name: Seraphine
+  look: { gender: female }
+  title: "Priestess of the Last Watch"
+  job: BISHOP
+  level: { min: 166, max: 168 }
+  strength: ELITE
+  loadout: future-wand-l108
+  personality: relaxed-v1
+  home:
+    town: henesys-ruins
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-utah", activity: LINGER }
+      - { from: 12, to: 16, materialize: false }
+      - { from: 16, to: 19, spot: "venue:lower-east-street-2", activity: STROLL }
+      - { from: 19, to: 22, spot: "venue:middle-west-street-3", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: true
+  knows: [Mutant Orange Mushroom, Dark Spore Hill, Mutant Tiru]
+  contract: seraphine-the-watchs-blessing
+  questLines: [seraphine-hearts-that-hold, seraphine-reverse-enreal-tear, seraphine-timeless-enreal-tear, seraphine-dark-spore-hill, seraphine-blue-hearts]
+  rumors: [ruins-the-last-watch]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: edda, kind: HUMS_WHILE_EDDA_STITCHES }
+    - { persona: thorne, kind: TRUSTS }
+    - { persona: lumi, kind: KEEPS_THE_PRESENTS_OF }
+    - { persona: delphine, kind: HEARD_OF }
+  giftItemIds: [2000006, 2020014]
+  dialogue:
+    greetFirst: ["oh, a traveller from before! come in out of the ash. have you eaten? you look like you haven't eaten since your own century.", "welcome to Henesys Ruins, dear. it's lovely, if you squint. i squint a great deal."]
+    greet: ["hello, dear!", "you're back! and in one piece! i'll bless it anyway.", "hello. you look well. i'll take the credit."]
+    idle: ["(hums something that might once have been a hymn, badly, and smiles at it)", "(turns a wand over in her hands and sniffs the end of it, puzzled)"]
+    noWork: ["nothing today. nobody's hurt and the sun's out. well. it's somewhere."]
+    nothingDue: ["nothing owed, dear. not between us."]
+    who: ["Seraphine. i heal the watch when they come off the wall, and i pray for the ruins when they don't. people ask who there is to pray to, at the end of days. i tell them the days haven't ended. that's who."]
+    bye: ["go with something good."]
+    thanks: ["oh, bless you."]
+    smallTalk: ["the wand i carry came from a laboratory in a city of your years. it still smells of smoke. somebody burned a great many ideas with it to see which were good. i heal with it. i think she'd laugh.", "the Eyes of Time on your Temple's roads carry glasses with moments in them. i listen to them when i can get them. a wedding. a market. a dog. it reminds me what we're keeping the wall up for."]
+    speakPlainly: ["plainly: a wand, a bad hymn, and the watch."]
+    offer: ["a hundred and fifty thousand, and i'll come. you've heard what Thorne says of me. that's the bargain, dear."]
+    join: ["lead on, dear. i'll stand where i can reach you."]
+    bench: ["three days. then the watch will need me. they always do."]
+    leave: ["back to the watch."]
+    refuse.bond: ["not yet, dear. i like to know whose back i'm blessing."]
+    refuse.flags: ["some evening at the east end of the middle west street, where Thorne comes down off his tower, hear what he says about me. then ask, dear."]
+    refuseOwnErrand: ["my hearts first, dear. the blue ones."]
+    questOffer.seraphine-hearts-that-hold: ["the chief qualm guardians on the Road of Regrets' fourth stretch carry blue hearts. ground fine, they make a salve that won't fade on a wound. twenty-five chiefs, twelve hearts. Edda and i will be grateful for a month."]
+    questAccept.seraphine-hearts-that-hold: ["the Temple Keeper's door, Memory Lane, the Frozen Past, then the Road of Regrets to its fourth stretch. the chiefs are slow to anger. so are we, dear. so are we."]
+    questWaiting.seraphine-hearts-that-hold: ["twelve hearts. the mortar's out."]
+    questComplete.seraphine-hearts-that-hold: ["twelve. look at that blue. it'll hold on a cut for a week. bless you. you'd do for the watch."]
+    questOffer.seraphine-reverse-enreal-tear: ["the Eyes of Time on the Road of Regrets crack glasses full of moments. forty Eyes, fifteen glasses, and then sit a minute in the resting spot off the first stretch and say something kind to nobody. then come back. i've a wand that wants a kinder hand than mine."]
+    questAccept.seraphine-reverse-enreal-tear: ["the Road of Regrets, any stretch. the Eyes are everywhere. the resting spot is off the first stretch. sit. say it. you'll feel silly. say it anyway."]
+    questWaiting.seraphine-reverse-enreal-tear: ["fifteen glasses, and the kind word. did you say it?"]
+    questComplete.seraphine-reverse-enreal-tear: ["you said it? good. listen. ...a market, in the morning. somebody laughing. that's what we're for. the Reverse Enreal Tear. every slot at sixty, every one took. heal with it. it likes it."]
+    questOffer.seraphine-timeless-enreal-tear: ["Dark Ereve. the forest where the knights' island used to be. the tiru there are thick as moss. thirty-five of them in the Mutant Tiru Forest, then go on to the forked road and stand a minute. somebody prayed there once. i'd like it prayed at again."]
+    questAccept.seraphine-timeless-enreal-tear: ["back out to the Gate to the Future, then east into Dark Ereve: the tino forest, the tiru forest, the forked road beyond. stand at the fork. you'll know where."]
+    questWaiting.seraphine-timeless-enreal-tear: ["thirty-five, and the fork. take your time at the fork."]
+    questComplete.seraphine-timeless-enreal-tear: ["you stood there? thank you. that's one more prayer than it had. the Timeless Enreal Tear. two tens and the rest at sixty, every one took. it's lighter than it looks. most hope is."]
+    questOffer.seraphine-dark-spore-hill: ["the singing mushroom forest, west of the ruins. it used to sing. now it hums, and the mushrooms bite. forty of them on the humming trail below Dark Spore Hill. i'd like to hear it sing again. i'd settle for quiet."]
+    questAccept.seraphine-dark-spore-hill: ["west out of the square, over Dark Spore Hill and down to the Creepy Humming Forest Trail. hum something. they hate it."]
+    questWaiting.seraphine-dark-spore-hill: ["forty. is it quiet yet?"]
+    questComplete.seraphine-dark-spore-hill: ["forty. and listen. ...quiet. that's nearly singing. the Timeless Enreal Tear, and this one every slot a ten, every one took. there's no kinder wand in any year. be kind with it."]
+    questOffer.seraphine-blue-hearts: ["ten blue hearts, dear? the salve's low."]
+    questAccept.seraphine-blue-hearts: ["the Road of Regrets, the fourth stretch."]
+    questWaiting.seraphine-blue-hearts: ["ten."]
+    questComplete.seraphine-blue-hearts: ["ten. bless you. the watch thanks you."]
+    about.edda: ["Edda keeps the sick and i keep them company. she does the stitching. i do the humming. she says the humming slows the stitching. it might."]
+    about.dagny: ["Dagny writes names on her arrows. she wrote mine once. she never shot it. i've decided that's a blessing."]
+    about.thorne: ["Thorne counts everything. i asked him once how many people he's saved. he said he doesn't count those. he does. he just doesn't say."]
+    about.lumi: ["Lumi brings me things from the market. a cup with no handle. a bell with no clapper. she says they're presents. they are."]
+    about.delphine: ["Delphine. the wand i carry was made in her laboratory, in your years, a long way back. it smells of smoke. i heal with it. i think she'd laugh."]
+    aboutUnknown: ["i don't know them, dear. i'll pray for them anyway."]
+    friend.close: ["i bless you every morning now. you don't have to do anything. it's done."]
+    friend.best: ["if the days ever do end, i'll stand beside you when they do. i'll hum. you'll hate it."]
+    famed: ["they speak well of you, even here. especially here."]
+    defamed: ["i heard. i've prayed for whoever said it. that's the worst thing i do to people."]
+    gift: ["oh, bless you!"]
+    gift.favorite: ["oh, that's just what the watch needs. i'll share it. i won't share it."]
+    gift.again: ["one's plenty, dear."]

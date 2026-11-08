@@ -1,0 +1,93 @@
+# Esfera quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No mob spawns on Arcane River: errands.
+# Walkable from Base Camp 450007040: west, Living Spring 4/3/2 (450007030/020/010) up to the town pool 450007000; east,
+# Living Spring 5/6/7 (450007050/060/070), then the Mirror-touched Sea 450007100 (east to 450007110-450007130, the dead
+# end; or 450007140-450007160); Radiant Temple 2 450007210 by the east gate. Carried in: cracked hourglass 4000443 (eye of
+# time 8200000, Memory Lane 1 270010100), tree fruit 4000227 (rash 7130500, West Leafre Forest 240010000), ink bottle
+# 4000183 (squid 8141300, Dangerous Sea Gorge I/II 230040200/230040300). TALK_TO: delmar (Aquarium Center Hall), osmund
+# (Three Doors). Nerissa's depth chart sets arcane.page.esfera for Ottoline's River Atlas (Nameless Town).
+
+# ---- Nerissa: the depth of the river (the River Atlas page) ----
+- id: nerissa-sounding-the-spring
+  persona: nerissa
+  title: "Sounding the Spring"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fifth, type: VISIT_MAP, mapIds: [450007050] }
+    - { id: seventh, type: VISIT_MAP, mapIds: [450007070] }
+    - { id: knots, type: DELIVER, to: nerissa }
+  rewards: { meso: 30000, exp: 70000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: nerissa-glass-that-doesnt-lie
+  persona: nerissa
+  title: "Glass That Doesn't Lie"
+  length: MEDIUM
+  requires: { level: { min: 90 }, questsCompleted: [nerissa-sounding-the-spring] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: glasses, type: COLLECT_ITEM, itemId: 4000443, count: 12 }
+    - { id: faceplate, type: DELIVER, to: nerissa, take: { itemId: 4000443, count: 12 } }
+  rewards: { meso: 40000, exp: 110000, bondPoints: 35, items: [{ itemId: 2000005, count: 10 }] }
+
+- id: nerissa-the-depth-chart
+  persona: nerissa
+  title: "The Depth Chart"
+  length: LONG
+  requires: { level: { min: 95 }, questsCompleted: [nerissa-glass-that-doesnt-lie] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: first-water, type: VISIT_MAP, mapIds: [450007100] }
+    - { id: last-water, type: VISIT_MAP, mapIds: [450007130] }
+    - { id: delmar, type: TALK_TO, persona: delmar, say: ["Nerissa. ...she went down past the Grave with a rope and a notebook, years back, and the rope came up cut clean. i sat in this hall a month. at the end of a river, you say? that's her. i used to tell the young ones the sea has a bottom and the bottom has a door, to keep them off the Grave. she's the only one it didn't frighten. tell her she owes me a rope. and tell her i'm glad. don't tell her i sat a month."] }
+    - { id: chart, type: DELIVER, to: nerissa }
+  rewards: { meso: 70000, exp: 180000, bondPoints: 50, items: [{ itemId: 2000005, count: 15 }], worldFlags: [arcane.page.esfera] }
+
+# ---- Adler: the camp's stores ----
+- id: adler-a-count-of-the-camp
+  persona: adler
+  title: "A Count of the Camp"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: nerissa, type: TALK_TO, persona: nerissa, say: ["what do i need? rope. more rope. a rope for the rope. and dry socks, though i'll deny it. tell him the rope matters more than the socks. tell him not to mention the socks."] }
+    - { id: iris, type: TALK_TO, persona: iris, say: ["oh! um. it's fine. really. ...well. ink. mine keeps running uphill. and a notebook. and a small notebook, for notes about the big notebook. don't tell him all of that at once. he gets a look."] }
+    - { id: count, type: DELIVER, to: adler }
+  rewards: { meso: 30000, exp: 60000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: adler-the-eleventh-cup
+  persona: adler
+  title: "The Eleventh Cup"
+  length: MEDIUM
+  requires: { level: { min: 92 }, questsCompleted: [adler-a-count-of-the-camp] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fruit, type: COLLECT_ITEM, itemId: 4000227, count: 20 }
+    - { id: osmund, type: TALK_TO, persona: osmund, say: ["the Esfera party. ...here, on the visitors' page. eleven names through the Temple Keeper's door, one spring. ten back that autumn, in a hurry, and down Corba's flight. by the eleventh, in my own hand: 'stays to mind the camp till we come back.' nobody's come through for him since. i'll say no more. it isn't my page to say it on."] }
+    - { id: stores, type: DELIVER, to: adler, take: { itemId: 4000227, count: 20 } }
+  rewards: { meso: 40000, exp: 100000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }
+
+# ---- Iris: names for everything ----
+- id: iris-naming-the-ollies
+  persona: iris
+  title: "Naming the Ollies"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pebble, type: VISIT_MAP, mapIds: [450007010] }
+    - { id: also-pebble, type: VISIT_MAP, mapIds: [450007110] }
+    - { id: notch, type: DELIVER, to: iris }
+  rewards: { meso: 28000, exp: 65000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: iris-ink-that-holds
+  persona: iris
+  title: "Ink That Holds"
+  length: MEDIUM
+  requires: { level: { min: 92 }, questsCompleted: [iris-naming-the-ollies] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ink, type: COLLECT_ITEM, itemId: 4000183, count: 10 }
+    - { id: pen, type: DELIVER, to: iris, take: { itemId: 4000183, count: 10 } }
+  rewards: { meso: 38000, exp: 100000, bondPoints: 35, items: [{ itemId: 2000005, count: 8 }] }

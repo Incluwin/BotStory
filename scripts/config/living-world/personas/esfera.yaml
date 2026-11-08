@@ -1,0 +1,180 @@
+# Esfera, Base Camp (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents, none recruitable, at the
+# camp an expedition left by the Living Spring. Nothing hunts on the river, so their quests are errands: the spring's
+# pools and the Mirror-touched Sea on foot, and things carried from the Temple of Time's roads, Leafre and the Aqua Road.
+# Nerissa's depth chart is Esfera's page of the River Atlas (arcane.page.esfera, read by Ottoline in Nameless Town).
+- id: nerissa
+  name: Nerissa
+  look: { gender: female }
+  title: "Diver of the Living Spring"
+  job: IL_MAGE
+  level: { min: 96, max: 98 }
+  strength: VETERAN
+  loadout: aqua-staff-l93
+  personality: efficient-v1
+  home:
+    town: esfera
+    routine:
+      - { from: 6, to: 10, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 10, to: 15, materialize: false }
+      - { from: 15, to: 19, spot: "venue:by-shubert", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:by-storage-box", activity: REST }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [Living Spring, Mirror-touched Sea, Eye of Time]
+  questLines: [nerissa-sounding-the-spring, nerissa-glass-that-doesnt-lie, nerissa-the-depth-chart]
+  rumors: [esfera-the-same-ollie]
+  relationships:
+    - { persona: iris, kind: IS_ASSISTED_BY }
+    - { persona: adler, kind: BORROWS_ROPE_FROM }
+    - { persona: delmar, kind: LEARNED_TO_DIVE_FROM }
+    - { persona: ottoline, kind: CHARTS_DEPTHS_FOR }
+  giftItemIds: [2020007, 2022000]
+  dialogue:
+    greetFirst: ["you came the dry way? through the Temple Keeper's door? huh. i came up the spring. wetter. faster.", "a visitor at the Base Camp. mind the ropes. they're all measured. even that one."]
+    greet: ["hello. dry today?", "you again. good. hold this rope.", "(wrings out a sleeve) hello."]
+    idle: ["(lets a weighted line down into a bucket of spring water, slowly, counting knots under her breath)", "(writes a number in a damp notebook, crosses it out, and writes the same number again, more firmly)"]
+    noWork: ["nothing today. the spring's doing its own sums. i'm letting it."]
+    nothingDue: ["we're even. to the knot."]
+    who: ["Nerissa. i dove the Aqua Road for years: wrecks, gorges, the Grave. one night i followed a cold current down past the Grave of a Wrecked Ship, and kept going, and came up in a spring at the end of the world. i've been measuring it since. it's deeper than it should be. everything here is."]
+    bye: ["keep your head above water."]
+    thanks: ["thanks. i mean it. dry or wet."]
+    smallTalk: ["the Living Spring runs down from the town in pools, and every pool is deeper than the one before. the seventh hasn't got a bottom i can find. i've run out of rope twice. Adler's found me more twice. reluctantly.", "the Mirror-touched Sea shows you the sky. not this sky. a different one, with weather in it. i've dived under the reflection. it's colder there. and it's a little bit morning."]
+    speakPlainly: ["plainly: a diver with a notebook, at the bottom of everything."]
+    questOffer.nerissa-sounding-the-spring: ["the Living Spring goes on in pools east of the camp. drop my sounding line in the fifth and the seventh for me. i'll read the knots off this end. it's a long rope. don't trip on it."]
+    questAccept.nerissa-sounding-the-spring: ["out of the camp's east side: the fifth pool's right outside, the seventh two farther down. the Ollies will watch you. they always watch."]
+    questWaiting.nerissa-sounding-the-spring: ["the fifth and the seventh. the rope's still slack at my end."]
+    questComplete.nerissa-sounding-the-spring: ["the fifth's what i thought. the seventh... the rope came back warm. warm, from the bottom of a cold spring. i'm going to need to sit down. thank you."]
+    questOffer.nerissa-glass-that-doesnt-lie: ["glass lies in the Mirror-touched Sea. every lens i've brought shows me the other sky. except one: a bit of hourglass off the Temple of Time's roads. the Eyes of Time on Memory Lane's first stretch carry them, cracked. twelve, and i'll grind a faceplate that tells the truth."]
+    questAccept.nerissa-glass-that-doesnt-lie: ["the Gate by the camp sends you back to Three Doors. then the door to the Past of the Verdure and Memory Lane's first stretch. the Eyes of Time carry the glasses. they won't miss them. they're not that kind of eye."]
+    questWaiting.nerissa-glass-that-doesnt-lie: ["twelve hourglasses. cracked's fine. cracked's better. the time's already run out of them."]
+    questComplete.nerissa-glass-that-doesnt-lie: ["twelve. ...this glass doesn't argue with the water. look: just the sea, just our sky. you'd think that'd be a relief. it's a bit lonely. thank you. truly."]
+    questOffer.nerissa-the-depth-chart: ["the cartographer in Nameless Town keeps the river in an atlas: a page from every town, drawn by somebody who lives there. ours should be a depth chart. the Mirror-touched Sea: the first water past the seventh pool, and its fourth stretch, where the sea stops against nothing. stand in both. then tell Delmar, in the Aquarium's Center Hall, where i ended up. he taught me to read a depth. he'll know what these mean."]
+    questAccept.nerissa-the-depth-chart: ["down the Living Spring past the seventh pool to the Mirror-touched Sea, then on to its fourth stretch, the last water. then the long way round: the Gate by the camp to Three Doors, and down to Aquarium by whatever road you like. Delmar sits in the Center Hall. he always sits in the Center Hall."]
+    questWaiting.nerissa-the-depth-chart: ["the first water and the last. and Delmar. tell him i'm well. don't tell him about the warm rope."]
+    questComplete.nerissa-the-depth-chart: ["he said that? 'the sea has a bottom and the bottom has a door.' he used to say it to frighten us. it worked on everybody else. ...here. the chart. every knot, both stretches, the last water. it's yours to keep, or to show the cartographer in Nameless Town. a river should know how deep it is."]
+    about.adler: ["Adler keeps the camp's stores. he counts my rope every evening. he's never once been short. he's always sure he's about to be."]
+    about.iris: ["Iris assists me. she names everything. the Ollies, the pools, my ropes. the third rope is called Gerald. i didn't agree to Gerald."]
+    about.delmar: ["Delmar in the Aquarium's Center Hall taught me to read a depth. he told me never to go past the Grave. i went past the Grave. i owe him a rope and an apology. mostly the rope."]
+    about.ottoline: ["the cartographer in Nameless Town puts every town on the river on one map. i hope she puts the depths in. everybody forgets depths."]
+    aboutUnknown: ["never met them. i've been underwater a lot."]
+    friend.close: ["if you ever want to learn to dive, i'll hold the rope. i've never once let go of a rope."]
+    friend.best: ["the seventh pool. one day i'll go to the bottom of it. i'd want you holding the line. nobody else."]
+    famed: ["they talk about you up the river. it reached here. sound carries well over water."]
+    defamed: ["i've heard things. sound carries over water. so does rubbish."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["now that's the right thing after a cold dive. you've been paying attention."]
+    gift.again: ["one's plenty. i have to swim in these clothes."]
+
+- id: adler
+  name: Adler
+  look: { gender: male }
+  title: "Quartermaster of the Base Camp"
+  job: BEGINNER
+  level: { min: 70, max: 72 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: esfera
+    routine:
+      - { from: 7, to: 12, spot: "venue:beside-supply-box", activity: LINGER }
+      - { from: 12, to: 13, spot: "venue:by-gate", activity: REST }
+      - { from: 13, to: 18, spot: "venue:beside-supply-box", activity: BROWSE }
+      - { from: 18, to: 21, spot: "venue:by-storage-box", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [Base Camp, Rash, Tree Fruit]
+  questLines: [adler-a-count-of-the-camp, adler-the-eleventh-cup]
+  relationships:
+    - { persona: nerissa, kind: KEEPS_TOWELS_FOR }
+    - { persona: iris, kind: KEEPS_IN_THE_LEDGER }
+    - { persona: osmund, kind: KEEPS_A_VISITORS_PAGE_LIKE }
+  giftItemIds: [2020001, 2020008]
+  dialogue:
+    greetFirst: ["sign the book. everyone signs the book. no, that's the old book. the new book. that's also the old book.", "a visitor. good. there's a spare cup set out. there's always a spare cup set out."]
+    greet: ["afternoon. or whatever it is here.", "you again. you're in the book.", "hello. touch nothing in the boxes. they're counted."]
+    idle: ["(counts a stack of folded blankets, frowns, counts them again from the bottom up, and nods)", "(sets out ten tin cups on a crate for people who aren't here, and one for himself, and pours only his own)"]
+    noWork: ["nothing today. everything's in its box. i've checked the boxes. they're in their boxes."]
+    nothingDue: ["the ledger balances. i've a line for that."]
+    who: ["Adler. quartermaster of the Esfera expedition. there were eleven of us. the others went back up the river for more people and more boots, and i stayed to mind the camp. that was some time ago. the camp's minded. the boots are counted."]
+    bye: ["sign out on your way. no, there's no book for that. there should be."]
+    thanks: ["noted, with thanks."]
+    smallTalk: ["the Supply Box by the camp sells to anyone who asks. it never restocks. i've watched it for years. nothing goes in. things come out. i don't approve. i'm also a bit afraid of it.", "nothing stops here on its way down the river. it all goes on past us, down to Limina, where the river ends. so everything at this camp is what we carried in, and what visitors bring. i've learned to say thank you very precisely."]
+    speakPlainly: ["plainly: one quartermaster, minding a camp for ten people who'll be back."]
+    questOffer.adler-a-count-of-the-camp: ["i keep the camp's stores, and i've no idea what anyone needs, because nobody tells me. Nerissa says 'rope'. Iris says 'it's fine'. ask them properly. you've a trustworthy face. it's mostly the eyebrows."]
+    questAccept.adler-a-count-of-the-camp: ["Nerissa's by Shubert of an afternoon, when she isn't down the spring. Iris is wherever Nerissa is, or the Ollies. ask what they need, not what they want. they'll mix those up."]
+    questWaiting.adler-a-count-of-the-camp: ["what do they need? i've a pencil sharpened."]
+    questComplete.adler-a-count-of-the-camp: ["rope, and dry socks she'll deny. and Iris needs ink, and a notebook, and a smaller notebook for the notebook. noted. you've done the camp a service. it doesn't happen often. i'll give it a line of its own."]
+    questOffer.adler-the-eleventh-cup: ["the stores are thinning. the rashes in West Leafre Forest carry tree fruit that keeps a year. twenty, please. and on your way: the scribe at Three Doors keeps a visitors' page. ask him if the Esfera party ever passed back through. eleven of us went in. i'd like to know who's come out."]
+    questAccept.adler-the-eleventh-cup: ["the Gate by the camp to Three Doors, Corba's flight down to Leafre Station, then West Leafre Forest for the rashes. they throw the fruit at you. let them. then back up to Three Doors and Osmund, by the Temple Keeper. he won't read you the records. he will read you a visitors' page. it's not the same."]
+    questWaiting.adler-the-eleventh-cup: ["twenty fruit, and what the page says. the fruit first, if the page is bad."]
+    questComplete.adler-the-eleventh-cup: ["ten names out, that autumn. and mine stayed, by my own word. 'to mind the camp till we come back.' ...well. i did say that. i'd forgotten i said it. i've minded it so long the saying wore off. the fruit's lovely. thank you. i'll still set out the cups. a promise is a promise, even one nobody else is keeping."]
+    about.nerissa: ["Nerissa came up out of the spring one morning in a diving suit and asked me for a towel. i had one. i always have one. she's had eleven since. i keep a separate line for her towels."]
+    about.iris: ["Iris came through the Temple Keeper's door with a notebook and a letter asking for work. i gave her a crate to sit on. she named the crate. it's Doris. Doris is in the ledger now."]
+    about.osmund: ["the scribe at Three Doors keeps a visitors' page. so do i. we've never compared. i expect his is neater."]
+    about.ottoline: ["a cartographer in Nameless Town, with the whole river on paper. wherever the camp's drawn, it should be one tent drawn as eleven."]
+    aboutUnknown: ["not in my ledger."]
+    friend.close: ["i've put you in the ledger under 'reliable'. there's only you and the good rope."]
+    friend.best: ["if the others ever come back, you'll get the spare cup. if they don't, you'll get it anyway. it's yours."]
+    famed: ["your name's come downriver. i've entered it."]
+    defamed: ["i've heard talk. talk isn't stores. i don't count it."]
+    gift: ["oh. thank you. noted."]
+    gift.favorite: ["now that's proper rations. that goes in the good box."]
+    gift.again: ["one's plenty. i'd have to find room, and there isn't any."]
+
+- id: iris
+  name: Iris
+  look: { gender: female }
+  title: "Assistant to the Diver"
+  job: BEGINNER
+  level: { min: 46, max: 48 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: esfera
+    routine:
+      - { from: 7, to: 10, spot: "venue:upper-central-street", activity: STROLL }
+      - { from: 10, to: 13, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 13, to: 15, spot: "venue:upper-west-street", activity: SHOW_OFF }
+      - { from: 15, to: 19, spot: "venue:by-shubert", activity: SOCIALIZE }
+      - { from: 19, to: 21, spot: "venue:upper-west-street-2", activity: LINGER }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [Living Spring, Radiant Temple, Ink Bottle]
+  questLines: [iris-naming-the-ollies, iris-ink-that-holds]
+  rumors: [esfera-the-same-ollie]
+  relationships:
+    - { persona: nerissa, kind: ASSISTS }
+    - { persona: adler, kind: IS_COUNTED_BY }
+  giftItemIds: [2020028, 2020017]
+  dialogue:
+    greetFirst: ["oh, a visitor! hello! i'm Iris. this is the Base Camp. that's Shubert. that's an Ollie. i've named it.", "hello! sorry, are you lost? everyone's a bit lost here. it's the river."]
+    greet: ["hello again!", "oh, it's you! hello!", "hi! the Ollie says hello. i'm translating."]
+    idle: ["(writes a name in a notebook, looks up at an Ollie, crosses the name out, and writes a slightly different one)", "(holds a lamp out over the spring, very still, as if she's been told to and has forgotten why)"]
+    noWork: ["nothing today! i'm naming clouds. there's only the one cloud. it's going to take a while to choose."]
+    nothingDue: ["we're square! i wrote it down, so it's true."]
+    who: ["Iris! i assist Nerissa. i carry the notebooks, hold the lamps, and name things. somebody has to name things. there's a whole river here with nobody calling it anything."]
+    bye: ["bye! mind the Ollies!"]
+    thanks: ["oh, thank you! really!"]
+    smallTalk: ["there's an Ollie at nearly every pool on the Living Spring. Nerissa says it's the same Ollie, following us. i say they're different Ollies who look alike. we're both writing it down. mine's in pen.", "ink doesn't work properly here. it runs up the page instead of down. Nerissa says that's the river. i say that's rude of the river."]
+    speakPlainly: ["plainly: notebooks, lamps, and names."]
+    questOffer.iris-naming-the-ollies: ["i've named the Ollie at the second pool of the Living Spring 'Pebble', and the one on the Mirror-touched Sea's second stretch 'Also Pebble'. Nerissa says that's cheating. go and look at them both. is there a notch in the left fin? if they've both got one... well. i'll have to think."]
+    questAccept.iris-naming-the-ollies: ["the second pool's west of the camp, back up the spring past the fourth and the third. the Mirror-touched Sea's the other way, down the spring past the seventh pool. look at the fins. politely."]
+    questWaiting.iris-naming-the-ollies: ["the notch! is there a notch?"]
+    questComplete.iris-naming-the-ollies: ["both of them? the same notch? ...so it's the same Ollie, following us. or they're all born with a notch. i'm keeping both names. Nerissa will say i'm being sentimental. she lets me name her ropes, so."]
+    questOffer.iris-ink-that-holds: ["my ink runs uphill. Nerissa says squid ink holds under water, so it ought to hold in a river that's confused. the squids in the Aqua Road's Dangerous Sea Gorge carry bottles of it. ten, please. i've a great many names to write down."]
+    questAccept.iris-ink-that-holds: ["the Gate by the camp to Three Doors, and all the way down to Aquarium, then the deep road to the Dangerous Sea Gorge. squids. they're very good at not being caught. don't take it personally."]
+    questWaiting.iris-ink-that-holds: ["ten bottles. i've been writing in pencil. it isn't the same. pencil doesn't believe you."]
+    questComplete.iris-ink-that-holds: ["ten! look, it stays put. it goes down the page like ink should. ...oh, i'm going to write everything. you're the first thing. there. you're in pen now."]
+    about.nerissa: ["Nerissa came up out of the spring in a diving suit. she says she followed a current. i think the current followed her. she's that sort."]
+    about.adler: ["Adler counts everything. he's counted me. i'm one. he says i'm the most reliable one he's got, which is a funny thing to say about a one."]
+    about.ottoline: ["there's a cartographer upriver in Nameless Town. i'd love to see her map. i'd love to see what she's called everything. i bet she hasn't named the Ollies."]
+    aboutUnknown: ["i don't know them! can i name them?"]
+    friend.close: ["i've named a pool after you. the little one by the camp. don't tell Adler. he'll want it in the ledger."]
+    friend.best: ["you're in pen. in every notebook. that's forever, here. ink's rare."]
+    famed: ["people say your name up the river! i've written it in pen."]
+    defamed: ["people say mean things. i don't write those down. then they're not true. that's how it works here."]
+    gift: ["oh! for me? thank you!"]
+    gift.favorite: ["oh, this is the best thing! how did you know? i'm naming it. no, i'm eating it. both."]
+    gift.again: ["one! one's lovely. two's greedy. i'm practising not being greedy."]

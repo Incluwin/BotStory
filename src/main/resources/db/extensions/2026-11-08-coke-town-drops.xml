@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Coke Town's mobs drop the Coca-Cola event's own etc items again (docs/REPACK_RESIDENTS_PLAN.md 6.1): since the
+         Repack import they had only a stock donor's rows (2026-10-26-repack-import-drops.xml). Both clients have these
+         items (Item.wz Etc 0400.img, plain etc, stack 200); the chance is a stock mob's own etc, 60%. Coke Town's
+         Residents ask for them. -->
+    <changeSet id="2026-11-08-coke-town-drops" author="ganre">
+        <sql splitStatements="false">
+INSERT INTO drop_data (dropperid, itemid, minimum_quantity, maximum_quantity, questid, chance)
+VALUES (9500144, 4000221, 1, 1, 0, 600000),
+       (9500151, 4000221, 1, 1, 0, 600000),
+       (9500152, 4000216, 1, 1, 0, 600000),
+       (9500153, 4000216, 1, 1, 0, 600000),
+       (9500154, 4000217, 1, 1, 0, 600000),
+       (9500143, 4000213, 1, 1, 0, 600000),
+       (9500145, 4000212, 1, 1, 0, 600000),
+       (9500146, 4000212, 1, 1, 0, 600000),
+       (9500148, 4000219, 1, 1, 0, 600000),
+       (9500149, 4000211, 1, 1, 0, 600000),
+       (9500150, 4000219, 1, 1, 0, 600000),
+       (9500147, 4000214, 1, 1, 0, 600000);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

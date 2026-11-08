@@ -1,0 +1,119 @@
+# Nameless Town quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No monster spawns anywhere in
+# Arcane River in this age, so every step on the river is an errand. Walkable from the town (portals): east, the
+# Weathered Land of Happiness 450001010 (on to Happiness and Rage 450001011 and Rage 450001012; from Rage, Rage and
+# Sorrow 450001013 and Sorrow 450001014) and the Lakeshore 450001005 (its east00 on to the Mirage Cliff 450001100, and
+# the cliff's PS00 down to the Cave of Repose's entrance 450001200); west, the Vanishing Journey Entrance 450001003,
+# whose only other portal goes back to Three Doors 270000000.
+# Items carried in from elsewhere (drop rows in db/data/152-drop-data.sql): squid 8141300 L94 ink bottle 4000183
+# (Aqua Road's Dangerous Sea Gorge I/II 230040200/230040300); deep buffoon 6400100 L77 rock piece 4000131 (Ludibrium's
+# Warped Path of Time <2> 220060100); chief qualm guardian 8200008 L116 blue heart 4000453 (Road of Regrets 4
+# 270020400, open from L113); oblivion monk 8200009 L121 red cloth 4000454 (Road to Oblivion 1 270030100, open from L120).
+# The River Atlas: each Arcane town's page quest sets a world flag arcane.page.<town> (Oren's here; the others are in
+# quests/chu-chu-village.yaml, lachelein.yaml, arcana.yaml, morass.yaml and the downstream towns' files); Ottoline's
+# own quests read them, and her last binds the atlas once per server (arcane.atlas.bound).
+
+# ---- Ottoline: the River Atlas (arcs/nameless-town.yaml) ----
+- id: ottoline-ink-that-keeps
+  persona: ottoline
+  title: "Ink That Keeps"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ink, type: COLLECT_ITEM, itemId: 4000183, count: 10 }
+    - { id: line, type: VISIT_MAP, mapIds: [450001005] }
+    - { id: kept, type: DELIVER, to: ottoline, take: { itemId: 4000183, count: 10 } }
+  rewards: { meso: 30000, exp: 60000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: ottoline-the-water-between
+  persona: ottoline
+  title: "The Water Between"
+  length: MEDIUM
+  requires: { level: { min: 92 }, questsCompleted: [ottoline-ink-that-keeps], flags: [arcane.page.nameless, arcane.page.chuchu, arcane.page.lachelein] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: torrent, type: VISIT_MAP, mapIds: [450002012] }
+    - { id: canal, type: VISIT_MAP, mapIds: [450003010] }
+    - { id: dorian, type: TALK_TO, persona: dorian, say: ["how long to cross the canal? in Lachelein? as long as you dream it. a nap, if you're tired. a lifetime, if you're in love. tell her to draw it a nap long. that's the usual."] }
+    - { id: back, type: DELIVER, to: ottoline }
+  rewards: { meso: 40000, exp: 90000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }
+
+- id: ottoline-the-middle-reach
+  persona: ottoline
+  title: "The Middle Reach"
+  length: LONG
+  requires: { level: { min: 113 }, questsCompleted: [ottoline-the-water-between], flags: [arcane.page.nameless, arcane.page.chuchu, arcane.page.lachelein, arcane.page.arcana, arcane.page.morass, arcane.page.esfera] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000453, count: 12 }
+    - { id: osmund, type: TALK_TO, persona: osmund, say: ["the cartographer's blue? ...she writes to me about binding. very well. grind the heart dry, never wet, with a drop of the lake it's going on. water remembers water. tell her that. and tell her to blot it. nobody ever blots."] }
+    - { id: cavern, type: VISIT_MAP, mapIds: [450005400] }
+    - { id: coral, type: VISIT_MAP, mapIds: [450006000] }
+    - { id: blue, type: DELIVER, to: ottoline, take: { itemId: 4000453, count: 12 } }
+  rewards: { meso: 60000, exp: 160000, bondPoints: 50, items: [{ itemId: 2000005, count: 15 }] }
+
+- id: ottoline-the-river-atlas
+  persona: ottoline
+  title: "The River Atlas"
+  length: LONG
+  requires:
+    level: { min: 120 }
+    questsCompleted: [ottoline-the-middle-reach]
+    flags: [arcane.page.nameless, arcane.page.chuchu, arcane.page.lachelein, arcane.page.arcana, arcane.page.morass, arcane.page.esfera, arcane.page.moonbridge, arcane.page.labyrinth, arcane.page.limina]
+    notFlags: [arcane.atlas.bound]
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cloth, type: COLLECT_ITEM, itemId: 4000454, count: 12 }
+    - { id: oren, type: TALK_TO, persona: oren, say: ["a name for the spine? (he thinks for a long time, chalk in hand) ...'the river, as the people on it keep it.' that's what it is. it's long. i'll write it small. there. that won't rub off. tell her i spelled it right. i always do."] }
+    - { id: bound, type: DELIVER, to: ottoline, take: { itemId: 4000454, count: 12 } }
+  rewards: { meso: 150000, exp: 300000, bondPoints: 60, items: [{ itemId: 2000005, count: 20 }], worldFlags: [arcane.atlas.bound] }
+
+# ---- Oren (his stones are the town's page: arcane.page.nameless) ----
+- id: oren-the-stones-of-the-street
+  persona: oren
+  title: "The Stones of the Street"
+  length: MEDIUM
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rock, type: COLLECT_ITEM, itemId: 4000131, count: 15 }
+    - { id: edge, type: VISIT_MAP, mapIds: [450001010] }
+    - { id: street, type: DELIVER, to: oren, take: { itemId: 4000131, count: 15 } }
+  rewards: { meso: 32000, exp: 65000, bondPoints: 35, items: [{ itemId: 2000004, count: 15 }], worldFlags: [arcane.page.nameless] }
+
+- id: oren-a-name-at-the-lakeshore
+  persona: oren
+  title: "A Name at the Lakeshore"
+  length: SHORT
+  requires: { level: { min: 90 }, questsCompleted: [oren-the-stones-of-the-street] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stone, type: VISIT_MAP, mapIds: [450001005] }
+    - { id: cave, type: VISIT_MAP, mapIds: [450001200] }
+    - { id: ottoline, type: TALK_TO, persona: ottoline, say: ["Arma? ...there's an old map in Largo's storage, older than any of mine, and the hideout at the bottom of the Cave of Repose has that name in the corner. it isn't a lost name. it's a name somebody left so they'd be found. tell Oren to leave her stone where it is."] }
+    - { id: back, type: DELIVER, to: oren }
+  rewards: { meso: 25000, exp: 50000, bondPoints: 30, items: [{ itemId: 2020014, count: 10 }] }
+
+# ---- Ilka ----
+- id: ilka-the-name-in-the-boots
+  persona: ilka
+  title: "The Name in the Boots"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dovan, type: TALK_TO, persona: dovan, say: ["these? mine. look at the heel, that's my nail pattern. i made them two winters back for a girl who paid in advance, which nobody does. said she was walking to the end of the world and wanted boots that would get her there. name was Ilka. i stitched it in so the boots would know whose they were. tell her they did their job."] }
+    - { id: back, type: DELIVER, to: ilka }
+  rewards: { meso: 25000, exp: 45000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: ilka-what-she-came-for
+  persona: ilka
+  title: "What She Came For"
+  length: MEDIUM
+  requires: { level: { min: 92 }, questsCompleted: [ilka-the-name-in-the-boots] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: caedmon, type: TALK_TO, persona: caedmon, say: ["a girl with a bow, a year or so back? i remember her. she went past me too fast, as if the road owed her money, and asked for the keeper's third door. i asked her what for. she said 'somebody i lost to the river. i'm going to fetch them back.' tell her i'm glad she's alive. tell her to mind her step. she didn't, last time."] }
+    - { id: sorrow, type: VISIT_MAP, mapIds: [450001014] }
+    - { id: back, type: DELIVER, to: ilka }
+  rewards: { meso: 32000, exp: 65000, bondPoints: 40, items: [{ itemId: 2020015, count: 10 }] }

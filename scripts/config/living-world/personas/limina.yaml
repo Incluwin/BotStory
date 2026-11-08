@@ -1,0 +1,175 @@
+# Limina, World's Sorrow (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents, none recruitable,
+# at the last town on the river. East of the street the world runs out. Mourne's page of the edge is Limina's page of the
+# River Atlas (arcane.page.limina), the last one. Limina's Temple of Darkness and the maps past it (450013xxx) are never
+# step targets: the client cannot load several of them.
+- id: mourne
+  name: Mourne
+  look: { gender: male }
+  title: "Watcher at the Edge"
+  job: BEGINNER
+  level: { min: 84, max: 86 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: limina
+    routine:
+      - { from: 5, to: 12, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:by-mask", activity: REST }
+      - { from: 14, to: 20, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 20, to: 23, spot: "venue:by-mask", activity: SOCIALIZE }
+      - { from: 23, to: 5, materialize: false }
+  recruitable: false
+  knows: [World's Sorrow, Final Horizon Fore, World's Sorrow Depths 3]
+  questLines: [mourne-where-it-ends-today, mourne-the-edge-of-the-page]
+  rumors: [limina-the-left-boot]
+  relationships:
+    - { persona: saoirse, kind: STANDS_CLOSER_TO }
+    - { persona: tam, kind: GIVES_BISCUITS_TO }
+    - { persona: ottoline, kind: DRAWS_THE_EDGE_FOR }
+  giftItemIds: [2020014, 2022000]
+  dialogue:
+    greetFirst: ["a traveller, this far? sit. you've come to the end. there's a bench.", "you've walked to the end of the world. most people stop in the middle. well done. or i'm sorry. one of those."]
+    greet: ["hello.", "you again. the edge is still there.", "(nods, without looking away from the east) hello."]
+    idle: ["(looks east for a long time, then makes a single small mark in a ledger full of very small marks)", "(stands beside the Mask, as if the two of them were keeping a watch together)"]
+    noWork: ["nothing today. the edge hasn't moved. i'll watch it not move."]
+    nothingDue: ["nothing owed. it all evens out at the end."]
+    who: ["Mourne. i watch the edge. east of World's Sorrow the river runs out, and a little past it, the world. it ends a little differently every day. somebody should notice. i notice."]
+    bye: ["go back the way you came. it's the only way, from here."]
+    thanks: ["thank you. i'll note it."]
+    smallTalk: ["things wash up from upstream. boots, bottles, songs. Tam keeps them. somebody should keep them. they came all this way.", "the Mask by the street was here before me. it doesn't say much. neither do i. we've never once disagreed."]
+    speakPlainly: ["plainly: an old man, a ledger, and the edge of the world."]
+    questOffer.mourne-where-it-ends-today: ["walk out past World's Sorrow to the first of the Depths and the first of the Midpoint, and tell me if the river's still there. it was yesterday. i like to check with somebody else's feet."]
+    questAccept.mourne-where-it-ends-today: ["east out of the street to World's Sorrow 2, then down into the Depths, back up, and along to the Midpoint. it's quiet. it's meant to be."]
+    questWaiting.mourne-where-it-ends-today: ["the Depths and the Midpoint. is it still there?"]
+    questComplete.mourne-where-it-ends-today: ["still there. good. it's not over yet, then. i'll note it. ...you'd be surprised how often i need to hear that."]
+    questOffer.mourne-the-edge-of-the-page: ["the cartographer in Nameless Town keeps the river in an atlas, a page from every town on it. the last town's page should be where the water stops. walk out to the third of the Depths, and then to the Final Horizon Fore, where the river runs out. the world goes on a little past it, thinner every step. that part isn't river, and it isn't for this page. tell Saoirse what you saw. she'll set it to a line. then i'll draw the edge where it stands, and you'll carry it."]
+    questAccept.mourne-the-edge-of-the-page: ["World's Sorrow 2, down the Depths to the third, back up, and along the Midpoint to the Final Horizon Fore. that's where the water stops, today. Saoirse's by the Mask of an evening."]
+    questWaiting.mourne-the-edge-of-the-page: ["the third Depths and the Final Horizon. and Saoirse. the ledger's open."]
+    questComplete.mourne-the-edge-of-the-page: ["she sang it back? 'here's where the water stops, and doesn't mind.' ...yes. that's where it stops, today. here. a page with one line on it, where the river ends. it'll be wrong tomorrow. that's all right. keep it, or show it to the cartographer. it's the last page on the river."]
+    about.saoirse: ["Saoirse sings at the edge of an evening. she says the world should have something to end on. she's right. i'd never have thought of it."]
+    about.tam: ["Tam keeps what washes up. boots, mostly. he says he's got a boot from every town on the river. he hasn't been to any of them."]
+    about.ottoline: ["a cartographer upriver, drawing the whole river. somebody has to draw the end of it. i suppose that's me."]
+    aboutUnknown: ["never came this far."]
+    friend.close: ["i've put you in the ledger. not as a mark. as a name. you're the only one."]
+    friend.best: ["if the world ever does end, i'll tell you first. i'll be watching. you'll have time to sit down."]
+    famed: ["your name's come all the way down the river. that's as far as a name can go."]
+    defamed: ["i've heard talk. it washed up. Tam can keep it."]
+    gift: ["thank you."]
+    gift.favorite: ["that's just the thing for a long watch. thank you."]
+    gift.again: ["one's enough. i've everything i need, at the end."]
+
+- id: saoirse
+  name: Saoirse
+  look: { gender: female }
+  title: "Singer at the End of the World"
+  job: BEGINNER
+  level: { min: 52, max: 54 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: limina
+    routine:
+      - { from: 8, to: 12, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 12, to: 16, materialize: false }
+      - { from: 16, to: 20, spot: "venue:by-mask", activity: SHOW_OFF }
+      - { from: 20, to: 23, spot: "venue:by-mask", activity: SOCIALIZE }
+      - { from: 23, to: 8, materialize: false }
+  recruitable: false
+  knows: [Hankie, Hankie's Pan Flute, World's Sorrow 2]
+  questLines: [saoirse-reeds-from-the-forest, saoirse-a-song-with-an-ending]
+  relationships:
+    - { persona: mourne, kind: SINGS_FOR }
+    - { persona: tam, kind: SINGS_THE_FINDS_OF }
+    - { persona: ilsabet, kind: LEARNS_OLD_SONGS_FROM }
+  giftItemIds: [2020009, 2020002]
+  dialogue:
+    greetFirst: ["oh! a listener. sit, sit. i was about to start. i'm always about to start.", "you came all this way? then you get the good verse."]
+    greet: ["hello, love.", "you again! sit, there's a song in it.", "(hums a bar in greeting) hello."]
+    idle: ["(sings three notes out toward the east and waits, head tilted, as if for an answer)", "(taps out a rhythm on her knee with a reed, changes her mind halfway, and starts again slower)"]
+    noWork: ["nothing today. the songs are all sung. i'll make another one tomorrow."]
+    nothingDue: ["nothing owed, love. a song's free."]
+    who: ["Saoirse. i sing at World's Sorrow, by the Mask, of an evening. the world ends just east of here. i think it should have something to end on. a song's the least i can do."]
+    bye: ["go well. hum something."]
+    thanks: ["oh, thank you, love."]
+    smallTalk: ["sound goes funny at the end of the world. sing east and the note just stops, mid-air, as if somebody caught it. i've never heard one come back. i keep sending them.", "Mourne says he doesn't like my songs. he stands closer when i sing. i've noticed. i haven't said."]
+    speakPlainly: ["plainly: a singer, at the last place there is to sing."]
+    questOffer.saoirse-reeds-from-the-forest: ["my pipes are cracked. the hankies in Leafre's Cranky Forest carry pan flutes, with good reeds in them. twelve, please. i'll cut a new set. a song wants a proper start."]
+    questAccept.saoirse-reeds-from-the-forest: ["down to Leafre and out to the Cranky Forest. hankies. they play while they fight. don't let them put you off the beat."]
+    questWaiting.saoirse-reeds-from-the-forest: ["twelve flutes. the old pipes are wheezing."]
+    questComplete.saoirse-reeds-from-the-forest: ["twelve. ...listen. (plays a scale) clean. every note. that's a start worth ending on. thank you, love."]
+    questOffer.saoirse-a-song-with-an-ending: ["i want a song from before. from somebody who remembers how the old ones went. there's a lady at Three Doors, Ilsabet, who slept thirty years on a ship. she'll have old ones. ask her for one with an ending. then sing it to Mourne. don't tell him it's from me."]
+    questAccept.saoirse-a-song-with-an-ending: ["the Mask by the street sends you back to Three Doors. Ilsabet's on the lower streets there, mostly. she talks. let her. then Mourne, at the east end of our street. he'll pretend not to listen."]
+    questWaiting.saoirse-a-song-with-an-ending: ["did she have one? with an ending?"]
+    questComplete.saoirse-a-song-with-an-ending: ["'and the harbor keeps the light.' ...oh, that's lovely. that's an ending. and Mourne said 'hm'? that's Mourne for 'again'. thank you, love. i'll sing it tonight. at the edge."]
+    about.mourne: ["Mourne watches the edge. he says he doesn't like my songs. he's never once missed one."]
+    about.tam: ["Tam brings me things that wash up and asks me to sing what they were. a boot. a spoon. a bottle. i sing them. he claps loudest for the spoon. it's his favourite."]
+    about.ilsabet: ["Ilsabet at Three Doors slept thirty years and woke with her songs still in her. i'd like to sleep like that. not thirty years. one good night."]
+    about.ottoline: ["the cartographer upriver keeps a page from every town. i'd have given her a song, but a page wants a map. maps don't hum."]
+    aboutUnknown: ["never heard of them. i'll make up a song about them. it'll be mostly wrong."]
+    friend.close: ["there's a verse about you now. it's short. it's the good verse."]
+    friend.best: ["if the world ever ends, love, i'll sing you out. you'll go with the best song i've got."]
+    famed: ["your name's in a song somebody sang upriver. it travelled. songs do."]
+    defamed: ["people sing rude songs. i've sung a few. they don't last. the good ones do."]
+    gift: ["oh! thank you, love."]
+    gift.favorite: ["oh, this is just right before a song. it smooths the throat. bless you."]
+    gift.again: ["one, love. a singer has to watch her breath."]
+
+- id: tam
+  name: Tam
+  look: { gender: male }
+  title: "Keeper of What Washes Up"
+  job: BEGINNER
+  level: { min: 14, max: 16 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: limina
+    routine:
+      - { from: 6, to: 11, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 11, to: 15, materialize: false }
+      - { from: 15, to: 19, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 19, to: 21, spot: "venue:by-mask", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [World's Sorrow Depths 1, World's Sorrow Midpoint 1, Lith Harbor]
+  questLines: [tam-what-the-river-brings, tam-a-letter-back]
+  rumors: [limina-the-left-boot]
+  relationships:
+    - { persona: mourne, kind: ASKS_HARD_QUESTIONS_OF }
+    - { persona: saoirse, kind: BRINGS_FINDS_TO }
+    - { persona: pim, kind: FOUND_THE_BOTTLE_OF }
+  giftItemIds: [2001001, 2020028]
+  dialogue:
+    greetFirst: ["hey! did you come down the river? did anything fall off you? can i have it?", "you're new! i've got a spoon. wanna see the spoon?"]
+    greet: ["hey!", "it's you! a bottle came once! a real one!", "hi! nothing's washed up today. yet."]
+    idle: ["(lines up three odd boots on the street, all left feet, and steps back to admire them)", "(holds a shell to his ear, frowns, and shakes it, as if the sea inside were too quiet)"]
+    noWork: ["nothing today. the river's not bringing anything. it's thinking."]
+    nothingDue: ["we're even! i counted on my fingers."]
+    who: ["Tam. i keep what washes up. it all comes down the river and stops here, because here's where it stops. somebody has to keep it. i've got a boot from every town on the river. i think. i haven't been."]
+    bye: ["bye! if you drop anything, drop it in the river. i'll get it."]
+    thanks: ["thanks! you're the best!"]
+    smallTalk: ["only left boots wash up. Mourne says the right ones go on to wherever. i asked where wherever is. he said 'past the edge.' i asked what's past the edge. he gave me a biscuit.", "Saoirse sings what things were. i brought her a spoon and she sang about soup for a whole minute. it was the best song ever."]
+    speakPlainly: ["plainly: a boy and a pile of things."]
+    questOffer.tam-what-the-river-brings: ["things wash up at World's Sorrow 2 and down in the Depths. i can't go past the second Depths. Mourne says i'm too small. will you go and look for me? stand there a while. if anything's washed up, it's mine. i mean, it's for keeping."]
+    questAccept.tam-what-the-river-brings: ["east out of the street to World's Sorrow 2, then down to the second Depths. look at the edges of the water. that's where things stop."]
+    questWaiting.tam-what-the-river-brings: ["anything? anything at all?"]
+    questComplete.tam-what-the-river-brings: ["nothing? ...that's all right. sometimes nothing washes up. then you keep the nothing. i'll put a stone where it would go. thanks for looking!"]
+    questOffer.tam-a-letter-back: ["a bottle washed up with a letter in it! it says 'if anyone finds this write back. Pim. Lith Harbor.' i can't write. and i don't know where Lith Harbor is. will you tell him? tell him Tam found it. at the end of the world."]
+    questAccept.tam-a-letter-back: ["Lith Harbor's on Victoria Island, Saoirse says. the harbor with all the boats. Pim's a boy, so he'll be running about everywhere. tell him it came all this way."]
+    questWaiting.tam-a-letter-back: ["did you find Pim? is he real?"]
+    questComplete.tam-a-letter-back: ["he threw it two years ago? off the pier? and it came ALL the way here? ...and he's got a crab that counts to three? i've got a spoon. tell him that next time. i'm keeping the letter. it's the best thing that ever washed up."]
+    about.mourne: ["Mourne watches the edge. he gives me biscuits when i ask hard questions. i ask a lot of hard questions."]
+    about.saoirse: ["Saoirse sings what things were. she's never once got it wrong. i'd know. i keep them."]
+    about.pim: ["Pim's a boy in Lith Harbor who throws bottles in the sea. i found one! it came all the way down to the end of the world."]
+    about.ottoline: ["there's a lady upriver drawing the whole river. i'd like her to draw where things stop. that's here. that's my bit."]
+    aboutUnknown: ["never heard of them! did they lose a boot?"]
+    friend.close: ["you can see the whole pile. nobody sees the whole pile."]
+    friend.best: ["if you ever lose anything, anywhere, it'll come down the river to me. i'll keep it safe. promise."]
+    famed: ["your name washed up! well. somebody said it. same thing."]
+    defamed: ["somebody said a mean thing about you. i threw it back in the river. it'll go past the edge."]
+    gift: ["whoa! thanks!"]
+    gift.favorite: ["this is the best! the BEST! better than the spoon! don't tell the spoon."]
+    gift.again: ["just one! Mourne says two's greedy. he says it with a biscuit, though."]

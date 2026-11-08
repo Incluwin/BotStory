@@ -1,0 +1,33 @@
+# Chu Chu Village rumors (Repack Residents). The pair is awake together at its spot in those hours (personas/chu-chu-village.yaml).
+- id: chuchu-second-helpings
+  participants: [pomona, bodhi]
+  where: { town: chu-chu-village, spot: "venue:by-madam-popo" }
+  when:
+    serverHours: [12, 13]
+    everyDays: 1
+  lines:
+    - { by: pomona, text: "Bodhi. that was a whole pot." }
+    - { by: bodhi, text: "it was a small pot." }
+    - { by: pomona, text: "it was the big pot. it was the pot for the mountain." }
+    - { by: bodhi, text: "i was testing it. for the mountain." }
+    - { by: pomona, text: "and?" }
+    - { by: bodhi, text: "it would have been very good at the top." }
+    - { by: pomona, text: "no lunch will ever reach the top of that mountain while you're standing between it and the top." }
+    - { by: bodhi, text: "...is there seconds?" }
+    - { by: pomona, text: "sit down. i'll get a bowl." }
+
+- id: chuchu-crusts-on-the-sill
+  participants: [lark, pomona]
+  where: { town: chu-chu-village, spot: "venue:beside-master-lyck" }
+  when:
+    serverHours: [15, 16, 17]
+    everyDays: 1
+  lines:
+    - { by: lark, text: "Pomona, there's crusts on your sill. in a cloth." }
+    - { by: pomona, text: "oh, look. crusts. how did those get there?" }
+    - { by: lark, text: "you put them there." }
+    - { by: pomona, text: "i'd never. the chu chus must have brought them." }
+    - { by: lark, text: "the chu chus eat crusts. they don't bring them." }
+    - { by: pomona, text: "then it's a mystery. you'd better take them away before anybody sees." }
+    - { by: lark, text: "...thank you, Pomona." }
+    - { by: pomona, text: "for what? i didn't do anything. off you go." }

@@ -1,0 +1,81 @@
+# Limina quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4). No mob spawns on Arcane River: errands.
+# Walkable from World's Sorrow 450012000 (east00 only): World's Sorrow 2 450012010, then World's Sorrow Depths 1-3
+# 450012020/030/040 down one way and World's Sorrow Midpoint 1-3 450012100/110/120 along the other; Midpoint 3 opens on
+# the Final Horizon Fore 450012200, and past it End of the World 1-1 450012300. The Temple of Darkness and the maps past
+# it (450013xxx) are never targets (mods/repack-incomplete-maps.txt). Carried in: hankie's pan flute 4000231 (hankie
+# 7130004, Cranky Forest 240010200). TALK_TO: ilsabet (Three Doors), pim (Lith Harbor). Mourne's page of the edge sets
+# arcane.page.limina for Ottoline's River Atlas (Nameless Town).
+
+# ---- Mourne: where the world ends (the River Atlas page) ----
+- id: mourne-where-it-ends-today
+  persona: mourne
+  title: "Where It Ends Today"
+  length: SHORT
+  requires: { level: { min: 95 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: depths, type: VISIT_MAP, mapIds: [450012020] }
+    - { id: midpoint, type: VISIT_MAP, mapIds: [450012100] }
+    - { id: still-there, type: DELIVER, to: mourne }
+  rewards: { meso: 30000, exp: 75000, bondPoints: 30, items: [{ itemId: 2000004, count: 20 }] }
+
+- id: mourne-the-edge-of-the-page
+  persona: mourne
+  title: "The Edge of the Page"
+  length: LONG
+  requires: { level: { min: 105 }, questsCompleted: [mourne-where-it-ends-today] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: third-depths, type: VISIT_MAP, mapIds: [450012040] }
+    - { id: horizon, type: VISIT_MAP, mapIds: [450012200] }
+    - { id: saoirse, type: TALK_TO, persona: saoirse, say: ["the edge? what did it look like? ...just water, stopping, like the end of a sentence? hm. 'here's where the water stops, and doesn't mind.' tell him that. that's the line. he'll pretend he doesn't like it."] }
+    - { id: page, type: DELIVER, to: mourne }
+  rewards: { meso: 80000, exp: 200000, bondPoints: 50, items: [{ itemId: 2000005, count: 15 }], worldFlags: [arcane.page.limina] }
+
+# ---- Saoirse: something for the world to end on ----
+- id: saoirse-reeds-from-the-forest
+  persona: saoirse
+  title: "Reeds from the Forest"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flutes, type: COLLECT_ITEM, itemId: 4000231, count: 12 }
+    - { id: pipes, type: DELIVER, to: saoirse, take: { itemId: 4000231, count: 12 } }
+  rewards: { meso: 30000, exp: 70000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: saoirse-a-song-with-an-ending
+  persona: saoirse
+  title: "A Song with an Ending"
+  length: MEDIUM
+  requires: { level: { min: 92 }, questsCompleted: [saoirse-reeds-from-the-forest] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ilsabet, type: TALK_TO, persona: ilsabet, say: ["a song with an ending? oh, i've hundreds. they're all thirty years old. the porters sang this one on the night ship: 'row the lamp home, row the lamp home, and the harbor keeps the light.' tell her she can have it. i've no use for endings. i'm still catching up on the middle."] }
+    - { id: mourne, type: TALK_TO, persona: mourne, say: ["a song? ...'and the harbor keeps the light.' hm. ...hm. tell her nothing. no. tell her 'hm'. she'll know."] }
+    - { id: sung, type: DELIVER, to: saoirse }
+  rewards: { meso: 40000, exp: 105000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }] }
+
+# ---- Tam: what washes up ----
+- id: tam-what-the-river-brings
+  persona: tam
+  title: "What the River Brings"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sorrow, type: VISIT_MAP, mapIds: [450012010] }
+    - { id: depths, type: VISIT_MAP, mapIds: [450012030] }
+    - { id: looked, type: DELIVER, to: tam }
+  rewards: { meso: 28000, exp: 65000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: tam-a-letter-back
+  persona: tam
+  title: "A Letter Back"
+  length: MEDIUM
+  requires: { level: { min: 90 }, questsCompleted: [tam-what-the-river-brings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pim, type: TALK_TO, persona: pim, say: ["you found my bottle? at the END of the WORLD? i threw that off the pier ages ago! two years! ...a boy called Tam has it? tell him hi. tell him yes, we're friends now. tell him i've got a crab that can count to three."] }
+    - { id: back, type: DELIVER, to: tam }
+  rewards: { meso: 35000, exp: 90000, bondPoints: 40, items: [{ itemId: 2000005, count: 8 }] }

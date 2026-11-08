@@ -181,6 +181,18 @@ class RepackTravelScriptTest {
         verify(cm).warp(270000000, 0);
     }
 
+    @Test
+    void cobieTakesTheScoutsWayBetweenTwilightPerionAndTheCamp() throws Exception {
+        talk("repack_talk", 2142112, 273000000, 1);
+        assertTrue(windows.get(0).startsWith("yesno ") && windows.get(0).contains("#m273050000#"), windows.toString());
+        verify(cm).warp(273050000, 0);
+
+        windows.clear();
+        talk("repack_talk", 2142112, 273050000, 1);
+        assertTrue(windows.get(0).contains("#m273000000#"), windows.toString());
+        verify(cm).warp(273000000, 0);
+    }
+
     /** start, then action(1, 0, selection) per window until the talk ends. */
     private void talk(String script, int npc, int mapId, int... selections) throws Exception {
         cm = mock(NPCConversationManager.class);

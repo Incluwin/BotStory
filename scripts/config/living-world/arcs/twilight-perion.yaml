@@ -1,0 +1,54 @@
+# Twilight Perion arc: a storyteller at the end of days who has told every story he knows wants one true one about the
+# present the player comes from. The player brings him the sun on the present Perion's rocks (tperion.story.before,
+# quests/twilight-perion.yaml), the camp's cook lights the old storytelling fire for it (camp.fire.lit,
+# quests/tribal-refugee-camp.yaml), and a pilgrim at Three Doors gives him its ending; he tells it at the camp's fire
+# (tperion.story.told, once per server).
+- id: heddwyn-the-last-story
+  persona: heddwyn
+  chapters:
+    - id: chapter-1
+      title: "Not Enough True Ones"
+    - id: chapter-2
+      title: "The Sun on the Rocks"
+      enterWhen: { flags: [tperion.story.before] }
+      dialogueOverrides:
+        greet: ["ah, my listener! the rocks keep the sun. did you know? of course you did. you're from there.", "sit, sit. i've the start of something. it's warm at dusk."]
+        who: ["Heddwyn. i tell stories in Twilight Perion. i've a new one, about before: a Perion where the sun falls on the rocks and the rocks keep it after dark, and a boar is only a boar. i've the start of it. i've the middle. i haven't an ending. endings are the hard part. ask anybody at the end of days."]
+        idle: ["(holds a small boar's tooth up to the light and turns it, telling it something under his breath)", "(lays his palm flat on a rock at dusk, waits, and nods to himself)"]
+        smallTalk: ["i passed the boar's teeth round the children. one of the girls said 'that's it?' that's it. that's what a boar was. she kept hers. i let her.", "the stone-talker in your Perion says the rocks remember the sun. ours don't. ours remember other things. i'll leave those out."]
+        speakPlainly: ["plainly: a story about before, with no end yet."]
+        questOffer.heddwyn-a-boar-that-was-a-boar: ["the boars' teeth went round the children and came back fewer. they keep them. fifteen more, from your Perion's wild boars? there are always more children than teeth."]
+        questOffer.heddwyn-the-sun-on-the-rocks: ["go and stand in your Perion again for me, and ask the stone-talker what the rocks remember today. a story wants checking. the good ones more than most."]
+        questComplete.heddwyn-the-sun-on-the-rocks: ["warm at dusk, still? good. the story holds. thank you."]
+        chapterEnter: ["(sits on the listening rock with his eyes shut and his lips moving, trying the start of a story in a new order)"]
+    - id: chapter-3
+      title: "The Old Fire"
+      enterWhen: { flags: [camp.fire.lit] }
+      dialogueOverrides:
+        greet: ["you! Ama's lit the old fire. for my story. i'm nervous. don't tell anyone i'm nervous.", "ah, my listener. sit. no. stand. i can't sit. the old fire's lit."]
+        who: ["Heddwyn. i tell stories in Twilight Perion. Ama's lit the old fire at the camp, the storytelling fire from old Perion, and the whole camp's going to sit round it and hear my story about before. i've the start and the middle. i need the end. it has to be true. that's the trouble."]
+        idle: ["(paces three steps, turns, paces three back, and mutters the start of a story to the end of the street)", "(starts off toward Cobie and the camp road, stops, comes back for something he forgot, and has nothing in his hands)"]
+        smallTalk: ["a story about before needs an end that's true in before. i've only ever been after. somebody who lives there would know. somebody who walks a road there without knowing where it goes.", "Kasper says the whole camp's saving me the rock nearest the fire. the whole camp. i've told stories to two crates and a dog before now. i'll manage. i think i'll manage."]
+        speakPlainly: ["plainly: an old fire, a whole camp, and no ending."]
+        questOffer.heddwyn-a-boar-that-was-a-boar: ["the boars' teeth went round the children and came back fewer. they keep them. fifteen more, from your Perion's wild boars? there are always more children than teeth."]
+        questOffer.heddwyn-the-sun-on-the-rocks: ["go and stand in your Perion again for me, and ask the stone-talker what the rocks remember today. a story wants checking. the good ones more than most."]
+        questComplete.heddwyn-the-sun-on-the-rocks: ["warm at dusk, still? good. the story holds. thank you."]
+        about.solveig: ["a pilgrim in your years, on the street at Three Doors, who has walked the roads behind the temple more than anyone. nobody knows where they end, i'm told. she walked them anyway. i'd like to know how."]
+        chapterEnter: ["(stands up very straight, smooths his coat, sits back down, and laughs at himself)"]
+    - id: chapter-4
+      title: "The Last Story"
+      enterWhen: { flags: [tperion.story.told] }
+      dialogueOverrides:
+        greet: ["ah, my listener. sit. i told it. they listened. the whole camp. even the dog.", "you! you should have been there. no. you were. it was your story."]
+        who: ["Heddwyn. i tell stories in Twilight Perion. i told my last one at the old fire at the camp: a Perion where the sun sits on the rocks and a boar is only a boar, and nobody knows what's coming, and every morning somebody walks the road anyway. that's the present. it's still being told, back there. this is only how it might end. might."]
+        idle: ["(sits on the listening rock in the sun, eyes shut, smiling, telling nobody anything at all)", "(passes a small boar's tooth from hand to hand and hums)"]
+        smallTalk: ["the children asked if before was real. i told them it's happening right now, behind the Temple Keeper's door, and what it does decides whether we do. one of them asked if they're any good at it, back there. i said mostly.", "i said it was my last story. Kasper wrote it on his stick. it was. it is. ...i've had an idea for another. don't tell Kasper."]
+        speakPlainly: ["plainly: a story told, and the next one coming anyway."]
+        noWork: ["nothing today. sit in the sun with me. i'm told it's what people did, before."]
+        questOffer.heddwyn-a-boar-that-was-a-boar: ["the boars' teeth went round the children and came back fewer. they keep them. fifteen more, from your Perion's wild boars? there are always more children than teeth."]
+        questOffer.heddwyn-the-sun-on-the-rocks: ["go and stand in your Perion again for me, and ask the stone-talker what the rocks remember today. a story wants checking. the good ones more than most."]
+        questComplete.heddwyn-the-sun-on-the-rocks: ["warm at dusk, still? good. the story holds. thank you."]
+        about.solveig: ["the pilgrim in your years, on the street at Three Doors. she gave me my ending: a cairn of stones, and somebody walking on. i put her in the story. she comes out well. everybody does, in that one."]
+        about.kasper: ["Kasper kept the camp quiet for the whole of my last story. by shouting at them. it worked."]
+        friend.best: ["you're in my last story. you come out well. it's the only story i've told where everybody does."]
+        chapterEnter: ["(comes back off Cobie's road dusty and slow, sits on the listening rock, and lets out a long breath that turns into a laugh)"]

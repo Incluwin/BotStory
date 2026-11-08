@@ -1,0 +1,172 @@
+# Morass cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.4): 3 Residents, none recruitable, on Trueffet
+# Square in Arcane River (the Temple Keeper's third door at Three Doors; Beatrice of the academy sends travellers back).
+# The shadows of Morass walk about on their own, left over from a day in Trueffet long ago. Where they walk at night,
+# as Corin finally works it out, is the square's page of the River Atlas (arcs/nameless-town.yaml).
+- id: corin
+  name: Corin
+  look: { gender: male }
+  title: "Writer Chasing Shadows"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: morass
+    routine:
+      - { from: 9, to: 13, spot: "venue:by-beatrice", activity: LINGER }
+      - { from: 13, to: 16, spot: "venue:upper-east-street", activity: STROLL }
+      - { from: 16, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:beside-michelin", activity: SOCIALIZE }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: false
+  knows: [Lucida, Lucida Tail, Shadowdance Hall]
+  questLines: [corin-ink-made-of-dark, corin-where-the-shadows-go]
+  rumors: [morass-the-rent, morass-ask-me-in-a-year]
+  relationships:
+    - { persona: anouk, kind: OWES_A_YEARS_RENT_TO }
+    - { persona: lucan, kind: FOLLOWS_THE_NET_OF }
+  giftItemIds: [2020007, 2020023]
+  dialogue:
+    greetFirst: ["don't move. ...your shadow. it's still attached. good. that's rarer here than you'd think. hello.", "a visitor! with a shadow and everything. sit, sit. tell me where it's been."]
+    greet: ["hello! shadow still on?", "you. good. i've a new chapter. it's mostly crossings-out.", "hello again. have you seen a shadow go past? tall, a hat, in a hurry?"]
+    idle: ["(scribbles in a notebook, stops, stares hard at a shadow on the wall, and scribbles faster)", "(tiptoes after nothing across the square, notebook out, then stops, sighs, and writes 'lost it again')"]
+    noWork: ["nothing today. the shadows are all sitting still. it's very bad for the book."]
+    nothingDue: ["we're square. unlike me and Anouk. don't mention it to her."]
+    who: ["Corin. writer. the shadows in Morass walk about on their own. nobody knows whose they were, or where they go at night. i'm writing a book about it. i've been writing it a year. it's very long and it hasn't got an ending."]
+    bye: ["keep your shadow close."]
+    thanks: ["oh, thank you. that's going in the book."]
+    smallTalk: ["the shadows in Shadowdance Hall dance every evening. nobody's dancing. just the shadows. i've watched them for a year. they're getting better.", "Beatrice at the academy says the shadows are what's left of something that happened here one day, long ago. she won't tell me which day. she says i'd put it in the book. she's right.", "i write in ordinary ink and the words fade by morning. shadows don't like being written down. i need an ink they'll respect."]
+    speakPlainly: ["plainly: a notebook, a lot of shadows, and no ending."]
+    questOffer.corin-ink-made-of-dark: ["my ink fades. the shadows rub it out at night, i swear they do. a lucida's tail drips something darker than ink. the lucidas haunt Orbis's Garden of Darkness. ten tails. i'll write with the dark itself. they can't argue with that."]
+    questAccept.corin-ink-made-of-dark: ["the doors, down to Leafre, and the ship to Orbis. the gardens below the station, past the light ones, to the dark. the lucidas are pretty. don't let that fool you."]
+    questWaiting.corin-ink-made-of-dark: ["ten tails. i'm writing in pencil till then. pencil's worse. they laugh at pencil."]
+    questComplete.corin-ink-made-of-dark: ["ten. ...(he dips a pen and writes a line, and the line stays, black and still) it stays. it stays! and look, that shadow on the wall just leaned over to read it. they can't rub it out. they're going to have to read the book now."]
+    questOffer.corin-where-the-shadows-go: ["a year following shadows round Morass and i've finally worked out where they go: the same places, every night, in the same order. that's not a story. that's a map. Ottoline says a map of a place only keeps on this river if somebody who lives there makes it. i live here. walk where they walk: Shadowdance Hall, then the street cat area where the nameless cat sleeps. then ask Lucan where they go after. he catches them. he'd know."]
+    questAccept.corin-where-the-shadows-go: ["Shadowdance Hall, off the square. stand by the wall and watch them dance. then out the other way through the street cat area to its far end, where the nameless cat sleeps. then Lucan. he'll be by Jean, pretending not to be."]
+    questWaiting.corin-where-the-shadows-go: ["the hall, the cat, and where Lucan says they go after. i've a page ready. it's written in dark. it's very dramatic."]
+    questComplete.corin-where-the-shadows-go: ["they go home. every night they go to where the houses were before that day, and stand in the doorways. ...that's the ending. that's the ending of the book. (he writes it, and sits back) here. 'Morass, as the shadows walk it.' every street, every doorway they stand in. it's the square's page. carry it to Ottoline, or keep it. i've another copy. it's the book."]
+    about.anouk: ["Anouk keeps the inn and a lamp in every window, all night, for shadows that never pay. i haven't paid either. she treats us about the same. kindly. with a ledger."]
+    about.lucan: ["Lucan catches loose shadows and walks them back to the lamps. he never says much. i follow him round with a notebook. he's never once told me to stop. that's practically a friendship."]
+    about.ottoline: ["Ottoline from Nameless Town says a map's a list of places you can come back to. i wrote that down. in dark. it'll stay."]
+    about.sylvie: ["i went to Arcana once, after my shadow. it had slipped off in the night. Sylvie found it curled up asleep under the Spirit Tree. i've never been so embarrassed."]
+    aboutUnknown: ["never met them. are they in the book? they could be. there's room."]
+    friend.close: ["you're in the book now. chapter eleven. you're very brave in it. i've exaggerated a little. not much."]
+    friend.best: ["the book's dedicated to you. well. to you and Anouk. and the nameless cat. it's a long dedication."]
+    famed: ["your name's going round the square. i've had to give you a bigger chapter."]
+    defamed: ["people say things. i've written worse about people i like. it's never true. it just sells."]
+    gift: ["oh, thank you! that's going in the book."]
+    gift.favorite: ["oh, that's a writer's treat. you eat it and you stare at a page. that's most of the job."]
+    gift.again: ["one's plenty. i've no money and no appetite. just ink."]
+
+- id: anouk
+  name: Anouk
+  look: { gender: female }
+  title: "Keeper of the Square's Inn"
+  job: BEGINNER
+  level: { min: 58, max: 60 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: morass
+    routine:
+      - { from: 6, to: 12, spot: "venue:beside-nita", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:beside-michelin", activity: REST }
+      - { from: 14, to: 18, spot: "venue:beside-nita", activity: LINGER }
+      - { from: 18, to: 23, spot: "venue:beside-michelin", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [Red Kentaurus, Kentaurus's Flame, Trueffet Square]
+  questLines: [anouk-lamps-for-the-inn, anouk-the-long-stay]
+  rumors: [morass-the-rent]
+  relationships:
+    - { persona: corin, kind: IS_OWED_A_YEARS_RENT_BY }
+    - { persona: lucan, kind: KEEPS_THE_LOW_LAMP_LIT_FOR }
+  giftItemIds: [2020030, 2020018]
+  dialogue:
+    greetFirst: ["a guest! a real one, with feet. come in. the room's ten mesos and the lamp stays lit. that's the rule.", "welcome to the only inn on Trueffet Square. the only one with the lamps on, anyway."]
+    greet: ["hello, dear. your room's aired.", "you're back. good. the lamp in your window's been waiting.", "evening. or whatever it is."]
+    idle: ["(trims a lamp wick, holds the lamp up, and turns slowly, watching her own shadow go round the wall)", "(writes in a ledger, looks across the square at Corin, and writes something underneath, quite hard)"]
+    noWork: ["nothing today. the lamps are full and the beds are made. if only somebody would sleep in them."]
+    nothingDue: ["we're square, dear. that makes one of you."]
+    who: ["Anouk. i keep the inn on Trueffet Square, and a lamp lit in every window, all night. the shadows here have nowhere to be. a lamp gives them a wall to stand against. i don't charge them. somebody ought to have somewhere."]
+    bye: ["mind your shadow on the way out. they wander."]
+    thanks: ["bless you."]
+    smallTalk: ["Corin's had the back room a year and paid for a week. he says the book will cover it. i've read the book. it won't.", "Michelin the royal chef cooks on the square, for a palace nobody's lived in for a hundred years. i take the leftovers. they're very grand leftovers.", "my lamps burn down by dawn, and then the shadows are left in the dark. i need oil that doesn't run out."]
+    speakPlainly: ["plainly: an inn, a lot of lamps, and one tenant who doesn't pay."]
+    questOffer.anouk-lamps-for-the-inn: ["my lamps burn down by dawn and the shadows are left in the dark. a kentaurus's flame never goes out. the red kentaurus in Leafre carry it. twelve flames, and every window on the square stays lit all night."]
+    questAccept.anouk-lamps-for-the-inn: ["the doors, down to Leafre, and out to the area of the red kentaurus. they're hot-tempered. mind your eyebrows."]
+    questWaiting.anouk-lamps-for-the-inn: ["twelve flames. i've the lamps cleaned and the wicks cut."]
+    questComplete.anouk-lamps-for-the-inn: ["twelve. (she lights one, and it settles into a small steady flame that doesn't flicker) there. look at the wall. look at them. ...they've all come to stand by it. every shadow on the square. thank you, dear. that's twelve windows lit for good."]
+    questOffer.anouk-the-long-stay: ["Corin's had the back room a year. a year! go and tell him, kindly, that the rent's due. and ask Lucan if he's ever caught a shadow that looked like it owed money. i've a feeling."]
+    questAccept.anouk-the-long-stay: ["Corin's in the back room, or out on the square chasing something. Lucan's usually by Jean, off the east street. go kindly. i want the rent, not tears."]
+    questWaiting.anouk-the-long-stay: ["did he say when? he never says when."]
+    questComplete.anouk-the-long-stay: ["chapter nine. ...a woman who keeps a lamp lit for people who aren't there. (she is quiet for a moment) well. he can stay. tell him he can stay. and tell him chapter nine had better be long."]
+    about.corin: ["Corin owes me a year. he pays in chapters. i've told him chapters aren't rent. he's told me i'm in chapter nine. i haven't read it. i'm frightened it's nice."]
+    about.lucan: ["Lucan walks the loose shadows back to my lamps at night. he never comes in. i leave the low lamp lit by the door for him anyway."]
+    about.ottoline: ["the cartographer stayed two nights and paid for three. she said the extra was for the lamps. i've liked her ever since."]
+    about.pomona: ["the cook from Chu Chu Village sent a pot of soup down the river with a traveller. it was still warm. i don't know how. i don't ask."]
+    aboutUnknown: ["never stayed with me. they'd be welcome."]
+    friend.close: ["there's a lamp in the front window that's yours now. i light it whether you're in or not."]
+    friend.best: ["if you ever need somewhere to be, there's a room here. no rent. don't tell Corin."]
+    famed: ["the guests talk about you over breakfast. well. the shadows don't talk. Corin talks about you over breakfast."]
+    defamed: ["i've heard. i've kept a lamp lit for worse, and they turned out fine."]
+    gift: ["oh, bless you. thank you."]
+    gift.favorite: ["oh, that's a proper treat. that'll go on the good plate."]
+    gift.again: ["one's plenty, dear. i've an inn to run, not a larder."]
+
+- id: lucan
+  name: Lucan
+  look: { gender: male }
+  title: "Shadow-Catcher of Morass"
+  job: HERMIT
+  level: { min: 90, max: 92 }
+  strength: SEASONED
+  loadout: zip-claw-l88
+  personality: efficient-v1
+  home:
+    town: morass
+    routine:
+      - { from: 12, to: 17, spot: "venue:upper-east-street", activity: STROLL }
+      - { from: 17, to: 23, spot: "venue:by-jean", activity: LINGER }
+      - { from: 23, to: 12, materialize: false }
+  recruitable: false
+  knows: [Roid, Wires, Magatia]
+  questLines: [lucan-a-net-of-wire, lucan-the-boulevard-shadow]
+  rumors: [morass-ask-me-in-a-year]
+  relationships:
+    - { persona: corin, kind: TELLS_WHERE_THE_SHADOWS_GO_TO }
+    - { persona: anouk, kind: WALKS_THE_STRAYS_HOME_TO }
+  giftItemIds: [2000002, 2022003]
+  dialogue:
+    greetFirst: ["stand still. ...it's all right. yours is attached. i only catch the loose ones.", "hm. a visitor. your shadow's a good one. keeps close. you should be proud of it."]
+    greet: ["you.", "hm. hello. shadow behaving?", "back. good."]
+    idle: ["(stands very still at the edge of the square with a thin net held loose, watching a patch of wall)", "(mends a net of fine wire, knot by knot, without looking down)"]
+    noWork: ["nothing today. the shadows are where they should be. that's a good day."]
+    nothingDue: ["even."]
+    who: ["Lucan. i catch shadows. the ones that come loose in Morass and wander off into the swamp. a loose shadow gets lost. i catch them and walk them back to the square, to Anouk's lamps. they've nowhere else. neither had i, once."]
+    bye: ["keep it close."]
+    thanks: ["hm. thanks."]
+    smallTalk: ["you can't catch a shadow with string. it goes straight through. it has to be wire. cold, thin, and patient. like me.", "Jean watches me work. never says anything. i think he's looking for one in particular.", "i don't catch them at their own doors. you don't catch somebody at their own door."]
+    speakPlainly: ["plainly: a wire net, and nobody left out in the dark."]
+    questOffer.lucan-a-net-of-wire: ["my net's frayed. string's no use, a shadow goes through it. the roids in Magatia's Alcadno labs are made of fine wire. fifteen bundles, and i'll knot a net that holds."]
+    questAccept.lucan-a-net-of-wire: ["the doors, down to Leafre, the ship to Orbis, and the long way to Ariant and Magatia. the Alcadno side, area C-1. the roids are quick. so are you."]
+    questWaiting.lucan-a-net-of-wire: ["fifteen. the old net's holding. barely."]
+    questComplete.lucan-a-net-of-wire: ["fifteen. good wire. cold. (he knots it fast and holds a corner up to the light, and the fine mesh throws a shadow of its own) that'll hold anything. thank you."]
+    questOffer.lucan-the-boulevard-shadow: ["there's a shadow loose on Bully Blvd. a small one. it runs when i come near. it might come to you. walk the boulevard, both stretches, slowly. then tell Anouk to leave the low lamp lit tonight, the one by the door. small ones like the low lamp."]
+    questAccept.lucan-the-boulevard-shadow: ["off the square onto Bully Blvd. walk the first stretch and the second. don't chase anything. let it follow you. then Anouk, at the inn."]
+    questWaiting.lucan-the-boulevard-shadow: ["the boulevard, both stretches, and the low lamp. it'll follow you. they always follow the kind ones."]
+    questComplete.lucan-the-boulevard-shadow: ["it followed you. i saw it come in behind you, all the way to the low lamp. it's sitting on Anouk's cushion. (he very nearly smiles) no net. that's the best kind of catch. thank you."]
+    about.corin: ["Corin follows me with a notebook. i let him. somebody ought to write down where they go. it isn't going to be me."]
+    about.anouk: ["Anouk keeps the lamps lit. without her there'd be nowhere to bring them. i don't go in. she leaves the low lamp lit for me anyway."]
+    about.ottoline: ["the map woman asked me where the edges of Morass are. i said wherever the last shadow stops. she drew that. i didn't think she would."]
+    about.caedmon: ["the knight at Three Doors? he stands still very well. i'd hire him, if shadows could be stood still at."]
+    aboutUnknown: ["don't know them. is theirs attached?"]
+    friend.close: ["if yours ever comes loose, i'll catch it first. before it gets far. i'll know it."]
+    friend.best: ["you're the one person in Morass i'd walk home without a net. that means something. i think."]
+    famed: ["they say your name on the square. good. a name said out loud keeps a shadow close."]
+    defamed: ["people say things. shadows don't. i listen to the shadows."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["that's good. that's a night's work, that is."]
+    gift.again: ["one. the rest would only rattle about in the net."]

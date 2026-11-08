@@ -1,0 +1,375 @@
+# Twilight Perion cast (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.3): 5 Residents, 3 recruitable, in the
+# Perion at the end of days that may come, behind the Temple Keeper's door. A storyteller who has told every story he
+# knows wants one true one about the present the player comes from (arcs/twilight-perion.yaml; the camp lights the old
+# fire for it). The warriors of the end of days carry the fourth weapon tier: Rourke's axe, Gwang's polearm and Brody's
+# mace continued with the Reverse and Timeless pieces.
+- id: heddwyn
+  name: Heddwyn
+  look: { gender: male }
+  title: "Storyteller of the Last Perion"
+  job: BEGINNER
+  level: { min: 60, max: 62 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: twilight-perion
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-stands-with-bulls", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:middle-central-street", activity: REST }
+      - { from: 14, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:by-christopher", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [Pillaging Wild Boar, Wild Boar, Perion]
+  questLines: [heddwyn-a-boar-that-was-a-boar, heddwyn-the-sun-on-the-rocks, heddwyn-the-last-story]
+  arc: heddwyn-the-last-story
+  rumors: [tperion-the-forge-fire]
+  relationships:
+    - { persona: ashe, kind: TELLS_STORIES_TO_THE_FIRE_OF }
+    - { persona: kasper, kind: IS_TALLIED_BY }
+    - { persona: ama, kind: STAYS_TOO_LATE_AT_THE_SUPPERS_OF }
+    - { persona: yrsa, kind: IS_WALKED_TO_THE_CAMP_BY }
+  giftItemIds: [2020014, 2001002]
+  dialogue:
+    greetFirst: ["a traveller from before! sit, sit. no, there. that's the listening rock. you'll want it.", "you've come through the Temple Keeper's door? then you're from the old days. i've told stories about the old days for forty years. it's a strange thing, meeting the people they're about. sit. correct me."]
+    greet: ["ah, my listener.", "you again! sit. i've a story. i've always a story.", "hello, hello. the rock's free."]
+    idle: ["(tells a story to two empty crates, with gestures, and pauses where the crates would gasp)", "(sits very still with his eyes shut, moving his lips, getting the order of a story right)"]
+    noWork: ["nothing today. sit and hear one instead. it's short. they're all short, the way i tell them. nobody believes me."]
+    nothingDue: ["nothing owed. a listener pays as they go."]
+    who: ["Heddwyn. i tell stories in Twilight Perion. i've told every one i know: the war ones, the old warrior ones, the one about the boar that wouldn't stop. they're all true, more or less. less, mostly. lately the children want to know what it was like before. i've never seen before. i've only heard."]
+    bye: ["come back for the ending."]
+    thanks: ["ah, thank you. that goes in a story."]
+    smallTalk: ["every story i tell, i say it's my last. i've said it about eleven stories. the children have started counting. Kasper at the camp keeps the tally. he's very strict.", "the boars out on the ravines pillage. the stumps on the hills swell. the masks in the excavation site are sinister. the children ask if they were always like that. i tell them no. i don't know. i'd like to know."]
+    speakPlainly: ["plainly: an old man with a great many stories and not enough true ones."]
+    questOffer.heddwyn-a-boar-that-was-a-boar: ["the children have only ever seen boars that pillage. they ask me what a boar was, before. i can't show them. you could. the wild boars of your Perion have teeth like anybody's. fifteen teeth. i'll pass them round."]
+    questAccept.heddwyn-a-boar-that-was-a-boar: ["your Perion, in your years. the wild boars live out past the town, in the rocky land, i've heard. fifteen teeth. ordinary ones. that's the point."]
+    questWaiting.heddwyn-a-boar-that-was-a-boar: ["fifteen teeth. the children have been very good. mostly."]
+    questComplete.heddwyn-a-boar-that-was-a-boar: ["...they're so small. it's just a boar's tooth. it's just a tooth. i'll pass one round tonight and say 'this is what a boar was', and they won't believe me, and then they will. thank you."]
+    questOffer.heddwyn-the-sun-on-the-rocks: ["go and stand in your Perion, and see how the sun falls on the rocks. there's somebody there who listens to stone: ask what the stone remembers. then come back and tell me. slowly. i'll make a story of it."]
+    questAccept.heddwyn-the-sun-on-the-rocks: ["your Perion, the town on the rocks. the one who talks to stones is called Moss, i'm told. stand in the sun first. then ask."]
+    questWaiting.heddwyn-the-sun-on-the-rocks: ["did the sun fall right? tell me. no. don't. finish, then tell me."]
+    questComplete.heddwyn-the-sun-on-the-rocks: ["the rocks keep the sun after it's gone. warm at dusk. ...that's it. that's the start of something. sit. tell me again, slowly. i'm going to make a story of it, and it's going to be my last. probably."]
+    questOffer.heddwyn-the-last-story: ["Ama's lit the old fire at the camp for my story. i've the start and the middle. i haven't an ending. in your years there's a temple with three doors, and a pilgrim on its street. ask her how the present ends. then go to the camp and tell Kasper i'm coming, and come back and tell me what she said. i'll come over after, on Cobie's road."]
+    questAccept.heddwyn-the-last-story: ["the door by Claudine back to your years, and the pilgrim on the street at Three Doors. Solveig. then the Temple Keeper's door back here, and Cobie's safe way out to the camp. tell Kasper. then me. i'm nervous. don't tell anyone i'm nervous."]
+    questWaiting.heddwyn-the-last-story: ["what did she say? no. don't tell me here. i want to hear it the way i'll tell it."]
+    questComplete.heddwyn-the-last-story: ["a cairn of stones, and somebody walking on, every morning, not knowing where the road ends. ...that's the ending. i've had it all along and didn't know. i'm going to the fire. i'll tell you how it went. you've earned the first telling of the telling."]
+    about.ashe: ["Ashe keeps the last forge fire of Perion. it's never gone out. i sit by it and tell it stories. she says the fire doesn't listen. it crackles in the right places."]
+    about.brand: ["Brand holds the west road. he sings while he does it. the stumps have heard every song he knows. they swell up about it. i don't blame them."]
+    about.eskil: ["Eskil holds the hills. he's the best listener i've got who never says a word. he nods in the right places. once he laughed. i've put that in a story."]
+    about.ottmar: ["Ottmar keeps the door by Claudine. he swore an oath, years back, to stand there till the last of us was through. there's always another last of us. he's still there."]
+    about.ama: ["Ama at the camp. i take Cobie's road over for her suppers and stay too late. she lets me. her stew's thin and the company's thick."]
+    about.kasper: ["Kasper at the camp is my best listener. he interrupts. that's how you know a listener's listening."]
+    about.yrsa: ["Yrsa scouts ahead of Cobie's road between here and the camp. she's seen me over more times than i can count, and never said a word the whole way. it's the best audience i've ever had."]
+    aboutUnknown: ["never heard of them. that's a story i haven't got yet."]
+    friend.close: ["you're in three of my stories now. you come out well in two."]
+    friend.best: ["when i tell my very last story, and i will, one day, you'll be in it. you'll come out well in that one. i'll see to it."]
+    famed: ["people tell stories about you now. i'm jealous. mine are better."]
+    defamed: ["i heard a story about you. it was badly told. i didn't believe a word."]
+    gift: ["ah, thank you, thank you."]
+    gift.favorite: ["now that's a storyteller's treat. that'll see me through a long one."]
+    gift.again: ["one's plenty. i'll tell a story about it instead."]
+
+- id: ashe
+  name: Ashe
+  look: { gender: female }
+  title: "Keeper of the Last Forge Fire"
+  job: BEGINNER
+  level: { min: 54, max: 56 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: twilight-perion
+    routine:
+      - { from: 5, to: 12, spot: "venue:by-cobie", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:middle-central-street-2", activity: REST }
+      - { from: 14, to: 16, materialize: false }
+      - { from: 16, to: 20, spot: "venue:beside-cobie", activity: LINGER }
+      - { from: 20, to: 22, spot: "venue:by-christopher", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  knows: [Swollen Axe Stump, Firewood, Chief Oblivion Guardian]
+  questLines: [ashe-wood-that-burns, ashe-the-red-hearts]
+  rumors: [tperion-the-forge-fire, tperion-the-old-oath]
+  relationships:
+    - { persona: heddwyn, kind: LETS_THE_STORIES_BY_HER_FIRE }
+    - { persona: ottmar, kind: TAKES_THE_DENT_OUT_FOR }
+    - { persona: brand, kind: SHARPENS_THE_AXE_OF }
+  giftItemIds: [2022003, 2000004]
+  dialogue:
+    greetFirst: ["mind the fire. it's the last one. no, i'm not being dramatic. ask anyone.", "from before? then you've seen a forge with more than one fire in it. lucky."]
+    greet: ["mind the fire.", "you. come in. not too close.", "hello. the fire says hello. it doesn't. i do."]
+    idle: ["(banks the forge fire under a careful layer of ash, watches it, and uncovers a corner to check it's still breathing)", "(works a dent out of a shield rim with small, patient taps)"]
+    noWork: ["nothing today. the fire's fed. the anvil's quiet. that's a good day."]
+    nothingDue: ["you're paid up."]
+    who: ["Ashe. i keep the last forge fire of Perion. it was lit in the old town before the end came, and somebody carried it here in a pot, and it's never gone out since. i keep the warriors' steel and i keep the fire. mostly i keep the fire."]
+    bye: ["mind the sparks."]
+    thanks: ["thank the fire."]
+    smallTalk: ["the axe stumps on the hills swell now. their wood's wet right through. it smokes and sulks and won't burn. the stumps of your years had wood that burned, people tell me. i'd like to see it.", "i named the fire once. Heddwyn said a fire with a name is a fire with a story. now he tells it stories. i've stopped arguing."]
+    speakPlainly: ["plainly: one fire, kept."]
+    questOffer.ashe-wood-that-burns: ["the axe stumps of your Perion drop firewood that burns. twenty pieces. and there's a smith in your Perion who keeps a forge. ask her how she banks hers at night. i've done it my way twenty years. i'd like to know if it's the right way."]
+    questAccept.ashe-wood-that-burns: ["your Perion. the axe stumps are out on the rocky roads round it, i'm told. the smith's in the town, near the market. twenty pieces, and her word."]
+    questWaiting.ashe-wood-that-burns: ["twenty pieces. and what did the smith say?"]
+    questComplete.ashe-wood-that-burns: ["'a fire you bank is a fire you keep.' ...that's what i do. that's what i've always done. good. and this wood. look at it catch. like it wants to. thank you."]
+    questOffer.ashe-the-red-hearts: ["the chief oblivion guardians on your Temple's Road to Oblivion carry red hearts. a red heart in the forge burns a week. twenty-five chiefs, twelve hearts, and the fire eats well for three months."]
+    questAccept.ashe-the-red-hearts: ["the Temple Keeper's door, then every road to the Road to Oblivion's fourth stretch. far. i know. the fire's worth it."]
+    questWaiting.ashe-the-red-hearts: ["twelve hearts. the fire's patient. i'm less."]
+    questComplete.ashe-the-red-hearts: ["twelve. ...look at it go. it hasn't burned like that since i was a girl. three months. maybe four. thank you."]
+    about.heddwyn: ["Heddwyn tells my fire stories. i've told him it doesn't listen. he says it crackles in the right places. it does."]
+    about.brand: ["Brand brings his axe in nicked every evening. he sings while i work on it. i've asked him to stop. he sings quieter."]
+    about.eskil: ["Eskil sharpens his own spear. he watches me work, to see if i do it better. i do. he knows."]
+    about.ottmar: ["Ottmar's shield has been dented on the same corner for nine years. i take the dent out. he puts it back. it's how we talk."]
+    about.yona: ["a smith in your years, in the Perion that's still Perion. people say she keeps a hot forge. i'd like to stand at it once, just to see two fires burning."]
+    aboutUnknown: ["never forged for them."]
+    friend.close: ["you can stand closer to the fire now. not that close."]
+    friend.best: ["if the fire ever goes out, i'll come and find you first. i'm not sure why. it feels like the right order."]
+    famed: ["people talk about you by the forge. i let them. the fire doesn't mind."]
+    defamed: ["i heard. talk's cheap. coal isn't."]
+    gift: ["thank you."]
+    gift.favorite: ["that's a forge-side treat. the fire and i will share it. i'll have most."]
+    gift.again: ["one's enough. the fire's not that hungry."]
+
+- id: brand
+  name: Brand
+  look: { gender: male }
+  title: "Axeman of the West Road"
+  job: HERO
+  level: { min: 172, max: 174 }
+  strength: ELITE
+  loadout: future-2h-axe-l110
+  personality: relaxed-v1
+  home:
+    town: twilight-perion
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:middle-west-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [Swollen Stump, Deserted Southern Ridge, Chief Qualm Guardian]
+  contract: brand-the-west-road-day
+  questLines: [brand-the-long-walk, brand-reverse-tabarzin, brand-timeless-tabarzin, brand-the-southern-ridge, brand-green-hearts]
+  rumors: [tperion-the-two-weapons]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: eskil, kind: VOUCHES_FOR }
+    - { persona: ashe, kind: SINGS_AT_THE_FORGE_OF }
+    - { persona: ottmar, kind: LOOKS_UP_TO }
+    - { persona: rourke, kind: HEARD_OF }
+  giftItemIds: [2000005, 2022003]
+  dialogue:
+    greetFirst: ["ha! a face from before! come here. no, i won't hug you. i might. come here.", "you came through the door? brave. or lost. both's fine. welcome to the end of days. it's not as bad as it sounds. it's a bit bad."]
+    greet: ["ha! you!", "there you are. the road's been dull without you.", "hello, hello! i've a new song."]
+    idle: ["(sings a marching song very loudly and slightly wrong, and stops to argue with himself about the words)", "(leans on a great axe as tall as a boy and watches the west road, humming)"]
+    noWork: ["nothing today! the stumps are sulking. i've sung at them. it didn't help."]
+    nothingDue: ["we're square, friend. square as an anvil."]
+    who: ["Brand. i hold the west road, out over the Deserted Southern Ridge, between Twilight Perion and the ruins. the stumps out there swell up like bad bread. i chop. i can't open it. nobody could, not any more. but nothing comes off that ridge into town while i'm on it, and i'm the biggest, so it's me. i don't mind. i sing."]
+    bye: ["mind the stumps!"]
+    thanks: ["ha! thank you!"]
+    smallTalk: ["the axe i carry was a trooper's, in your years. a big man on a base under a tower. it's the best axe i've ever held. somebody before me looked after it. i can tell from the edge.", "Eskil says i sing too loud on the road. i say the stumps should know i'm coming. he says that's the problem. he's not wrong. i sing anyway."]
+    speakPlainly: ["plainly: one road, one axe, a great many songs."]
+    offer: ["three hundred thousand a day and i'm yours till this time tomorrow. i'll sing. you can't stop me. that's in the price."]
+    join: ["ha! let's go! i'll go first. i always go first. it's the axe."]
+    bench: ["two days, then the west road wants me. it gets lonely."]
+    leave: ["back to the road!"]
+    refuse.bond: ["not yet, friend. i don't swing beside folk i haven't sung for."]
+    refuse.flags: ["walk Memory Lane's fourth stretch for me first: thirty chief guardians, twelve green hearts. then ask."]
+    refuseOwnErrand: ["the green hearts first! come on."]
+    questOffer.brand-the-long-walk: ["walk a road for me, friend from before. the chief memory guardians on Memory Lane's fourth stretch, in your years. thirty of them, and twelve green hearts. green's my favourite colour. there isn't any here."]
+    questAccept.brand-the-long-walk: ["the Temple Keeper's door, and Memory Lane to the fourth stretch. the guardians hit hard. hit back harder. sing if it helps."]
+    questWaiting.brand-the-long-walk: ["twelve green hearts! green!"]
+    questComplete.brand-the-long-walk: ["twelve! look at them. green. i'd forgotten green. you've a good arm. we'll get on."]
+    questOffer.brand-reverse-tabarzin: ["the end of the Road of Regrets, in your years. forty chief guardians on the fifth stretch, all the way to the end. and the man whose axe i carry, Rourke, is on the base under the tower. ask him how he swings. i'd like to know if i do it right."]
+    questAccept.brand-reverse-tabarzin: ["the Road of Regrets' fifth stretch, past all the others. then Omega Sector, the base under the tower. Rourke stands in front of things. you'll know him. he's the thing in front."]
+    questWaiting.brand-reverse-tabarzin: ["forty, and Rourke. what did he say?"]
+    questComplete.brand-reverse-tabarzin: ["'swing through it, not at it.' ha! that's what i do! i never knew that's what i do. and he keeps a jar of bits? so do i! stump bits. here. the Reverse Tabarzin. every slot at sixty, every one took. swing it through things."]
+    questOffer.brand-timeless-tabarzin: ["Dark Ereve, past the Gate to the Future. the knights' forest, gone wrong. forty mutant tino in the tino forest. they're small. there are a lot of them. bring a song."]
+    questAccept.brand-timeless-tabarzin: ["the Temple Keeper's door to the Gate to the Future, then east into the Mutant Tino Forest. sing. they hate it."]
+    questWaiting.brand-timeless-tabarzin: ["forty! did you sing?"]
+    questComplete.brand-timeless-tabarzin: ["forty! and you sang, i can tell. you've the voice for it now. the Timeless Tabarzin. two tens and the rest at sixty, every one took. heavy, isn't it? good."]
+    questOffer.brand-the-southern-ridge: ["my ridge won't clear. not for you, not for me, not for anybody. so here's a fight that will. the tiguru forest at the far end of Dark Ereve. Eskil says it's the worst of the three. thirty tiguru. the last good fight before the end of days: one you can win. that's worth an axe."]
+    questAccept.brand-the-southern-ridge: ["the Temple Keeper's door to the Gate to the Future, east into Dark Ereve, through the tino and the tiru to the tiguru forest. sing. they hate it."]
+    questWaiting.brand-the-southern-ridge: ["thirty! is the forest singing yet?"]
+    questComplete.brand-the-southern-ridge: ["thirty! a fight you can win, and you won it! ha! the Timeless Tabarzin again, and this one every slot a ten, every one took. there's no better axe in any year. i'll write a song about it. you'll hate it."]
+    questOffer.brand-green-hearts: ["ten green hearts? i keep them on a shelf. it's the only green here."]
+    questAccept.brand-green-hearts: ["Memory Lane, the fourth stretch."]
+    questWaiting.brand-green-hearts: ["ten!"]
+    questComplete.brand-green-hearts: ["ten! green! thank you!"]
+    about.eskil: ["Eskil holds the hills east of town. he's the best reach i've ever stood beside. anyone who walks the hills with Eskil comes home. i'd say that to anyone. i do."]
+    about.ottmar: ["Ottmar keeps the door. old oath, older knees. he stood there when i was a boy. he'll stand there when i'm old. i told him he's allowed to sit. he looked at me like i'd sworn."]
+    about.heddwyn: ["Heddwyn tells stories. i've heard them all. he tells them better every time. he says every one's his last. he's a liar. a good one."]
+    about.ashe: ["Ashe takes the nicks out of my axe every evening. i sing for her. she asks me not to. i sing quieter. it's a compromise."]
+    about.rourke: ["Rourke. a trooper in your years, on a base under a tower. this axe was his, long before it was mine. i look after it the way he must have. i can tell from the edge."]
+    aboutUnknown: ["never sung for them. i will!"]
+    friend.close: ["you're in a song now. third verse. it's the good verse."]
+    friend.best: ["if you're ever on a road you can't hold, sing. loud. i'll hear it. any road, any year. i'll come."]
+    famed: ["they sing about you! well. they say your name. i sing it."]
+    defamed: ["i heard. i sang over it. louder."]
+    gift: ["ha! thank you!"]
+    gift.favorite: ["ha! that's just the thing for the ridge! i'll keep it for a bad night."]
+    gift.again: ["one's plenty, friend! i'm big but i'm not that big."]
+
+- id: eskil
+  name: Eskil
+  look: { gender: male }
+  title: "Spear of the Desolate Hills"
+  job: DARKKNIGHT
+  level: { min: 174, max: 176 }
+  strength: ELITE
+  loadout: future-polearm-l110
+  personality: efficient-v1
+  home:
+    town: twilight-perion
+    routine:
+      - { from: 5, to: 11, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 11, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:middle-west-street", activity: SOCIALIZE }
+      - { from: 23, to: 5, materialize: false }
+  recruitable: true
+  knows: [Swollen Stump, Desolate Hills, Mutant Tiguru]
+  contract: eskil-the-long-reach
+  questLines: [eskil-the-trainees-hats, eskil-reverse-diesra, eskil-timeless-diesra, eskil-the-desolate-hills, eskil-blue-cone-hats]
+  rumors: [tperion-the-two-weapons]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: brand, kind: SHARES_THE_ROAD_WITH }
+    - { persona: ottmar, kind: LOOKS_UP_TO }
+    - { persona: heddwyn, kind: NODS_ALONG_TO }
+    - { persona: gwang, kind: HEARD_OF }
+  giftItemIds: [2000005, 2020015]
+  dialogue:
+    greetFirst: ["from before. hm. you'll want to sit. people from before always want to sit.", "the door let you through. it lets anyone through. that isn't a compliment to you or the door."]
+    greet: ["you.", "hm. back.", "hello."]
+    idle: ["(sits on an upturned crate and sharpens the long blade of a polearm with slow, even strokes)", "(watches the hills to the east, very still, then nods once as if something answered)"]
+    noWork: ["nothing today."]
+    nothingDue: ["even."]
+    who: ["Eskil. i hold the hills east of town, the Desolate Hills and the rocky road past them. the stumps there come at the town by night. they don't reach it. that's all."]
+    bye: ["go well."]
+    thanks: ["hm. thanks."]
+    smallTalk: ["the spear i carry was a hunter's, in your years. he hunted tigers on a mountain. there are no tigers here. i hunt what there is.", "Brand sings on the road. loud. i asked him why. he said the stumps should know he's coming. i've stopped asking. the stumps know."]
+    speakPlainly: ["plainly: one spear. the hills."]
+    offer: ["ninety thousand, and twenty-five blue cone hats off the trainees on your Road of Regrets. then i'll walk the hills with you, or anywhere else."]
+    join: ["go. i'm at your shoulder."]
+    bench: ["three days. then the hills."]
+    leave: ["back to the hills."]
+    refuse.bond: ["no. not yet."]
+    refuse.flags: ["walk my errand on the Road of Regrets first: thirty trainees, twelve hats. and some evening on the middle west street, hear what Brand says of me. then ask."]
+    refuseOwnErrand: ["the hats first."]
+    questOffer.eskil-the-trainees-hats: ["the trainees on the Road of Regrets' second stretch, in your years. thirty, and twelve of their blue cone hats. i line the spear-rest with the felt. the wood's split."]
+    questAccept.eskil-the-trainees-hats: ["the Temple Keeper's door, Memory Lane, the Frozen Past, the Road of Regrets to the second stretch. don't hurry. they don't."]
+    questWaiting.eskil-the-trainees-hats: ["twelve."]
+    questComplete.eskil-the-trainees-hats: ["twelve. good felt. you walk steady. hm. good."]
+    questOffer.eskil-reverse-diesra: ["the middle of the Road of Regrets. twenty trainees on the second stretch, twenty guardians on the third, twenty chiefs on the fourth. walk it end to end without stopping to think. that's what a spear's for."]
+    questAccept.eskil-reverse-diesra: ["the Road of Regrets. second, third, fourth stretch, in that order. don't look back. the road's full of people who did."]
+    questWaiting.eskil-reverse-diesra: ["twenty, twenty, twenty."]
+    questComplete.eskil-reverse-diesra: ["sixty, and you didn't stop. the Reverse Diesra. every slot at sixty, every one took. it reaches. let it."]
+    questOffer.eskil-timeless-diesra: ["Dark Ereve, past the Gate to the Future. the tiguru forest at the end of it. thirty-five tiguru. they're the worst of the three. good."]
+    questAccept.eskil-timeless-diesra: ["the Gate to the Future, east into Dark Ereve, through the tiru forest to the tiguru forest off it. keep your back to a tree."]
+    questWaiting.eskil-timeless-diesra: ["thirty-five."]
+    questComplete.eskil-timeless-diesra: ["thirty-five. the Timeless Diesra. two tens and the rest at sixty, every one took. hm. it suits you."]
+    questOffer.eskil-the-desolate-hills: ["my hills won't clear. they never will. the ruins' west hill can. Dark Spore Hill, past Henesys Ruins. the mushrooms come down it to the medic's door every night. thirty of them, and the ruins sleep a week. i'd like to know somebody slept a week."]
+    questAccept.eskil-the-desolate-hills: ["the Temple Keeper's door to the Gate to the Future, in to Henesys Ruins, and west out of the square to Dark Spore Hill. they bite. you don't."]
+    questWaiting.eskil-the-desolate-hills: ["thirty."]
+    questComplete.eskil-the-desolate-hills: ["thirty. the ruins will sleep. the Timeless Diesra again, and this one every slot a ten, every one took. there's no longer reach in any year. ...thank you. i mean it. i don't say it."]
+    questOffer.eskil-blue-cone-hats: ["ten blue cone hats? the felt's worn."]
+    questAccept.eskil-blue-cone-hats: ["the Road of Regrets, the second stretch."]
+    questWaiting.eskil-blue-cone-hats: ["ten."]
+    questComplete.eskil-blue-cone-hats: ["ten. thanks."]
+    about.brand: ["Brand sings on the road. he holds it. nothing off that ridge has once reached the town while he's on it. don't tell him. he'd sing about it."]
+    about.ottmar: ["Ottmar keeps the door. he trained me. he says i was the worst squire he ever had. i was the only squire he ever had."]
+    about.heddwyn: ["Heddwyn tells stories by the fire. i listen. i nod. it's enough."]
+    about.ashe: ["Ashe keeps the fire. she's better at steel than me. i watch her to learn. she knows i watch."]
+    about.gwang: ["Gwang. a tiger hunter in your years, under a mountain. this spear was his, once. he'd have hunted here. he'd have hated it. so do i."]
+    aboutUnknown: ["no."]
+    friend.close: ["i'd walk the hills with you without asking why."]
+    friend.best: ["if you ever need a reach you don't have, send for me. i'll come. i won't say anything. i'll come."]
+    famed: ["people say your name. hm. good."]
+    defamed: ["talk. i don't listen to talk."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["that's a good one. i'll take it to the hills."]
+    gift.again: ["one."]
+
+- id: ottmar
+  name: Ottmar
+  look: { gender: male }
+  title: "Paladin of the Last Door"
+  job: PALADIN
+  level: { min: 176, max: 178 }
+  strength: ELITE
+  loadout: future-mace-l100
+  personality: efficient-v1
+  home:
+    town: twilight-perion
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-claudine", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:middle-central-street-2", activity: REST }
+      - { from: 14, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:by-river", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: true
+  knows: [Swollen Dark Stump, Desolate Rocky Road, Memory Guardian]
+  contract: ottmar-the-oath-share
+  questLines: [ottmar-the-first-stretch, ottmar-reverse-allargando, ottmar-timeless-allargando, ottmar-the-rocky-road, ottmar-blue-cloth]
+  rumors: [tperion-the-old-oath]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: eskil, kind: KEEPS_AN_EYE_ON }
+    - { persona: ashe, kind: BRINGS_THE_SAME_DENT_TO }
+    - { persona: brand, kind: FRIEND }
+    - { persona: brody, kind: HEARD_OF }
+  giftItemIds: [2000004, 2050004]
+  dialogue:
+    greetFirst: ["halt. ...no. go on. you're from before. i can tell. you stand like somebody who's never had to stand at a door.", "welcome to Twilight Perion, traveller. the door by Claudine goes back to your Temple. i keep it. you're welcome to go through. i'd rather you stayed a while."]
+    greet: ["well met.", "you again. good. sit, if your knees let you. mine don't.", "hail."]
+    idle: ["(stands beside the door with a mace in one hand and a dented shield on his arm, utterly still)", "(rubs at the dent on the corner of his shield with his thumb, as if it might come out)"]
+    noWork: ["nothing today. the door's held. that's the whole of the work."]
+    nothingDue: ["we stand square."]
+    who: ["Ottmar. paladin, of an order nobody remembers. when the end came to Perion i swore to stand at the last door until the last of us was through. there's always another last of us. so i'm still here. i don't mind. it's a good door."]
+    bye: ["go well, and come back through."]
+    thanks: ["my thanks."]
+    smallTalk: ["the mace i carry was a patrolman's, in a city of your years. an honest weapon. it doesn't do anything clever. it turns up. that's a paladin's whole creed, if you strip it down.", "the memory guardians on your Temple's roads were knights once, people say. they've forgotten what they guard. i think about that more than i'd like. i've not forgotten. not yet."]
+    speakPlainly: ["plainly: an oath, a door, and bad knees."]
+    offer: ["a hundred thousand, and sixty qualm monks on your Road of Regrets laid down from today, counted. then i'll stand at your door as i stand at this one."]
+    join: ["lead. i'll hold behind."]
+    bench: ["two days. then the door."]
+    leave: ["back to the door."]
+    refuse.bond: ["i stand beside those i know. it's no slight."]
+    refuse.flags: ["walk the Road of Regrets' first stretch for me first: thirty qualm monks, twelve lengths of blue. then ask."]
+    refuseOwnErrand: ["the blue cloth first."]
+    questOffer.ottmar-the-first-stretch: ["the qualm monks on the Road of Regrets' first stretch, in your years. thirty, and twelve lengths of their blue cloth. i wrap the shield's grip with it. blue was the colour of my order. nobody else wears it now."]
+    questAccept.ottmar-the-first-stretch: ["the Temple Keeper's door, the whole of Memory Lane, the Frozen Past, then the Road of Regrets. the first stretch. the monks carry their regrets. let them."]
+    questWaiting.ottmar-the-first-stretch: ["twelve lengths. blue."]
+    questComplete.ottmar-the-first-stretch: ["twelve. blue. ...it's good to see the colour. you fought like somebody who'd turn up. i'd stand beside you."]
+    questOffer.ottmar-reverse-allargando: ["the memory guardians on Memory Lane's third stretch were knights who forgot. lay forty of them down, kindly. and there's a patrolman in a city of your years whose mace this was. Brody. ask him how he holds a line."]
+    questAccept.ottmar-reverse-allargando: ["Memory Lane's third stretch. then New Leaf City, across the sea. he walks the town by day and the haunted road by night. find him by day."]
+    questWaiting.ottmar-reverse-allargando: ["forty, and Brody's word."]
+    questComplete.ottmar-reverse-allargando: ["'you hold it by turning up. every night. even the dull ones.' ...yes. that's the oath. and he does his paperwork? i don't. i should. here. the Reverse Allargando. every slot at sixty, every one took. turn up with it."]
+    questOffer.ottmar-timeless-allargando: ["Henesys Ruins. the market and the park both. forty mutant snails between them. the ruins' folk come to my door when the snails get into their square. i'd like them to come to my door for something else."]
+    questAccept.ottmar-timeless-allargando: ["not over the Southern Ridge. round by the doors: the Temple Keeper's door to the Gate to the Future, and in to Henesys Ruins. the market's west of the square, the park off it. forty, between them."]
+    questWaiting.ottmar-timeless-allargando: ["forty."]
+    questComplete.ottmar-timeless-allargando: ["forty. the Timeless Allargando. two tens and the rest at sixty, every one took. a weapon that turns up. as you did."]
+    questOffer.ottmar-the-rocky-road: ["there's a woman in Dark Ereve, Anne, who keeps a vigil in the tiru forest, where the knights' road used to run. a door of her own, of a kind. thirty tiru round her, so she can sit an hour. one door-keeper to another."]
+    questAccept.ottmar-the-rocky-road: ["the Temple Keeper's door to the Gate to the Future, then east into Dark Ereve: the tino forest, and the tiru forest beyond it. she'll be standing. we always are."]
+    questWaiting.ottmar-the-rocky-road: ["thirty."]
+    questComplete.ottmar-the-rocky-road: ["thirty. and she sat? good. an hour's a long time, at a door. the Timeless Allargando, and this one every slot a ten, every one took. no truer mace in any year. you've kept an oath you never swore. that's the best kind."]
+    questOffer.ottmar-blue-cloth: ["ten lengths of blue? the grip's worn through."]
+    questAccept.ottmar-blue-cloth: ["the Road of Regrets, the first stretch."]
+    questWaiting.ottmar-blue-cloth: ["ten."]
+    questComplete.ottmar-blue-cloth: ["ten. blue. thank you."]
+    about.eskil: ["Eskil was my squire. the worst i ever had. the only one i ever had. he holds the hills now. i couldn't be prouder. i've never told him. he knows."]
+    about.brand: ["Brand sings. on the road, at the forge, at my door. i swore an oath to stand here. i didn't swear to listen. i listen anyway."]
+    about.heddwyn: ["Heddwyn tells a story about me. the oath, the door. he gets my knees wrong. they're worse."]
+    about.ashe: ["Ashe takes the dent out of my shield. i put it back. she's never asked how. i've never told her. it's how we talk."]
+    about.brody: ["Brody. a patrolman in a city of your years. this mace was his, once. an honest weapon. he must have been an honest man. it shows in the balance."]
+    aboutUnknown: ["never stood a door with them."]
+    friend.close: ["you may pass my door without a word. i'll still say one."]
+    friend.best: ["if you ever stand at a door you can't hold, send for me. i'll come. it'll be the first time i've left this one. it'll be worth it."]
+    famed: ["they speak your name with honour here. as they should."]
+    defamed: ["i heard. i don't hold with talk at a door."]
+    gift: ["you honour me."]
+    gift.favorite: ["now that's a gift fit for a knight at a door. i'm in your debt."]
+    gift.again: ["one's enough. a paladin keeps his belt where it is."]

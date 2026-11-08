@@ -1,0 +1,356 @@
+# Coke Town quests (Repack Residents, docs/REPACK_RESIDENTS_PLAN.md section 3.1). Coke Town 219000000 (the Empty House
+# 219000004 at the top of the hill) opens on the Coke Ski Camp through its lower west gate and on Coke Valley through the
+# east end of its middle street. The Ski Camp runs 219010000 -> 219010100 -> 219010200 -> 219010300, each with a side
+# slope (219010001, 219010101, 219010201): Coke Snail 9500144 lv10 (219010000), Coke Slime 9500151 lv15 (219010000/001),
+# Coke Mushroom 9500152 lv20 (219010001/100), Coketump 9500153 lv25 (219010100/101/200/300), Coketump Lite 9500154 lv30
+# (219010101/300), Coke Pig 9500143 lv35 (219010200/201). Coke Valley runs I 219020000 (Small Alley 219020001 off it)
+# -> II 219020100 -> III 219020200 -> IV 219020300 (the valley's turn) -> the Forest of Coke Golem 219020301: Coke Seal
+# 9500145 lv38 (219020000/001/100), Play Seal 9500146 lv42 (219020000/001), Igloo Turtle 9500148 lv45 (219020100/200),
+# Coke Golem 9500149 lv50 (219020200), Yeti and Coketump 9500147 lv70 (219020300), Ice Golem 9500150 lv60 (219020301).
+# The forest's only door is at the far end of Coke Valley IV (x=3310), past its twelve Yetis, so every quest with a
+# forest step starts at L62.
+# Etc drops (db/extensions/2026-11-08-coke-town-drops.xml, 60%): Coke Bottle Lid 4000221 (snail, slime), Coca-Cola Can
+# 4000216 (mushroom, Coketump), Coca-Cola Light Can 4000217 (Coketump Lite), Coca-Cola Card 4000213 (pig), CokePLAY Cube
+# 4000212 (both seals), Coke Ice Block 4000219 (Igloo Turtle, Ice Golem), Coca-Cola Cube 4000211 (Coke Golem), Coca-Cola
+# Gem 4000214 (Yeti and Coketump). Gear: Inga's hats for the player's class L35 / L40 / L50; Aksel's capes Green
+# Napoleon 1102000 L50 / Blue Magic Cape 1102015 L60 / Blue Gaia Cape 1102021 L65; Ylva's earrings Black Emerald
+# 1032027 L50 / Crystal Flower 1032019 L55 / Pink-Flowered 1032014 L60.
+
+# ---- Marit: the Empty House (arcs/coke-town.yaml) ----
+- id: marit-the-weekly-sweep
+  persona: marit
+  title: "The Weekly Sweep"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shutters, type: VISIT_MAP, mapIds: [219000004] }
+    - { id: snails, type: KILL_MOBS, mobIds: [9500144, 9500151], count: 25, mapIds: [219010000, 219010001] }
+    - { id: key, type: DELIVER, to: marit }
+  rewards: { meso: 2500, exp: 2200, bondPoints: 30, items: [{ itemId: 2000001, count: 15 }] }
+
+- id: marit-the-last-lamp
+  persona: marit
+  title: "The Clearest Ice"
+  length: MEDIUM
+  requires: { level: { min: 62 }, questsCompleted: [marit-the-weekly-sweep], flags: [coke.sled.found] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ylva, type: TALK_TO, persona: ylva, say: ["Ebbe? ...yes. eleven winters back, in the big storm, a man came up past my turn with a sled full of lamps, all wrapped. i told him to turn back. he laughed. he said his sister teased him that the lamp-maker's house was the dark one, so this year he'd cut the clearest lamp in the valley for his own window. for once. he went on up to the forest. i counted him up. i never counted him down. ...take her the ice. it's what he went up for."] }
+    - { id: golems, type: KILL_MOBS, mobIds: [9500150], count: 20, mapIds: [219020301] }
+    - { id: ice, type: COLLECT_ITEM, itemId: 4000219, count: 10 }
+    - { id: lamp, type: DELIVER, to: marit, take: { itemId: 4000219, count: 10 } }
+  rewards: { meso: 30000, exp: 34000, bondPoints: 45, items: [{ itemId: 2000004, count: 10 }], worldFlags: [coke.lamp.cut] }
+
+- id: marit-the-house-lit
+  persona: marit
+  title: "The House Lit"
+  length: MEDIUM
+  requires: { level: { min: 62 }, questsCompleted: [marit-the-last-lamp], flags: [coke.lamp.cut], notFlags: [coke.house.lit] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: inga, type: TALK_TO, persona: inga, say: ["the lamp? for Ebbe's window? oh, i knew it. i've had this ready eleven winters. here. a cosy for the walk up, so it doesn't crack in the cold. red, with a button off a can. don't tell Bartolo."] }
+    - { id: toivo, type: TALK_TO, persona: toivo, say: ["Marit's lamp? give it here. ...no. you carry it. i'll walk beside you. both hands, knees bent, and don't look at the lamp, look at the step. that's how Ebbe taught me, every year. go on. i'm right here."] }
+    - { id: window, type: VISIT_MAP, mapIds: [219000004] }
+    - { id: lit, type: DELIVER, to: marit }
+  rewards: { meso: 40000, exp: 46000, bondPoints: 60, items: [{ itemId: 2000005, count: 5 }], worldFlags: [coke.house.lit] }
+
+# ---- Toivo ----
+- id: toivo-the-bunny-slope
+  persona: toivo
+  title: "The Bunny Slope"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [9500151], count: 25, mapIds: [219010000, 219010001] }
+    - { id: clear, type: DELIVER, to: toivo }
+  rewards: { meso: 2500, exp: 2000, bondPoints: 30, items: [{ itemId: 2000000, count: 20 }] }
+
+- id: toivo-the-slalom-gates
+  persona: toivo
+  title: "Red Flags on the Slalom"
+  length: SHORT
+  requires: { level: { min: 33 }, questsCompleted: [toivo-the-bunny-slope] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [9500143], count: 30, mapIds: [219010200, 219010201] }
+    - { id: cards, type: COLLECT_ITEM, itemId: 4000213, count: 10 }
+    - { id: gates, type: DELIVER, to: toivo, take: { itemId: 4000213, count: 10 } }
+  rewards: { meso: 8000, exp: 8000, bondPoints: 35, items: [{ itemId: 2000002, count: 20 }] }
+
+# ---- Inga (hats for the player's class, scaled by friendship) ----
+- id: inga-buttons-for-the-door
+  persona: inga
+  title: "Buttons for the Cardigan"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [9500153], count: 20, mapIds: [219010100, 219010101, 219010200, 219010300] }
+    - { id: cans, type: COLLECT_ITEM, itemId: 4000216, count: 12 }
+    - { id: buttons, type: DELIVER, to: inga, take: { itemId: 4000216, count: 12 } }
+  rewards: { meso: 4000, exp: 4000, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+- id: inga-a-hat-for-your-trade
+  persona: inga
+  title: "A Hat for Your Trade"
+  length: SHORT
+  requires: { level: { min: 33 }, friendship: 5, questsCompleted: [inga-buttons-for-the-door] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [9500143], count: 30, mapIds: [219010200, 219010201] }
+    - { id: bartolo, type: TALK_TO, persona: bartolo, say: ["one lid. for a hat. for a hat! ...very well. this one. it's got a dent like a thumbprint. it's a good lid. tell her to sew it on the inside, where it's safe. and tell her i want to visit it."] }
+    - { id: fitting, type: DELIVER, to: inga }
+  rewards:
+    meso: 14000
+    exp: 13000
+    bondPoints: 35
+    gear:
+      - { pool: [1002048, 1002142, 1002138, 1002177, 1002994], scrolls: [{ success: 100 }] }
+
+- id: inga-a-warmer-hat
+  persona: inga
+  title: "Warm to the Eyebrows"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [inga-a-hat-for-your-trade] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: seals, type: KILL_MOBS, mobIds: [9500145], count: 30, mapIds: [219020000, 219020001, 219020100] }
+    - { id: cubes, type: COLLECT_ITEM, itemId: 4000212, count: 15 }
+    - { id: fitting, type: DELIVER, to: inga, take: { itemId: 4000212, count: 15 } }
+  rewards:
+    meso: 22000
+    exp: 20000
+    bondPoints: 50
+    gear:
+      - { pool: [1002093, 1002154, 1002169, 1002184, 1002628], scrolls: [{ success: 60 }] }
+
+- id: inga-the-warmest-hat
+  persona: inga
+  title: "A Hat Block"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [inga-a-warmer-hat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: turtles, type: KILL_MOBS, mobIds: [9500148], count: 35, mapIds: [219020100, 219020200] }
+    - { id: blocks, type: COLLECT_ITEM, itemId: 4000219, count: 15 }
+    - { id: fitting, type: DELIVER, to: inga, take: { itemId: 4000219, count: 15 } }
+  rewards:
+    meso: 40000
+    exp: 36000
+    bondPoints: 60
+    gear:
+      - { pool: [1002028, 1002215, 1002211, 1002207, 1002631], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+# ---- Nils ----
+- id: nils-the-sled-bell
+  persona: nils
+  title: "A Bell for the Sled"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [9500152], count: 20, mapIds: [219010001, 219010100] }
+    - { id: cans, type: COLLECT_ITEM, itemId: 4000216, count: 10 }
+    - { id: bell, type: DELIVER, to: nils, take: { itemId: 4000216, count: 10 } }
+  rewards: { meso: 3000, exp: 2800, bondPoints: 30, items: [{ itemId: 2001001, count: 10 }] }
+
+- id: nils-the-record-run
+  persona: nils
+  title: "A Hundred and Four Seconds"
+  length: SHORT
+  requires: { level: { min: 26 }, questsCompleted: [nils-the-sled-bell] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bottom, type: VISIT_MAP, mapIds: [219010300] }
+    - { id: stumps, type: KILL_MOBS, mobIds: [9500153, 9500154], count: 20, mapIds: [219010300] }
+    - { id: toivo, type: TALK_TO, persona: toivo, say: ["the boy wants a time? tell him i've got the watch out. tell him to bend his knees on the last turn. ...and tell him if he goes under a hundred and four i'll put his name on the camp board. under mine. a little under."] }
+    - { id: run, type: DELIVER, to: nils }
+  rewards: { meso: 5000, exp: 5500, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }
+
+# ---- Bartolo ----
+- id: bartolo-the-lid-wall
+  persona: bartolo
+  title: "The Lid Wall"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slope, type: KILL_MOBS, mobIds: [9500144, 9500151], count: 20, mapIds: [219010000, 219010001] }
+    - { id: lids, type: COLLECT_ITEM, itemId: 4000221, count: 15 }
+    - { id: wall, type: DELIVER, to: bartolo, take: { itemId: 4000221, count: 15 } }
+  rewards: { meso: 2500, exp: 2200, bondPoints: 30, items: [{ itemId: 2000000, count: 15 }] }
+
+- id: bartolo-the-light-ones
+  persona: bartolo
+  title: "The Light Ones"
+  length: SHORT
+  requires: { level: { min: 30 }, questsCompleted: [bartolo-the-lid-wall] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lites, type: KILL_MOBS, mobIds: [9500154], count: 25, mapIds: [219010101, 219010300] }
+    - { id: cans, type: COLLECT_ITEM, itemId: 4000217, count: 12 }
+    - { id: shelf, type: DELIVER, to: bartolo, take: { itemId: 4000217, count: 12 } }
+  rewards: { meso: 7000, exp: 7000, bondPoints: 35, items: [{ itemId: 2000003, count: 20 }] }
+
+# ---- Aksel (recruit; capes: Green Napoleon L50 / Blue Magic Cape L60 / Blue Gaia Cape L65) ----
+- id: aksel-the-golem-forest
+  persona: aksel
+  title: "The Forest of Coke Golem"
+  length: SHORT
+  requires: { level: { min: 62 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: golems, type: KILL_MOBS, mobIds: [9500150], count: 30, mapIds: [219020301] }
+    - { id: done, type: DELIVER, to: aksel }
+  rewards: { meso: 26000, exp: 28000, bondPoints: 30, flags: [aksel.intro.done] }
+
+- id: aksel-the-sled-in-the-ice
+  persona: aksel
+  title: "The Sled in the Ice"
+  length: MEDIUM
+  requires: { level: { min: 62 }, questsCompleted: [aksel-the-golem-forest], notFlags: [coke.sled.found] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: golems, type: KILL_MOBS, mobIds: [9500150], count: 25, mapIds: [219020301] }
+    - { id: marit, type: TALK_TO, persona: marit, say: ["that's his. that's Ebbe's. look, his name's burnt in the runner, he did it with a poker when he was twelve. ...the box is still lashed on. lamps. a lamp for every house in Coke Town, wrapped in sacking. all done. and a space at the end of the box for one more. his own. he'd finished. he should have come home. why did he go on up? ...tell Aksel thank you. i'll say it myself, when i can."] }
+    - { id: back, type: DELIVER, to: aksel }
+  rewards: { meso: 30000, exp: 34000, bondPoints: 50, items: [{ itemId: 2000004, count: 10 }], worldFlags: [coke.sled.found] }
+
+- id: aksel-the-third-valley
+  persona: aksel
+  title: "The Third Valley"
+  length: SHORT
+  requires: { level: { min: 62 }, friendship: 5, questsCompleted: [aksel-the-golem-forest] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: golems, type: KILL_MOBS, mobIds: [9500149], count: 30, mapIds: [219020200] }
+    - { id: open, type: DELIVER, to: aksel }
+  rewards:
+    meso: 45000
+    exp: 45000
+    bondPoints: 35
+    gear:
+      - { pool: [1102000], scrolls: [{ success: 100 }] }
+
+- id: aksel-the-clear-ice
+  persona: aksel
+  title: "Clear as Water"
+  length: MEDIUM
+  requires: { level: { min: 64 }, friendship: 7, questsCompleted: [aksel-the-third-valley] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: golems, type: KILL_MOBS, mobIds: [9500150], count: 30, mapIds: [219020301] }
+    - { id: blocks, type: COLLECT_ITEM, itemId: 4000219, count: 15 }
+    - { id: cloak, type: DELIVER, to: aksel, take: { itemId: 4000219, count: 15 } }
+  rewards:
+    meso: 65000
+    exp: 65000
+    bondPoints: 50
+    gear:
+      - { pool: [1102015], scrolls: [{ success: 60 }] }
+
+- id: aksel-the-whole-valley
+  persona: aksel
+  title: "The Whole Valley"
+  length: LONG
+  requires: { level: { min: 66 }, friendship: 10, questsCompleted: [aksel-the-clear-ice] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [9500147], count: 30, mapIds: [219020300] }
+    - { id: golems, type: KILL_MOBS, mobIds: [9500150], count: 20, mapIds: [219020301] }
+    - { id: home, type: DELIVER, to: aksel }
+  rewards:
+    meso: 95000
+    exp: 95000
+    bondPoints: 60
+    gear:
+      - { pool: [1102021], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: aksel-ice-for-nell
+  persona: aksel
+  title: "Ice for the Honey"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 62 }, questsCompleted: [aksel-the-golem-forest] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: blocks, type: COLLECT_ITEM, itemId: 4000219, count: 10 }
+    - { id: honey, type: DELIVER, to: aksel, take: { itemId: 4000219, count: 10 } }
+  rewards: { meso: 14000, exp: 13000, bondPoints: 10 }
+
+# ---- Ylva (recruit; earrings: Black Emerald L50 / Crystal Flower L55 / Pink-Flowered L60) ----
+- id: ylva-the-barking-path
+  persona: ylva
+  title: "The Barking Path"
+  length: SHORT
+  requires: { level: { min: 42 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: seals, type: KILL_MOBS, mobIds: [9500146], count: 30, mapIds: [219020000, 219020001] }
+    - { id: done, type: DELIVER, to: ylva }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 30, flags: [ylva.intro.done] }
+
+- id: ylva-the-watch
+  persona: ylva
+  title: "The Whole Valley at Once"
+  length: SHORT
+  requires: { level: { min: 48 }, friendship: 5, questsCompleted: [ylva-the-barking-path] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: turtles, type: KILL_MOBS, mobIds: [9500148], count: 30, mapIds: [219020100] }
+    - { id: stand, type: VISIT_MAP, mapIds: [219020200] }
+    - { id: back, type: DELIVER, to: ylva }
+  rewards:
+    meso: 25000
+    exp: 25000
+    bondPoints: 35
+    gear:
+      - { pool: [1032027], scrolls: [{ success: 100 }] }
+
+- id: ylva-cubes-for-the-fletching
+  persona: ylva
+  title: "Weights for the Fletching"
+  length: MEDIUM
+  requires: { level: { min: 53 }, friendship: 7, questsCompleted: [ylva-the-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: golems, type: KILL_MOBS, mobIds: [9500149], count: 30, mapIds: [219020200] }
+    - { id: cubes, type: COLLECT_ITEM, itemId: 4000211, count: 12 }
+    - { id: fletching, type: DELIVER, to: ylva, take: { itemId: 4000211, count: 12 } }
+  rewards:
+    meso: 40000
+    exp: 38000
+    bondPoints: 50
+    gear:
+      - { pool: [1032019], scrolls: [{ success: 60 }] }
+
+- id: ylva-the-turn-of-the-valley
+  persona: ylva
+  title: "The Turn of the Valley"
+  length: LONG
+  requires: { level: { min: 60 }, friendship: 10, questsCompleted: [ylva-cubes-for-the-fletching] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [9500147], count: 30, mapIds: [219020300] }
+    - { id: gems, type: COLLECT_ITEM, itemId: 4000214, count: 10 }
+    - { id: held, type: DELIVER, to: ylva, take: { itemId: 4000214, count: 10 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 60
+    gear:
+      - { pool: [1032014], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ylva-arrows-for-nell
+  persona: ylva
+  title: "Fletching for Nell"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 42 }, questsCompleted: [ylva-the-barking-path] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cubes, type: COLLECT_ITEM, itemId: 4000212, count: 10 }
+    - { id: arrows, type: DELIVER, to: ylva, take: { itemId: 4000212, count: 10 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }

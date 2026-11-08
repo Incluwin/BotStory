@@ -1,0 +1,32 @@
+# Outside Ninja Castle contracts: a shinobi's day rate once the player has walked out the way he did and heard Fumiko
+# on him, and an ashigaru's kill proof on the chunin he watched go past for nine years.
+- id: hayate-the-night-wage
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [hayate.intro.done, nc.heard-hayate]
+  price:
+    meso: 45000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 20000 }
+
+- id: masaru-the-standing-oath
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [masaru.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [9400401], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }

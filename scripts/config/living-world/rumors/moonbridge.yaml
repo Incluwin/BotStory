@@ -1,0 +1,17 @@
+# Moonbridge rumors (Repack Residents). The pair is on the middle central street together in those hours
+# (personas/moonbridge.yaml).
+- id: moonbridge-the-one-that-didnt-happen
+  participants: [bryn, hadrian]
+  where: { town: moonbridge, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 2
+  lines:
+    - { by: bryn, text: "you saluted the empress again this morning, Hadrian." }
+    - { by: hadrian, text: "she was at the rail." }
+    - { by: bryn, text: "she's always at the rail. she doesn't know us." }
+    - { by: hadrian, text: "she knew the line held. that's enough to salute." }
+    - { by: bryn, text: "one of the Nova soldiers asked me today which war we keep talking about." }
+    - { by: hadrian, text: "what did you tell him?" }
+    - { by: bryn, text: "the one that didn't happen." }
+    - { by: hadrian, text: "good answer. it's nearly true." }

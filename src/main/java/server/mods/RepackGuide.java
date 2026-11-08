@@ -34,6 +34,15 @@ public final class RepackGuide {
             Map.entry(450011120, 3003799),  // Labyrinth Crash Site: Temple Keeper
             Map.entry(450012000, 3003952)); // World's Sorrow: Mask
 
+    /**
+     * Town map -> {NPC, destination}: a guarded road inside an area. The Tribal Refugee Camp is past five maps of lv190+
+     * mobs from Twilight Perion and its Residents' quests are lv115-160 (docs/REPACK_RESIDENTS_PLAN.md 3.3), so Cobie, who
+     * stands in both, takes a player the scouts' way.
+     */
+    static final Map<Integer, int[]> ESCORTS = Map.of(
+            273000000, new int[] {2142112, 273050000},  // Twilight Perion: Cobie, to the Tribal Refugee Camp
+            273050000, new int[] {2142112, 273000000}); // Tribal Refugee Camp: Cobie, back to Twilight Perion
+
     private static final Pattern TALK_KEY = Pattern.compile("[dn][0-9]+");
     private static final Map<Integer, List<String>> LINES = new ConcurrentHashMap<>();
 
@@ -66,6 +75,12 @@ public final class RepackGuide {
     public static boolean offersWayBack(int mapId, int npcId) {
         Integer npc = WAY_BACK.get(mapId);
         return npc != null && npc == npcId;
+    }
+
+    /** The map this NPC, in this map, escorts a player to; 0 when it escorts nobody. */
+    public static int escortTo(int mapId, int npcId) {
+        int[] escort = ESCORTS.get(mapId);
+        return escort != null && escort[0] == npcId ? escort[1] : 0;
     }
 
     /** One of the NPC's own String.wz lines (d0, n1, ...), or "" when it has none. */

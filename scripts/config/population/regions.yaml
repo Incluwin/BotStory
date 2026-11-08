@@ -80,7 +80,9 @@ regions:
   - id: temple-of-time
     # The dragon flight from Leafre Station (the Halfling 2082003). Its roads, Memory Lane, the Road of Regrets and the
     # Road to Oblivion (mobs 80-141), open one by one with the Temple's own quests, so citizens reach the far roads only
-    # while nobody watches them pass the gates.
+    # while nobody watches them pass the gates. The Community Repack's Future behind the Temple Keeper (Dark Ereve,
+    # Henesys Ruins, Twilight Perion, mobs 162-198) is in its fields too: nobody is born there, but a temple citizen
+    # who fights past the roads trains on (docs/REPACK_RESIDENTS_PLAN.md 6.2).
     levels: { min: 79, max: 140 }
     # The temple itself and Three Doors, the hub its wave-4 Residents live on (docs/REGIONAL_RESIDENTS_PLAN.md 10.1).
     towns: [270000100, 270000000]
@@ -105,10 +107,12 @@ regions:
     fm: 910000000
     weight: 1
   - id: zipangu
-    # Spinel's world tour from Henesys or Lith Harbor; Showa Town is on foot from the Shrine.
+    # Spinel's world tour from Henesys or Lith Harbor; Showa Town is on foot from the Shrine. Outside Ninja Castle
+    # (Perry at the Shrine; Community Repack only, docs/REPACK_RESIDENTS_PLAN.md 6.2) is the third town, and the
+    # castle's corridors (Genin lv25 to Ninto lv100) are where Zipangu's citizens grow up.
     levels: { min: 25, max: 60 }
-    towns: [800000000, 801000000]
-    townWeights: [55, 45]
+    towns: [800000000, 801000000, 800040000]
+    townWeights: [45, 40, 15]
     lobbies: []
     fm: 910000000
     weight: 4
@@ -129,6 +133,16 @@ regions:
       - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 2
+  - id: coke-town
+    # The Cokebear operator in Henesys (Community Repack only: only a player on the Repack game files ever sees who
+    # lives here; docs/REPACK_RESIDENTS_PLAN.md 6.2). Coke Ski Camp and Coke Valley, lv10-70. Fill it with
+    # !citizens seed coke-town <count>.
+    levels: { min: 15, max: 55 }
+    towns: [219000000]
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
+    fm: 910000000
+    weight: 1
   - id: amoria
     # Thomas Swift in Henesys.
     levels: { min: 30, max: 70 }

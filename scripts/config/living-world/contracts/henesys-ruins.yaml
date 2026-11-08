@@ -1,0 +1,49 @@
+# Henesys Ruins contracts (Repack Residents, fourth tier; maxLevelGap 20 for the Future's high-level recruits): an
+# archer's kill proof on her intro quest's oblivion monks, counted after the offer; a marksman's item price once his
+# errand is walked; a priestess who comes for a fee alone once the player has heard Thorne on her.
+- id: dagny-the-east-wall-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [dagny.intro.done]
+  price:
+    meso: 120000
+    proof: { killMobs: { mobIds: [8200009], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 40000 }
+
+- id: thorne-the-tower-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [thorne.intro.done]
+  price:
+    meso: 100000
+    items: [{ itemId: 4000452, count: 25 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 35000 }
+
+- id: seraphine-the-watchs-blessing
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ruins.heard-seraphine]
+  price:
+    meso: 150000
+  terms:
+    durationHours: 10
+    maxLevelGap: 20
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 50000 }
