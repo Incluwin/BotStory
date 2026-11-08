@@ -60,6 +60,7 @@ class AgentPassiveLootServiceTest {
         Inventory inventory = mock(Inventory.class);
         when(inventory.isFull()).thenReturn(true);
         when(agent.getInventory(InventoryType.USE)).thenReturn(inventory);
+        when(agent.needQuestItem(eq(0), eq(2000000))).thenReturn(true); // Character: true for any non-quest drop
         MapItem drop = itemDrop(2000000, 1, true);
         when(agent.getMap().getDroppedItems()).thenReturn(List.of(drop));
         when(agent.getMap().getMapObject(1)).thenReturn(drop);
@@ -70,6 +71,49 @@ class AgentPassiveLootServiceTest {
         AgentPassiveLootService.tickPassiveLoot(entry(agent), agent, callbacks);
 
         assertEquals(321, callbacks.warnCooldown.get());
+        assertFalse(callbacks.pickedUp.get());
+    }
+
+    @Test
+    void aFullBagBesideACasinoDropSaysNothing() {
+        // live 2026-11-08: a citizen with a full Etc tab said "no room in my bag" each time a bet landed beside it
+        Character citizen = agentOnMap();
+        Inventory etc = mock(Inventory.class);
+        when(etc.isFull()).thenReturn(true);
+        when(citizen.getInventory(InventoryType.ETC)).thenReturn(etc);
+        when(citizen.needQuestItem(anyInt(), anyInt())).thenReturn(true);
+        MapItem bet = itemDrop(4031000, 1, true);
+        when(bet.isPermanentOwner()).thenReturn(true);
+        when(citizen.getMap().getDroppedItems()).thenReturn(List.of(bet));
+        when(citizen.getMap().getMapObject(1)).thenReturn(bet);
+        TraceCallbacks callbacks = new TraceCallbacks();
+        callbacks.warnAllowed = true;
+        callbacks.delayCooldown = 321;
+
+        AgentPassiveLootService.tickPassiveLoot(entry(citizen), citizen, callbacks);
+
+        assertEquals(0, callbacks.warnCooldown.get(), "no FULL fact for a drop it may never take");
+        assertFalse(callbacks.pickedUp.get());
+    }
+
+    @Test
+    void aFullBagBesideSomeoneElsesDropSaysNothing() {
+        // the drink a bar host hands a customer, or another player's loot
+        Character citizen = agentOnMap();
+        Inventory use = mock(Inventory.class);
+        when(use.isFull()).thenReturn(true);
+        when(citizen.getInventory(InventoryType.USE)).thenReturn(use);
+        when(citizen.needQuestItem(anyInt(), anyInt())).thenReturn(true);
+        MapItem drink = itemDrop(2000000, 1, false);
+        when(citizen.getMap().getDroppedItems()).thenReturn(List.of(drink));
+        when(citizen.getMap().getMapObject(1)).thenReturn(drink);
+        TraceCallbacks callbacks = new TraceCallbacks();
+        callbacks.warnAllowed = true;
+        callbacks.delayCooldown = 321;
+
+        AgentPassiveLootService.tickPassiveLoot(entry(citizen), citizen, callbacks);
+
+        assertEquals(0, callbacks.warnCooldown.get(), "no FULL fact for someone else's drop");
         assertFalse(callbacks.pickedUp.get());
     }
 

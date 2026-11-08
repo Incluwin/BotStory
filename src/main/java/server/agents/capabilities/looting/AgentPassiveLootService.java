@@ -81,8 +81,10 @@ public final class AgentPassiveLootService {
                                 ? AgentLootDecisionTraceState.Outcome.INVENTORY_FULL
                                 : AgentLootDecisionTraceState.Outcome.INELIGIBLE,
                         now, postKill.killCount(), drop, targetAgeMs);
-                warnInventoryFullIfNeeded(entry, agent, drop, callbacks);
-                if (bagFull) {
+                // only a drop it would have taken but for the bag: live 2026-11-08 casino citizens with a full tab said
+                // "no room in my bag" each time a bet, payout or a customer's drink landed beside them
+                if (AgentLootEligibility.leftForFullBag(entry, agent, drop)) {
+                    warnInventoryFullIfNeeded(entry, agent, drop, callbacks);
                     mentionFullBag(entry, agent, drop, now);
                 }
                 continue;
