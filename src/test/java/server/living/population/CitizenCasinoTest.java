@@ -12,6 +12,7 @@ import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Region;
 import server.living.population.casino.CasinoContent;
 import server.living.population.casino.Chips;
+import server.living.population.casino.Venue;
 
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
@@ -180,6 +181,23 @@ class CitizenCasinoTest {
         String sent = casino.send(session, null, 5L);
         assertTrue(sent.contains("nxseller"), sent);
         verify(presence).travel(eq(session), eq(Activity.CASINO), eq(FREE_MARKET), eq(5L));
+    }
+
+    @Test
+    void aCitizenSentToAVenueAsksThatOneFirstOnArrival() {
+        Venue blackjack = venue("blackjack");
+        Venue dice = venue("dice");
+        Venue bar = venue("bar");
+        List<Venue> all = List.of(blackjack, dice, bar);
+        assertEquals(List.of(bar, blackjack, dice), CitizenCasino.arrivalOrder(all, "bar"));
+        assertEquals(all, CitizenCasino.arrivalOrder(all, null), "on its own: the usual order");
+        assertEquals(all, CitizenCasino.arrivalOrder(all, "gacha"), "a venue elsewhere changes nothing here");
+    }
+
+    private static Venue venue(String name) {
+        Venue venue = mock(Venue.class);
+        when(venue.name()).thenReturn(name);
+        return venue;
     }
 
     @Test

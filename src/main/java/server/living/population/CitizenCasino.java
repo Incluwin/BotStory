@@ -45,6 +45,8 @@ public final class CitizenCasino implements CasinoHost {
     private final Clock clock;
     private final CasinoVenues venues;
     private final Map<Integer, Long> restUntil = new ConcurrentHashMap<>();
+    /** Character id -> the venue {@code !citizens casino send} named: on arrival it tries that one first. */
+    private final Map<Integer, String> sentTo = new ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicLong deferred = new java.util.concurrent.atomic.AtomicLong();
 
     CitizenCasino(Population population) {
@@ -107,13 +109,23 @@ public final class CitizenCasino implements CasinoHost {
         if (venues == null || session.agent() == null || session.entry == null) {
             return false;
         }
-        for (Venue venue : venues.all()) {
+        for (Venue venue : arrivalOrder(venues.all(), sentTo.remove(session.characterId))) {
             if (venue.mapId() == map.getId() && venue.enabled() && venue.wants(session.citizen) && venue.take(session, now)) {
                 log.info("citizen {} takes a {} role at {}", session.name(), venue.name(), map.getId());
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * The venues in the order an arriving citizen asks them: the one a GM's send named first, then the usual order
+     * (live 2026-11-08: a citizen sent to the bar sat down at blackjack, which comes first).
+     */
+    static List<Venue> arrivalOrder(List<Venue> all, String named) {
+        List<Venue> order = new ArrayList<>(all);
+        order.sort(java.util.Comparator.comparing(venue -> !venue.name().equalsIgnoreCase(named)));
+        return order;
     }
 
     /** True while the citizen holds a role at a venue: its re-plans wait for its shift to end. */
@@ -186,6 +198,7 @@ public final class CitizenCasino implements CasinoHost {
             return "no venue " + (venueName == null ? "" : venueName + " ") + "has a role for " + session.name()
                     + " (each needs its switch on; blackjack and dice need CASINO_CHIPS_ENABLED too)";
         }
+        sentTo.put(session.characterId, chosen.name());
         population.presence().travel(session, Activity.CASINO, chosen.mapId(), now);
         return session.name() + " goes to the " + chosen.name() + " at map " + chosen.mapId();
     }
