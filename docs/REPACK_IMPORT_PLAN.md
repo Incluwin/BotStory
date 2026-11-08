@@ -94,6 +94,11 @@ The entry NPC stands on a shared map, so it is a stock NPC (both clients have it
 the map loads, only while the switch is on; GMS had a portal or NPC there, which a v83 client cannot be given without a
 client patch.
 
+A click on a quest NPC with no Npc.wz script never reaches the server: the client shows the NPC's own line and quest
+list instead. Ralph, the Spirit of Snow Statue and the Temple Keeper are such NPCs (12, 2 and 58 quests), so they are in
+config.yaml `NPCS_SCRIPTABLE`, which the server sends at login; the client then offers their script as one more choice.
+`RepackNpcScriptableTest` keeps every entry and way-back NPC reachable (found live 2026-11-08).
+
 | Area | From | NPC | Way back |
 |---|---|---|---|
 | Coke Town 219000000 | Henesys 100000000 (Coca-Cola event NPC) | Cokebear operator 9001000 | Cokebear operator in Coke Town |
