@@ -270,6 +270,9 @@ public final class LivingWorldHooks {
             if (world.crew() != null) {
                 world.crew().heard(speaker, text); // "quiet" or "talk more" to the crew banter (F6.4)
             }
+            if (server.living.population.PopulationHooks.casino(speaker, text)) {
+                return true; // said to a casino table or host, before a companion can answer it
+            }
             if (world.dialogue().onMapChat(speaker, text)) {
                 return true;
             }
