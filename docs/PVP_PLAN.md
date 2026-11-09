@@ -456,6 +456,29 @@ The server sees a human only through movement packets. Ties go to the human both
       platform's edge, drop below, and walk back to it all duel. Fixed after: the stand spot is 70% of the reach
       (the plan's ranged prior) and walks in until it is on the target's level.
     - Next: a second practice run on the fix, then per-class rates from it.
+  - **Second practice run (798641098, 2026-11-09 07:16-07:46, 63 duels, 126 rows):** 21 knock-outs, 42 on time; no
+    errors. The stand-spot fix worked (every class swung; 0 whiffs), but the rates did not move: measured over model
+    per class warrior 0.09 (n=20, of them 12 Arans), magician 0.20 (34), bowman 0.20 (31), thief 0.28 (17), pirate
+    0.20 (6).
+    - The gap is cadence, not damage: 82-100% of attack packets hit, and a hit is about what the model expects, but
+      bots sent 0.23-0.51 swings a second against a player's ~1.3, deferring about five thinks for each swing sent.
+    - Cause: on a map no player sees, an Agent runs BACKGROUND_ACTIVE and ticks every 250 ms
+      (`DEFAULT_BACKGROUND_ACTIVE_TICK_MS`), but `AgentCombatActionLockRuntime` counts the attack lock down by one
+      50 ms movement tick per tick, with no substeps: a 700 ms animation holds the next swing for 3.5 s. Practice duels
+      run only on maps with no player, so every one ran at a fifth of its speed. A human's duel map is watched, so
+      the GM duels did not show it.
+    - **Not calibrated on this run:** rates tuned to a bot at a fifth of its speed would make every player hit about
+      five times too hard. Fixed instead (c4692cf4d): a duel holds its bots at full rate
+      (`requireFullRateSimulation`, as boss runs and party quests do) and gives back any earlier hold; a swing
+      deferred for its skill's own cost or cooldown tries the next skill; wait reasons are counted (`waited=` in the
+      log line).
+    - Engine-wide, outside PvP: every citizen grinding on a map no player sees swings at the same fifth of its speed.
+      That slows citizen levelling and income and the yield table behind V4's grind-minutes (measured mostly on
+      unwatched citizens). Left as is here; fixing it changes the economy, so it is its own decision.
+    - Arans: 12 of 20 warrior rows. Their combo skills need a combo count that only builds on monster hits, so in a
+      duel they swing Double Swing (`plan:aran-combo`). A human Aran is likely stuck the same way (the client counts combo
+      on monster hits; not checked live): an Aran fix (combo on PvP hits) waits for V3.
+    - Next: a third practice run on c4692cf4d; per-class rates come from that run.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
