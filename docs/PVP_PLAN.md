@@ -445,6 +445,17 @@ The server sees a human only through movement packets. Ties go to the human both
     on maps with no player; `!pvp rates` turns the CSV into the median raw damage per engaged second per job path and
     band, beside the model's gear-based rate, and writes a `d_job` block to `logs/pvp/rates-*.yaml`.
   - Deferred: the potion rule (an Elixir is spent for a 10% heal), the duel-mode movement of V2.1, and learning.
+  - **First practice run (66c255902, 2026-11-09 06:17-06:47, 81 duels, 162 rows):** all ended (32 knock-outs, 48 on
+    time, 1 forfeit); no errors. Every attack that reached the duel met its target (0 whiffs): the brain swings only
+    in reach. Bots wait on their attack delay about four thinks for every swing sent.
+    - Measured raw damage per engaged second over the model's rate (gear base x `dps_per_base`), median per class:
+      warrior 0.26 (n=60), magician 0.18 (29), bowman 0.18 (23), thief 0.28 (12), pirate 0.16 (20). The model's
+      rates are 4-6 times what bots really deal, which is why duels run long.
+    - 16 fighters never swung: an Assassin with no throwing stars (`plan:ammo` every think; a citizen supply gap, not a
+      duel one), and Clerics, an Assassin and a Gunslinger whose 400 px projectiles had them aim for a spot past the
+      platform's edge, drop below, and walk back to it all duel. Fixed after: the stand spot is 70% of the reach
+      (the plan's ranged prior) and walks in until it is on the target's level.
+    - Next: a second practice run on the fix, then per-class rates from it.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

@@ -79,6 +79,37 @@ class DuelPiecesTest {
                 "a projectile's reach is hundreds of px, not the gap to the foe");
     }
 
+    /** A platform at y 100 from x 0 to 500 over open ground at y 300. */
+    private static Point floorUnder(Point p) {
+        return p.x >= 0 && p.x <= 500 ? new Point(p.x, 100) : new Point(p.x, 300);
+    }
+
+    /**
+     * Live 2026-11-09: casters with a 400 px projectile aimed for a spot past the platform's edge, dropped below, and
+     * never swung. The spot now stays on the target's level.
+     */
+    @Test
+    void aStandSpotStaysOnTheTargetsPlatform() {
+        Point target = new Point(400, 100);
+
+        Point caster = DuelBrain.standPoint(new Point(900, 300), target, 400, DuelPiecesTest::floorUnder);
+        Point melee = DuelBrain.standPoint(new Point(600, 100), target, 80, DuelPiecesTest::floorUnder);
+        Point atTheEdge = DuelBrain.standPoint(new Point(900, 300), new Point(490, 100), 400,
+                DuelPiecesTest::floorUnder);
+
+        assertEquals(100, caster.y);
+        assertTrue(caster.x > 400 && caster.x <= 500, "on the platform, on the caster's side: " + caster);
+        assertEquals(new Point(456, 100), melee, "70% of an 80 px reach");
+        assertEquals(new Point(210, 100), atTheEdge, "no room on its side, so the other side");
+    }
+
+    @Test
+    void aStandSpotWithNoLevelGroundIsTheTargetsOwn() {
+        Point target = new Point(1000, 100);
+
+        assertEquals(target, DuelBrain.standPoint(new Point(1200, 300), target, 400, p -> new Point(p.x, 300)));
+    }
+
     private static Character fighter(int id, MapleMap map, boolean alive) {
         Character chr = mock(Character.class);
         when(chr.getId()).thenReturn(id);

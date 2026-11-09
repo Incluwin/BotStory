@@ -52,9 +52,13 @@ final class DuelBrain {
     /** A buff is cast again this long before it would run out; a cast that failed is tried again after the retry. */
     static final long BUFF_EARLY_MS = 10_000L;
     static final long BUFF_RETRY_MS = 3_000L;
-    /** How far inside a skill's reach the bot stands, so a small step does not take it out of range. */
-    static final int REACH_MARGIN_PX = 20;
+    /** The share of its reach a bot stands off at (docs/PVP_PLAN.md V2 priors: ranged holds 60-80% of its range). */
+    static final double HOLD_SHARE = 0.7d;
     static final int MIN_STAND_PX = 30;
+    /** A stand spot off the target's level walks in by this much at a time. */
+    static final int STAND_STEP_PX = 40;
+    /** How far above or below the target's feet a stand spot may be and still count as its level. */
+    static final int LEVEL_TOLERANCE_PX = 25;
 
     private DuelBrain() {
     }
@@ -245,10 +249,32 @@ final class DuelBrain {
             stats.noSkillThinks.incrementAndGet();
         }
         stats.walks.incrementAndGet();
-        int stand = Math.max(MIN_STAND_PX, (reach > 0 ? reach : MIN_STAND_PX + REACH_MARGIN_PX) - REACH_MARGIN_PX);
-        Point candidate = new Point(aim.x + (at.x >= aim.x ? stand : -stand), aim.y);
-        Point ground = gateway.groundPoint(bot.getMap(), candidate);
-        gateway.navigate(entry, ground != null ? ground : candidate, true);
+        var map = bot.getMap();
+        gateway.navigate(entry, standPoint(at, aim, reach, p -> gateway.groundPoint(map, p)), true);
+    }
+
+    /**
+     * Where to stand to swing at a target at {@code aim}: {@link #HOLD_SHARE} of the reach away (the plan's prior, a
+     * ranged fighter holds 60-80% of its range), on the target's own level. Live 2026-11-09 casters with a 400 px
+     * projectile aimed for 380 px out, past the platform's edge, landed on the platform below where no box meets the
+     * target, and walked back to the same spot all duel; so the spot walks in toward the target until it is level,
+     * then the other side is tried, then the target's own spot.
+     */
+    static Point standPoint(Point at, Point aim, int reach, java.util.function.Function<Point, Point> ground) {
+        int want = Math.max(MIN_STAND_PX, reach > 0 ? (int) Math.round(reach * HOLD_SHARE) : MIN_STAND_PX);
+        int first = at.x >= aim.x ? 1 : -1;
+        for (int side : new int[] {first, -first}) {
+            for (int stand = want; ; stand = Math.max(MIN_STAND_PX, stand - STAND_STEP_PX)) {
+                Point floor = ground.apply(new Point(aim.x + side * stand, aim.y));
+                if (floor != null && Math.abs(floor.y - aim.y) <= LEVEL_TOLERANCE_PX) {
+                    return floor;
+                }
+                if (stand == MIN_STAND_PX) {
+                    break;
+                }
+            }
+        }
+        return aim;
     }
 
     private static StatEffect effectOf(Character bot, int skillId) {
