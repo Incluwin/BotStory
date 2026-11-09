@@ -430,6 +430,21 @@ The server sees a human only through movement packets. Ties go to the human both
 - **V2.2** Leading targets and dodging telegraphs.
 - **V2.3** Learner state, actions and reward; self-play runs per job pair at three bands.
 - **V2.4** The `PVP_JOB_SCALE` bandit on the self-play matrix.
+- **Status (2026-11-09, started at the user's "Yes, start V2"):** measuring first, because the per-job rate the model
+  divides by applies to humans too: calibrating from bots held back by a bot gap would make human players of that job
+  far too strong.
+  - `DuelStats` / `DuelLog`: per fighter, the brain's thinks, buffs cast, swings sent / deferred / refused (with the
+    planner's and the transaction's reasons), and what the attacks met (packets, whiffs, dodges, hits, raw damage
+    rolled before scaling and before the dodge roll). One log line per fighter and one row in `logs/pvp/duels.csv`
+    when a duel ends.
+  - The brain tries up to ten attack skills, strongest first (four left a Crusader with only combo-orb skills it could
+    not use), and keeps its own buffs up from the countdown on: the stock buff tick waits while a bot neither follows
+    nor grinds and skips any map with no live monster, so in a town duel no bot had buffed, and a Crusader never had
+    Combo Attack. Dark Sight and Wind Walk are left out.
+  - `!pvp practice [n] [span]` starts bot-against-bot duels between free citizens (not hired, no party, event or duel)
+    on maps with no player; `!pvp rates` turns the CSV into the median raw damage per engaged second per job path and
+    band, beside the model's gear-based rate, and writes a `d_job` block to `logs/pvp/rates-*.yaml`.
+  - Deferred: the potion rule (an Elixir is spent for a 10% heal), the duel-mode movement of V2.1, and learning.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

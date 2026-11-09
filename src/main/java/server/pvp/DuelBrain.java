@@ -10,8 +10,11 @@ import server.StatEffect;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentAttackPlan;
 import server.agents.capabilities.combat.AgentAttackRoute;
+import server.agents.capabilities.combat.AgentAttackTransactionResult;
+import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatAttackRuntime;
 import server.agents.capabilities.combat.AgentCombatHitCounter;
+import server.agents.capabilities.combat.AgentCombatSkillCacheStateRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillClassifier;
 import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
@@ -32,15 +35,23 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * A bot's side of a duel, V1 (docs/PVP_PLAN.md section 4): priors only, no learning yet (that is V2). While the duel
+ * A bot's side of a duel (docs/PVP_PLAN.md sections 4-5): priors only, no learning yet. While the duel
  * holds it, its own following and grinding are off; it thinks every 300-600 ms (a person's reaction, not a tick's),
  * swings its strongest attack skill whose box reaches the opponent, and otherwise walks to that skill's reach. Every
  * action runs on the Agent's own thread through its mailbox.
  */
 final class DuelBrain {
     private static final Logger log = LoggerFactory.getLogger(DuelBrain.class);
-    /** How many of its attack skills a bot tries, strongest first. */
-    static final int SKILLS_TRIED = 4;
+    /**
+     * How many of its attack skills a bot tries, strongest first. Live 2026-11-09 a Crusader with four tried landed
+     * nothing: its strongest need combo orbs the planner refuses until it has them.
+     */
+    static final int SKILLS_TRIED = 10;
+    /** Buffs that hide the caster: a bot hiding in a duel cannot be hit (DuelField's Dark Sight rule), so it never casts them. */
+    static final java.util.Set<Integer> HIDING_BUFFS = java.util.Set.of(4001003, 14001003, 13101006);
+    /** A buff is cast again this long before it would run out; a cast that failed is tried again after the retry. */
+    static final long BUFF_EARLY_MS = 10_000L;
+    static final long BUFF_RETRY_MS = 3_000L;
     /** How far inside a skill's reach the bot stands, so a small step does not take it out of range. */
     static final int REACH_MARGIN_PX = 20;
     static final int MIN_STAND_PX = 30;
@@ -57,6 +68,10 @@ final class DuelBrain {
         volatile int thinkMs = 450;
         /** Whether the duel paused the Agent's field session, so only that one is resumed after. */
         volatile boolean pausedField;
+        /** Its own buffs (the ones it casts while grinding, less the hiding ones) and when each is due again. */
+        volatile List<Integer> buffs = List.of();
+        final java.util.Map<Integer, Long> buffDueMs = new java.util.concurrent.ConcurrentHashMap<>();
+        volatile long nextPrepareMs;
     }
 
     static void enter(DuelField.Fighter fighter) {
@@ -84,8 +99,57 @@ final class DuelBrain {
             AgentModeStateRuntime.setGrinding(e, false);
             AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(e);
             mind.skills = attackSkills(fighter.chr);
+            // its buffs, which it casts itself in a duel: the stock buff tick waits while it neither follows nor
+            // grinds, and skips a map with no live monster (every town), so a Crusader never had Combo Attack
+            List<Integer> buffs = new ArrayList<>();
+            for (int skillId : AgentCombatSkillCacheStateRuntime.buffSkillIds(e)) {
+                StatEffect effect = effectOf(bot, skillId);
+                if (!HIDING_BUFFS.contains(skillId) && effect != null && effect.getDuration() > 0) {
+                    buffs.add(skillId);
+                }
+            }
+            mind.buffs = buffs;
             return null;
         });
+    }
+
+    /** The countdown: a bot buffs up, as a player would before the bell. */
+    static void prepare(DuelField.Fighter self, long now) {
+        Mind mind = self.mind;
+        if (now < mind.nextPrepareMs) {
+            return;
+        }
+        mind.nextPrepareMs = now + mind.thinkMs;
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(self.chr.getId());
+        if (entry == null) {
+            return;
+        }
+        Character bot = self.chr;
+        AgentMailboxRuntime.dispatch(entry, e -> {
+            try {
+                buffUp(e, bot, mind, self.stats, System.currentTimeMillis());
+            } catch (RuntimeException failure) {
+                log.warn("PvP duel brain {} could not buff", bot.getName(), failure);
+            }
+            return null;
+        });
+    }
+
+    /** Casts one buff that is due; true when it cast (one action a think). */
+    static boolean buffUp(AgentRuntimeEntry entry, Character bot, Mind mind, DuelStats stats, long now) {
+        for (int skillId : mind.buffs) {
+            if (now < mind.buffDueMs.getOrDefault(skillId, 0L)) {
+                continue;
+            }
+            StatEffect effect = effectOf(bot, skillId);
+            if (effect != null && AgentCombatBuffRuntime.tryCastExplicitUtilityBuff(entry, bot, skillId)) {
+                stats.buffsCast.incrementAndGet();
+                mind.buffDueMs.put(skillId, now + Math.max(BUFF_EARLY_MS, effect.getDuration() - BUFF_EARLY_MS));
+                return true;
+            }
+            mind.buffDueMs.put(skillId, now + BUFF_RETRY_MS);
+        }
+        return false;
     }
 
     static void leave(DuelField.Fighter fighter) {
@@ -121,7 +185,7 @@ final class DuelBrain {
         Character target = foe.chr;
         AgentMailboxRuntime.dispatch(entry, e -> {
             try {
-                act(e, bot, target, mind.skills);
+                act(e, bot, target, mind, self.stats);
             } catch (RuntimeException failure) {
                 log.warn("PvP duel brain {} against {} failed", bot.getName(), target.getName(), failure);
             }
@@ -129,20 +193,28 @@ final class DuelBrain {
         });
     }
 
-    private static void act(AgentRuntimeEntry entry, Character bot, Character target, List<Integer> skills) {
+    private static void act(AgentRuntimeEntry entry, Character bot, Character target, Mind mind, DuelStats stats) {
         Point aim = target.getPosition();
         Point at = bot.getPosition();
         if (aim == null || at == null || bot.getMap() != target.getMap()) {
             return;
         }
+        stats.thinks.incrementAndGet();
+        long now = System.currentTimeMillis();
+        if (buffUp(entry, bot, mind, stats, now)) {
+            return;
+        }
         var gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
         Rectangle body = PvpHitResolver.hurtbox(aim, 0);
         int reach = 0;
-        for (int skillId : skills) {
+        boolean anyPlan = false;
+        for (int skillId : mind.skills) {
             AgentAttackPlan plan = AgentSkillAttackPlanRuntime.planSkillAttackAt(bot, aim, skillId);
             if (plan == null) {
+                stats.refused("plan:" + AgentSkillAttackPlanRuntime.lastRejection());
                 continue;
             }
+            anyPlan = true;
             // the box the duel will judge this swing by (the planner's own is a 1x1 point at the aim for a skill with
             // no lt/rb, such as a projectile: live 2026-11-08 a Priest stood its ground 2,000 px away)
             Rectangle box = PvpHitResolver.attackBox(bot, skillId, effectOf(bot, skillId),
@@ -155,14 +227,24 @@ final class DuelBrain {
                 gateway.stop(entry);
                 gateway.facePosition(bot, aim);
                 var result = AgentCombatAttackRuntime.attackAtNothing(entry, bot, plan);
-                if (result.committed() || result.status() == server.agents.capabilities.combat
-                        .AgentAttackTransactionResult.Status.DEFERRED) {
-                    return;   // swung, or its cooldown is still running: either way it stays put
+                if (result.committed()) {
+                    stats.swingsSent.incrementAndGet();
+                    return;
                 }
+                if (result.status() == AgentAttackTransactionResult.Status.DEFERRED) {
+                    stats.swingsDeferred.incrementAndGet();
+                    return;   // its cooldown is still running: it stays put
+                }
+                stats.swingsRefused.incrementAndGet();
+                stats.refused("swing:" + result.reason());
                 continue;
             }
             reach = Math.max(reach, reachToward(box, at, aim));
         }
+        if (!anyPlan) {
+            stats.noSkillThinks.incrementAndGet();
+        }
+        stats.walks.incrementAndGet();
         int stand = Math.max(MIN_STAND_PX, (reach > 0 ? reach : MIN_STAND_PX + REACH_MARGIN_PX) - REACH_MARGIN_PX);
         Point candidate = new Point(aim.x + (at.x >= aim.x ? stand : -stand), aim.y);
         Point ground = gateway.groundPoint(bot.getMap(), candidate);

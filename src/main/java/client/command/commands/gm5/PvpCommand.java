@@ -37,6 +37,8 @@ import java.util.Map;
  *   is you); {@code duel stop [id]}; {@code duels} lists them</li>
  *   <li>{@code sim <a> <b> <level> [n]}, {@code sim matrix <level> [n]}: a Monte Carlo of the damage model between
  *   loaded characters (a class name or a job id prefix), V1.4</li>
+ *   <li>{@code practice [n] [span]}: up to n bot-against-bot duels between free citizens on one map within span levels;
+ *   {@code rates}: the bots' measured raw damage per second per job path and band from logs/pvp/duels.csv (V2)</li>
  * </ul>
  * {@code src} is the packet's attack byte: -4 (no mob; the default), -3, -2, -1 (touch) or 0 (a mob's first attack).
  */
@@ -46,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates");
     }
 
     @Override
@@ -63,6 +65,8 @@ public class PvpCommand extends Command {
             case "duel" -> duel(gm, params);
             case "duels" -> duels(gm);
             case "sim" -> sim(gm, params);
+            case "practice" -> practice(gm, params);
+            case "rates" -> rates(gm);
             default -> gm.yellowMessage(getDescription());
         }
     }
@@ -237,6 +241,122 @@ public class PvpCommand extends Command {
                         .append(fighter.knockedOut() ? " KO" : "").append(']');
             }
             gm.yellowMessage(line.toString());
+        }
+    }
+
+    /**
+     * {@code !pvp practice [n] [span]} (V2): bot-against-bot duels between free citizens (not hired, in no party,
+     * event or duel, Lv 30+) that share a map with no player on it, each paired with the nearest level within
+     * {@code span}. Their rows feed {@code !pvp rates}.
+     */
+    private static void practice(Character gm, String[] params) {
+        int wanted = Math.max(1, Math.min(20, number(params, 1, 6)));
+        int span = Math.max(0, Math.min(20, number(params, 2, 5)));
+        server.living.population.Population population = server.living.population.Population.get();
+        java.util.Map<server.maps.MapleMap, List<Character>> byMap = new java.util.LinkedHashMap<>();
+        for (World world : Server.getInstance().getWorlds()) {
+            for (Character chr : world.getPlayerStorage().getAllCharacters()) {
+                if (practiceReady(chr, population) && !humanOn(chr.getMap())) {
+                    byMap.computeIfAbsent(chr.getMap(), m -> new ArrayList<>()).add(chr);
+                }
+            }
+        }
+        int started = 0;
+        List<String> pairs = new ArrayList<>();
+        for (var entry : byMap.entrySet()) {
+            List<Character> free = new ArrayList<>(entry.getValue());
+            java.util.Collections.shuffle(free);
+            while (free.size() >= 2 && started < wanted) {
+                Character a = free.remove(0);
+                Character b = null;
+                for (Character other : free) {
+                    if (Math.abs(other.getLevel() - a.getLevel()) <= span
+                            && (b == null || Math.abs(other.getLevel() - a.getLevel())
+                            < Math.abs(b.getLevel() - a.getLevel()))) {
+                        b = other;
+                    }
+                }
+                if (b == null) {
+                    continue;
+                }
+                free.remove(b);
+                try {
+                    DuelField field = DuelRegistry.start(entry.getKey(), List.of(a), List.of(b));
+                    started++;
+                    pairs.add("#" + field.id() + " " + a.getName() + "(" + a.getLevel() + "," + a.getJob().getId()
+                            + ") v " + b.getName() + "(" + b.getLevel() + "," + b.getJob().getId() + ")");
+                } catch (IllegalStateException refused) {
+                    log.info("PvP practice: {} against {} refused: {}", a.getName(), b.getName(), refused.getMessage());
+                }
+            }
+            if (started >= wanted) {
+                break;
+            }
+        }
+        gm.yellowMessage("PvP practice: " + started + " duel(s) started" + (started == 0
+                ? " (no two free citizens within " + span + " levels on a map with no player)." : ":"));
+        for (String pair : pairs) {
+            gm.yellowMessage(pair);
+            log.info("PvP practice {}", pair);
+        }
+    }
+
+    private static boolean practiceReady(Character chr, server.living.population.Population population) {
+        if (!(chr.getClient() instanceof client.BotClient) || chr.isGM() || chr.getLevel() < 30 || !chr.isAlive()
+                || chr.getMap() == null || chr.getParty() != null || chr.getEventInstance() != null
+                || DuelRegistry.inDuel(chr.getId()) || population == null) {
+            return false;
+        }
+        var citizen = population.citizen(chr.getId());
+        return citizen != null && !citizen.hired();
+    }
+
+    private static boolean humanOn(server.maps.MapleMap map) {
+        for (Character chr : map.getAllPlayers()) {
+            if (!(chr.getClient() instanceof client.BotClient) && !chr.isGM()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** {@code !pvp rates} (V2): measured raw dps per job path and band, against the model's gear-based rate. */
+    private static void rates(Character gm) {
+        List<server.pvp.DuelLog.Rate> rates;
+        try {
+            rates = server.pvp.DuelLog.rates();
+        } catch (java.io.IOException failure) {
+            gm.yellowMessage("PvP rates: could not read " + server.pvp.DuelLog.FILE + " (" + failure.getMessage() + ").");
+            return;
+        }
+        PvpReference reference = PvpReference.get();
+        List<String> lines = new ArrayList<>();
+        lines.add("# PvP measured rates (" + java.time.LocalDateTime.now() + ") from " + server.pvp.DuelLog.FILE
+                + ": median raw damage per engaged second of bots, per \"<jobId/10>-<level/10>\"; model = gear median"
+                + " x dps_per_base. Copy rows with n >= 3 into d_job in scripts/config/pvp/reference.yaml.");
+        lines.add("d_job:");
+        for (server.pvp.DuelLog.Rate rate : rates) {
+            String[] parts = rate.key().split("-");
+            int jobId = Integer.parseInt(parts[0]) * 10;
+            int level = Integer.parseInt(parts[1]) * 10;
+            boolean magic = jobId / 100 % 10 == 2;
+            long median = reference.gearMedian(jobId, level);
+            long model = median > 0 ? Math.round(median * reference.ratePerBase(magic)) : -1;
+            String note = String.format(java.util.Locale.ROOT, "n=%d, model %s%s", rate.fighters(),
+                    model > 0 ? Long.toString(model) : "?",
+                    model > 0 ? String.format(java.util.Locale.ROOT, " (%.2fx)", rate.medianRawDps() / (double) model)
+                            : "");
+            lines.add((rate.fighters() >= 3 ? "  " : "# ") + "\"" + rate.key() + "\": " + rate.medianRawDps() + "   # "
+                    + note);
+            gm.yellowMessage(rate.key() + ": " + rate.medianRawDps() + " raw/s, " + note);
+        }
+        try {
+            Path file = Path.of("logs", "pvp", "rates-" + System.currentTimeMillis() + ".yaml");
+            java.nio.file.Files.createDirectories(file.getParent());
+            java.nio.file.Files.write(file, lines, java.nio.charset.StandardCharsets.UTF_8);
+            gm.yellowMessage("PvP rates: " + rates.size() + " job path/band rows -> " + file);
+        } catch (java.io.IOException failure) {
+            gm.yellowMessage("PvP rates: could not write logs/pvp (" + failure.getMessage() + ").");
         }
     }
 

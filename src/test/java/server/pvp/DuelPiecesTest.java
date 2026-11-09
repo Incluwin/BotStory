@@ -96,10 +96,38 @@ class DuelPiecesTest {
         Character leaves = fighter(2, mock(MapleMap.class), true);
         when(map.getCharacterById(1)).thenReturn(stays);
         DuelField field = new DuelField(99, map, List.of(stays), List.of(leaves));
-
-        field.tick(System.currentTimeMillis());
+        List<List<DuelLog.Row>> written = new java.util.ArrayList<>();
+        var sink = DuelField.rowSink;
+        DuelField.rowSink = written::add;
+        try {
+            field.tick(System.currentTimeMillis());
+        } finally {
+            DuelField.rowSink = sink;
+        }
 
         assertEquals(DuelField.State.ENDED, field.state());
+        assertEquals(1, written.size());
+        assertEquals(2, written.get(0).size(), "a row for each fighter");
+        assertTrue(written.get(0).get(1).left());
+    }
+
+    @Test
+    void ratesAreTheBotsMedianRawDamagePerEngagedSecondPerJobAndBand() {
+        String header = DuelLog.HEADER;
+        // endedAt,duel,map,seconds,reason,winner,name,charId,jobId,level,kind,side,gearBase,ko,left,thinks,buffs,sent,
+        // deferred,refused,noSkill,packets,whiffs,dodged,hits,raw,dealt,taken,engaged,topRefusal
+        String a = "1,1,0,30,x,0,A,1,112,95,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,60000,0,0,30.0,-";   // 2000/s
+        String b = "1,1,0,30,x,0,B,2,111,92,B,1,2000,0,0,1,0,1,0,0,0,20,0,0,20,30000,0,0,30.0,-";   // 1000/s
+        String c = "1,2,0,30,x,0,C,3,112,98,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,90000,0,0,30.0,-";   // 3000/s
+        String human = "1,2,0,30,x,0,D,4,112,98,H,1,2000,0,0,1,0,1,0,0,0,20,0,0,20,900000,0,0,30.0,-";
+        String brief = "1,3,0,5,x,0,E,5,112,98,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,900000,0,0,5.0,-";
+
+        List<DuelLog.Rate> rates = DuelLog.rates(List.of(header, a, b, c, human, brief));
+
+        assertEquals(1, rates.size());
+        assertEquals("11-9", rates.get(0).key());
+        assertEquals(2000L, rates.get(0).medianRawDps());
+        assertEquals(3, rates.get(0).fighters());
     }
 
     @Test

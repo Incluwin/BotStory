@@ -63,6 +63,7 @@ public final class DuelField {
         long dealt;
         long taken;
         final DuelBrain.Mind mind = new DuelBrain.Mind();
+        final DuelStats stats = new DuelStats();
 
         Fighter(Character chr, int side, long keepMs) {
             this.chr = chr;
@@ -203,6 +204,11 @@ public final class DuelField {
                         lastCountdownShown = seconds;
                         tell(seconds + "...");
                     }
+                    for (Fighter fighter : fighters.values()) {
+                        if (!fighter.human && !fighter.knockedOut) {
+                            thinking.add(new Fighter[] {fighter, null}); // buffs up while a player would
+                        }
+                    }
                 }
             } else if (state == State.FIGHTING) {
                 if (now >= roundEndsAtMs) {
@@ -220,7 +226,11 @@ public final class DuelField {
             }
         }
         for (Fighter[] pair : thinking) {
-            DuelBrain.tick(pair[0], pair[1], now);
+            if (pair[1] == null) {
+                DuelBrain.prepare(pair[0], now);
+            } else {
+                DuelBrain.tick(pair[0], pair[1], now);
+            }
         }
     }
 
@@ -308,6 +318,7 @@ public final class DuelField {
             return;
         }
         self.lastAttackMs = now;
+        self.stats.packet(now);
         StatEffect effect = effectOf(attacker, attack.skill);
         Rectangle box = PvpHitResolver.attackBox(attacker, attack, effect);
         List<PvpHitResolver.Candidate> foes = new ArrayList<>();
@@ -320,6 +331,7 @@ public final class DuelField {
         List<PvpHitResolver.Candidate> met = PvpHitResolver.victims(box, attacker.getPosition(), foes, maxTargets,
                 self.human, now, config.PVP_LAG_WINDOW_MS, config.PVP_HUMAN_HURTBOX_INSET_PX);
         if (met.isEmpty()) {
+            self.stats.whiffs.incrementAndGet();
             return;
         }
         int skillLevel = attack.skill == 0 ? 0 : attacker.getSkillLevel(attack.skill);
@@ -363,12 +375,16 @@ public final class DuelField {
         int accuracy = attack.magic ? formulas.getTotalMagicAccuracy(from) : formulas.getTotalAccuracy(from);
         double chance = PvpDamageModel.hitChance(attack.magic, accuracy, from.getLevel(), to.getLevel(),
                 formulas.getTotalAvoidability(to), config);
+        // rolled before the dodge, so the measured rate (V2) is the attack's throughput and avoid stays a modifier
+        List<Integer> raw = formulas.rollPvpLines(from, lines, attack.skill, profile);
+        attacker.stats.rawRolled.addAndGet(raw.stream().mapToLong(Integer::longValue).sum());
         if (to.getBuffedValue(BuffStat.DARKSIGHT) != null || ThreadLocalRandom.current().nextDouble() > chance) {
+            attacker.stats.dodged.incrementAndGet();
             map.broadcastMessage(PacketCreator.damagePlayer(-2, 0, to.getId(), 0, 0, direction, false, 0, false,
                     0, 0, 0));
             return;
         }
-        List<Integer> raw = formulas.rollPvpLines(from, lines, attack.skill, profile);
+        attacker.stats.hits.incrementAndGet();
         int defense = attack.magic ? to.getTotalMdef() : to.getTotalWdef();
         boolean even = config.PVP_EVEN_CLASSES;
         double scale = factor * PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config)
@@ -487,7 +503,29 @@ public final class DuelField {
                     .append(fighter.forfeited ? " left" : "");
         }
         log.info("PvP duel {} ended after {} s: winner side {} ({}).{}", id, seconds, winnerSide, why, tally);
+        long endMs = System.currentTimeMillis();
+        List<DuelLog.Row> rows = new ArrayList<>();
+        for (Fighter fighter : fighters.values()) {
+            Character chr = fighter.chr;
+            log.info("PvP duel {} {}: {}", id, chr.getName(), fighter.stats.summary());
+            rows.add(new DuelLog.Row(endMs, id, map.getId(), seconds, why, winnerSide, chr.getName(), chr.getId(),
+                    chr.getJob() == null ? 0 : chr.getJob().getId(), chr.getLevel(), fighter.human, fighter.side,
+                    gearBase(chr), fighter.knockedOut, fighter.forfeited, fighter.stats, fighter.dealt, fighter.taken,
+                    fighter.stats.engagedSeconds(endMs)));
+        }
+        rowSink.accept(rows);
         DuelRegistry.release(this);
+    }
+
+    /** Where finished duels' rows go: {@code logs/pvp/duels.csv}; a test swaps it out. */
+    static volatile java.util.function.Consumer<List<DuelLog.Row>> rowSink = DuelLog::append;
+
+    private static long gearBase(Character chr) {
+        try {
+            return PvpCalibration.of(chr).gearBase();
+        } catch (RuntimeException unknown) {
+            return 0L;
+        }
     }
 
     private String names(int side) {
