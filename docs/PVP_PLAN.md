@@ -12,7 +12,7 @@ shared combat core and the content on top of it:
 | V4 | Coliseum ladder | Rated 1v1 matches against citizens in Ariant's Battle Arena | M-L |
 | V5 | Weekly tournament | An 8-seat bracket per level band; citizens fill the empty seats | M |
 | V6 | Team fights | You and your companions against a crew, 2v2 and 3v3 | M |
-| V7 | Client polish | Your own damage number when a bot hits you, if V0 shows it missing | S-M |
+| V7 | Client polish | Your own damage number when a bot hits you (V0.1: the stock client never shows it) | S-M |
 
 The rules in `docs/BOT_CONCEPT_PLAN.md` section 0 apply to every piece: the immersion test, learn don't script, kill
 switches, existing ticks only, `# Technical:` config notes, the split suite before merge.
@@ -84,13 +84,13 @@ primitive" (`BOT_CONCEPT_PLAN.md:524`). V1 is that primitive.
 - **No player hurtbox.** `MapleMap.getPlayersInRange` tests the foot point only.
 - **The attack packet cannot carry a player target.** `addAttackBody` writes monster oids. A player's damage number
   can only come from `damagePlayer` (`PacketCreator.java:2714`).
-- **Not known: does the victim's own client draw a `damagePlayer` about itself?**
-  - Other clients do: `TakeDamageHandler:299` relies on it.
-  - `ServerMobDamageService` sends it to the victim too. The boss runtime doc lists "regular-client visual" as an open
-    release gate (`docs/current/SERVER_BOSS_COMBAT_RUNTIME_ARCHITECTURE.md:3`).
-  - This is probe V0.1.
-- **The server's view of a human is stale.** `chr.getPosition()` is the last movement packet, and the movement packet
-  cadence is not measured (V0.3).
+- **The victim's own client draws no `damagePlayer` about itself** (V0.1, measured 2026-11-08).
+  - Other clients do draw it, even with no mob (V0.2).
+  - So a human hit by a bot sees its HP bar drop but no number until V7.
+  - The same applies to today's server-run boss hits (`docs/current/SERVER_BOSS_COMBAT_RUNTIME_ARCHITECTURE.md:3`,
+    "regular-client visual").
+- **The server's view of a human is stale.** `chr.getPosition()` is the last movement packet, and a moving client sends
+  one every 510 ms (V0.3).
 - **Death is real.** HP 0 runs `playerDead` (`Character.java:8770`) and the EXP penalty (`DeathPenaltyService`), for bots
   too. A duel must never reach it.
 - **Bot autopot is instant.** `addMPHPAndTriggerAutopot` → `triggerAutopotAfterStatLoss` (`Character.java:10858/10871`)
@@ -213,7 +213,8 @@ duel gate.
 The server sees a human only through movement packets. Ties go to the human both ways:
 
 - **Human hits bot.** The bot's position is kept in a 1 s ring buffer at 50 ms. A hit counts if the bot was inside the
-  box at any point from the human's estimated latency + 100 ms ago until now.
+  box at any point from the human's estimated latency + 600 ms ago until now. The 600 ms is from V0.3: the client
+  reports movement every 510 ms while moving, so the attacker's own position can be that old too.
 - **Bot hits human.**
   - The human must be inside the box at the last reported position *and* at the position extrapolated from its last
     movement fragment.
@@ -300,7 +301,8 @@ The server sees a human only through movement packets. Ties go to the human both
   - `PvpDamageModel`: section 2 steps 1-7. A pure function with property tests.
   - `CharacterHitApplier`: the defense-and-apply half extracted from `ServerMobDamageService`, so mobs and characters
     share it. Its step 9 KO clamp runs only when a `DuelField` owns the victim.
-  - `PvpPackets`: `damagePlayer` about the victim to the whole map, plus the KO emote and the round notices.
+  - `PvpPackets`: `damagePlayer(-4, 0, victim, damage, ...)` about the victim to the whole map, plus the KO emote and
+    the round notices. A dodged hit is sent as source `-2`, which clients draw as MISS (V0.2).
 - **Hooks.**
   - **Attacks:** one call, `PvpHooks.onAttack(chr, attack)`, after the animation broadcast in each handler. Bots attack
     through the same handlers, so this one hook covers human-to-bot, bot-to-human and bot-to-bot hits.
@@ -494,9 +496,10 @@ The server sees a human only through movement packets. Ties go to the human both
 - Focus fire is a real tactic, so sides are always equal in size.
 - *Done when* a 3v3 against the rival crew is filmed and the companions read as teammates in the review.
 
-## 10. V7. Client polish (only if V0 says so)
+## 10. V7. Client polish (V0.1 says it is needed)
 
-- **Own damage number.** If V0.1 shows your own client ignores a `damagePlayer` about itself:
+- **Own damage number.** V0.1 showed that your own client ignores a `damagePlayer` about itself, for every source and
+  whether or not you are hidden. The same patch would also show the server-run boss hits that land on you today. So:
   - add server→client **0x189 PVP_HIT** to `docs/CUSTOM_OPCODES.md`;
   - Kaentake draws the number and plays the hit sound on the local user;
   - the HP bar already updates without it.

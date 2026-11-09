@@ -5,13 +5,95 @@ is `!pvp` (GM5, `client/command/commands/gm5/PvpCommand.java`, measurement only)
 
 | Probe | Status | One line |
 |---|---|---|
-| V0.1 Own damage number | PENDING (needs the probe build live) | — |
-| V0.2 Remote number without a mob | PENDING (needs the probe build live) | — |
-| V0.3 Movement cadence | PENDING (needs the probe build live) | — |
-| V0.4 Zero-target audit | PENDING (needs the probe build live) | — |
-| V0.5 Calibration | DB half DONE; damage meter PENDING | `H_ref` ≈ 34·L^1.11, class-balanced |
+| V0.1 Own damage number | DONE: **no** | The stock client never draws a DAMAGE_PLAYER about its own character, so V7 is needed |
+| V0.2 Remote number without a mob | DONE: **yes** | Source -4 with mob 0 shows the purple number over the target; -2 shows "MISS" |
+| V0.3 Movement cadence | DONE | One movement packet every 510 ms while moving (90th percentile 527 ms) |
+| V0.4 Zero-target audit | Close-range DONE; ranged and magic open | Empty-air swings arrive with 0 targets and a correct facing bit |
+| V0.5 Calibration | DB and in-server `H_ref` DONE; meter collecting | `H_ref` ≈ 34·L^1.11; the meter needs hours |
 | V0.6 Grind-minute table | DONE (EXP); meso partly | 13.7k EXP a minute in the 70s, 77.8k in the 100s |
-| V0.7 WASM | PENDING | — |
+| V0.7 WASM | NOT RUN | Needs a WASM login; low priority |
+
+Live build for the client probes: `8bd44a83f` (fix/casino-live b486fc659 + this branch), up 19:21:41 EST, 0 ERROR.
+The probes ran on Crewfriend (Lv 96 Spearman, GM) in Henesys Game Park 100000203, beside its companion IceCookie.
+The evidence is under `docs/agents/evidence/pvp-v0/` in the main checkout:
+- the recordings `damage-probes.mp4` and `self-unhidden.mp4`;
+- the frame strips `sheet-1..8.png` and `unhidden.png`;
+- the server times in `damage-probes-times.txt` and in cosmic-log `PvP probe` lines.
+
+## V0.1 and V0.2: damage numbers
+
+- **Method:** each `!pvp probe` sent one DAMAGE_PLAYER of 1234 to the GM's own client only.
+  - The client window was recorded at 30 fps.
+  - Frames from 1.5 s before to 2.5 s after the server's log time of each probe were cut at 4 fps.
+  - The crop was the two characters.
+
+| Probe | About Crewfriend (own client) | About IceCookie (remote) |
+|---|---|---|
+| src -4, mob 0 | nothing (GM-hidden, and again unhidden) | purple **1234**, floats up about 1.5 s |
+| src -3, mob 0 | nothing | purple **1234** |
+| src -2, mob 0 | nothing | purple **MISS** |
+| src -1, mob 100100 | nothing (GM-hidden, and again unhidden) | purple **1234** |
+
+- **V1:**
+  - Send hits as `damagePlayer(-4, 0, victim, damage, ...)` to the whole map. No mob template is involved.
+  - Send dodged hits as `-2`, which other clients draw as MISS.
+  - Source 0 (a mob's attack) was not sent; PvP has no use for it.
+- **V7 is needed for a hit to look complete on the victim's own screen.**
+  - A victim's HP bar drops through the stat update, but its own client shows no number for a server-applied hit.
+  - The same is true today of the server-run boss hits (`ServerMobDamageService` sends the victim this packet too).
+  - That is the open "regular-client visual" gate in `SERVER_BOSS_COMBAT_RUNTIME_ARCHITECTURE.md`, so V7's PVP_HIT
+    handler would close it for bosses as well.
+- **Not checked:** the target's hit pose or flinch. None was visible in the strips at 4 fps.
+
+## V0.3: movement cadence
+
+- `!pvp probe move 40` ran while Crewfriend did the following:
+  - walked 2.5 s each way;
+  - made three jumps;
+  - made two 2 s walking jumps;
+  - attacked three times;
+  - walked 3 s each way.
+- **Result** (19:37:44): 44 packets, 43 gaps.
+  - Median gap 510 ms, 90th percentile 527 ms, mean 592 ms.
+  - The 3 gaps over a second were all while attacking or standing still; the longest was 3,059 ms.
+- **So the client reports movement about twice a second while moving.** The server's copy of a moving human is up to
+  about 0.5 s old, plus half the round trip.
+  - At walking speed that is roughly 60-90 px, which is about a body width.
+  - Plan section 2's fairness windows therefore use **600 ms**:
+    - bots' positions are rewound by up to the human's latency + 600 ms;
+    - a human's position is extrapolated up to 600 ms from its last fragment.
+
+## V0.4: attacks with no target
+
+- `!pvp probe attacks 30` ran while Crewfriend attacked empty air. Each swing faced right, then left, then right.
+  - The basic attack is on C; Slash Blast (1001005, Lv 20) is on X.
+- **Every swing reached the server** (19:38:05-19:38:14): six packets, all CLOSE, `mobs=0 lines=1`.
+  - Facing: `stance` is 0x80 when facing left and 0x00 when facing right.
+  - `direction` is the body action (5, 16, 17), and `display` was 0 throughout.
+  - `pos` is the server's last movement position for the character (655 and 628).
+  - The attack packet itself carries no attacker position.
+- **Open:** ranged and magic attacks need a character of those classes (Crewfriend is the casino session's test
+  account). The Agent code's comment at `AbstractDealDamageHandler.java:272-276` cites captured zero-target packets,
+  but which families they were is not recorded.
+
+## V0.5: in-server calibration (first pass)
+
+- **`!pvp calibrate`** (19:38:35) covered 240 loaded characters.
+  - It wrote `logs/pvp/reference-20261109-0038.yaml`. The file name is UTC.
+  - The loaded `H_ref` matches the database table within a few percent. The Lv 70s give 4,359 against 4,191, with
+    smaller samples.
+  - It also wrote the gear-base median per job path and band. Magician bases are the spell base and are multiplied by
+    the skill's `matk`.
+- **The damage meter has run since 19:29.**
+  - After 9 minutes, only 4 characters had reached 60 s of engaged time. Citizens walk between mobs, and gaps over
+    2.5 s are not counted.
+  - First rows (bots, median single-target damage per second):
+    - Cleric path, 50s: 658.
+    - Priest/Bishop path, 110s: 4,148.
+    - Hunter/Bowmaster path, 100s: 8,112.
+    - Assassin path, 90s: 4,717.
+  - They already show why section 2 normalises: 8,112 per second against an `H_ref` of 5,604 is a knock-out in 0.7 s.
+  - A second `!pvp calibrate` after an hour or more fills `D_job`.
 
 ## V0.5 Calibration: `H_ref` (database half)
 
