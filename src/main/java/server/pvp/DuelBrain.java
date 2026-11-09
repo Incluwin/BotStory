@@ -16,9 +16,9 @@ import server.agents.capabilities.combat.AgentCombatSkillClassifier;
 import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
-import server.agents.capabilities.townlife.AgentTownLifeState;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.runtime.field.AgentFieldActivityRuntime;
+import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -55,8 +55,7 @@ final class DuelBrain {
         volatile List<Integer> skills = List.of();
         volatile long nextThinkMs;
         volatile int thinkMs = 450;
-        /** Whether the duel paused the Agent's town life or field session, so only those are resumed after. */
-        volatile boolean pausedTownLife;
+        /** Whether the duel paused the Agent's field session, so only that one is resumed after. */
         volatile boolean pausedField;
     }
 
@@ -70,11 +69,13 @@ final class DuelBrain {
         Character bot = fighter.chr;
         AgentMailboxRuntime.dispatch(entry, e -> {
             long now = System.currentTimeMillis();
-            // a citizen's town life walks it about on its own tick (live 2026-11-08: away mid-duel), so it pauses the
-            // way an NPC conversation pauses it; a field session the same way
-            if (AgentTownLifeRuntime.active(e) && !townLifePaused(e)) {
-                AgentTownLifeRuntime.suspendForExternalInteraction(e, bot, now);
-                mind.pausedTownLife = true;
+            // a citizen's town life walks it about on its own tick (live 2026-11-08: 2,000 px away mid-duel). Its pause
+            // does not stop that tick (only the interaction lease's per-tick stop does), so it stops, as when the
+            // population or a Resident takes a citizen over; its scheduler starts a new one at its next plan. A field
+            // session's suspend is honoured, so that one only pauses.
+            if (AgentTownLifeRuntime.active(e)) {
+                AgentTownLifeRuntime.forceStop(e, bot, "pvp duel");
+                AgentTownLifeVisitLeaseRuntime.clear(e, bot); // as PresenceScheduler does, so the lease cannot restart it
             }
             mind.pausedField = AgentFieldActivityRuntime.suspend(e, bot, "pvp duel", now);
             mind.wasFollowing = AgentModeStateRuntime.following(e);
@@ -102,16 +103,8 @@ final class DuelBrain {
             if (mind.pausedField) {
                 AgentFieldActivityRuntime.resume(e, bot, "pvp duel over", now);
             }
-            if (mind.pausedTownLife) {
-                AgentTownLifeRuntime.resumeAfterExternalInteraction(e, now);
-            }
             return null;
         });
-    }
-
-    private static boolean townLifePaused(AgentRuntimeEntry entry) {
-        return entry.capabilityStates().find(AgentTownLifeState.STATE_KEY)
-                .map(AgentTownLifeState::externalInteractionPaused).orElse(false);
     }
 
     static void tick(DuelField.Fighter self, DuelField.Fighter foe, long now) {

@@ -361,8 +361,11 @@ The server sees a human only through movement packets. Ties go to the human both
   over and hit Crewfriend (one hit about 12% of his HP; the heal allowance let his potions back in). It then drifted
   2,000 px away and stood there, so Crewfriend dealt 0 and lost the round on HP share (SkyMage dealt 9,297). Two bugs,
   fixed after:
-  - The citizen's town-life session kept walking it about on its own tick. The duel now pauses town life (and a
-    field session) the way an NPC conversation does, and resumes it after.
+  - The citizen's town-life session kept walking it about on its own tick. A first fix paused town life the way
+    an NPC conversation does, but live duel #2 (23:36) showed that pause does not stop its tick (only the
+    interaction lease's per-tick stop does). The duel now stops town life and clears its visit lease, as the
+    citizen scheduler does when it takes a citizen over, and the scheduler starts a new one at its next plan. A
+    field session only pauses: its suspend is honoured.
   - The brain judged reach by the attack planner's box, which for a skill with no lt/rb (projectiles, most magic) is
     a 1x1 point at the aim that never meets a body. So the bot believed it already stood at full reach and never
     closed in. It now asks `PvpHitResolver.attackBox`, the box the duel will judge the swing by.
