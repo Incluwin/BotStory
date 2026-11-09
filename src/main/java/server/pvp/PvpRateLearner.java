@@ -41,6 +41,8 @@ public final class PvpRateLearner {
     static final int MIN_CLASS_FIGHTERS = 3;
     static final double CLASS_PRIOR_WEIGHT = 5d;
     static final double JOB_PRIOR_WEIGHT = 3d;
+    /** The most one fighter moves a mean, in log efficiency (about +/-20%): a Huber step, near the median. */
+    static final double RESIDUAL_CAP = 0.2d;
 
     private static volatile PvpRateLearner instance;
 
@@ -111,10 +113,16 @@ public final class PvpRateLearner {
         return true;
     }
 
-    /** A running mean: the prior counts as {@code priorWeight} fighters, and a step is never smaller than {@code step}. */
+    /**
+     * A running mean: the prior counts as {@code priorWeight} fighters, a step is never smaller than {@code step}, and
+     * one fighter's pull is capped at {@link #RESIDUAL_CAP} (log), so the mean sits near the typical fighter rather
+     * than below it. Practice runs five and six: Thieves' median efficiency was 0.85 but their plain log mean 0.75,
+     * pulled down by Assassins without stars; that 12% would have gone to every typical Thief as extra damage.
+     */
     private Mean step(String key, Mean mean, double observed, double step, double priorWeight) {
         double rate = Math.max(step, 1d / (mean.fighters() + 1 + priorWeight));
-        Mean next = new Mean(mean.logMean() + rate * (observed - mean.logMean()), mean.fighters() + 1);
+        double residual = Math.max(-RESIDUAL_CAP, Math.min(RESIDUAL_CAP, observed - mean.logMean()));
+        Mean next = new Mean(mean.logMean() + rate * residual, mean.fighters() + 1);
         means.put(key, next);
         return next;
     }

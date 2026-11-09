@@ -59,8 +59,23 @@ class PvpRateLearnerTest {
         double spearmen = learner.multiplier(132, 95, config);
         PvpRateLearner.Mean warriors = learner.means().get("c1");
 
-        assertTrue(fighters < 0.7, "11-9 has its own rate: " + fighters);
+        assertTrue(fighters < warriors.multiplier() - 0.05, "11-9 has its own, lower rate: " + fighters);
         assertEquals(warriors.multiplier(), spearmen, 1e-9, "13-9 has one fighter: the class's rate stands in");
+    }
+
+    /** A few broken bots pull a plain mean below the typical fighter; the capped step stays near the median. */
+    @Test
+    void aLowTailBarelyMovesTheLearnedRate() {
+        PvpRateLearner learner = learner();
+        PvpConfig config = new PvpConfig();
+        for (int i = 0; i < 100; i++) {
+            double efficiency = i % 5 == 0 ? 0.34 : 0.9;   // one in five never got its skills
+            learner.observe(112, 95, 2000, PRIOR * efficiency, REFERENCE, config);
+        }
+        double multiplier = learner.multiplier(130, 95, config);
+        double plainLogMean = Math.exp(0.2 * Math.log(0.34) + 0.8 * Math.log(0.9));   // about 0.73
+        assertTrue(multiplier > plainLogMean + 0.05 && multiplier < 0.92,
+                "near the typical 0.9, not the plain mean " + plainLogMean + ": " + multiplier);
     }
 
     @Test

@@ -383,7 +383,9 @@ The server sees a human only through movement packets. Ties go to the human both
   second over the reference rate for its job path, band and gear. `server.pvp.PvpRateLearner` keeps a running mean
   of its log per class (step `PVP_LEARN_CLASS_STEP` 0.05, the table worth 5 fighters at the start) and per job path
   and band (step `PVP_LEARN_JOB_STEP` 0.1, starting from its class, used from `PVP_LEARN_JOB_MIN_FIGHTERS` 8). One
-  fighter counts as 1/3-3x at most; a learned rate stays within 0.4-2.5x of the table's. `PvpDamageModel.rate` =
+  fighter counts as 1/3-3x at most and moves a mean by at most 0.2 in log (a Huber step, near the median: on runs
+  five and six Thieves' median efficiency was 0.85 but their plain log mean 0.75, pulled down by Assassins without
+  stars); a learned rate stays within 0.4-2.5x of the table's. `PvpDamageModel.rate` =
   the table's rate x the learned multiplier, for the coefficient and the sim. Kept in `logs/pvp/learned-rates.txt`
   (untracked); `!pvp learned` shows it, `!pvp learned reset` clears it, `!pvp learned replay <csv>` seeds it from a
   duel CSV in logs/pvp. No luck was added: if the leftover edge still decides most duels, revisit.
