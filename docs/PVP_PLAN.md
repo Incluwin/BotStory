@@ -378,6 +378,15 @@ The server sees a human only through movement packets. Ties go to the human both
   0.88, pirate 0.97), and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard sit out of
   duels (`CharacterHitApplier.Guards.NONE`; mob hits unchanged). Without the second half, Magic Guard would make
   magicians the toughest class once HP is evened. Gear defense, avoid, level and gear damage still count.
+- **Open decision PD16 (2026-11-09, from practice runs five and six):** how class win rates reach 40-60%.
+  - *Learn the rates (recommended):* after every duel, nudge the attacker's `d_job` / class rate toward its measured
+    raw rate (a slow running median, players' duels included), so the rates follow whoever actually fights instead
+    of one run's sample. Bounded steps, written back to a `learned` section and logged; the reference file stays the
+    prior. This is the plan's own rule (learn, don't script).
+  - *More luck:* widen each attack's roll or add rare big swings, so a 1.2x edge wins about 60%, not 90%. Cheap,
+    but it makes skill and gear count less too.
+  - Both together are possible: learning closes the class gap, a little luck keeps a small leftover edge from
+    deciding every duel.
 - **Live duels on 30933f544 (2026-11-09 00:03-00:16, Henesys):** the bot now crosses the map (through in-map
   portals), closes to its reach and stays. No errors, no deaths.
   - Crewfriend (Lv 96 Spearman, only Slash Blast on his keys) against AngryMoon (Lv 86 Crusader): AngryMoon dealt
@@ -524,6 +533,21 @@ The server sees a human only through movement packets. Ties go to the human both
       Rows with n < 5 (and every Lv 100+ band, Bishops included) stay on the class rate until more duels come in.
     - Next: a sim matrix on the calibrated reference and a sixth practice run to see knock-out times and class-pair
       win rates against the done-when.
+  - **Sixth practice run (3fb43d5f0, calibrated, 2026-11-09 12:16-12:47, 98 duels, 196 rows):** 87 knock-outs, 10 on
+    time, 1 forfeit; no errors.
+    - Knock-outs: median 19 s (p10 8, p25 11, p75 31, p90 45): inside the 10-25 s window.
+    - Cross-class wins: magician 32-3 (91%), thief 8-6, bowman 8-16, warrior 4-29 (12%), pirate 2-0. Magicians beat
+      warriors in 19 of 21. Level barely decided (the higher won 39, the lower 34, equal 14).
+    - Raw damage over the calibrated rate, per class (the coefficient's own rate: d_job, else class rate x gear
+      median): warrior 0.71 (n=37, p25 0.42, p75 0.76), magician 0.99 (59), bowman 0.86 (20), thief 0.77 (46),
+      pirate 1.53 (4). Run five's fighters set the rates; run six drew a different mix of citizens, and a class's
+      median moved by up to 30% (warriors most: Fighters, Pages and Spearmen at many levels).
+    - The sim matrix cannot show this: its raw rate and its coefficient share one rate, so it cancels and only gear,
+      hit chance, defense and level are left. At Lv 90 its warriors won 0-21% against bowmen, thieves and magicians
+      on hit chance (low accuracy against high avoid); live, warriors landed 84-96% of attacks.
+    - **PD14 confirmed:** a duel has so little luck that a 1.4x damage edge becomes a 90/10 split. A one-off
+      calibration cannot hold every class within a few percent across citizen samples, so the 40-60% done-when needs
+      either rates that keep learning from every duel, more luck per duel, or both (decision PD16, below).
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
