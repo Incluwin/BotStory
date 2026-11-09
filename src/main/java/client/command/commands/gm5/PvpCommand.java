@@ -245,8 +245,8 @@ public class PvpCommand extends Command {
     }
 
     /**
-     * {@code !pvp practice [n] [span]} (V2): bot-against-bot duels between free citizens (not hired, in no party,
-     * event or duel, Lv 30+) that share a map with no player on it, each paired with the nearest level within
+     * {@code !pvp practice [n] [span]} (V2): bot-against-bot duels between free citizens (not hired, nothing holding
+     * them: PresenceScheduler.held, Lv 30+) that share a map with no player on it, each paired with the nearest level within
      * {@code span}. Their rows feed {@code !pvp rates}.
      */
     private static void practice(Character gm, String[] params) {
@@ -308,7 +308,13 @@ public class PvpCommand extends Command {
             return false;
         }
         var citizen = population.citizen(chr.getId());
-        return citizen != null && !citizen.hired();
+        if (citizen == null || citizen.hired()) {
+            return false;
+        }
+        // nothing else holds it: no casino seat or post, mini-game, jump quest, party quest, errand, stall or trip
+        var presence = population.presence();
+        var session = presence == null ? null : presence.session(chr.getId());
+        return session != null && !presence.held(session);
     }
 
     private static boolean humanOn(server.maps.MapleMap map) {

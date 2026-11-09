@@ -1616,6 +1616,22 @@ public final class PresenceScheduler {
                 && !onSupplyTrip(session) && !server.pvp.DuelRegistry.inDuel(session.characterId);
     }
 
+    /**
+     * Whether something holds this citizen now, so nothing else should take it over (PvP practice duels, V2): what
+     * {@link #movable} refuses (party quest, party, job errand, stall, trips, a move on its way, a duel), a casino seat
+     * or post, a mini-game, a jump quest, a sell trip, a stall spot, a salon visit or a shopping trip. A dealer pulled
+     * away mid-hand closes its table (the casino session, 2026-11-09).
+     */
+    public boolean held(CitizenSession session) {
+        Market.ShoppingTrip shopping = session.shopping;
+        return !movable(session)
+                || casino() != null && casino().holds(session)
+                || miniGames() != null && miniGames().holds(session)
+                || jumpQuests() != null && jumpQuests().holds(session)
+                || session.sellTrip != null || session.stallSpot != null || session.salonNpc != 0
+                || shopping != null && !shopping.abandoned();
+    }
+
     /** It goes on to another place of the kind it is at (another field, town or market room), the way any move goes. */
     private boolean moveOn(CitizenSession session, MapleMap crowded, long now) {
         Activity next = session.activity == Activity.AFK ? Activity.TOWN : session.activity;
