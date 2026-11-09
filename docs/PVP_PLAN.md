@@ -494,6 +494,24 @@ The server sees a human only through movement packets. Ties go to the human both
       and MP when the bell rings; its own values still come back after, so the duel heals no one.
     - Not calibrated on this run: the key-repeat fix should lift every class's rate by about half again.
     - Next: a fourth practice run on 3d2256a9c; per-class `dps_per_base` from it, and a pass at the Pirate sample.
+  - **Fourth practice run (c5debf1a5, 2026-11-09 10:21-10:51, 97 duels, 194 rows):** 94 knock-outs, 3 forfeits, none
+    on time; no errors. (A first try at 09:54 ran no duels: the script called the client tool by a relative path.)
+    - Cadence: 0.84-1.23 swings a second (warrior 0.84, magician 1.00, bowman 1.11, thief 1.23, pirate 1.12); waits
+      fell to 0.09-0.21 a second. Knock-outs: median 18 s (p10 6, p25 14, p75 30, p90 54).
+    - Measured over model: warrior 0.49 (n=24, p25 0.29, p75 0.76), magician 0.75 (51), bowman 0.83 (28), thief
+      1.14 (38), pirate 0.83 (5).
+    - Lv 100+ Crusaders swung 0.54-0.63 a second at 0.04-0.06 of the model, refusing a finisher every think
+      (`plan:combo-orbs`); Lv 70s Crusaders were fine (0.66-0.85). Arans: about 0.01. Cause, for humans as much as
+      bots: `CloseRangeDamageHandler` earns an orb (and a Marauder's energy charge) only when the attack lists a
+      monster (`numAttacked > 0`), and Aran combo counts only the client's monster hits, so no duel ever built
+      either. Fixed (d2945a052): the orb/energy block and the Aran count move into `gainOnHit` / `countHit`, called
+      as before for monsters, and a landed duel hit earns the same (after the field's lock). Open: a human Aran's
+      client keeps its own combo counter and may still refuse a combo skill the server would allow; check live.
+    - Sixteen knock-outs took 7 s or less, all one-sided against a warrior: Lv 100+ Crusaders dealing nothing back,
+      and Bishops (232) landing three or four hits at the 25% cap on Dragon Knights. A class rate cannot tell a
+      Bishop from a Priest; `d_job` rows (measured per job path and band, ahead of the class rate) can.
+    - Next: a fifth practice run on d2945a052; then `class_dps_per_base` per class and `d_job` rows with n >= 3 and
+      no refusal dominating, and a sim matrix on the calibrated reference.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
