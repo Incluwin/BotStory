@@ -512,6 +512,18 @@ The server sees a human only through movement packets. Ties go to the human both
       Bishop from a Priest; `d_job` rows (measured per job path and band, ahead of the class rate) can.
     - Next: a fifth practice run on d2945a052; then `class_dps_per_base` per class and `d_job` rows with n >= 3 and
       no refusal dominating, and a sim matrix on the calibrated reference.
+  - **Fifth practice run (1e2e2b18b, 2026-11-09 11:19-11:50, 87 duels, 174 rows):** 85 knock-outs, 2 on time; no
+    errors. (Its first round, 90 s after boot, found no free citizens.) Swings 1.00-1.25 a second for every class.
+    - Combo orbs work: Lv 87 and 97 Crusaders dealt 0.5-1.1 of the model (from 0.04-0.06 in run four); their
+      remaining `plan:combo-orbs` refusals are the thinks spent building orbs, as a player's are. No Aran this run.
+    - Measured over model: warrior 0.64 (n=32), magician 0.70 (33), bowman 0.90 (22), thief 1.04 (44), pirate
+      0.56 (11). Knock-outs: median 23 s (p25 16, p75 44), against the 12 s target.
+    - **Calibrated from this run** (`scripts/config/pvp/reference.yaml`): `class_dps_per_base` for all five classes
+      (warrior 2.93, magician 55.9, bowman 4.15, thief 4.76, pirate 2.56; from 4.6 and 80), and `d_job` for the 18
+      job-path bands with n >= 5. The earlier runs are left out: each had a bot handicap this one no longer has.
+      Rows with n < 5 (and every Lv 100+ band, Bishops included) stay on the class rate until more duels come in.
+    - Next: a sim matrix on the calibrated reference and a sixth practice run to see knock-out times and class-pair
+      win rates against the done-when.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
