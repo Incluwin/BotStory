@@ -1714,8 +1714,11 @@ mods:
 # PVP_EVEN_CLASSES (the user's choice, 2026-11-08) evens the classes out: a hit is scaled by the victim class's median
 # HP (class_hp_ratio in the reference table: warrior 1.78, magician 0.50), so a median warrior and a median magician
 # both last PVP_TTK_SECONDS, and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard do not
-# act in a duel; gear defense, avoid, level and gear still do. Off, warriors win about nine duels in ten from Lv 70
-# (!pvp sim matrix, 2026-11-08) and PVP_MAGIC_GUARD_FACTOR / PVP_MESO_GUARD_HP_SHARE apply.
+# act in a duel; gear defense, level and gear still do. It evens dodging too (PD17, 2026-11-09): each side's accuracy
+# and avoid count against its own class's median at its level band, taken from the characters online every 10 min
+# (server.pvp.PvpHitBalance; "!pvp calibrate" prints it), so a DEX/LUK class no longer dodges a warrior by build while
+# avoid gear above the class median still helps. Off, warriors win about nine duels in ten from Lv 70 (!pvp sim
+# matrix, 2026-11-08), raw accuracy and avoid decide dodges, and PVP_MAGIC_GUARD_FACTOR / PVP_MESO_GUARD_HP_SHARE apply.
 # Technical: server.pvp.PvpDamageModel scales lines from CombatFormulaProvider.rollPvpLines with the reference table
 # scripts/config/pvp/reference.yaml (written by "!pvp calibrate"); server.pvp.PvpHitResolver tests attack boxes
 # against hurtboxes with PVP_LAG_WINDOW_MS of position history; server.pvp.DuelField owns sides, rounds, knock-outs

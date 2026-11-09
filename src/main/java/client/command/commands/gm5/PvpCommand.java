@@ -192,6 +192,9 @@ public class PvpCommand extends Command {
             gm.yellowMessage("H_ref " + band.band() * 10 + "s = " + band.hRef() + " (n=" + band.samples() + " "
                     + band.classMedians() + ")");
         }
+        server.pvp.PvpHitBalance hitBalance = server.pvp.PvpHitBalance.refresh();
+        gm.yellowMessage("PvP hit balance (PD17): " + hitBalance.report());
+        log.info("PvP hit balance (PD17): {}", hitBalance.report());
         try {
             Path file = PvpCalibration.write(Path.of("logs", "pvp"), bands, gear, PvpProbe.meter().report());
             gm.yellowMessage("PvP calibration: " + samples.size() + " characters -> " + file);
@@ -524,9 +527,16 @@ public class PvpCommand extends Command {
         double coefficient = PvpDamageModel.coefficient(attacker, reference, config);
         server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
         int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
+        int avoid = formulas.getTotalAvoidability(chr);
+        if (config.PVP_EVEN_CLASSES) {
+            // as the duel does (PD17): accuracy and avoid against the class's own median at the band
+            server.pvp.PvpHitBalance balance = server.pvp.PvpHitBalance.current();
+            accuracy = (int) Math.round(accuracy * balance.accuracyFactor(jobId, level));
+            avoid = (int) Math.round(avoid * balance.avoidFactor(jobId, level));
+        }
         double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
         return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
-                rawDps, coefficient, accuracy, formulas.getTotalAvoidability(chr), chr.getTotalWdef(),
+                rawDps, coefficient, accuracy, avoid, chr.getTotalWdef(),
                 chr.getTotalMdef(), reduce, magicGuardPercent(chr), reference.classHpRatio(jobId),
                 reference.hRef(level));
     }

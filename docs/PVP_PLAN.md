@@ -591,6 +591,16 @@ The server sees a human only through movement packets. Ties go to the human both
       better avoid than other Assassins still dodges more, but the class's base stats no longer decide; (B) no dodge
       roll in duels at all (Dark Sight aside); (C) keep it, evasive classes as a class trait (warriors stay at about
       one win in eight against them).
+    - **PD17 decided (the user, 2026-11-09): A, even it out by class.** `server.pvp.PvpHitBalance` takes, per level
+      band, each class's median accuracy (magic accuracy for magicians) and avoid from the characters online (GMs
+      left out, rebuilt every 10 min; `!pvp calibrate` rebuilds and prints it), and divides it by the band's mean of
+      class medians. Under `PVP_EVEN_CLASSES`, a duel hit multiplies the attacker's accuracy and the victim's avoid
+      by 1 over their class's ratio, so a median fighter of every class has the band's median accuracy and avoid;
+      gear above the class median still counts (1.5x a thief's median avoid still dodges as 1.5x). A class and band
+      with fewer than 3 characters takes its nearest band's ratio; a band with fewer than two such classes gives
+      none; factors are clamped to 0.25-4x (wide, since a warrior's avoid can sit at a quarter of a thief's).
+      `!pvp sim` builds its fighters the same way. The miss caps stay (physical 25%, magic 10%), so a magician keeps
+      a small edge when the evened chance falls under 90%; practice round nine checks whether that matters.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

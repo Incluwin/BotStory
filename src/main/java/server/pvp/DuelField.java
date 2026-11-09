@@ -385,8 +385,14 @@ public final class DuelField {
         CombatFormulaProvider formulas = CombatFormulaProvider.getInstance();
         int direction = to.getPosition().x < from.getPosition().x ? 0 : 1;
         int accuracy = attack.magic ? formulas.getTotalMagicAccuracy(from) : formulas.getTotalAccuracy(from);
-        double chance = PvpDamageModel.hitChance(attack.magic, accuracy, from.getLevel(), to.getLevel(),
-                formulas.getTotalAvoidability(to), config);
+        int avoid = formulas.getTotalAvoidability(to);
+        if (config.PVP_EVEN_CLASSES) {
+            // even classes (PD17): each side's accuracy / avoid against its own class's median at its band
+            PvpHitBalance balance = PvpHitBalance.current();
+            accuracy = (int) Math.round(accuracy * balance.accuracyFactor(from.getJob().getId(), from.getLevel()));
+            avoid = (int) Math.round(avoid * balance.avoidFactor(to.getJob().getId(), to.getLevel()));
+        }
+        double chance = PvpDamageModel.hitChance(attack.magic, accuracy, from.getLevel(), to.getLevel(), avoid, config);
         // rolled before the dodge, so the measured rate (V2) is the attack's throughput and avoid stays a modifier
         List<Integer> raw = formulas.rollPvpLines(from, lines, attack.skill, profile);
         attacker.stats.rawRolled.addAndGet(raw.stream().mapToLong(Integer::longValue).sum());
