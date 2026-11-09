@@ -214,6 +214,11 @@ public final class LivingWorldHooks {
         try {
             if (itemId > 0 && AgentPresence.isAgent(chr)) {
                 PersonalKnowledge.shared().gained(chr.getId(), itemId);
+            } else if (itemId > 0) {
+                // a pickup counts toward a collect step like any other gain: only addById fired the recount (itemGained),
+                // so items looted during the step never counted (live check 2026-11-08, CollectStepPickupTest)
+                world.quests().onItemGained(chr, itemId);
+                world.markers().forget(chr);
             }
             server.living.roster.LootTerms terms = world.lootTerms();
             if (terms != null) {
