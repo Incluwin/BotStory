@@ -32,6 +32,13 @@ public class PvpConfig {
     public int PVP_PHYSICAL_MISS_CAP_PERCENT = 25;
     /** Magic attacks miss at most this percent of the time. */
     public int PVP_MAGIC_MISS_CAP_PERCENT = 10;
+    /**
+     * Even classes (PD15, the user's call 2026-11-08): a hit is scaled by the victim class's median HP over the
+     * class-balanced median, so a median fighter of every class lasts {@link #PVP_TTK_SECONDS}, and the class defense
+     * skills (Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard, Meso Guard) do not act in a duel. Off:
+     * a warrior's double HP stands, and the two guard keys below apply.
+     */
+    public boolean PVP_EVEN_CLASSES = true;
     /** Magic Guard moves this share of its PvE share to MP (full strength makes the mage the tankiest class). */
     public double PVP_MAGIC_GUARD_FACTOR = 0.5d;
     /** Meso Guard leaves this share of a hit on HP (PvE: 0.5). */

@@ -26,6 +26,8 @@ public final class CharacterHitApplier {
     public record Guards(double magicGuardShare, double mesoGuardHpShare) {
         /** Stock behaviour against monsters: Magic Guard at full share, Meso Guard halves the hit. */
         public static final Guards PVE = new Guards(1.0d, 0.5d);
+        /** Neither guard acts (PvP even classes): no MP moved, no mesos spent. */
+        public static final Guards NONE = new Guards(0d, 1d);
     }
 
     /** What a hit took: HP and MP lost, and whether a floor of 1 HP held the target up. */
@@ -66,7 +68,7 @@ public final class CharacterHitApplier {
         Integer mesoGuard = target.getBuffedValue(BuffStat.MESOGUARD);
         int hpLoss = damage;
         int mpLoss = mpAttack;
-        if (magicGuard != null && mpAttack == 0) {
+        if (magicGuard != null && mpAttack == 0 && guards.magicGuardShare() > 0d) {
             int guardedMp = (int) (damage * (magicGuard.doubleValue() / 100.0d) * guards.magicGuardShare());
             hpLoss = damage - guardedMp;
             if (guardedMp > target.getMp()) {
@@ -74,7 +76,7 @@ public final class CharacterHitApplier {
                 guardedMp = target.getMp();
             }
             mpLoss = guardedMp;
-        } else if (mesoGuard != null) {
+        } else if (mesoGuard != null && guards.mesoGuardHpShare() < 1d) {
             hpLoss = Math.round(damage * (float) guards.mesoGuardHpShare());
             int mesoLoss = (int) (hpLoss * (mesoGuard.doubleValue() / 100.0d));
             if (target.getMeso() < mesoLoss) {

@@ -90,3 +90,9 @@ gear_base:        # "<jobId/10>-<band>" -> median max line before skills
   "52-6": 585
   "52-8": 1295
   "52-9": 1627
+class_hp_ratio:   # class (1 warrior .. 5 pirate) -> median max HP / class-balanced median, Lv 60-109 (even classes, PD15)
+  1: 1.78
+  2: 0.50
+  3: 0.84
+  4: 0.88
+  5: 0.97

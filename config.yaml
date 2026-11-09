@@ -1711,6 +1711,11 @@ mods:
 # victim of its level; better gear deals (gear / job median)^PVP_GEAR_EXPONENT more; one attack takes at most
 # PVP_MAX_HIT_PERCENT of the victim's max HP. Healing in a duel (potions, Heal, autopot) restores at most
 # PVP_HEAL_PERCENT of max HP and MP per PVP_HEAL_WINDOW_MS, and a potion is refused until that window has passed.
+# PVP_EVEN_CLASSES (the user's choice, 2026-11-08) evens the classes out: a hit is scaled by the victim class's median
+# HP (class_hp_ratio in the reference table: warrior 1.78, magician 0.50), so a median warrior and a median magician
+# both last PVP_TTK_SECONDS, and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard do not
+# act in a duel; gear defense, avoid, level and gear still do. Off, warriors win about nine duels in ten from Lv 70
+# (!pvp sim matrix, 2026-11-08) and PVP_MAGIC_GUARD_FACTOR / PVP_MESO_GUARD_HP_SHARE apply.
 # Technical: server.pvp.PvpDamageModel scales lines from CombatFormulaProvider.rollPvpLines with the reference table
 # scripts/config/pvp/reference.yaml (written by "!pvp calibrate"); server.pvp.PvpHitResolver tests attack boxes
 # against hurtboxes with PVP_LAG_WINDOW_MS of position history; server.pvp.DuelField owns sides, rounds, knock-outs
@@ -1729,6 +1734,7 @@ pvp:
     PVP_DEF_CAP_PERCENT: 25
     PVP_PHYSICAL_MISS_CAP_PERCENT: 25
     PVP_MAGIC_MISS_CAP_PERCENT: 10
+    PVP_EVEN_CLASSES: true
     PVP_MAGIC_GUARD_FACTOR: 0.5
     PVP_MESO_GUARD_HP_SHARE: 0.75
     PVP_HEAL_PERCENT: 10

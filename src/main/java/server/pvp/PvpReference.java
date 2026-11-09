@@ -16,29 +16,39 @@ import java.util.Map;
  *   <li>{@code gear_base}: {@code "<jobId / 10>-<level / 10>"} to the median weapon (or spell) base;</li>
  *   <li>{@code d_job}: the same keys to the median sustained single-target damage per second (the damage meter);</li>
  *   <li>{@code dps_per_base}: {@code physical} and {@code magic}, damage per second per point of base, for a job path
- *       and band the meter has not measured.</li>
+ *       and band the meter has not measured;</li>
+ *   <li>{@code class_hp_ratio}: class (1 warrior .. 5 pirate) to its median max HP over {@code H_ref}, for even
+ *       classes (PD15).</li>
  * </ul>
  * Anything missing falls back: {@code H_ref} to the V0.5 fit {@code 34 * L^1.11}, the gear median to the attacker's
- * own base (gear ratio 1), the rates to 4.6 (physical) and 80 (magic).
+ * own base (gear ratio 1), the rates to 4.6 (physical) and 80 (magic), the class ratios to
+ * {@link #DEFAULT_CLASS_HP_RATIO}.
  */
 public final class PvpReference {
     public static final Path FILE = Path.of("scripts", "config", "pvp", "reference.yaml");
     static final double FALLBACK_PHYSICAL_RATE = 4.6d;
     static final double FALLBACK_MAGIC_RATE = 80d;
+    /**
+     * Each class's median max HP over the class-balanced median, Lv 60-109 (calibration 2026-11-08 20:40): steady
+     * from band to band, so one number per class.
+     */
+    static final Map<Integer, Double> DEFAULT_CLASS_HP_RATIO = Map.of(1, 1.78d, 2, 0.50d, 3, 0.84d, 4, 0.88d, 5, 0.97d);
 
     private final Map<Integer, Long> hRefByBand;
     private final Map<String, Long> gearBase;
     private final Map<String, Long> dJob;
     private final double physicalRate;
     private final double magicRate;
+    private final Map<Integer, Double> classHpRatio;
 
     PvpReference(Map<Integer, Long> hRefByBand, Map<String, Long> gearBase, Map<String, Long> dJob,
-                 double physicalRate, double magicRate) {
+                 double physicalRate, double magicRate, Map<Integer, Double> classHpRatio) {
         this.hRefByBand = hRefByBand;
         this.gearBase = gearBase;
         this.dJob = dJob;
         this.physicalRate = physicalRate;
         this.magicRate = magicRate;
+        this.classHpRatio = classHpRatio;
     }
 
     private static volatile PvpReference current;
@@ -72,6 +82,7 @@ public final class PvpReference {
         Map<Integer, Long> hRef = new HashMap<>();
         Map<String, Long> gear = new HashMap<>();
         Map<String, Long> dps = new HashMap<>();
+        Map<Integer, Double> ratios = new HashMap<>();
         double physical = FALLBACK_PHYSICAL_RATE;
         double magic = FALLBACK_MAGIC_RATE;
         String section = "";
@@ -95,6 +106,7 @@ public final class PvpReference {
                     case "h_ref" -> hRef.put(Integer.parseInt(key) / 10, Long.parseLong(value));
                     case "gear_base" -> gear.put(key, Long.parseLong(value));
                     case "d_job" -> dps.put(key, Long.parseLong(value));
+                    case "class_hp_ratio" -> ratios.put(Integer.parseInt(key), Double.parseDouble(value));
                     case "dps_per_base" -> {
                         if (key.equals("physical")) {
                             physical = Double.parseDouble(value);
@@ -108,7 +120,7 @@ public final class PvpReference {
                 // a hand-edited line that is not a number is skipped, the fallback stands
             }
         }
-        return new PvpReference(hRef, gear, dps, physical, magic);
+        return new PvpReference(hRef, gear, dps, physical, magic, ratios);
     }
 
     static String key(int jobId, int level) {
@@ -139,5 +151,18 @@ public final class PvpReference {
 
     public double ratePerBase(boolean magic) {
         return magic ? magicRate : physicalRate;
+    }
+
+    /**
+     * The victim class's median max HP over {@code H_ref} (even classes, PD15): a hit on it is scaled by this, so a
+     * median warrior and a median magician both last {@code PVP_TTK_SECONDS}. 1 for a Beginner or an unknown class.
+     */
+    public double classHpRatio(int jobId) {
+        int jobClass = jobId / 100 % 10;
+        Double ratio = classHpRatio.get(jobClass);
+        if (ratio == null || ratio <= 0) {
+            ratio = DEFAULT_CLASS_HP_RATIO.get(jobClass);
+        }
+        return ratio == null ? 1d : ratio;
     }
 }

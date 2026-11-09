@@ -366,6 +366,15 @@ The server sees a human only through movement packets. Ties go to the human both
   - The brain judged reach by the attack planner's box, which for a skill with no lt/rb (projectiles, most magic) is
     a 1x1 point at the aim that never meets a body. So the bot believed it already stood at full reach and never
     closed in. It now asks `PvpHitResolver.attackBox`, the box the duel will judge the swing by.
+- **First class matrix (`!pvp sim matrix`, live loadouts, 2026-11-08 22:05):** warriors won 87-99% against every
+  other class from Lv 70, and warrior mirrors lasted 28-42 s. The model scaled hits to the class-balanced median
+  victim, and warriors carry 1.78x that HP plus Achilles. In a fight with this little luck, any toughness edge is a
+  near-certain win.
+- **PD15, decided by the user 2026-11-08: even classes.** `PVP_EVEN_CLASSES` (on): a hit is scaled by the victim
+  class's median HP ratio (`class_hp_ratio` in the reference table: warrior 1.78, magician 0.50, bowman 0.84, thief
+  0.88, pirate 0.97), and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard sit out of
+  duels (`CharacterHitApplier.Guards.NONE`; mob hits unchanged). Without the second half, Magic Guard would make
+  magicians the toughest class once HP is evened. Gear defense, avoid, level and gear damage still count.
 - **Known limit:** a bot with no attack skill (a Beginner) only walks: the stock basic-attack planner needs a monster.
 - **Not yet run:** a live duel on the fixed build, and `!pvp sim matrix` at each band on live loadouts.
 

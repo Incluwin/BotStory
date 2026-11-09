@@ -30,11 +30,12 @@ public final class DuelSim {
     /**
      * One side of a simulated round, from a real character. {@code rawDps}: its sustained damage per second before
      * the PvP model (as on a defenseless monster); {@code coefficient}: the model's step 2 for it; {@code reduce}:
-     * Achilles, High Defense and Combo Barrier as a factor; {@code magicGuardPercent}: 0 without Magic Guard.
+     * Achilles, High Defense and Combo Barrier as a factor; {@code magicGuardPercent}: 0 without Magic Guard;
+     * {@code classHpRatio}: its class's median HP over the reference (even classes scale hits on it by this).
      */
     public record Fighter(String name, int level, int jobId, boolean magic, int maxHp, int maxMp, double rawDps,
                           double coefficient, int accuracy, int avoid, int wdef, int mdef, double reduce,
-                          int magicGuardPercent) { }
+                          int magicGuardPercent, double classHpRatio) { }
 
     public record Outcome(int winner, double seconds) { }
 
@@ -124,7 +125,7 @@ public final class DuelSim {
         if (side.hp < f.maxHp() * DRINK_BELOW) {
             side.hp = Math.min(f.maxHp(), side.hp + f.maxHp() * share);
             side.nextDrinkS = now + window;
-        } else if (f.magicGuardPercent() > 0 && side.mp < f.maxMp() * 0.5d) {
+        } else if (!config.PVP_EVEN_CLASSES && f.magicGuardPercent() > 0 && side.mp < f.maxMp() * 0.5d) {
             side.mp = Math.min(f.maxMp(), side.mp + f.maxMp() * share);
             side.nextDrinkS = now + window;
         }
@@ -133,6 +134,7 @@ public final class DuelSim {
     /** One attack; true when it knocks the victim out. */
     static boolean hit(Fighter from, Side victim, PvpConfig config, Random random) {
         Fighter to = victim.fighter;
+        boolean even = config.PVP_EVEN_CLASSES;
         double chance = PvpDamageModel.hitChance(from.magic(), from.accuracy(), from.level(), to.level(), to.avoid(),
                 config);
         if (random.nextDouble() > chance) {
@@ -141,10 +143,11 @@ public final class DuelSim {
         double roll = (ROLL_LOW + (1d - ROLL_LOW) * random.nextDouble()) / ((1d + ROLL_LOW) / 2d);
         double raw = from.rawDps() * ATTACK_INTERVAL_S * roll;
         double damage = raw * from.coefficient() * PvpDamageModel.levelFactor(from.level(), to.level(), config)
-                * PvpDamageModel.defenseFactor(from.magic() ? to.mdef() : to.wdef(), from.level(), config);
-        damage = Math.min(damage, to.maxHp() * config.PVP_MAX_HIT_PERCENT / 100d) * to.reduce();
+                * PvpDamageModel.defenseFactor(from.magic() ? to.mdef() : to.wdef(), from.level(), config)
+                * (even ? to.classHpRatio() : 1d);
+        damage = Math.min(damage, to.maxHp() * config.PVP_MAX_HIT_PERCENT / 100d) * (even ? 1d : to.reduce());
         double mpLoss = 0;
-        if (to.magicGuardPercent() > 0) {
+        if (!even && to.magicGuardPercent() > 0) {
             mpLoss = Math.min(victim.mp, damage * to.magicGuardPercent() / 100d * config.PVP_MAGIC_GUARD_FACTOR);
         }
         victim.mp -= mpLoss;

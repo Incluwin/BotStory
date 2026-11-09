@@ -367,17 +367,21 @@ public final class DuelField {
         }
         List<Integer> raw = formulas.rollPvpLines(from, lines, attack.skill, profile);
         int defense = attack.magic ? to.getTotalMdef() : to.getTotalWdef();
+        boolean even = config.PVP_EVEN_CLASSES;
         double scale = factor * PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config)
-                * PvpDamageModel.defenseFactor(defense, from.getLevel(), config);
+                * PvpDamageModel.defenseFactor(defense, from.getLevel(), config)
+                * (even ? PvpReference.get().classHpRatio(to.getJob().getId()) : 1d);
         List<Integer> scaled = PvpDamageModel.scaleLines(raw, scale, to.getCurrentMaxHp(), config);
         long total = scaled.stream().mapToLong(Integer::longValue).sum();
-        int damage = CharacterHitApplier.reduce(to, (int) total);
+        // even classes: the class defense skills sit out, the class HP ratio above stands in for them
+        int damage = even ? (int) total : CharacterHitApplier.reduce(to, (int) total);
         Integer powerGuard = to.getBuffedValue(BuffStat.POWERGUARD);
-        if (powerGuard != null && !attack.ranged && !attack.magic) {
+        if (!even && powerGuard != null && !attack.ranged && !attack.magic) {
             damage = damage * Math.max(0, 100 - powerGuard) / 100;
         }
-        CharacterHitApplier.Applied applied = CharacterHitApplier.applyLoss(to, damage, 0,
-                new CharacterHitApplier.Guards(config.PVP_MAGIC_GUARD_FACTOR, config.PVP_MESO_GUARD_HP_SHARE), true);
+        CharacterHitApplier.Guards guards = even ? CharacterHitApplier.Guards.NONE
+                : new CharacterHitApplier.Guards(config.PVP_MAGIC_GUARD_FACTOR, config.PVP_MESO_GUARD_HP_SHARE);
+        CharacterHitApplier.Applied applied = CharacterHitApplier.applyLoss(to, damage, 0, guards, true);
         victim.lastHp = to.getHp();
         victim.lastMp = to.getMp();
         attacker.dealt += applied.hpLoss() + applied.mpLoss();

@@ -7,7 +7,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -54,6 +57,23 @@ class CharacterHitApplierTest {
 
         assertEquals(900, applied.hpLoss());
         assertEquals(100, applied.mpLoss());
+    }
+
+    @Test
+    void noGuardsLeaveTheWholeHitOnHpAndSpendNoMesos() {
+        Character mage = target(5000, 5000, 80);
+        Character thief = target(5000, 100, null);
+        when(thief.getBuffedValue(BuffStat.MESOGUARD)).thenReturn(80);
+
+        CharacterHitApplier.Applied mageHit =
+                CharacterHitApplier.applyLoss(mage, 1000, 0, CharacterHitApplier.Guards.NONE, true);
+        CharacterHitApplier.Applied thiefHit =
+                CharacterHitApplier.applyLoss(thief, 1000, 0, CharacterHitApplier.Guards.NONE, true);
+
+        assertEquals(1000, mageHit.hpLoss());
+        assertEquals(0, mageHit.mpLoss());
+        assertEquals(1000, thiefHit.hpLoss());
+        verify(thief, never()).gainMeso(anyInt(), anyBoolean());
     }
 
     @Test

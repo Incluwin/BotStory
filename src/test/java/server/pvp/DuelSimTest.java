@@ -18,7 +18,7 @@ class DuelSimTest {
     private static DuelSim.Fighter median(String name, int level, int magicGuard, PvpConfig config) {
         double coefficient = H_REF / (config.PVP_TTK_SECONDS * RAW_DPS);
         return new DuelSim.Fighter(name, level, 112, false, H_REF, 3000, RAW_DPS, coefficient, 200, 0, 0, 0, 1d,
-                magicGuard);
+                magicGuard, 1d);
     }
 
     @Test
@@ -38,9 +38,9 @@ class DuelSimTest {
     void noAttackerKnocksOutAFullHpVictimInUnderFourAttacks() {
         PvpConfig config = new PvpConfig();
         DuelSim.Fighter brute = new DuelSim.Fighter("brute", 70, 112, false, H_REF, 3000, RAW_DPS, 100d, 200, 0, 0, 0,
-                1d, 0);
+                1d, 0, 1d);
         DuelSim.Fighter harmless = new DuelSim.Fighter("harmless", 70, 112, false, H_REF, 3000, RAW_DPS, 0d, 200, 0, 0,
-                0, 1d, 0);
+                0, 1d, 0, 1d);
         Random random = new Random(11);
 
         for (int i = 0; i < 500; i++) {
@@ -52,9 +52,42 @@ class DuelSimTest {
         }
     }
 
+    /** A median fighter of a class: its HP and the class ratio together, with the class's defense skill. */
+    private static DuelSim.Fighter ofClass(String name, double ratio, double reduce, int magicGuard, PvpConfig config) {
+        double coefficient = H_REF / (config.PVP_TTK_SECONDS * RAW_DPS);
+        return new DuelSim.Fighter(name, 70, 112, false, (int) Math.round(H_REF * ratio), 10_000, RAW_DPS, coefficient,
+                200, 0, 0, 0, reduce, magicGuard, ratio);
+    }
+
+    @Test
+    void evenClassesMakeAMedianWarriorAndAMedianMagicianAnEvenMatch() {
+        PvpConfig config = new PvpConfig();
+        DuelSim.Fighter warrior = ofClass("warrior", 1.78d, 0.7d, 0, config);   // Achilles
+        DuelSim.Fighter magician = ofClass("magician", 0.50d, 1d, 80, config);  // Magic Guard
+
+        DuelSim.Summary summary = DuelSim.run(List.of(warrior), List.of(magician), 4000, config, new Random(13));
+
+        assertEquals(0.5d, summary.aWinRate(), 0.05d);
+        assertTrue(summary.medianSeconds() >= 10 && summary.medianSeconds() <= 25,
+                "median duel " + summary.medianSeconds() + " s");
+    }
+
+    @Test
+    void withoutEvenClassesTheWarriorAlmostAlwaysWins() {
+        PvpConfig config = new PvpConfig();
+        config.PVP_EVEN_CLASSES = false;
+        DuelSim.Fighter warrior = ofClass("warrior", 1.78d, 0.7d, 0, config);
+        DuelSim.Fighter magician = ofClass("magician", 0.50d, 1d, 80, config);
+
+        DuelSim.Summary summary = DuelSim.run(List.of(warrior), List.of(magician), 2000, config, new Random(17));
+
+        assertTrue(summary.aWinRate() > 0.9d, "warrior wins " + summary.aWinRate());
+    }
+
     @Test
     void magicGuardAtHalfShareStillMakesAFighterLastLonger() {
         PvpConfig config = new PvpConfig();
+        config.PVP_EVEN_CLASSES = false; // with even classes Magic Guard sits out
         DuelSim.Fighter attacker = median("attacker", 70, 0, config);
 
         DuelSim.Summary plain = DuelSim.run(List.of(attacker), List.of(median("plain", 70, 0, config)), 2000, config,
@@ -96,7 +129,7 @@ class DuelSimTest {
     void nobodyHurtingAnybodyIsADrawAtTheBell() {
         PvpConfig config = new PvpConfig();
         DuelSim.Fighter harmless = new DuelSim.Fighter("harmless", 70, 112, false, H_REF, 3000, RAW_DPS, 0d, 200, 0, 0,
-                0, 1d, 0);
+                0, 1d, 0, 1d);
 
         DuelSim.Outcome outcome = DuelSim.round(harmless, harmless, config, new Random(1));
 
