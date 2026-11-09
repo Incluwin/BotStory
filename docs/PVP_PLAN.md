@@ -378,6 +378,21 @@ The server sees a human only through movement packets. Ties go to the human both
   0.88, pirate 0.97), and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard sit out of
   duels (`CharacterHitApplier.Guards.NONE`; mob hits unchanged). Without the second half, Magic Guard would make
   magicians the toughest class once HP is evened. Gear defense, avoid, level and gear damage still count.
+- **Live duels on 30933f544 (2026-11-09 00:03-00:16, Henesys):** the bot now crosses the map (through in-map
+  portals), closes to its reach and stays. No errors, no deaths.
+  - Crewfriend (Lv 96 Spearman, only Slash Blast on his keys) against AngryMoon (Lv 86 Crusader): AngryMoon dealt
+    36,199 in 180 s (about 200 per second), Crewfriend 564; neither went down, as the 2%-a-second heal allowance
+    covered most of it. Ended on time.
+  - Bot against bot: Assassin 57 KO'd Cleric 54 in 23 s (2,168 against 2,035, close); Marauder 112 KO'd Crusader
+    110 in 81 s (46,255 against 8,415); Crusader 87 KO'd Crusader 86 in 136 s (38,765 against 0, the loser never
+    landed a hit); Brawler 74 against Wizard 79 hung: the Brawler left the map, and a forfeit never ended a duel
+    (fixed after: the tick ends a decided duel).
+  - **Finding:** what a bot really deals in a duel varies by more than ten times between bots, and is often far
+    below the model's assumed rate (gear base x 4.6 a second). So most duels run 3-10 times past the 12 s target.
+    V2 must log each fighter's swings tried, swings sent and hits landed, set the rate per job path from duel data,
+    and look at Crusader bots (their combo-orb skills are refused by the planner, which leaves weak fallbacks).
+  - Potions: an Elixir drunk by autopot reads full HP until the next 100 ms tick takes the excess back, and the
+    potion is spent for a 10% heal. V2 should refuse a potion bigger than the allowance instead.
 - **Known limit:** a bot with no attack skill (a Beginner) only walks: the stock basic-attack planner needs a monster.
 - **Not yet run:** a live duel on the fixed build, and `!pvp sim matrix` at each band on live loadouts.
 

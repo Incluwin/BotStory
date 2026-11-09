@@ -177,6 +177,12 @@ public final class DuelField {
                     accountHealing(fighter, dt);
                 }
             }
+            if (decided()) {
+                // a side left (a forfeit) or went down between attacks: only attack() ended it before, so a fighter
+                // walking off left the duel holding the other one forever (live 2026-11-09, duel 2: 523 s)
+                endBySides();
+                return;
+            }
             if (state == State.COUNTDOWN) {
                 long leftMs = fightStartsAtMs - now;
                 if (leftMs <= 0) {
@@ -199,11 +205,8 @@ public final class DuelField {
                     }
                 }
             } else if (state == State.FIGHTING) {
-                if (!decided() && now >= roundEndsAtMs) {
+                if (now >= roundEndsAtMs) {
                     endByTime();
-                    return;
-                }
-                if (decided()) {
                     return;
                 }
                 for (Fighter fighter : fighters.values()) {
@@ -429,7 +432,9 @@ public final class DuelField {
 
     private void endBySides() {
         int winner = standing(0) > 0 ? 0 : standing(1) > 0 ? 1 : -1;
-        end(winner, winner < 0 ? "both sides are down" : "the other side is down");
+        boolean leftOnly = winner >= 0 && fighters.values().stream()
+                .filter(f -> f.side != winner).allMatch(f -> f.forfeited);
+        end(winner, winner < 0 ? "both sides are down" : leftOnly ? "the other side left" : "the other side is down");
     }
 
     private void endByTime() {

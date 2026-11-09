@@ -88,6 +88,20 @@ class DuelPiecesTest {
         return chr;
     }
 
+    /** Live 2026-11-09, duel 2: a fighter walked off the map and the duel held the other one for 523 s. */
+    @Test
+    void aFighterWhoLeavesEndsTheDuelOnTheNextTick() {
+        MapleMap map = mock(MapleMap.class);
+        Character stays = fighter(1, map, true);
+        Character leaves = fighter(2, mock(MapleMap.class), true);
+        when(map.getCharacterById(1)).thenReturn(stays);
+        DuelField field = new DuelField(99, map, List.of(stays), List.of(leaves));
+
+        field.tick(System.currentTimeMillis());
+
+        assertEquals(DuelField.State.ENDED, field.state());
+    }
+
     @Test
     void theRegistryRefusesAFighterOnBothSides() {
         MapleMap map = mock(MapleMap.class);
