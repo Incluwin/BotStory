@@ -79,6 +79,33 @@ class DuelPiecesTest {
                 "a projectile's reach is hundreds of px, not the gap to the foe");
     }
 
+    @Test
+    void aClassRateGoesAheadOfThePhysicalAndMagicRates() {
+        PvpReference reference = PvpReference.parse(List.of(
+                "dps_per_base:", "  physical: 4.6", "  magic: 80",
+                "class_dps_per_base:", "  \"1\": 1.2", "  \"2\": 14.4"));
+
+        assertEquals(1.2d, reference.ratePerBase(112, false), 1e-9);
+        assertEquals(14.4d, reference.ratePerBase(232, true), 1e-9);
+        assertEquals(4.6d, reference.ratePerBase(312, false), 1e-9, "no class rate: the physical one");
+    }
+
+    @Test
+    void classScalesSuggestTheRateThatMatchesWhatBotsDeal() {
+        PvpReference reference = PvpReference.parse(List.of("dps_per_base:", "  physical: 4.6", "  magic: 80"));
+        // warriors with gear base 2000: model 9200/s; they deal 2300, 2760 and 1840 raw a second (0.25, 0.30, 0.20)
+        String a = "1,1,0,30,x,0,A,1,112,95,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,69000,0,0,30.0,-";
+        String b = "1,1,0,30,x,0,B,2,111,92,B,1,2000,0,0,1,0,1,0,0,0,20,0,0,20,82800,0,0,30.0,-";
+        String c = "1,2,0,30,x,0,C,3,112,98,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,55200,0,0,30.0,-";
+
+        List<DuelLog.ClassScale> scales = DuelLog.classScales(List.of(DuelLog.HEADER, a, b, c), reference);
+
+        assertEquals(1, scales.size());
+        assertEquals(1, scales.get(0).jobClass());
+        assertEquals(0.25d, scales.get(0).medianRatio(), 1e-9);
+        assertEquals(1.15d, scales.get(0).suggestedRatePerBase(), 1e-9);
+    }
+
     /** A platform at y 100 from x 0 to 500 over open ground at y 300. */
     private static Point floorUnder(Point p) {
         return p.x >= 0 && p.x <= 500 ? new Point(p.x, 100) : new Point(p.x, 300);

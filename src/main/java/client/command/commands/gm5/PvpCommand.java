@@ -347,7 +347,7 @@ public class PvpCommand extends Command {
             int level = Integer.parseInt(parts[1]) * 10;
             boolean magic = jobId / 100 % 10 == 2;
             long median = reference.gearMedian(jobId, level);
-            long model = median > 0 ? Math.round(median * reference.ratePerBase(magic)) : -1;
+            long model = median > 0 ? Math.round(median * reference.ratePerBase(jobId, magic)) : -1;
             String note = String.format(java.util.Locale.ROOT, "n=%d, model %s%s", rate.fighters(),
                     model > 0 ? Long.toString(model) : "?",
                     model > 0 ? String.format(java.util.Locale.ROOT, " (%.2fx)", rate.medianRawDps() / (double) model)
@@ -355,6 +355,23 @@ public class PvpCommand extends Command {
             lines.add((rate.fighters() >= 3 ? "  " : "# ") + "\"" + rate.key() + "\": " + rate.medianRawDps() + "   # "
                     + note);
             gm.yellowMessage(rate.key() + ": " + rate.medianRawDps() + " raw/s, " + note);
+        }
+        try {
+            List<server.pvp.DuelLog.ClassScale> scales =
+                    server.pvp.DuelLog.classScales(server.pvp.DuelLog.lines(), reference);
+            lines.add("# per class: median of (raw dps / own gear base x current rate); classes with n >= 8 get a"
+                    + " suggestion");
+            lines.add("class_dps_per_base:");
+            for (server.pvp.DuelLog.ClassScale scale : scales) {
+                String line = String.format(java.util.Locale.ROOT,
+                        "\"%d\": %.2f   # n=%d, measured/model %.2f, current %.2f",
+                        scale.jobClass(), scale.suggestedRatePerBase(), scale.fighters(), scale.medianRatio(),
+                        scale.currentRatePerBase());
+                lines.add((scale.fighters() >= 8 ? "  " : "# ") + line);
+                gm.yellowMessage("class " + line);
+            }
+        } catch (java.io.IOException failure) {
+            gm.yellowMessage("PvP rates: could not read the class scales (" + failure.getMessage() + ").");
         }
         try {
             Path file = Path.of("logs", "pvp", "rates-" + System.currentTimeMillis() + ".yaml");
@@ -459,7 +476,7 @@ public class PvpCommand extends Command {
         long median = reference.gearMedian(jobId, level);
         double medianBase = median > 0 ? median : ownBase;
         long measured = reference.measuredRate(jobId, level);
-        double rate = measured > 0 ? measured : medianBase * reference.ratePerBase(magic);
+        double rate = measured > 0 ? measured : medianBase * reference.ratePerBase(jobId, magic);
         double rawDps = rate * ownBase / medianBase;
         double coefficient = PvpDamageModel.coefficient(
                 new PvpDamageModel.Attacker(level, jobId, ownBase, magic), reference, config);

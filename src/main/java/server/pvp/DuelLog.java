@@ -97,6 +97,53 @@ public final class DuelLog {
         return rates;
     }
 
+    /**
+     * A class's measured rate against the model: the median over its bots of raw damage per engaged second over the
+     * model's rate for that bot (its own gear base x the current rate per base). {@code suggestedRatePerBase} is the
+     * current rate times that median, the value {@code class_dps_per_base} wants for the model to match.
+     */
+    public record ClassScale(int jobClass, double medianRatio, int fighters, double currentRatePerBase,
+                             double suggestedRatePerBase) { }
+
+    public static List<ClassScale> classScales(List<String> lines, PvpReference reference) {
+        Map<Integer, List<Double>> ratios = new java.util.TreeMap<>();
+        Map<Integer, Double> current = new java.util.HashMap<>();
+        for (String line : lines) {
+            String[] f = line.split(",", -1);
+            if (f.length < 30 || f[0].equals("endedAt") || !f[10].equals("B")) {
+                continue;
+            }
+            try {
+                int jobId = Integer.parseInt(f[8]);
+                long gearBase = Long.parseLong(f[12]);
+                int packets = Integer.parseInt(f[21]);
+                long raw = Long.parseLong(f[25]);
+                double engaged = Double.parseDouble(f[28]);
+                int jobClass = jobId / 100 % 10;
+                if (engaged < MIN_ENGAGED_SECONDS || packets < MIN_PACKETS || gearBase <= 0 || jobClass < 1) {
+                    continue;
+                }
+                double perBase = reference.ratePerBase(jobId, jobClass == 2);
+                current.put(jobClass, perBase);
+                ratios.computeIfAbsent(jobClass, c -> new ArrayList<>()).add(raw / engaged / (gearBase * perBase));
+            } catch (NumberFormatException skipped) {
+                // a row from another version of the file
+            }
+        }
+        List<ClassScale> scales = new ArrayList<>();
+        ratios.forEach((jobClass, values) -> {
+            values.sort(Double::compare);
+            double median = values.get(values.size() / 2);
+            double perBase = current.get(jobClass);
+            scales.add(new ClassScale(jobClass, median, values.size(), perBase, perBase * median));
+        });
+        return scales;
+    }
+
+    public static List<String> lines() throws IOException {
+        return Files.exists(FILE) ? Files.readAllLines(FILE, StandardCharsets.UTF_8) : List.of();
+    }
+
     public static List<Rate> rates() throws IOException {
         return Files.exists(FILE) ? rates(Files.readAllLines(FILE, StandardCharsets.UTF_8)) : List.of();
     }

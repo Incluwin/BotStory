@@ -18,7 +18,8 @@ import java.util.Map;
  *   <li>{@code dps_per_base}: {@code physical} and {@code magic}, damage per second per point of base, for a job path
  *       and band the meter has not measured;</li>
  *   <li>{@code class_hp_ratio}: class (1 warrior .. 5 pirate) to its median max HP over {@code H_ref}, for even
- *       classes (PD15).</li>
+ *       classes (PD15);</li>
+ *   <li>{@code class_dps_per_base}: class to its measured rate per point of base, ahead of {@code dps_per_base} (V2).</li>
  * </ul>
  * Anything missing falls back: {@code H_ref} to the V0.5 fit {@code 34 * L^1.11}, the gear median to the attacker's
  * own base (gear ratio 1), the rates to 4.6 (physical) and 80 (magic), the class ratios to
@@ -40,15 +41,18 @@ public final class PvpReference {
     private final double physicalRate;
     private final double magicRate;
     private final Map<Integer, Double> classHpRatio;
+    private final Map<Integer, Double> classRatePerBase;
 
     PvpReference(Map<Integer, Long> hRefByBand, Map<String, Long> gearBase, Map<String, Long> dJob,
-                 double physicalRate, double magicRate, Map<Integer, Double> classHpRatio) {
+                 double physicalRate, double magicRate, Map<Integer, Double> classHpRatio,
+                 Map<Integer, Double> classRatePerBase) {
         this.hRefByBand = hRefByBand;
         this.gearBase = gearBase;
         this.dJob = dJob;
         this.physicalRate = physicalRate;
         this.magicRate = magicRate;
         this.classHpRatio = classHpRatio;
+        this.classRatePerBase = classRatePerBase;
     }
 
     private static volatile PvpReference current;
@@ -83,6 +87,7 @@ public final class PvpReference {
         Map<String, Long> gear = new HashMap<>();
         Map<String, Long> dps = new HashMap<>();
         Map<Integer, Double> ratios = new HashMap<>();
+        Map<Integer, Double> classRates = new HashMap<>();
         double physical = FALLBACK_PHYSICAL_RATE;
         double magic = FALLBACK_MAGIC_RATE;
         String section = "";
@@ -107,6 +112,7 @@ public final class PvpReference {
                     case "gear_base" -> gear.put(key, Long.parseLong(value));
                     case "d_job" -> dps.put(key, Long.parseLong(value));
                     case "class_hp_ratio" -> ratios.put(Integer.parseInt(key), Double.parseDouble(value));
+                    case "class_dps_per_base" -> classRates.put(Integer.parseInt(key), Double.parseDouble(value));
                     case "dps_per_base" -> {
                         if (key.equals("physical")) {
                             physical = Double.parseDouble(value);
@@ -120,7 +126,7 @@ public final class PvpReference {
                 // a hand-edited line that is not a number is skipped, the fallback stands
             }
         }
-        return new PvpReference(hRef, gear, dps, physical, magic, ratios);
+        return new PvpReference(hRef, gear, dps, physical, magic, ratios, classRates);
     }
 
     static String key(int jobId, int level) {
@@ -151,6 +157,15 @@ public final class PvpReference {
 
     public double ratePerBase(boolean magic) {
         return magic ? magicRate : physicalRate;
+    }
+
+    /**
+     * The class's own rate per point of base when {@code class_dps_per_base} has one (V2: measured in practice
+     * duels, so each class's median fighter lasts the same), else {@link #ratePerBase(boolean)}.
+     */
+    public double ratePerBase(int jobId, boolean magic) {
+        Double rate = classRatePerBase.get(jobId / 100 % 10);
+        return rate != null && rate > 0 ? rate : ratePerBase(magic);
     }
 
     /**

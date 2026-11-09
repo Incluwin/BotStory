@@ -27,7 +27,7 @@ public final class PvpDamageModel {
         long ownBase = Math.max(1L, attacker.gearBase());
         double gearMedian = median > 0 ? median : ownBase;
         long measured = reference.measuredRate(attacker.jobId(), attacker.level());
-        double rate = measured > 0 ? measured : gearMedian * reference.ratePerBase(attacker.magic());
+        double rate = measured > 0 ? measured : gearMedian * reference.ratePerBase(attacker.jobId(), attacker.magic());
         double gearRatio = Math.max(0.05d, ownBase / gearMedian);
         return hRef / (config.PVP_TTK_SECONDS * Math.max(1d, rate))
                 * Math.pow(gearRatio, config.PVP_GEAR_EXPONENT - 1d);
