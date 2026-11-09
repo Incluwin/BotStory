@@ -378,7 +378,16 @@ The server sees a human only through movement packets. Ties go to the human both
   0.88, pirate 0.97), and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard sit out of
   duels (`CharacterHitApplier.Guards.NONE`; mob hits unchanged). Without the second half, Magic Guard would make
   magicians the toughest class once HP is evened. Gear defense, avoid, level and gear damage still count.
-- **Open decision PD16 (2026-11-09, from practice runs five and six):** how class win rates reach 40-60%.
+- **PD16, decided by the user 2026-11-09: learn the rates live.** `PVP_LEARN_RATES` (on): after every duel, each
+  fighter with 15 s of fighting and 5 attacks (players and bots alike) reports its efficiency, raw damage per
+  second over the reference rate for its job path, band and gear. `server.pvp.PvpRateLearner` keeps a running mean
+  of its log per class (step `PVP_LEARN_CLASS_STEP` 0.05, the table worth 5 fighters at the start) and per job path
+  and band (step `PVP_LEARN_JOB_STEP` 0.1, starting from its class, used from `PVP_LEARN_JOB_MIN_FIGHTERS` 8). One
+  fighter counts as 1/3-3x at most; a learned rate stays within 0.4-2.5x of the table's. `PvpDamageModel.rate` =
+  the table's rate x the learned multiplier, for the coefficient and the sim. Kept in `logs/pvp/learned-rates.txt`
+  (untracked); `!pvp learned` shows it, `!pvp learned reset` clears it, `!pvp learned replay <csv>` seeds it from a
+  duel CSV in logs/pvp. No luck was added: if the leftover edge still decides most duels, revisit.
+- **PD16 options as put to the user (2026-11-09, from practice runs five and six):** how class win rates reach 40-60%.
   - *Learn the rates (recommended):* after every duel, nudge the attacker's `d_job` / class rate toward its measured
     raw rate (a slow running median, players' duels included), so the rates follow whoever actually fights instead
     of one run's sample. Bounded steps, written back to a `learned` section and logged; the reference file stays the

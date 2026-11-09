@@ -57,6 +57,18 @@ public class PvpConfig {
     public int PVP_ROUND_SECONDS = 180;
     /** Seconds of countdown before a round, with the fighters frozen out of PvP. */
     public int PVP_COUNTDOWN_SECONDS = 3;
+    /**
+     * Learned rates (PD16, the user's call 2026-11-09): after every duel each fighter's raw damage moves its class's
+     * and its job path and band's rate a step toward what it measured (server.pvp.PvpRateLearner), so the rates follow
+     * whoever fights instead of one practice run's sample. Off: the reference table's rates stand.
+     */
+    public boolean PVP_LEARN_RATES = false;
+    /** The step a class's learned rate takes toward one fighter's measurement (a running mean of about 1/step). */
+    public double PVP_LEARN_CLASS_STEP = 0.05d;
+    /** The step a job path and band's learned rate takes; it is used once it has this many fighters ... */
+    public double PVP_LEARN_JOB_STEP = 0.1d;
+    /** ... and until then the class's learned rate stands in for it. */
+    public int PVP_LEARN_JOB_MIN_FIGHTERS = 8;
 
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {
@@ -82,6 +94,11 @@ public class PvpConfig {
         if (PVP_HEAL_PERCENT < 0 || PVP_HEAL_WINDOW_MS < 0 || PVP_LAG_WINDOW_MS < 0
                 || PVP_HUMAN_HURTBOX_INSET_PX < 0 || PVP_MIN_ATTACK_GAP_MS < 0) {
             throw new IllegalArgumentException("pvp: heal, lag, inset and attack-gap values must be >= 0");
+        }
+        if (PVP_LEARN_CLASS_STEP <= 0d || PVP_LEARN_CLASS_STEP > 1d || PVP_LEARN_JOB_STEP <= 0d
+                || PVP_LEARN_JOB_STEP > 1d || PVP_LEARN_JOB_MIN_FIGHTERS < 1) {
+            throw new IllegalArgumentException("pvp: PVP_LEARN_CLASS_STEP and PVP_LEARN_JOB_STEP in (0, 1],"
+                    + " PVP_LEARN_JOB_MIN_FIGHTERS >= 1");
         }
         if (PVP_ROUND_SECONDS < 10 || PVP_COUNTDOWN_SECONDS < 0) {
             throw new IllegalArgumentException("pvp: PVP_ROUND_SECONDS >= 10 and PVP_COUNTDOWN_SECONDS >= 0");

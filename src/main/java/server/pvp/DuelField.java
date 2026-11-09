@@ -530,8 +530,25 @@ public final class DuelField {
         DuelRegistry.release(this);
     }
 
-    /** Where finished duels' rows go: {@code logs/pvp/duels.csv}; a test swaps it out. */
-    static volatile java.util.function.Consumer<List<DuelLog.Row>> rowSink = DuelLog::append;
+    /** Where finished duels' rows go: {@code logs/pvp/duels.csv}, then the learned rates; a test swaps it out. */
+    static volatile java.util.function.Consumer<List<DuelLog.Row>> rowSink = DuelField::record;
+
+    /** A finished duel's rows: the CSV, then (PVP_LEARN_RATES, PD16) the learned rates. */
+    static void record(List<DuelLog.Row> rows) {
+        DuelLog.append(rows);
+        var pvp = YamlConfig.config.pvp;
+        if (!pvp.PVP_LEARN_RATES) {
+            return;
+        }
+        try {
+            int counted = PvpRateLearner.get().observeAll(rows, PvpReference.get(), pvp);
+            if (counted > 0) {
+                log.info("PvP learned rates: {} fighter(s) of duel {} counted", counted, rows.getFirst().duel());
+            }
+        } catch (RuntimeException failure) {
+            log.warn("PvP: learning from a duel failed", failure);
+        }
+    }
 
     private static long gearBase(Character chr) {
         try {

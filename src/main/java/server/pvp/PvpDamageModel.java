@@ -26,11 +26,29 @@ public final class PvpDamageModel {
         long median = reference.gearMedian(attacker.jobId(), attacker.level());
         long ownBase = Math.max(1L, attacker.gearBase());
         double gearMedian = median > 0 ? median : ownBase;
-        long measured = reference.measuredRate(attacker.jobId(), attacker.level());
-        double rate = measured > 0 ? measured : gearMedian * reference.ratePerBase(attacker.jobId(), attacker.magic());
+        double rate = rate(attacker, reference, config);
         double gearRatio = Math.max(0.05d, ownBase / gearMedian);
         return hRef / (config.PVP_TTK_SECONDS * Math.max(1d, rate))
                 * Math.pow(gearRatio, config.PVP_GEAR_EXPONENT - 1d);
+    }
+
+    /**
+     * The reference table's raw damage per second for a median-geared attacker of this job path and band: its measured
+     * {@code d_job}, else its class's rate per point of base times the band's gear median.
+     */
+    public static double priorRate(Attacker attacker, PvpReference reference) {
+        long median = reference.gearMedian(attacker.jobId(), attacker.level());
+        double gearMedian = median > 0 ? median : Math.max(1L, attacker.gearBase());
+        long measured = reference.measuredRate(attacker.jobId(), attacker.level());
+        return measured > 0 ? measured : gearMedian * reference.ratePerBase(attacker.jobId(), attacker.magic());
+    }
+
+    /** {@link #priorRate} times what duels have taught (PD16, {@link PvpRateLearner}) while PVP_LEARN_RATES is on. */
+    public static double rate(Attacker attacker, PvpReference reference, PvpConfig config) {
+        double prior = priorRate(attacker, reference);
+        return config.PVP_LEARN_RATES
+                ? prior * PvpRateLearner.get().multiplier(attacker.jobId(), attacker.level(), config)
+                : prior;
     }
 
     /** Step 3: the share each of {@code targets} takes of an attack that hits that many. */

@@ -1720,6 +1720,15 @@ mods:
 # scripts/config/pvp/reference.yaml (written by "!pvp calibrate"); server.pvp.PvpHitResolver tests attack boxes
 # against hurtboxes with PVP_LAG_WINDOW_MS of position history; server.pvp.DuelField owns sides, rounds, knock-outs
 # and the heal allowance; the hook is AbstractDealDamageHandler.applyAttack, shared by players and Agents.
+# PVP_LEARN_RATES (the user's choice PD16, 2026-11-09): after every duel, each fighter with 15 s of fighting and 5
+# attacks moves its class's rate by PVP_LEARN_CLASS_STEP, and its job path and band's by PVP_LEARN_JOB_STEP, toward
+# its measured raw damage; a band's own rate counts once it has PVP_LEARN_JOB_MIN_FIGHTERS fighters. Players' duels
+# count as much as bots'. The reference table stays the prior; a learned rate stays within 0.4x-2.5x of it.
+# Technical: server.pvp.PvpRateLearner keeps a running mean of log(raw dps / the reference rate for that fighter's job,
+# band and gear) per class and per job path and band, persisted in logs/pvp/learned-rates.txt (untracked; "!pvp learned
+# reset" clears it, "!pvp learned replay <csv>" seeds it from a logs/pvp duel CSV); PvpDamageModel.rate multiplies the
+# reference rate by it for the coefficient and the sim alike. Raw damage is rolled before any PvP scaling, so what the
+# learner measures never depends on what it learned.
 pvp:
     PVP_ENABLED: false
     PVP_TTK_SECONDS: 12
@@ -1744,3 +1753,7 @@ pvp:
     PVP_MIN_ATTACK_GAP_MS: 250
     PVP_ROUND_SECONDS: 180
     PVP_COUNTDOWN_SECONDS: 3
+    PVP_LEARN_RATES: true
+    PVP_LEARN_CLASS_STEP: 0.05
+    PVP_LEARN_JOB_STEP: 0.1
+    PVP_LEARN_JOB_MIN_FIGHTERS: 8

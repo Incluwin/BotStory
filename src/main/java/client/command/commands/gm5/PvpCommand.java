@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>]");
     }
 
     @Override
@@ -67,8 +67,51 @@ public class PvpCommand extends Command {
             case "sim" -> sim(gm, params);
             case "practice" -> practice(gm, params);
             case "rates" -> rates(gm);
+            case "learned" -> learned(gm, params);
             default -> gm.yellowMessage(getDescription());
         }
+    }
+
+    /**
+     * {@code !pvp learned [reset | replay <file>]} (PD16): the learned rates per class and band; reset clears them;
+     * replay feeds a duel CSV kept in logs/pvp (a bare file name) through the learner.
+     */
+    private static void learned(Character gm, String[] params) {
+        server.pvp.PvpRateLearner learner = server.pvp.PvpRateLearner.get();
+        String what = params.length > 1 ? params[1].toLowerCase() : "";
+        switch (what) {
+            case "reset" -> {
+                learner.reset();
+                gm.yellowMessage("PvP learned rates cleared; the reference table's rates stand.");
+                return;
+            }
+            case "replay" -> {
+                String name = params.length > 2 ? params[2] : "";
+                if (!name.matches("[A-Za-z0-9._-]+\\.csv")) {
+                    gm.yellowMessage("Usage: !pvp learned replay <file.csv> (a duel CSV in logs/pvp).");
+                    return;
+                }
+                java.nio.file.Path file = server.pvp.DuelLog.FILE.resolveSibling(name);
+                try {
+                    int counted = learner.replay(java.nio.file.Files.readAllLines(file,
+                            java.nio.charset.StandardCharsets.UTF_8), PvpReference.get(), YamlConfig.config.pvp);
+                    gm.yellowMessage("PvP learned rates: " + counted + " fighter(s) of " + name + " counted.");
+                    log.info("PvP learned rates: {} replayed, {} fighter(s) counted", file, counted);
+                } catch (java.io.IOException failure) {
+                    gm.yellowMessage("PvP learned rates: could not read " + file + " (" + failure.getMessage() + ").");
+                    return;
+                }
+            }
+            default -> { }
+        }
+        if (!YamlConfig.config.pvp.PVP_LEARN_RATES) {
+            gm.yellowMessage("PVP_LEARN_RATES is off: duels use the reference table's rates.");
+        }
+        List<String> summary = learner.summary();
+        if (summary.isEmpty()) {
+            gm.yellowMessage("PvP learned rates: none yet.");
+        }
+        summary.forEach(gm::yellowMessage);
     }
 
     private void probe(Character gm, String[] params) {
@@ -475,11 +518,10 @@ public class PvpCommand extends Command {
         long ownBase = Math.max(1L, sample.gearBase());
         long median = reference.gearMedian(jobId, level);
         double medianBase = median > 0 ? median : ownBase;
-        long measured = reference.measuredRate(jobId, level);
-        double rate = measured > 0 ? measured : medianBase * reference.ratePerBase(jobId, magic);
-        double rawDps = rate * ownBase / medianBase;
-        double coefficient = PvpDamageModel.coefficient(
-                new PvpDamageModel.Attacker(level, jobId, ownBase, magic), reference, config);
+        PvpDamageModel.Attacker attacker = new PvpDamageModel.Attacker(level, jobId, ownBase, magic);
+        // the learned rate too (PD16), so raw and coefficient share one rate as in a duel
+        double rawDps = PvpDamageModel.rate(attacker, reference, config) * ownBase / medianBase;
+        double coefficient = PvpDamageModel.coefficient(attacker, reference, config);
         server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
         int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
         double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
