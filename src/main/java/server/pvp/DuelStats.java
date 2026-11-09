@@ -26,9 +26,20 @@ public final class DuelStats {
     final AtomicLong rawRolled = new AtomicLong();
     final AtomicLong firstPacketMs = new AtomicLong();
     final Map<String, AtomicInteger> refusals = new ConcurrentHashMap<>();
+    /** Why swings waited (the attack lock, the skill's cost or cooldown, the ground), counted apart from refusals. */
+    final Map<String, AtomicInteger> deferrals = new ConcurrentHashMap<>();
 
     void refused(String reason) {
-        refusals.computeIfAbsent(reason == null || reason.isBlank() ? "unknown" : reason, r -> new AtomicInteger())
+        count(refusals, reason);
+    }
+
+    void deferred(String reason) {
+        swingsDeferred.incrementAndGet();
+        count(deferrals, reason);
+    }
+
+    private static void count(Map<String, AtomicInteger> into, String reason) {
+        into.computeIfAbsent(reason == null || reason.isBlank() ? "unknown" : reason, r -> new AtomicInteger())
                 .incrementAndGet();
     }
 
@@ -45,7 +56,16 @@ public final class DuelStats {
 
     /** The commonest refusal reason, or "-". */
     String topRefusal() {
-        return refusals.entrySet().stream()
+        return top(refusals);
+    }
+
+    /** The commonest reason a swing waited, or "-". */
+    String topDeferral() {
+        return top(deferrals);
+    }
+
+    private static String top(Map<String, AtomicInteger> counts) {
+        return counts.entrySet().stream()
                 .max(Map.Entry.comparingByValue((a, b) -> Integer.compare(a.get(), b.get())))
                 .map(e -> e.getKey() + "x" + e.getValue().get())
                 .orElse("-");
@@ -55,6 +75,6 @@ public final class DuelStats {
         return "thinks=" + thinks + " buffs=" + buffsCast + " sent=" + swingsSent + " deferred=" + swingsDeferred
                 + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " packets=" + packets
                 + " whiffs=" + whiffs + " dodged=" + dodged + " hits=" + hits + " raw=" + rawRolled
-                + " top=" + topRefusal();
+                + " top=" + topRefusal() + " waited=" + topDeferral();
     }
 }

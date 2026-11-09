@@ -189,6 +189,21 @@ class DuelPiecesTest {
     }
 
     @Test
+    void aWaitedSwingCountsInTheTotalAndByItsReason() {
+        DuelStats stats = new DuelStats();
+        stats.deferred("ATTACK_COOLDOWN");
+        stats.deferred("ATTACK_COOLDOWN");
+        stats.deferred("CANNOT_USE_SKILL");
+        stats.refused("plan:combo-orbs");
+
+        assertEquals(3, stats.swingsDeferred.get());
+        assertEquals("ATTACK_COOLDOWNx2", stats.topDeferral());
+        assertEquals("plan:combo-orbsx1", stats.topRefusal(), "a wait is not a refusal");
+        assertTrue(stats.summary().contains("waited=ATTACK_COOLDOWNx2"));
+        assertEquals("-", new DuelStats().topDeferral());
+    }
+
+    @Test
     void theRegistryRefusesAFighterOnBothSides() {
         MapleMap map = mock(MapleMap.class);
         Character a = fighter(1, map, true);

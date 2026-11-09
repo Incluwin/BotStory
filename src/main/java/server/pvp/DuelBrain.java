@@ -72,6 +72,8 @@ final class DuelBrain {
         volatile int thinkMs = 450;
         /** Whether the duel paused the Agent's field session, so only that one is resumed after. */
         volatile boolean pausedField;
+        /** Whether something else (a boss run, a party quest) already held the Agent at full rate, so that hold stays. */
+        volatile boolean fullRateWasRequired;
         /** Its own buffs (the ones it casts while grinding, less the hiding ones) and when each is due again. */
         volatile List<Integer> buffs = List.of();
         final java.util.Map<Integer, Long> buffDueMs = new java.util.concurrent.ConcurrentHashMap<>();
@@ -97,6 +99,11 @@ final class DuelBrain {
                 AgentTownLifeVisitLeaseRuntime.clear(e, bot); // as PresenceScheduler does, so the lease cannot restart it
             }
             mind.pausedField = AgentFieldActivityRuntime.suspend(e, bot, "pvp duel", now);
+            // full rate, as a boss run or party quest holds its members: on a map no player sees, an Agent ticks every
+            // 250 ms but its attack lock counts down one 50 ms movement tick per tick, so every swing waited five
+            // times its animation (practice 2026-11-09: 0.3 swings a second against a player's ~1.3)
+            mind.fullRateWasRequired = e.simulationState().fullRateSimulationRequired();
+            e.simulationState().requireFullRateSimulation();
             mind.wasFollowing = AgentModeStateRuntime.following(e);
             mind.wasGrinding = AgentModeStateRuntime.grinding(e);
             AgentModeStateRuntime.setFollowing(e, false);
@@ -171,6 +178,9 @@ final class DuelBrain {
             if (mind.pausedField) {
                 AgentFieldActivityRuntime.resume(e, bot, "pvp duel over", now);
             }
+            if (!mind.fullRateWasRequired) {
+                e.simulationState().clearFullRateSimulationRequirement();
+            }
             return null;
         });
     }
@@ -236,8 +246,11 @@ final class DuelBrain {
                     return;
                 }
                 if (result.status() == AgentAttackTransactionResult.Status.DEFERRED) {
-                    stats.swingsDeferred.incrementAndGet();
-                    return;   // its cooldown is still running: it stays put
+                    stats.deferred(result.reason().name());
+                    if (result.reason() != AgentAttackTransactionResult.Reason.CANNOT_USE_SKILL) {
+                        return;   // its attack lock is running, or it is in the air: it stays put
+                    }
+                    continue;     // this skill's cost or cooldown: a player presses the next key
                 }
                 stats.swingsRefused.incrementAndGet();
                 stats.refused("swing:" + result.reason());
