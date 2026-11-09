@@ -479,6 +479,21 @@ The server sees a human only through movement packets. Ties go to the human both
       duel they swing Double Swing (`plan:aran-combo`). A human Aran is likely stuck the same way (the client counts combo
       on monster hits; not checked live): an Aran fix (combo on PvP hits) waits for V3.
     - Next: a third practice run on c4692cf4d; per-class rates come from that run.
+  - **Third practice run (9b23798a7, 2026-11-09 08:28-08:58, 91 duels, 182 rows):** full rate worked. Bots swung
+    0.79-0.95 a second (from 0.23-0.51); 77 knock-outs and 14 on time (from 21 and 42); no errors.
+    - Measured over model per class: warrior 0.34 (n=35), magician 0.58 (64), bowman 0.66 (29), thief 0.84 (40),
+      pirate one row (too few free Pirate citizens on empty maps). Knock-out duels over 5 s: median 25 s (p25 20,
+      p75 40), against the 12 s target.
+    - Every remaining wait was the attack lock (`waited=ATTACK_COOLDOWN`, 192 of 192): thinking every 300-600 ms
+      against a ~700 ms animation, every other think landed mid-swing. A player holding the key swings as the
+      animation ends. Fixed (3d2256a9c): after a swing, or a wait on the lock, a bot thinks again 30-90 ms after the
+      lock ends.
+    - Ten knock-outs took 5 s or less. Eight were one pair, Miruro (Lv 112 Marauder) against Ryro635 (Lv 113 Dragon
+      Knight), re-paired every round: Miruro went down after taking 139, 179, 229 ... 429. It entered each duel
+      nearly dead, since a duel gives back the HP a fighter started with. Fixed: every fighter starts at full HP
+      and MP when the bell rings; its own values still come back after, so the duel heals no one.
+    - Not calibrated on this run: the key-repeat fix should lift every class's rate by about half again.
+    - Next: a fourth practice run on 3d2256a9c; per-class `dps_per_base` from it, and a pass at the Pirate sample.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
