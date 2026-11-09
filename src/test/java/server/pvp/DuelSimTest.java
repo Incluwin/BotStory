@@ -18,7 +18,7 @@ class DuelSimTest {
     private static DuelSim.Fighter median(String name, int level, int magicGuard, PvpConfig config) {
         double coefficient = H_REF / (config.PVP_TTK_SECONDS * RAW_DPS);
         return new DuelSim.Fighter(name, level, 112, false, H_REF, 3000, RAW_DPS, coefficient, 200, 0, 0, 0, 1d,
-                magicGuard, 1d);
+                magicGuard, 1d, H_REF);
     }
 
     @Test
@@ -38,9 +38,9 @@ class DuelSimTest {
     void noAttackerKnocksOutAFullHpVictimInUnderFourAttacks() {
         PvpConfig config = new PvpConfig();
         DuelSim.Fighter brute = new DuelSim.Fighter("brute", 70, 112, false, H_REF, 3000, RAW_DPS, 100d, 200, 0, 0, 0,
-                1d, 0, 1d);
+                1d, 0, 1d, H_REF);
         DuelSim.Fighter harmless = new DuelSim.Fighter("harmless", 70, 112, false, H_REF, 3000, RAW_DPS, 0d, 200, 0, 0,
-                0, 1d, 0, 1d);
+                0, 1d, 0, 1d, H_REF);
         Random random = new Random(11);
 
         for (int i = 0; i < 500; i++) {
@@ -56,7 +56,7 @@ class DuelSimTest {
     private static DuelSim.Fighter ofClass(String name, double ratio, double reduce, int magicGuard, PvpConfig config) {
         double coefficient = H_REF / (config.PVP_TTK_SECONDS * RAW_DPS);
         return new DuelSim.Fighter(name, 70, 112, false, (int) Math.round(H_REF * ratio), 10_000, RAW_DPS, coefficient,
-                200, 0, 0, 0, reduce, magicGuard, ratio);
+                200, 0, 0, 0, reduce, magicGuard, ratio, H_REF);
     }
 
     @Test
@@ -111,7 +111,31 @@ class DuelSimTest {
         DuelSim.Summary summary = DuelSim.run(List.of(median("high", 75, 0, config)),
                 List.of(median("low", 70, 0, config)), 4000, config, new Random(5));
 
-        assertTrue(summary.aWinRate() > 0.9d, "high wins " + summary.aWinRate());
+        // 2026-11-09: 1% a level capped at 5% (was 2% / 10%); model-only rounds still favour the higher level clearly,
+        // live practice duels add the play that brings a 5-level edge toward the plan's 65%
+        assertTrue(summary.aWinRate() > 0.6d, "high wins " + summary.aWinRate());
+    }
+
+    /**
+     * The victim's own HP is lower at a lower level, so a hit is scaled to its level's reference HP (step 2b), not the
+     * attacker's: with real reference HP per level the higher level wins less than it did with the HP counted twice.
+     */
+    @Test
+    void aLevelEdgeIsCountedOnce() {
+        PvpConfig config = new PvpConfig();
+        double coefficient = H_REF / (config.PVP_TTK_SECONDS * RAW_DPS);
+        double lowRef = H_REF * 0.95;   // about (70/75)^1.11 of the higher level's
+        DuelSim.Fighter high = new DuelSim.Fighter("high", 75, 112, false, H_REF, 3000, RAW_DPS, coefficient, 200, 0,
+                0, 0, 1d, 0, 1d, H_REF);
+        DuelSim.Fighter low = new DuelSim.Fighter("low", 70, 112, false, (int) lowRef, 3000, RAW_DPS,
+                lowRef / (config.PVP_TTK_SECONDS * RAW_DPS), 200, 0, 0, 0, 1d, 0, 1d, lowRef);
+        DuelSim.Fighter lowCountedTwice = new DuelSim.Fighter("low", 70, 112, false, (int) lowRef, 3000, RAW_DPS,
+                lowRef / (config.PVP_TTK_SECONDS * RAW_DPS), 200, 0, 0, 0, 1d, 0, 1d, 0);   // no share
+
+        double once = DuelSim.run(List.of(high), List.of(low), 4000, config, new Random(21)).aWinRate();
+        double twice = DuelSim.run(List.of(high), List.of(lowCountedTwice), 4000, config, new Random(21)).aWinRate();
+
+        assertTrue(once < twice, "counted once " + once + " against twice " + twice);
     }
 
     @Test
@@ -129,7 +153,7 @@ class DuelSimTest {
     void nobodyHurtingAnybodyIsADrawAtTheBell() {
         PvpConfig config = new PvpConfig();
         DuelSim.Fighter harmless = new DuelSim.Fighter("harmless", 70, 112, false, H_REF, 3000, RAW_DPS, 0d, 200, 0, 0,
-                0, 1d, 0, 1d);
+                0, 1d, 0, 1d, H_REF);
 
         DuelSim.Outcome outcome = DuelSim.round(harmless, harmless, config, new Random(1));
 

@@ -527,7 +527,8 @@ public class PvpCommand extends Command {
         double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
         return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
                 rawDps, coefficient, accuracy, formulas.getTotalAvoidability(chr), chr.getTotalWdef(),
-                chr.getTotalMdef(), reduce, magicGuardPercent(chr), reference.classHpRatio(jobId));
+                chr.getTotalMdef(), reduce, magicGuardPercent(chr), reference.classHpRatio(jobId),
+                reference.hRef(level));
     }
 
     /** Magic Guard's share as the character would have it buffed: the buff if on, else its learned level. */

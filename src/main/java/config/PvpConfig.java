@@ -21,9 +21,9 @@ public class PvpConfig {
     /** The most characters one attack hits, whatever the skill's mob count. */
     public int PVP_MAX_TARGETS = 3;
     /** Damage changes this percent per level of difference ... */
-    public int PVP_LEVEL_PERCENT = 2;
+    public int PVP_LEVEL_PERCENT = 1;
     /** ... up to this percent either way. */
-    public int PVP_LEVEL_CAP_PERCENT = 10;
+    public int PVP_LEVEL_CAP_PERCENT = 5;
     /** Defense cut = def / (def + this x attacker level), using WDEF against physical and MDEF against magic ... */
     public int PVP_DEF_K = 40;
     /** ... capped at this percent. */

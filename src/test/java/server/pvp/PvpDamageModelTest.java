@@ -78,8 +78,9 @@ class PvpDamageModelTest {
         assertEquals(0.7d, PvpDamageModel.areaShare(3, config), 1e-9);
         assertEquals(0.6d, PvpDamageModel.areaShare(9, config), 1e-9);
 
-        assertEquals(1.10d, PvpDamageModel.levelFactor(85, 80, config), 1e-9);
-        assertEquals(0.90d, PvpDamageModel.levelFactor(70, 90, config), 1e-9);   // capped at 10%
+        // 1% a level, capped at 5% (2026-11-09, practice run seven: 2% / 10% let a 3-5 level edge win 79%)
+        assertEquals(1.05d, PvpDamageModel.levelFactor(85, 80, config), 1e-9);
+        assertEquals(0.95d, PvpDamageModel.levelFactor(70, 90, config), 1e-9);   // capped at 5%
 
         assertEquals(1d - 276d / (276d + 40d * 79d), PvpDamageModel.defenseFactor(276, 79, config), 1e-9);
         assertEquals(0.75d, PvpDamageModel.defenseFactor(100_000, 10, config), 1e-9);   // capped at 25%
@@ -106,5 +107,19 @@ class PvpDamageModelTest {
             assertTrue(4 * total >= 0 && 3 * total < maxHp, () -> "three attacks can knock out: " + total);
             assertEquals(lineCount, lines.size());
         }
+    }
+
+    /** Step 2b: a hit is scaled to the victim level's reference HP, so a level edge counts once (step 4). */
+    @Test
+    void aHitIsScaledToTheVictimsLevel() {
+        PvpReference reference = PvpReference.parse(List.of("dps_per_base:", "  physical: 5.0"));   // the fit only
+
+        double down = PvpDamageModel.levelHpShare(85, 80, reference);
+        double up = PvpDamageModel.levelHpShare(80, 85, reference);
+
+        assertEquals((double) reference.hRef(80) / reference.hRef(85), down, 1e-9);
+        assertTrue(down < 1d && up > 1d, () -> "share down " + down + ", up " + up);
+        assertEquals(1d, down * up, 1e-9);
+        assertEquals(1d, PvpDamageModel.levelHpShare(80, 80, reference), 1e-9);
     }
 }

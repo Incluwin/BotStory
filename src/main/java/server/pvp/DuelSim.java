@@ -31,11 +31,12 @@ public final class DuelSim {
      * One side of a simulated round, from a real character. {@code rawDps}: its sustained damage per second before
      * the PvP model (as on a defenseless monster); {@code coefficient}: the model's step 2 for it; {@code reduce}:
      * Achilles, High Defense and Combo Barrier as a factor; {@code magicGuardPercent}: 0 without Magic Guard;
-     * {@code classHpRatio}: its class's median HP over the reference (even classes scale hits on it by this).
+     * {@code classHpRatio}: its class's median HP over the reference (even classes scale hits on it by this);
+     * {@code hRef}: the reference HP of its level (a hit on it is scaled by its over the attacker's, step 2b).
      */
     public record Fighter(String name, int level, int jobId, boolean magic, int maxHp, int maxMp, double rawDps,
                           double coefficient, int accuracy, int avoid, int wdef, int mdef, double reduce,
-                          int magicGuardPercent, double classHpRatio) { }
+                          int magicGuardPercent, double classHpRatio, double hRef) { }
 
     public record Outcome(int winner, double seconds) { }
 
@@ -143,6 +144,7 @@ public final class DuelSim {
         double roll = (ROLL_LOW + (1d - ROLL_LOW) * random.nextDouble()) / ((1d + ROLL_LOW) / 2d);
         double raw = from.rawDps() * ATTACK_INTERVAL_S * roll;
         double damage = raw * from.coefficient() * PvpDamageModel.levelFactor(from.level(), to.level(), config)
+                * (from.hRef() > 0 && to.hRef() > 0 ? to.hRef() / from.hRef() : 1d)
                 * PvpDamageModel.defenseFactor(from.magic() ? to.mdef() : to.wdef(), from.level(), config)
                 * (even ? to.classHpRatio() : 1d);
         damage = Math.min(damage, to.maxHp() * config.PVP_MAX_HIT_PERCENT / 100d) * (even ? 1d : to.reduce());

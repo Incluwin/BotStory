@@ -56,7 +56,18 @@ public final class PvpDamageModel {
         return Math.max(config.PVP_AOE_FLOOR, 1d - config.PVP_AOE_FALLOFF * Math.max(0, targets - 1));
     }
 
-    /** Step 4: 2% per level the attacker is above (or below) the victim, capped. */
+    /**
+     * Step 2b: the victim level's reference HP over the attacker level's. The coefficient is set for a victim of the
+     * attacker's own level; against another level it was counted twice, once in the attacker's reference HP and once in
+     * the victim's own HP, so a 4-level edge knocked out about 1.3x faster (practice run seven: a 3-5 level edge won
+     * 79%). With this the level edge is step 4 alone.
+     */
+    public static double levelHpShare(int attackerLevel, int victimLevel, PvpReference reference) {
+        double attacker = reference.hRef(attackerLevel);
+        return attacker > 0 ? reference.hRef(victimLevel) / attacker : 1d;
+    }
+
+    /** Step 4: PVP_LEVEL_PERCENT per level the attacker is above (or below) the victim, capped. */
     public static double levelFactor(int attackerLevel, int victimLevel, PvpConfig config) {
         double percent = (double) config.PVP_LEVEL_PERCENT * (attackerLevel - victimLevel);
         percent = Math.max(-config.PVP_LEVEL_CAP_PERCENT, Math.min(config.PVP_LEVEL_CAP_PERCENT, percent));

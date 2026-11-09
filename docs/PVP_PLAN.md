@@ -149,7 +149,9 @@ never computes damage against a player.
    - `γ` = `PVP_GEAR_EXPONENT` = **0.7** compresses gear gaps without erasing them. Twice the median gear deals 1.62x;
      70% of the median deals 0.78x.
 3. **Multi-target.** Each target past the first takes 15% less, with a floor of 60%. A 3-target hit deals 70% to each.
-4. **Level gap.** Damage changes 2% per level of difference, capped at ±10%. That is the whole ±5 rival band.
+4. **Level gap.** Damage changes 1% per level of difference, capped at ±5% (was 2% / ±10% until practice run seven,
+   2026-11-09). A hit is scaled to the victim level's reference HP, not the attacker's (step 2b), so this is the only
+   level effect: before, the level's HP was counted twice and a 3-5 level edge won 79% of practice duels.
 5. **Defense.**
    - Damage is multiplied by `1 − min(0.25, def / (def + 40·L_attacker))`, using WDEF against physical attacks and MDEF
      against magic.
@@ -317,7 +319,7 @@ The server sees a human only through movement packets. Ties go to the human both
   - `!pvp calibrate`, plus `!pvp probe` from V0.
 - **Config.**
   - New `pvp:` section (`PvpConfig`, validated): `PVP_ENABLED` false, `PVP_TTK_SECONDS` 12, `PVP_GEAR_EXPONENT` 0.7,
-    `PVP_MAX_HIT_PERCENT` 25, `PVP_AOE_FALLOFF` 0.15, `PVP_LEVEL_PERCENT` 2, `PVP_DEF_K` 40,
+    `PVP_MAX_HIT_PERCENT` 25, `PVP_AOE_FALLOFF` 0.15, `PVP_LEVEL_PERCENT` 1 (2 until run seven), `PVP_DEF_K` 40,
     `PVP_MAGIC_GUARD_FACTOR` 0.5, `PVP_POTION_COOLDOWN_MS` 5000, `PVP_POTION_HEAL_CAP_PERCENT` 10,
     `PVP_HUMAN_HURTBOX_INSET_PX` 6.
   - Each key gets a `# Technical:` note.
@@ -559,6 +561,21 @@ The server sees a human only through movement packets. Ties go to the human both
     - **PD14 confirmed:** a duel has so little luck that a 1.4x damage edge becomes a 90/10 split. A one-off
       calibration cannot hold every class within a few percent across citizen samples, so the 40-60% done-when needs
       either rates that keep learning from every duel, more luck per duel, or both (decision PD16, below).
+  - **Seventh practice run (4e42d5896, learned rates seeded from runs five and six, 2026-11-09 13:49-14:20, 108
+    duels, 216 rows):** 100 knock-outs, 8 on time; no errors. Learned class rates at the start: warrior 0.75,
+    magician 0.95, bowman 0.86, thief 0.80, pirate 1.02 (each near its median); at the end 0.74 / 1.02 / 0.87 / 0.78 /
+    1.04.
+    - Knock-outs: median 19 s (p10 7, p25 11, p75 26, p90 54).
+    - Cross-class wins: warrior 9-24 (27%), magician 24-24 (50%), thief 16-8, pirate 10-1, bowman 2-4. Magicians beat
+      warriors 16 of 22 (from 19 of 21), but in 11 of the 16 the warrior was 2-4 levels lower; at equal level
+      warriors won 5 of 8 against magicians, and both sides dealt about 1.0 of their learned rate.
+    - **Level decided too much:** a 1-2 level edge won 67%, a 3-5 level edge 79% (done-when: +5 at most 65%). Cause:
+      the coefficient is set for a victim of the attacker's level, so against a lower victim the level's HP counted
+      twice (the attacker's reference HP and the victim's own), on top of step 4's 2% a level; a 4-level gap knocked
+      out about 1.3x faster. Fixed: a hit is scaled by the victim level's reference HP over the attacker level's
+      (`PvpDamageModel.levelHpShare`, in the duel and the sim alike), and step 4 is 1% a level capped at 5%
+      (`PVP_LEVEL_PERCENT` 1, `PVP_LEVEL_CAP_PERCENT` 5). Expected: about 1.1x at +5, near the 65% ceiling.
+    - Next: an eighth practice run, for the level edge and equal-level class pairs.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

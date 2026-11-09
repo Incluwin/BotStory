@@ -400,6 +400,7 @@ public final class DuelField {
         int defense = attack.magic ? to.getTotalMdef() : to.getTotalWdef();
         boolean even = config.PVP_EVEN_CLASSES;
         double scale = factor * PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config)
+                * PvpDamageModel.levelHpShare(from.getLevel(), to.getLevel(), PvpReference.get())
                 * PvpDamageModel.defenseFactor(defense, from.getLevel(), config)
                 * (even ? PvpReference.get().classHpRatio(to.getJob().getId()) : 1d);
         List<Integer> scaled = PvpDamageModel.scaleLines(raw, scale, to.getCurrentMaxHp(), config);
