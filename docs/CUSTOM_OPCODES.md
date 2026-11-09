@@ -30,6 +30,7 @@ items or mesos).
 | — | 0x17F SHOP_BUYBACK | Buy Back: which list the NPC shop shows (`server.ShopBuyback`) |
 | — | 0x186 SET_ITEM_SYNC | set item tooltips, pushed on equip change (`server.set.SetItemSync`) |
 | — | 0x187 DEATH_COUNT | boss run death count (`server.expeditions.ExpeditionDeathCount`) |
+| — | 0x189 PVP_HIT | your own hit number: a hit the server applied to you, drawn over your character (`server.combat.OwnHit`, Kaentake `own_hit`, `docs/PVP_PLAN.md` section 10). `int damage`, `byte flags` (1 MISS, 2 MOB_SOUND, 4 SKILL_SOUND), `byte direction`, then `int mobTemplateId` + `byte attackIndex` with MOB_SOUND and `int skillId` with SKILL_SOUND. Sent only to the victim, and only when its feature report has `own_hit` active |
 
 ## Reserved for the community mod ports (2026-10-25)
 
@@ -47,4 +48,4 @@ merges.
 | 0x11E WORLD_MAP_TELEPORT | — | clickable world map (theirs: 0x995) |
 | 0x11F DAILY_CHECKIN | 0x188 DAILY_CHECKIN | daily check-in (theirs: 0x371A) |
 
-The next free numbers after these are client → server 0x120 and server → client 0x189.
+The next free numbers after these are client → server 0x120 and server → client 0x18A (0x189 is PVP_HIT, above).

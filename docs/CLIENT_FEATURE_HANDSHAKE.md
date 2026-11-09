@@ -61,6 +61,14 @@ may veto or require them at login.
   button, after the stock entry refusals, instead of the stage; the window's own Cash Shop button enters the stage.
   It sells the stock shop's on-sale offers at their prices and durations, for NX Credit or Maple Points, a cart in
   one economy transaction (`CASH_SHOP_WINDOW`). Off, the button enters the stock Cash Shop for everyone.
+- `own_hit` (default on, shipped on): your own hit numbers (`server.combat.OwnHit`, `docs/PVP_PLAN.md` section 10). A
+  hit the server applies to a player, a PvP duel line (`server.pvp.DuelField`) or a server-run mob's attack
+  (`server.combat.ServerMobDamageService`), is also sent to that player's own client as S->C 0x189 PVP_HIT when its
+  report has `own_hit` active. The client draws the number (or MISS) over the player and plays the mob's CharDam or the
+  skill's Hit sound. The stock client draws no DAMAGE_PLAYER about itself (`docs/PVP_V0_RESULTS.md`, V0.1), so a
+  client without the feature still sees only its HP bar drop, and is never sent the opcode. Display only; the map's
+  other clients get the DAMAGE_PLAYER as before. `!pvp probe ownhit [damage|miss] [mob <id> [index]|skill <id>]`
+  (GM 5) sends one to your own client through the same gate.
 
 ## Feature policy (`mods.FEATURES`)
 

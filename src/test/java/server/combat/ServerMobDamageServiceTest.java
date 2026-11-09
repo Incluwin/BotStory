@@ -8,6 +8,7 @@ import net.packet.Packet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.combat.AgentCombatRuntime;
 import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
@@ -24,10 +25,14 @@ import server.life.MobSkillType;
 import server.life.Monster;
 import server.life.autonomy.BossAction;
 import server.maps.MapleMap;
+import server.mods.features.FeaturePackets;
+import tools.PacketCreator;
 
 import java.awt.Point;
+import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -242,6 +247,46 @@ class ServerMobDamageServiceTest {
         verify(fixture.target()).addMPHPAndTriggerAutopot(-1_000, 0);
         verify(fixture.map(), never()).broadcastMessage(any(Character.class), any(Packet.class), anyBoolean());
         assertSame(fixture.attacker(), AgentGrindTargetStateRuntime.target(entry), "the Agent still reacts");
+    }
+
+    @Test
+    void aHumanWithOwnHitActiveIsAlsoSentTheHitToDrawOverThemselves() {
+        DamageFixture fixture = damageFixture(ownHitClient());
+
+        int damage = ServerMobDamageService.applyOrdinaryAttack(fixture.attacker(), fixture.target(), 1, false);
+
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(fixture.target()).sendPacket(sent.capture());
+        // the target stands right of the attacker: direction 1, as the DAMAGE_PLAYER the map gets
+        assertArrayEquals(PacketCreator.pvpHit(damage, damage <= 0, 1, 8_830_007, 1, 0).getBytes(),
+                sent.getValue().getBytes());
+        verify(fixture.map()).broadcastMessage(eq(fixture.target()), any(Packet.class), eq(true));
+    }
+
+    @Test
+    void aHumanWithoutOwnHitIsNotSentTheOwnHit() {
+        DamageFixture fixture = damageFixture(mock(Client.class));
+
+        ServerMobDamageService.applyOrdinaryAttack(fixture.attacker(), fixture.target(), 0, false);
+
+        verify(fixture.target(), never()).sendPacket(any());
+    }
+
+    @Test
+    void aQuietHitSendsNoOwnHitEither() {
+        DamageFixture fixture = damageFixture(ownHitClient());
+
+        ServerMobDamageService.applyOrdinaryAttack(fixture.attacker(), fixture.target(), attack(false), 100, false);
+
+        verify(fixture.target(), never()).sendPacket(any());
+    }
+
+    private static Client ownHitClient() {
+        Client client = mock(Client.class);
+        when(client.getClientFeatures()).thenReturn(new FeaturePackets.Report(false, 1, 20261109, List.of(
+                new FeaturePackets.Feature(OwnHit.FEATURE, "Hit numbers over you", 1, FeaturePackets.FLAG_LIVE,
+                        FeaturePackets.STATE_ATTACHED | FeaturePackets.STATE_ACTIVE))));
+        return client;
     }
 
     /** Balrog's attack1 as an autonomous physical attack; {@code deadly} sets the WZ deadlyAttack flag. */

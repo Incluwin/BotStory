@@ -14,6 +14,7 @@ import server.StatEffect;
 import server.TimerManager;
 import server.combat.CharacterHitApplier;
 import server.combat.CombatFormulaProvider;
+import server.combat.OwnHit;
 import server.maps.MapleMap;
 import server.pvp.probe.PvpCalibration;
 import tools.PacketCreator;
@@ -669,6 +670,7 @@ public final class DuelField {
             attacker.stats.dodged.incrementAndGet();
             map.broadcastMessage(PacketCreator.damagePlayer(-2, 0, to.getId(), 0, 0, direction, false, 0, false,
                     0, 0, 0));
+            OwnHit.pvpMiss(to, direction); // the victim's own client draws no DAMAGE_PLAYER about itself
             return false;
         }
         attacker.stats.hits.incrementAndGet();
@@ -721,6 +723,7 @@ public final class DuelField {
         for (int line : shown(scaled, total, damage)) {
             map.broadcastMessage(PacketCreator.damagePlayer(-4, 0, to.getId(), line, 0, direction, false, 0, false,
                     0, 0, 0));
+            OwnHit.pvpHit(to, line, direction, attack.skill);
         }
         if (applied.floored()) {
             knockOut(victim, from);

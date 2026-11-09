@@ -1350,7 +1350,16 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
   - add server→client **0x189 PVP_HIT** to `docs/CUSTOM_OPCODES.md`;
   - Kaentake draws the number and plays the hit sound on the local user;
   - the HP bar already updates without it.
-  - The client function to call is not reverse-engineered yet; it is a separate session.
+  - **Built 2026-11-09, not deployed or shipped** (server `feat/pvp-v7-own-hit`, kaentake `feat/own-hit` on the
+    shipped `ship/2026-10-31-quickslot-relogin`). The client routine is `0x0092EC50`: the one that draws a number
+    over a CUser, called by `CUserLocal::SetDamaged` and `CUserRemote::OnHit` alike. Sounds come from
+    `play_mob_sound` (CharDam1/2/F by attack index) and `play_skill_sound` (type 49, Hit). Addresses and evidence
+    are in kaentake `src/v83_offsets.h`, namespace `ownhit`. Number and sound only: no knockback, invincibility or
+    TAKE_DAMAGE.
+  - Server: `server.combat.OwnHit` sends PVP_HIT only to the victim, only with the `own_hit` mod on and `own_hit`
+    active in its feature report. DuelField sends each shown line (the skill's Hit sound) and each dodge (MISS).
+    ServerMobDamageService sends each broadcast hit (the mob's CharDam sound for its attack index), so a
+    server-run boss's hits on you now show too. `!pvp probe ownhit` checks it on your own client.
 - **WASM:** a matching handler, if V0.7 shows a gap.
 - **Custom.wz, optional:** a proper "Coliseum Mark" and "Coliseum Champion" medal to replace the stock stand-ins, under
   the existing Custom.wz approval.

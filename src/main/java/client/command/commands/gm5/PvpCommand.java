@@ -9,6 +9,7 @@ import net.server.Server;
 import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.combat.OwnHit;
 import server.pvp.DuelField;
 import server.pvp.DuelRegistry;
 import server.pvp.DuelSim;
@@ -31,6 +32,8 @@ import java.util.Map;
  *   <li>{@code probe remote <name> [src] [mobId]}: the same about a character on your map, to you alone (V0.2)</li>
  *   <li>{@code probe move [seconds]}: gaps between your movement packets (V0.3)</li>
  *   <li>{@code probe attacks [seconds]}: your attack packets as parsed, targets or not (V0.4)</li>
+ *   <li>{@code probe ownhit [damage|miss] [mob <id> [index]|skill <id>]}: a PVP_HIT to your client alone, through the
+ *   own_hit gate (V7): the number over you, with the mob's CharDam or the skill's Hit sound</li>
  *   <li>{@code meter start|stop|status}: sustained single-target damage per job path and band (V0.5)</li>
  *   <li>{@code calibrate}: H_ref, gear base and the meter into {@code logs/pvp/reference-*.yaml} (V0.5)</li>
  *   <li>{@code duel <foe>}, {@code duel <a> <b>}, {@code duel <a> <b> vs <c> <d>}: a V1 duel on your map ({@code me}
@@ -47,7 +50,7 @@ public class PvpCommand extends Command {
     private static final int PROBE_DAMAGE = 1234;
 
     {
-        setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
+        setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks|ownhit ..., !pvp meter start|stop|status,"
                 + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|team [2|3]|crewwar|teamsim [n]|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
     }
 
@@ -268,6 +271,7 @@ public class PvpCommand extends Command {
                 PvpProbe.watchAttacks(gm, seconds);
                 gm.yellowMessage("PvP probe attacks: attack empty air for " + seconds + " s.");
             }
+            case "ownhit" -> ownHitProbe(gm, params);
             default -> gm.yellowMessage(getDescription());
         }
     }
@@ -284,6 +288,27 @@ public class PvpCommand extends Command {
                 false, 0, 0, 0));
         String line = "PvP probe damage about " + about.getName() + (about == gm ? " (self)" : "") + " src=" + src
                 + " mob=" + mobId + " dmg=" + PROBE_DAMAGE + ": look for the number and the hit pose.";
+        log.info(line);
+        gm.yellowMessage(line);
+    }
+
+    private static void ownHitProbe(Character gm, String[] params) {
+        boolean miss = params.length > 2 && params[2].equalsIgnoreCase("miss");
+        int damage = miss ? 0 : number(params, 2, PROBE_DAMAGE);
+        int mobId = 0;
+        int attackIndex = -1;
+        int skillId = 0;
+        String sound = params.length > 3 ? params[3].toLowerCase() : "";
+        if (sound.equals("mob")) {
+            mobId = number(params, 4, 0);
+            attackIndex = number(params, 5, 0);
+        } else if (sound.equals("skill")) {
+            skillId = number(params, 4, 0);
+        }
+        boolean sent = OwnHit.probe(gm, PacketCreator.pvpHit(damage, miss, 1, mobId, attackIndex, skillId));
+        String line = "PvP probe own hit dmg=" + damage + (miss ? " (miss)" : "") + " mob=" + mobId + "/" + attackIndex
+                + " skill=" + skillId + (sent ? ": look for the number over you."
+                : ": not sent, your client has no own_hit active or the own_hit mod is off.");
         log.info(line);
         gm.yellowMessage(line);
     }

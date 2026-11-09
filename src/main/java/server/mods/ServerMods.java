@@ -125,10 +125,19 @@ public final class ServerMods {
     public static final ServerMod CRYSSEA = new ServerMod("cryssea",
             "Cryssea in New Leaf City (needs her Custom.wz look from the Masteria client patch)", false, true);
 
+    /**
+     * Your own hit numbers (server.combat.OwnHit, S->C 0x189 PVP_HIT): a hit the server applied to a player, a PvP duel
+     * line or a server-run boss's attack, is also sent to that player's own client when it has the own_hit feature
+     * active, which draws the number and the hit sound over the player (the stock client draws no DAMAGE_PLAYER about
+     * itself). Display only. Off, nothing is sent and the victim sees only the HP bar drop, as stock.
+     */
+    public static final ServerMod OWN_HIT = new ServerMod("own_hit",
+            "Your own hit numbers from PvP and server bosses (client feature own_hit)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
             SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER, CASH_SHOP_WINDOW, REPACK_MAPS,
-            CRYSSEA);
+            CRYSSEA, OWN_HIT);
 
     private static volatile ServerMods instance;
 

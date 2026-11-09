@@ -368,6 +368,7 @@ public enum SendOpcode {
     CASHSHOP_WINDOW_SYNC(0x180),    // Cash Shop window (Kaentake client cashshopwnd, docs/CASH_SHOP_WINDOW.md)
     SET_ITEM_SYNC(0x186),           // set item tooltips (Kaentake client setitems, server.set.SetItemSync)
     DEATH_COUNT(0x187),             // boss run death count panel (Kaentake client deathcount, server.expeditions.ExpeditionDeathCount)
+    PVP_HIT(0x189),                 // a server-applied hit drawn over your own character (Kaentake client own_hit, server.combat.OwnHit)
     SHOP_BUYBACK(0x17F);            // NPC shop Buy Back: which list shows (Kaentake client shopbuyback, server.ShopBuyback)
     private int code = -2;
 
