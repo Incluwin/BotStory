@@ -1360,6 +1360,12 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
     active in its feature report. DuelField sends each shown line (the skill's Hit sound) and each dodge (MISS).
     ServerMobDamageService sends each broadcast hit (the mob's CharDam sound for its attack index), so a
     server-run boss's hits on you now show too. `!pvp probe ownhit` checks it on your own client.
+  - **Client drawing checked live 2026-11-09** before any restart. A test-only build (KAENTAKE_OWN_HIT_PROBE) also
+    draws a DAMAGE_PLAYER about one character id. On a private test client as Bossfriend, the live
+    `!pvp probe self` with src -4, 0 (mob 8130100), -1 and -3 drew the violet 1234 over your own character
+    every time, with no failure logged. Evidence is in `docs/agents/evidence/own-hit/` (clip, contact sheet,
+    frame). Split suite on 452210600: 16,295 / 0 / 33. Still to do: the 0x189 path itself (`!pvp probe
+    ownhit`) after a deploy. The sound cannot be heard in the clip (video only).
 - **WASM:** a matching handler, if V0.7 shows a gap.
 - **Custom.wz, optional:** a proper "Coliseum Mark" and "Coliseum Champion" medal to replace the stock stand-ins, under
   the existing Custom.wz approval.
