@@ -35,18 +35,26 @@ public final class PvpHitResolver {
 
     /** The attack's box in world space, from the attacker's position and facing; null when it has no position. */
     public static Rectangle attackBox(Character attacker, AttackInfo attack, StatEffect effect) {
+        return attackBox(attacker, attack.skill, effect, attack.ranged, attack.magic, (attack.stance & 0x80) != 0);
+    }
+
+    /**
+     * The same box before the attack is sent: a bot's duel brain asks it to know whether a skill reaches from where it
+     * stands ({@code facingLeft} as the packet would carry it).
+     */
+    public static Rectangle attackBox(Character attacker, int skillId, StatEffect effect, boolean ranged, boolean magic,
+                                      boolean facingLeft) {
         Point at = attacker.getPosition();
         if (at == null) {
             return null;
         }
-        boolean facingLeft = (attack.stance & 0x80) != 0;
-        if (attack.skill != 0 && AgentCombatSkillHitboxPolicy.isReverseFacingSkill(attack.skill)) {
+        if (skillId != 0 && AgentCombatSkillHitboxPolicy.isReverseFacingSkill(skillId)) {
             facingLeft = !facingLeft;
         }
         if (effect != null && effect.hasBoundingBox()) {
             return effect.calculateBoundingBox(at, facingLeft);
         }
-        if (attack.ranged || attack.magic) {
+        if (ranged || magic) {
             float scale = effect == null ? 1f : AgentProjectileHitbox.projectileRangeScale(effect);
             Rectangle projectile = AgentProjectileHitbox.clientProjectileHitBox(attacker, facingLeft, scale);
             if (projectile != null) {

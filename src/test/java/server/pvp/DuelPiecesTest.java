@@ -60,6 +60,25 @@ class DuelPiecesTest {
         assertEquals(0, DuelBrain.reachToward(new Rectangle(500, 0, 10, 10), new Point(400, 0), new Point(0, 0)));
     }
 
+    /**
+     * Live 2026-11-08: the brain judged a projectile skill by the planner's 1x1 aim-point box, which never meets a
+     * body, and so never walked into reach. It now asks the duel's own box: a projectile reaches ahead, not behind.
+     */
+    @Test
+    void aProjectileBoxReachesAFoeAheadAndNotBehind() {
+        Character priest = mock(Character.class);
+        when(priest.getPosition()).thenReturn(new Point(1000, 300));
+
+        Rectangle right = PvpHitResolver.attackBox(priest, 0, null, false, true, false);
+        Rectangle left = PvpHitResolver.attackBox(priest, 0, null, false, true, true);
+
+        assertTrue(right.intersects(PvpHitResolver.hurtbox(new Point(1200, 300), 0)));
+        assertFalse(right.intersects(PvpHitResolver.hurtbox(new Point(800, 300), 0)));
+        assertTrue(left.intersects(PvpHitResolver.hurtbox(new Point(800, 300), 0)));
+        assertTrue(DuelBrain.reachToward(right, new Point(1000, 300), new Point(1500, 300)) >= 300,
+                "a projectile's reach is hundreds of px, not the gap to the foe");
+    }
+
     private static Character fighter(int id, MapleMap map, boolean alive) {
         Character chr = mock(Character.class);
         when(chr.getId()).thenReturn(id);

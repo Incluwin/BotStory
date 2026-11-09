@@ -356,7 +356,18 @@ The server sees a human only through movement packets. Ties go to the human both
   average out over about 20 attacks, so the model alone leaves almost no room for upsets. Live duels add misses,
   movement and reaction; V2's practice duels must measure how much. **Open decision PD14:** if live duels are as
   deterministic, widen the luck (a wider roll, or rarer bigger swings), or soften `PVP_LEVEL_PERCENT`.
-- **Not yet run:** a live `!pvp duel` against a citizen, and `!pvp sim matrix` at each band on live loadouts.
+- **Live duel #1 (2026-11-08 21:59, build d5198b463):** Crewfriend (Lv 96 Spearman) against SkyMage (Lv 93 Priest
+  citizen) in Henesys. Countdown, round clock and the end on time all worked; no errors, no deaths. SkyMage walked
+  over and hit Crewfriend (one hit about 12% of his HP; the heal allowance let his potions back in). It then drifted
+  2,000 px away and stood there, so Crewfriend dealt 0 and lost the round on HP share (SkyMage dealt 9,297). Two bugs,
+  fixed after:
+  - The citizen's town-life session kept walking it about on its own tick. The duel now pauses town life (and a
+    field session) the way an NPC conversation does, and resumes it after.
+  - The brain judged reach by the attack planner's box, which for a skill with no lt/rb (projectiles, most magic) is
+    a 1x1 point at the aim that never meets a body. So the bot believed it already stood at full reach and never
+    closed in. It now asks `PvpHitResolver.attackBox`, the box the duel will judge the swing by.
+- **Known limit:** a bot with no attack skill (a Beginner) only walks: the stock basic-attack planner needs a monster.
+- **Not yet run:** a live duel on the fixed build, and `!pvp sim matrix` at each band on live loadouts.
 
 ---
 

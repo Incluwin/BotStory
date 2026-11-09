@@ -2,18 +2,23 @@ package server.pvp;
 
 import client.Character;
 import client.Skill;
+import client.SkillFactory;
 import client.inventory.WeaponType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentAttackPlan;
+import server.agents.capabilities.combat.AgentAttackRoute;
 import server.agents.capabilities.combat.AgentCombatAttackRuntime;
 import server.agents.capabilities.combat.AgentCombatHitCounter;
 import server.agents.capabilities.combat.AgentCombatSkillClassifier;
 import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
+import server.agents.capabilities.townlife.AgentTownLifeRuntime;
+import server.agents.capabilities.townlife.AgentTownLifeState;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.runtime.field.AgentFieldActivityRuntime;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -50,6 +55,9 @@ final class DuelBrain {
         volatile List<Integer> skills = List.of();
         volatile long nextThinkMs;
         volatile int thinkMs = 450;
+        /** Whether the duel paused the Agent's town life or field session, so only those are resumed after. */
+        volatile boolean pausedTownLife;
+        volatile boolean pausedField;
     }
 
     static void enter(DuelField.Fighter fighter) {
@@ -59,7 +67,16 @@ final class DuelBrain {
         }
         Mind mind = fighter.mind;
         mind.thinkMs = 300 + ThreadLocalRandom.current().nextInt(300);
+        Character bot = fighter.chr;
         AgentMailboxRuntime.dispatch(entry, e -> {
+            long now = System.currentTimeMillis();
+            // a citizen's town life walks it about on its own tick (live 2026-11-08: away mid-duel), so it pauses the
+            // way an NPC conversation pauses it; a field session the same way
+            if (AgentTownLifeRuntime.active(e) && !townLifePaused(e)) {
+                AgentTownLifeRuntime.suspendForExternalInteraction(e, bot, now);
+                mind.pausedTownLife = true;
+            }
+            mind.pausedField = AgentFieldActivityRuntime.suspend(e, bot, "pvp duel", now);
             mind.wasFollowing = AgentModeStateRuntime.following(e);
             mind.wasGrinding = AgentModeStateRuntime.grinding(e);
             AgentModeStateRuntime.setFollowing(e, false);
@@ -76,12 +93,25 @@ final class DuelBrain {
             return;
         }
         Mind mind = fighter.mind;
+        Character bot = fighter.chr;
         AgentMailboxRuntime.dispatch(entry, e -> {
+            long now = System.currentTimeMillis();
             AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(e);
             AgentModeStateRuntime.setFollowing(e, mind.wasFollowing);
             AgentModeStateRuntime.setGrinding(e, mind.wasGrinding);
+            if (mind.pausedField) {
+                AgentFieldActivityRuntime.resume(e, bot, "pvp duel over", now);
+            }
+            if (mind.pausedTownLife) {
+                AgentTownLifeRuntime.resumeAfterExternalInteraction(e, now);
+            }
             return null;
         });
+    }
+
+    private static boolean townLifePaused(AgentRuntimeEntry entry) {
+        return entry.capabilityStates().find(AgentTownLifeState.STATE_KEY)
+                .map(AgentTownLifeState::externalInteractionPaused).orElse(false);
     }
 
     static void tick(DuelField.Fighter self, DuelField.Fighter foe, long now) {
@@ -117,10 +147,18 @@ final class DuelBrain {
         int reach = 0;
         for (int skillId : skills) {
             AgentAttackPlan plan = AgentSkillAttackPlanRuntime.planSkillAttackAt(bot, aim, skillId);
-            if (plan == null || plan.hitBox == null) {
+            if (plan == null) {
                 continue;
             }
-            if (plan.hitBox.intersects(body)) {
+            // the box the duel will judge this swing by (the planner's own is a 1x1 point at the aim for a skill with
+            // no lt/rb, such as a projectile: live 2026-11-08 a Priest stood its ground 2,000 px away)
+            Rectangle box = PvpHitResolver.attackBox(bot, skillId, effectOf(bot, skillId),
+                    plan.route == AgentAttackRoute.RANGED, plan.route == AgentAttackRoute.MAGIC,
+                    (plan.stance & 0x80) != 0);
+            if (box == null) {
+                continue;
+            }
+            if (box.intersects(body)) {
                 gateway.stop(entry);
                 gateway.facePosition(bot, aim);
                 var result = AgentCombatAttackRuntime.attackAtNothing(entry, bot, plan);
@@ -130,12 +168,18 @@ final class DuelBrain {
                 }
                 continue;
             }
-            reach = Math.max(reach, reachToward(plan.hitBox, at, aim));
+            reach = Math.max(reach, reachToward(box, at, aim));
         }
         int stand = Math.max(MIN_STAND_PX, (reach > 0 ? reach : MIN_STAND_PX + REACH_MARGIN_PX) - REACH_MARGIN_PX);
         Point candidate = new Point(aim.x + (at.x >= aim.x ? stand : -stand), aim.y);
         Point ground = gateway.groundPoint(bot.getMap(), candidate);
         gateway.navigate(entry, ground != null ? ground : candidate, true);
+    }
+
+    private static StatEffect effectOf(Character bot, int skillId) {
+        Skill skill = SkillFactory.getSkill(skillId);
+        int level = skill == null ? 0 : bot.getSkillLevel(skill);
+        return level <= 0 ? null : skill.getEffect(level);
     }
 
     /** How far from the bot, toward the target, a swing's box reaches. */
