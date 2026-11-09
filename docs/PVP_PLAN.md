@@ -576,6 +576,21 @@ The server sees a human only through movement packets. Ties go to the human both
       (`PvpDamageModel.levelHpShare`, in the duel and the sim alike), and step 4 is 1% a level capped at 5%
       (`PVP_LEVEL_PERCENT` 1, `PVP_LEVEL_CAP_PERCENT` 5). Expected: about 1.1x at +5, near the 65% ceiling.
     - Next: an eighth practice run, for the level edge and equal-level class pairs.
+  - **Eighth practice run (ad0d1fa11, level counted once at 1%/5%, 2026-11-09 14:50-15:20, 91 duels, 182 rows):** 86
+    knock-outs, 4 on time, 1 forfeit; no errors. Knock-outs: median 17 s (p25 12, p75 24).
+    - **Level edge fixed:** a 1-2 level edge won 54%, a 3-5 level edge 64% (done-when: +5 at most 65%).
+    - Cross-class wins: warrior 5-35 (12%), magician 16-9, bowman 15-7, thief 23-11, pirate 4-1. Warriors beat
+      magicians 3 of 7 but thieves 1 of 19 and bowmen 1 of 10; at a gap of one level or less they went 1-9.
+    - Both sides dealt about their learned rate (0.9-1.0). The gap is dodges: warriors' attacks were dodged 25-29%
+      of the time by bowmen, thieves and pirates, and 4% by magicians and warriors; nobody dodged a warrior, and no
+      class whiffed on position (0%). Physical hit chance pits the attacker's accuracy against the victim's avoid,
+      both mostly DEX and LUK, so a warrior sits at the 75% floor against every evasive class. The learned rates
+      cannot absorb it: raw damage is counted before the dodge, and the dodge rate depends on the opponent's class.
+    - **Open decision PD17:** how avoid counts under even classes. (A, recommended) even it out like HP: each
+      fighter's accuracy and avoid are measured against its own class's median at its level, so an Assassin with
+      better avoid than other Assassins still dodges more, but the class's base stats no longer decide; (B) no dodge
+      roll in duels at all (Dark Sight aside); (C) keep it, evasive classes as a class trait (warriors stay at about
+      one win in eight against them).
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
