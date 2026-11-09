@@ -3,10 +3,17 @@ package client.command.commands.gm5;
 import client.Character;
 import client.Client;
 import client.command.Command;
+import config.PvpConfig;
+import config.YamlConfig;
 import net.server.Server;
 import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.pvp.DuelField;
+import server.pvp.DuelRegistry;
+import server.pvp.DuelSim;
+import server.pvp.PvpDamageModel;
+import server.pvp.PvpReference;
 import server.pvp.probe.DamageMeter;
 import server.pvp.probe.PvpCalibration;
 import server.pvp.probe.PvpProbe;
@@ -26,6 +33,10 @@ import java.util.Map;
  *   <li>{@code probe attacks [seconds]}: your attack packets as parsed, targets or not (V0.4)</li>
  *   <li>{@code meter start|stop|status}: sustained single-target damage per job path and band (V0.5)</li>
  *   <li>{@code calibrate}: H_ref, gear base and the meter into {@code logs/pvp/reference-*.yaml} (V0.5)</li>
+ *   <li>{@code duel <foe>}, {@code duel <a> <b>}, {@code duel <a> <b> vs <c> <d>}: a V1 duel on your map ({@code me}
+ *   is you); {@code duel stop [id]}; {@code duels} lists them</li>
+ *   <li>{@code sim <a> <b> <level> [n]}, {@code sim matrix <level> [n]}: a Monte Carlo of the damage model between
+ *   loaded characters (a class name or a job id prefix), V1.4</li>
  * </ul>
  * {@code src} is the packet's attack byte: -4 (no mob; the default), -3, -2, -1 (touch) or 0 (a mob's first attack).
  */
@@ -35,7 +46,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n]");
     }
 
     @Override
@@ -49,6 +60,9 @@ public class PvpCommand extends Command {
             case "probe" -> probe(gm, params);
             case "meter" -> meter(gm, params.length > 1 ? params[1].toLowerCase() : "status");
             case "calibrate" -> calibrate(gm);
+            case "duel" -> duel(gm, params);
+            case "duels" -> duels(gm);
+            case "sim" -> sim(gm, params);
             default -> gm.yellowMessage(getDescription());
         }
     }
@@ -138,6 +152,213 @@ public class PvpCommand extends Command {
         } catch (java.io.IOException failure) {
             gm.yellowMessage("PvP calibration: could not write logs/pvp (" + failure.getMessage() + ").");
         }
+    }
+
+    /**
+     * A V1 duel, a GM test tool: it runs with {@code pvp.PVP_ENABLED} off (that switch gates the player-facing ways
+     * in, V3 on). Every fighter must be alive on the GM's map.
+     */
+    private static void duel(Character gm, String[] params) {
+        if (params.length > 1 && params[1].equalsIgnoreCase("stop")) {
+            long only = params.length > 2 ? number(params, 2, -1) : -1;
+            int stopped = 0;
+            for (DuelField field : DuelRegistry.fields()) {
+                if (only < 0 || field.id() == only) {
+                    field.stop();
+                    stopped++;
+                }
+            }
+            gm.yellowMessage("PvP: stopped " + stopped + " duel(s).");
+            return;
+        }
+        List<String> left = new ArrayList<>();
+        List<String> right = new ArrayList<>();
+        boolean versus = false;
+        for (int i = 1; i < params.length; i++) {
+            if (params[i].equalsIgnoreCase("vs")) {
+                versus = true;
+            } else {
+                (versus ? right : left).add(params[i]);
+            }
+        }
+        if (!versus) {
+            if (left.size() == 1) {
+                right.add(left.get(0));
+                left.set(0, "me");
+            } else if (left.size() == 2) {
+                right.add(left.remove(1));
+            }
+        }
+        if (left.isEmpty() || right.isEmpty()) {
+            gm.yellowMessage("Usage: !pvp duel <foe> | <a> <b> | <a> [b..] vs <c> [d..] ('me' is you), !pvp duel stop [id]");
+            return;
+        }
+        List<Character> sideA = fighters(gm, left);
+        List<Character> sideB = fighters(gm, right);
+        if (sideA == null || sideB == null) {
+            return;
+        }
+        if ((sideA.contains(gm) || sideB.contains(gm)) && gm.isHidden()) {
+            gm.yellowMessage("PvP: you are hidden; other clients will not see your hits (!hide to show yourself).");
+        }
+        try {
+            DuelField field = DuelRegistry.start(gm.getMap(), sideA, sideB);
+            gm.yellowMessage("PvP duel " + field.id() + " starts on map " + field.map().getId() + ".");
+        } catch (IllegalStateException refused) {
+            gm.yellowMessage("PvP: " + refused.getMessage() + ".");
+        }
+    }
+
+    private static List<Character> fighters(Character gm, List<String> names) {
+        List<Character> side = new ArrayList<>();
+        for (String name : names) {
+            Character chr = name.equalsIgnoreCase("me") ? gm : gm.getMap().getCharacterByName(name);
+            if (chr == null) {
+                gm.yellowMessage("PvP: nobody called " + name + " on this map.");
+                return null;
+            }
+            if (!side.contains(chr)) {
+                side.add(chr);
+            }
+        }
+        return side;
+    }
+
+    private static void duels(Character gm) {
+        java.util.Collection<DuelField> fields = DuelRegistry.fields();
+        gm.yellowMessage("PvP: " + fields.size() + " duel(s) running.");
+        for (DuelField field : fields) {
+            StringBuilder line = new StringBuilder("#" + field.id() + " map " + field.map().getId() + " "
+                    + field.state() + ":");
+            for (DuelField.Fighter fighter : field.fighters()) {
+                Character chr = fighter.character();
+                line.append(' ').append(chr.getName()).append("[side ").append(fighter.side()).append(' ')
+                        .append(chr.getHp()).append('/').append(chr.getCurrentMaxHp())
+                        .append(fighter.knockedOut() ? " KO" : "").append(']');
+            }
+            gm.yellowMessage(line.toString());
+        }
+    }
+
+    private static final List<String> CLASSES = List.of("warrior", "magician", "bowman", "thief", "pirate");
+    private static final int SIM_LEVEL_SPAN = 5;
+
+    /** {@code !pvp sim <a> <b> <level> [n]} or {@code !pvp sim matrix <level> [n]} (V1.4). */
+    private static void sim(Character gm, String[] params) {
+        boolean matrix = params.length > 1 && params[1].equalsIgnoreCase("matrix");
+        int level = number(params, matrix ? 2 : 3, -1);
+        int rounds = Math.max(100, Math.min(20_000, number(params, matrix ? 3 : 4, 2000)));
+        if (level < 10 || !matrix && params.length < 4) {
+            gm.yellowMessage("Usage: !pvp sim <a> <b> <level> [n] | !pvp sim matrix <level> [n]; a and b are a class"
+                    + " (warrior, magician, bowman, thief, pirate) or a job id prefix (e.g. 23 or 412).");
+            return;
+        }
+        List<Character> loaded = new ArrayList<>();
+        for (World world : Server.getInstance().getWorlds()) {
+            for (Character chr : world.getPlayerStorage().getAllCharacters()) {
+                if (!chr.isGM() && Math.abs(chr.getLevel() - level) <= SIM_LEVEL_SPAN) {
+                    loaded.add(chr);
+                }
+            }
+        }
+        PvpConfig config = YamlConfig.config.pvp;
+        PvpReference reference = PvpReference.get();
+        java.util.Random random = new java.util.Random();
+        List<String> lines = new ArrayList<>();
+        lines.add("PvP sim at Lv " + level + " +/-" + SIM_LEVEL_SPAN + ", " + rounds + " rounds per pairing, TTK "
+                + config.PVP_TTK_SECONDS + " s, cap " + config.PVP_MAX_HIT_PERCENT + "%, heal "
+                + config.PVP_HEAL_PERCENT + "%/" + config.PVP_HEAL_WINDOW_MS + " ms (model only: no movement or reach,"
+                + " raw dps from gear)");
+        if (matrix) {
+            List<List<DuelSim.Fighter>> classes = new ArrayList<>();
+            for (String name : CLASSES) {
+                classes.add(simFighters(loaded, name, reference, config));
+            }
+            for (int i = 0; i < CLASSES.size(); i++) {
+                StringBuilder row = new StringBuilder(CLASSES.get(i) + " (n=" + classes.get(i).size() + ") vs:");
+                for (int j = 0; j < CLASSES.size(); j++) {
+                    DuelSim.Summary summary = DuelSim.run(classes.get(i), classes.get(j), rounds, config, random);
+                    row.append(' ').append(CLASSES.get(j), 0, 3).append(' ').append(summary == null ? "-"
+                            : String.format("%.0f%%/%.0fs", summary.aWinRate() * 100, summary.medianSeconds()));
+                }
+                lines.add(row.toString());
+            }
+        } else {
+            List<DuelSim.Fighter> a = simFighters(loaded, params[1], reference, config);
+            List<DuelSim.Fighter> b = simFighters(loaded, params[2], reference, config);
+            DuelSim.Summary summary = DuelSim.run(a, b, rounds, config, random);
+            lines.add(params[1] + " (n=" + a.size() + ") vs " + params[2] + " (n=" + b.size() + "): "
+                    + (summary == null ? "no loaded characters on one side" : summary));
+        }
+        for (String line : lines) {
+            gm.yellowMessage(line);
+            log.info(line);
+        }
+        try {
+            Path dir = Path.of("logs", "pvp");
+            java.nio.file.Files.createDirectories(dir);
+            Path file = dir.resolve("sim-" + level + "-" + System.currentTimeMillis() + ".txt");
+            java.nio.file.Files.write(file, lines, java.nio.charset.StandardCharsets.UTF_8);
+            gm.yellowMessage("PvP sim written to " + file);
+        } catch (java.io.IOException failure) {
+            gm.yellowMessage("PvP sim: could not write logs/pvp (" + failure.getMessage() + ").");
+        }
+    }
+
+    /** Loaded characters matching a class name or a job id prefix, as the sim's fighters. */
+    private static List<DuelSim.Fighter> simFighters(List<Character> loaded, String which, PvpReference reference,
+                                                     PvpConfig config) {
+        int classIndex = CLASSES.indexOf(which.toLowerCase());
+        if (classIndex < 0 && which.equalsIgnoreCase("mage")) {
+            classIndex = 1;
+        }
+        List<DuelSim.Fighter> fighters = new ArrayList<>();
+        for (Character chr : loaded) {
+            int jobId = chr.getJob().getId();
+            boolean matches = classIndex >= 0 ? jobId / 100 % 10 == classIndex + 1
+                    : String.valueOf(jobId).startsWith(which);
+            if (matches) {
+                fighters.add(simFighter(chr, reference, config));
+            }
+        }
+        return fighters;
+    }
+
+    static DuelSim.Fighter simFighter(Character chr, PvpReference reference, PvpConfig config) {
+        PvpCalibration.Sample sample = PvpCalibration.of(chr);
+        boolean magic = sample.jobClass() == 2;
+        int jobId = chr.getJob().getId();
+        int level = chr.getLevel();
+        long ownBase = Math.max(1L, sample.gearBase());
+        long median = reference.gearMedian(jobId, level);
+        double medianBase = median > 0 ? median : ownBase;
+        long measured = reference.measuredRate(jobId, level);
+        double rate = measured > 0 ? measured : medianBase * reference.ratePerBase(magic);
+        double rawDps = rate * ownBase / medianBase;
+        double coefficient = PvpDamageModel.coefficient(
+                new PvpDamageModel.Attacker(level, jobId, ownBase, magic), reference, config);
+        server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
+        int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
+        double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
+        return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
+                rawDps, coefficient, accuracy, formulas.getTotalAvoidability(chr), chr.getTotalWdef(),
+                chr.getTotalMdef(), reduce, magicGuardPercent(chr));
+    }
+
+    /** Magic Guard's share as the character would have it buffed: the buff if on, else its learned level. */
+    private static int magicGuardPercent(Character chr) {
+        Integer buffed = chr.getBuffedValue(client.BuffStat.MAGIC_GUARD);
+        if (buffed != null) {
+            return buffed;
+        }
+        for (int skillId : new int[] {2001002, 12001001}) {
+            client.Skill skill = client.SkillFactory.getSkill(skillId);
+            int skillLevel = skill == null ? 0 : chr.getSkillLevel(skill);
+            if (skillLevel > 0) {
+                return skill.getEffect(skillLevel).getX();
+            }
+        }
+        return 0;
     }
 
     private static int number(String[] params, int index, int fallback) {

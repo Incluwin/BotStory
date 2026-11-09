@@ -345,6 +345,31 @@ public final class CombatFormulaProvider {
     }
 
     /**
+     * PvP (docs/PVP_PLAN.md section 2 step 1): one target's lines as {@code attacker} would roll them on a monster
+     * with no defense, no avoid and no element. Character modifiers, crits and Shadow Partner are kept; whether the
+     * attack lands at all is the caller's roll.
+     */
+    public List<Integer> rollPvpLines(Character attacker, int hits, int skillId, DamageProfile profile) {
+        int lineCount = Math.max(1, hits);
+        if (profile.alwaysHit()) {
+            return rollDamageLines(lineCount, profile.minDamage(), profile.maxDamage(), 1.0d);
+        }
+        long rawMax = applyCharacterDamageModifiers(profile.maxDamage(), attacker, skillId);
+        long rawMin = applyCharacterDamageModifiers(profile.minDamage(), attacker, skillId);
+        int max = (int) Math.max(1L, Math.min(Integer.MAX_VALUE, rawMax));
+        int min = (int) Math.min(max, Math.max(1L, rawMin));
+        if (profile.magicAttack()) {
+            return rollDamageLines(lineCount, min, max, 1.0d);
+        }
+        CritProfile crit = profile.noCrit() ? CritProfile.NONE : resolveCritProfile(attacker);
+        if (lineCount > 1 && attacker.getBuffEffect(BuffStat.SHADOWPARTNER) != null) {
+            return rollWithShadowPartnerPhysical(attacker, lineCount, new int[] {min, max}, 1.0d, crit, 0)
+                    .damageLines();
+        }
+        return rollDamageLinesWithCrit(lineCount, min, max, 1.0d, crit.critChance(), crit.critMultiplier()).lines();
+    }
+
+    /**
      * Deterministic counterpart to {@link #makeTarget}: estimates the total damage the bot should
      * deal to one monster after character modifiers, elemental effects, accuracy, crits, Shadow
      * Partner, and monster defense. Used by bot planning so skill choice is based on expected output

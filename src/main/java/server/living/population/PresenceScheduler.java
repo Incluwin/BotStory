@@ -203,7 +203,8 @@ public final class PresenceScheduler {
                 if (session.citizen.state() != Citizen.State.ACTIVE || now >= session.endsAtMs) {
                     // one in a party quest logs off after it (CitizenPartyQuests), one on a casino shift when the shift
                     // is over (CitizenCasino): live 2026-11-08 bar hosts went offline 12 min into a 20-45 min shift
-                    if (!inPartyQuest(session) && (casino() == null || !casino().holds(session))) {
+                    if (!inPartyQuest(session) && (casino() == null || !casino().holds(session))
+                            && !server.pvp.DuelRegistry.inDuel(session.characterId)) { // a duel ends first (PvP V1)
                         logout(session, "session over");
                     }
                     continue;
@@ -1012,6 +1013,9 @@ public final class PresenceScheduler {
     }
 
     private void maybeReplan(CitizenSession session, long now) {
+        if (server.pvp.DuelRegistry.inDuel(session.characterId)) {
+            return; // a duel holds it, and gives back its modes when it ends (docs/PVP_PLAN.md V1)
+        }
         if (inPartyQuest(session)) {
             return; // its party quest moves it, and sends it back to its day after (CitizenPartyQuests)
         }
@@ -1609,7 +1613,7 @@ public final class PresenceScheduler {
         return session.loaded() && activity != Activity.PQ && activity != Activity.JOB && !session.stallOpen
                 && session.partyId == 0 && session.trip == null && session.capRetry == null
                 && session.waitingMove.get() == null && !cap.reserved(session) && !inPartyQuest(session)
-                && !onSupplyTrip(session);
+                && !onSupplyTrip(session) && !server.pvp.DuelRegistry.inDuel(session.characterId);
     }
 
     /** It goes on to another place of the kind it is at (another field, town or market room), the way any move goes. */

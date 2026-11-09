@@ -1,0 +1,114 @@
+package server.pvp;
+
+import config.PvpConfig;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * The PvP damage model of docs/PVP_PLAN.md section 2, steps 2-7, as pure functions: a line rolled as on a defenseless
+ * monster (step 1, {@code CombatFormulaProvider.rollPvpLines}) is multiplied by the attacker's coefficient and the
+ * hit's factors, and the attack's lines shrink together to the per-attack cap.
+ */
+public final class PvpDamageModel {
+    private PvpDamageModel() {
+    }
+
+    /** What the coefficient needs to know about an attacker. {@code magic}: a magician's spell base. */
+    public record Attacker(int level, int jobId, long gearBase, boolean magic) { }
+
+    /**
+     * Step 2: {@code c = H_ref(L) / (TTK x D_job(L)) x G^(gamma - 1)}. A median attacker using its job's best attack
+     * then knocks out a median-HP victim in TTK seconds of hitting; gear above the median deals {@code G^gamma}.
+     */
+    public static double coefficient(Attacker attacker, PvpReference reference, PvpConfig config) {
+        double hRef = reference.hRef(attacker.level());
+        long median = reference.gearMedian(attacker.jobId(), attacker.level());
+        long ownBase = Math.max(1L, attacker.gearBase());
+        double gearMedian = median > 0 ? median : ownBase;
+        long measured = reference.measuredRate(attacker.jobId(), attacker.level());
+        double rate = measured > 0 ? measured : gearMedian * reference.ratePerBase(attacker.magic());
+        double gearRatio = Math.max(0.05d, ownBase / gearMedian);
+        return hRef / (config.PVP_TTK_SECONDS * Math.max(1d, rate))
+                * Math.pow(gearRatio, config.PVP_GEAR_EXPONENT - 1d);
+    }
+
+    /** Step 3: the share each of {@code targets} takes of an attack that hits that many. */
+    public static double areaShare(int targets, PvpConfig config) {
+        return Math.max(config.PVP_AOE_FLOOR, 1d - config.PVP_AOE_FALLOFF * Math.max(0, targets - 1));
+    }
+
+    /** Step 4: 2% per level the attacker is above (or below) the victim, capped. */
+    public static double levelFactor(int attackerLevel, int victimLevel, PvpConfig config) {
+        double percent = (double) config.PVP_LEVEL_PERCENT * (attackerLevel - victimLevel);
+        percent = Math.max(-config.PVP_LEVEL_CAP_PERCENT, Math.min(config.PVP_LEVEL_CAP_PERCENT, percent));
+        return 1d + percent / 100d;
+    }
+
+    /** Step 5: the victim's WDEF (physical) or MDEF (magic) cuts {@code def / (def + K x attacker level)}, capped. */
+    public static double defenseFactor(int defense, int attackerLevel, PvpConfig config) {
+        if (defense <= 0) {
+            return 1d;
+        }
+        double cut = defense / (double) (defense + (long) config.PVP_DEF_K * Math.max(1, attackerLevel));
+        return 1d - Math.min(config.PVP_DEF_CAP_PERCENT / 100d, cut);
+    }
+
+    /**
+     * Step 6: the stock avoid formula ({@code acc / ((1.84 + 0.07 x levels below) x avoid + 1)}) with the misses
+     * capped, so high avoid helps without making anyone untouchable.
+     */
+    public static double hitChance(boolean magic, int accuracy, int attackerLevel, int victimLevel, int avoid,
+                                   PvpConfig config) {
+        int capPercent = magic ? config.PVP_MAGIC_MISS_CAP_PERCENT : config.PVP_PHYSICAL_MISS_CAP_PERCENT;
+        double floor = 1d - capPercent / 100d;
+        if (avoid <= 0) {
+            return 1d;
+        }
+        double levelsBelow = Math.max(0, victimLevel - attackerLevel);
+        double chance = accuracy / ((1.84d + 0.07d * levelsBelow) * avoid + 1d);
+        return Math.max(floor, Math.min(1d, chance));
+    }
+
+    /**
+     * Scales {@code rawLines} by {@code factor}, keeps every landed line at 1 or more, then shrinks them together so
+     * the attack takes at most {@code PVP_MAX_HIT_PERCENT} of {@code victimMaxHp} (step 7).
+     */
+    public static List<Integer> scaleLines(List<Integer> rawLines, double factor, int victimMaxHp, PvpConfig config) {
+        List<Integer> scaled = new ArrayList<>(rawLines.size());
+        long total = 0;
+        for (int raw : rawLines) {
+            int line = raw <= 0 ? 0 : (int) Math.max(1L, Math.round(raw * factor));
+            scaled.add(line);
+            total += line;
+        }
+        long cap = Math.max(1L, (long) victimMaxHp * config.PVP_MAX_HIT_PERCENT / 100L);
+        if (total <= cap) {
+            return scaled;
+        }
+        double shrink = cap / (double) total;
+        List<Integer> capped = new ArrayList<>(scaled.size());
+        long kept = 0;
+        for (int line : scaled) {
+            int smaller = line <= 0 ? 0 : (int) Math.max(1L, (long) Math.floor(line * shrink));
+            capped.add(smaller);
+            kept += smaller;
+        }
+        // flooring every line to at least 1 can leave the sum a few points over: trim the biggest lines
+        while (kept > cap) {
+            int biggest = 0;
+            for (int i = 1; i < capped.size(); i++) {
+                if (capped.get(i) > capped.get(biggest)) {
+                    biggest = i;
+                }
+            }
+            int cut = (int) Math.min(capped.get(biggest), kept - cap);
+            if (cut <= 0) {
+                break;
+            }
+            capped.set(biggest, capped.get(biggest) - cut);
+            kept -= cut;
+        }
+        return capped;
+    }
+}

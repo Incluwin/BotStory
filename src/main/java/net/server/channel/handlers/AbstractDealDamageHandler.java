@@ -338,6 +338,9 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
             if (player.isBanned()) {
                 return false;
             }
+            if (attack.skill == 0) {
+                server.pvp.PvpHooks.onAttack(player, attack); // a duel's PvP hits (docs/PVP_PLAN.md V1)
+            }
             if (attack.skill != 0) {
                 theSkill = SkillFactory.getSkill(attack.skill); // thanks Conrad for noticing some Aran skills not consuming MP
                 attackEffect = attack.getAttackEffect(player, theSkill); //returns back the player's attack effect so we are gucci
@@ -362,6 +365,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                 if (server.living.LivingWorldHooks.watchesHabits(player)) { // a companion owner's skill mix (F2)
                     server.living.LivingWorldHooks.skillUsed(player, attack.skill, landed(attack));
                 }
+                server.pvp.PvpHooks.onAttack(player, attack); // a duel's PvP hits, once the skill is paid for
 
                 int mobCount = attackEffect.getMobCount();
                 if (attack.skill != Cleric.HEAL) {

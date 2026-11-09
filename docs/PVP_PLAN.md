@@ -334,6 +334,30 @@ The server sees a human only through movement packets. Ties go to the human both
 - *Done when* a GM `!duel` against a citizen ends in a knock-out with no death and no EXP lost, the matrix shows median
   duel times of 10-25 s of continuous hitting at every band, and the full suite passes.
 
+### Status (2026-11-08, branch `feat/pvp-v0`, not deployed)
+
+- **Built:** V1.1-V1.4. `CharacterHitApplier` (mob hits unchanged: Magic Guard 1.0, Meso Guard 0.5), `PvpHitResolver`,
+  `PvpDamageModel`, `PositionTrack`, `DuelField` / `DuelRegistry` / `DuelBrain`, `PvpHooks`, the `pvp:` config
+  section, `DuelSim`, and `scripts/config/pvp/reference.yaml` (gear medians from the 20:40 calibration).
+- **Differs from the design above:**
+  - The GM command is `!pvp duel <foe>`, `!pvp duel <a> <b>`, `!pvp duel <a> [b..] vs <c> [d..]` (`me` is you),
+    `!pvp duel stop [id]` and `!pvp duels`, not a separate `!duel`. It runs with `PVP_ENABLED` off; that switch gates the
+    player-facing ways in from V3.
+  - The bot uses its four strongest attack skills (strongest first), not basic attacks only, because the stock attack
+    planner already gives each skill's box and cooldown.
+  - The potion rule is one healing item per `PVP_HEAL_WINDOW_MS` plus an HP/MP allowance of `PVP_HEAL_PERCENT` per
+    window from any source (potions, Heal, regen), which the field takes back when exceeded.
+  - Hooks: `applyAttack` (basic attacks before the skill block, skill attacks once MP is paid), `UseItemHandler`,
+    `PetAutopotProcessor.runAutopotAction`, and the citizen scheduler's re-plan, logout and move-on gates. A fighter who
+    leaves the map forfeits on the next 100 ms tick, so no map-leave hook was needed.
+  - No `DuelRules` / `modes.yaml` yet (one mode) and no `pvp_match` tables: both come with V3/V4, which need them.
+- **Model-only sim (`DuelSimTest`, median fighters, no defenses):** a mirror match is 50/50 at a 15 s median. A
+  one-level edge wins 74%, and a five-level edge wins every round. Duel times only spread from 14 to 16 s. The rolls
+  average out over about 20 attacks, so the model alone leaves almost no room for upsets. Live duels add misses,
+  movement and reaction; V2's practice duels must measure how much. **Open decision PD14:** if live duels are as
+  deterministic, widen the luck (a wider roll, or rarer bigger swings), or soften `PVP_LEVEL_PERCENT`.
+- **Not yet run:** a live `!pvp duel` against a citizen, and `!pvp sim matrix` at each band on live loadouts.
+
 ---
 
 ## 5. V2. Duel brain

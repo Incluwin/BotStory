@@ -1,0 +1,92 @@
+# PvP reference numbers (docs/PVP_PLAN.md section 2, step 2), read by server.pvp.PvpReference at first use.
+# Source: `!pvp calibrate` on the live server 2026-11-08 20:40 server time (logs/pvp/reference-20261109-0140.yaml),
+# 240 loaded characters at Lv 30+.
+#
+# h_ref is left out on purpose: the per-band medians outside Lv 50-109 came from one or two classes (40s: 1,564 from
+# magicians and thieves; 120s: 8,332 from warriors and magicians), so PvpReference uses its fit, 34 x L^1.11, which
+# tracks the solid bands (50s-100s) within about 7%. Add an `h_ref:` section only from a band with n >= 20 and all five
+# classes.
+#
+# d_job (measured sustained single-target dps per job path and band) is left out too: after 71 minutes the meter had
+# 19 rows from one or two characters each. Until it has n >= 5 per row, the rate is gear_base x dps_per_base.
+dps_per_base:
+  physical: 4.6
+  magic: 80
+gear_base:        # "<jobId/10>-<band>" -> median max line before skills
+  "11-10": 2480
+  "11-11": 2660
+  "11-12": 3416
+  "11-20": 5658
+  "11-6": 1226
+  "11-7": 1256
+  "11-8": 1797
+  "11-9": 1725
+  "12-10": 2483
+  "12-6": 1291
+  "12-7": 1421
+  "12-8": 1715
+  "13-10": 2513
+  "13-11": 3644
+  "13-12": 3183
+  "13-6": 1001
+  "13-7": 1688
+  "13-8": 1923
+  "13-9": 1945
+  "141-3": 255
+  "20-11": 46
+  "21-10": 42
+  "21-4": 12
+  "21-5": 15
+  "21-6": 18
+  "21-7": 24
+  "21-8": 28
+  "21-9": 29
+  "211-3": 448
+  "211-7": 1868
+  "211-8": 1845
+  "22-10": 41
+  "22-5": 14
+  "22-6": 21
+  "22-7": 25
+  "22-8": 26
+  "22-9": 33
+  "23-10": 34
+  "23-12": 39
+  "23-4": 12
+  "23-5": 16
+  "23-6": 18
+  "23-7": 23
+  "23-9": 35
+  "31-10": 1581
+  "31-11": 1828
+  "31-3": 317
+  "31-5": 604
+  "31-6": 992
+  "31-7": 931
+  "31-8": 1109
+  "31-9": 1391
+  "32-10": 1874
+  "32-11": 2051
+  "32-7": 1108
+  "32-8": 1230
+  "40-7": 471
+  "41-3": 96
+  "41-4": 114
+  "41-5": 277
+  "41-6": 594
+  "41-7": 586
+  "41-8": 585
+  "41-9": 1164
+  "42-10": 1508
+  "42-4": 265
+  "42-6": 676
+  "42-8": 1230
+  "42-9": 1458
+  "51-5": 700
+  "51-7": 1165
+  "52-10": 1727
+  "52-11": 1965
+  "52-3": 195
+  "52-6": 585
+  "52-8": 1295
+  "52-9": 1627

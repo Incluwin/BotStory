@@ -1,18 +1,11 @@
 package server.combat;
 
 import client.BotClient;
-import client.BuffStat;
 import client.Character;
-import client.Skill;
-import client.SkillFactory;
 import config.YamlConfig;
 import constants.id.MapId;
-import constants.skills.Aran;
-import server.StatEffect;
 import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
 import server.agents.capabilities.combat.AgentCombatDamageRuntime;
-import server.economy.ledger.MesoAccount;
-import server.economy.ledger.MesoFlows;
 import server.life.MobAttackInfo;
 import server.life.MobAttackInfoFactory;
 import server.life.MobSkill;
@@ -148,10 +141,10 @@ public final class ServerMobDamageService {
             if (deadly) {
                 damage = Math.max(0, target.getHp() - 1);
                 mpAttack = Math.max(0, target.getMp() - 1);
-                applyDirectLoss(target, damage, mpAttack);
+                CharacterHitApplier.applyDirectLoss(target, damage, mpAttack);
             } else {
-                damage = applyDamageReduction(target, damage);
-                applyHpMpLoss(target, damage, mpAttack);
+                damage = CharacterHitApplier.reduce(target, damage);
+                CharacterHitApplier.applyLoss(target, damage, mpAttack, CharacterHitApplier.Guards.PVE, false);
             }
         }
 
@@ -169,74 +162,5 @@ public final class ServerMobDamageService {
             banished.changeMapBanish(attacker.getBanish());
         }
         return damage;
-    }
-
-    private static int applyDamageReduction(Character target, int damage) {
-        StatEffect comboBarrier = target.getBuffEffect(BuffStat.COMBO_BARRIER);
-        if (comboBarrier != null) {
-            damage = (int) (damage * (comboBarrier.getX() / 1000.0d));
-        }
-
-        int jobId = target.getJob().getId();
-        if (jobId < 200 && jobId % 10 == 2) {
-            Skill achilles = SkillFactory.getSkill(jobId * 10000 + (jobId == 112 ? 4 : 5));
-            int level = target.getSkillLevel(achilles);
-            if (level > 0) {
-                damage = (int) (damage * (achilles.getEffect(level).getX() / 1000.0d));
-            }
-        }
-
-        Skill highDefense = SkillFactory.getSkill(Aran.HIGH_DEFENSE);
-        int highDefenseLevel = highDefense == null ? 0 : target.getSkillLevel(highDefense);
-        if (highDefenseLevel > 0) {
-            damage = (int) (damage * Math.ceil(
-                    highDefense.getEffect(highDefenseLevel).getX() / 1000.0d));
-        }
-        return Math.max(0, damage);
-    }
-
-    private static void applyHpMpLoss(Character target, int damage, int mpAttack) {
-        Integer magicGuard = target.getBuffedValue(BuffStat.MAGIC_GUARD);
-        Integer mesoGuard = target.getBuffedValue(BuffStat.MESOGUARD);
-        int hpLoss = damage;
-        int mpLoss = mpAttack;
-        if (magicGuard != null && mpAttack == 0) {
-            int guardedMp = (int) (damage * (magicGuard.doubleValue() / 100.0d));
-            hpLoss = damage - guardedMp;
-            if (guardedMp > target.getMp()) {
-                hpLoss += guardedMp - target.getMp();
-                guardedMp = target.getMp();
-            }
-            mpLoss = guardedMp;
-        } else if (mesoGuard != null) {
-            hpLoss = Math.round(damage / 2.0f);
-            int mesoLoss = (int) (hpLoss * (mesoGuard.doubleValue() / 100.0d));
-            if (target.getMeso() < mesoLoss) {
-                try (var ledgerScope = MesoFlows.as(MesoAccount.SKILL)) { target.gainMeso(-target.getMeso(), false); }
-                target.cancelBuffStats(BuffStat.MESOGUARD);
-            } else {
-                try (var ledgerScope = MesoFlows.as(MesoAccount.SKILL)) { target.gainMeso(-mesoLoss, false); }
-            }
-        }
-
-        if (target.isRidingBattleship()) {
-            target.decreaseBattleshipHp(hpLoss);
-        }
-        if (target.getClient() instanceof BotClient) {
-            target.addMPHPAndTriggerAutopot(-hpLoss, -mpLoss);
-        } else {
-            target.addMPHP(-hpLoss, -mpLoss);
-        }
-    }
-
-    private static void applyDirectLoss(Character target, int hpLoss, int mpLoss) {
-        if (target.isRidingBattleship()) {
-            target.decreaseBattleshipHp(hpLoss);
-        }
-        if (target.getClient() instanceof BotClient) {
-            target.addMPHPAndTriggerAutopot(-hpLoss, -mpLoss);
-        } else {
-            target.addMPHP(-hpLoss, -mpLoss);
-        }
     }
 }
