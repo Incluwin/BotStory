@@ -189,6 +189,10 @@ public final class DuelField {
                 if (leftMs <= 0) {
                     state = State.FIGHTING;
                     for (Fighter fighter : fighters.values()) {
+                        // every fighter starts whole: practice 2026-11-09 a citizen entered nearly dead eight duels
+                        // running (each gives back what it started with) and lost to its first hit. Its own HP and
+                        // MP still come back when the duel ends, so this heals no one.
+                        fighter.chr.updateHpMp(fighter.chr.getCurrentMaxHp(), fighter.chr.getCurrentMaxMp());
                         fighter.lastHp = fighter.chr.getHp();
                         fighter.lastMp = fighter.chr.getMp();
                         fighter.hpAllowance = healCap(fighter.chr.getCurrentMaxHp());

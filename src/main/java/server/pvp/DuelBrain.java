@@ -13,6 +13,7 @@ import server.agents.capabilities.combat.AgentAttackRoute;
 import server.agents.capabilities.combat.AgentAttackTransactionResult;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatAttackRuntime;
+import server.agents.capabilities.combat.AgentCombatCooldownStateRuntime;
 import server.agents.capabilities.combat.AgentCombatHitCounter;
 import server.agents.capabilities.combat.AgentCombatSkillCacheStateRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillClassifier;
@@ -59,8 +60,21 @@ final class DuelBrain {
     static final int STAND_STEP_PX = 40;
     /** How far above or below the target's feet a stand spot may be and still count as its level. */
     static final int LEVEL_TOLERANCE_PX = 25;
+    /**
+     * A held attack key: after a swing, or a wait on its attack lock, a bot thinks again this long after the lock ends
+     * (plus up to this spread), not a whole reaction later. Practice 2026-11-09: thinking every 300-600 ms against a
+     * ~700 ms animation, every other think landed mid-swing and bots swung 0.8-0.95 a second against a player's ~1.3.
+     */
+    static final int KEY_REPEAT_MIN_MS = 30;
+    static final int KEY_REPEAT_SPREAD_MS = 60;
 
     private DuelBrain() {
+    }
+
+    /** The next think, when the attack lock of {@code lockMs} from {@code now} ends. */
+    static void swingAgainAt(Mind mind, long now, int lockMs) {
+        mind.nextThinkMs = now + Math.max(0, lockMs) + KEY_REPEAT_MIN_MS
+                + ThreadLocalRandom.current().nextInt(KEY_REPEAT_SPREAD_MS);
     }
 
     /** What the duel remembers of a bot: the modes to give back, its attack skills, when it thinks next. */
@@ -243,12 +257,17 @@ final class DuelBrain {
                 var result = AgentCombatAttackRuntime.attackAtNothing(entry, bot, plan);
                 if (result.committed()) {
                     stats.swingsSent.incrementAndGet();
+                    swingAgainAt(mind, now, plan.cooldownMs);
                     return;
                 }
                 if (result.status() == AgentAttackTransactionResult.Status.DEFERRED) {
                     stats.deferred(result.reason().name());
+                    if (result.reason() == AgentAttackTransactionResult.Reason.ATTACK_COOLDOWN) {
+                        swingAgainAt(mind, now, AgentCombatCooldownStateRuntime.attackCooldownMs(entry));
+                        return;   // its attack lock is running: it stays put and swings when it ends
+                    }
                     if (result.reason() != AgentAttackTransactionResult.Reason.CANNOT_USE_SKILL) {
-                        return;   // its attack lock is running, or it is in the air: it stays put
+                        return;   // it is in the air: it stays put
                     }
                     continue;     // this skill's cost or cooldown: a player presses the next key
                 }

@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** The duel's pure pieces (docs/PVP_PLAN.md V1.3): shown lines, line counts, bot reach, the registry's refusals. */
@@ -186,6 +187,42 @@ class DuelPiecesTest {
         assertEquals("11-9", rates.get(0).key());
         assertEquals(2000L, rates.get(0).medianRawDps());
         assertEquals(3, rates.get(0).fighters());
+    }
+
+    /** Practice 2026-11-09: a citizen entered nearly dead eight duels running and lost to its first hit. */
+    @Test
+    void everyFighterStartsWholeWhenTheBellRings() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        when(map.getCharacterById(1)).thenReturn(a);
+        when(map.getCharacterById(2)).thenReturn(b);
+        when(a.getCurrentMaxHp()).thenReturn(5000);
+        when(a.getCurrentMaxMp()).thenReturn(800);
+        when(b.getCurrentMaxHp()).thenReturn(3000);
+        when(b.getCurrentMaxMp()).thenReturn(4000);
+        DuelField field = new DuelField(98, map, List.of(a), List.of(b));
+
+        field.tick(System.currentTimeMillis());   // never begun, so its countdown is already over
+
+        assertEquals(DuelField.State.FIGHTING, field.state());
+        verify(a).updateHpMp(5000, 800);
+        verify(b).updateHpMp(3000, 4000);
+    }
+
+    /** A held attack key: the next think comes as the attack lock ends, not a whole reaction later. */
+    @Test
+    void aBotSwingsAgainAsItsAttackLockEnds() {
+        DuelBrain.Mind mind = new DuelBrain.Mind();
+        for (int i = 0; i < 50; i++) {
+            DuelBrain.swingAgainAt(mind, 10_000L, 700);
+            long after = mind.nextThinkMs - 10_700L;
+            assertTrue(after >= DuelBrain.KEY_REPEAT_MIN_MS
+                            && after < DuelBrain.KEY_REPEAT_MIN_MS + DuelBrain.KEY_REPEAT_SPREAD_MS,
+                    "thinks " + after + " ms after its lock ends");
+        }
+        DuelBrain.swingAgainAt(mind, 10_000L, -5);
+        assertTrue(mind.nextThinkMs >= 10_000L + DuelBrain.KEY_REPEAT_MIN_MS, "a spent lock is no lock");
     }
 
     @Test
