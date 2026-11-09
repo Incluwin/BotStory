@@ -310,16 +310,19 @@ public final class DuelField {
         return best;
     }
 
-    /** The PvP half of an attack ({@code AbstractDealDamageHandler.applyAttack} via {@link PvpHooks}). */
-    synchronized void attack(Character attacker, AttackInfo attack) {
+    /**
+     * The PvP half of an attack ({@code AbstractDealDamageHandler.applyAttack} via {@link PvpHooks}): how many
+     * opponents it hit (not dodged), which {@link PvpHooks} turns into combo orbs and Aran combo as a monster hit would.
+     */
+    synchronized int attack(Character attacker, AttackInfo attack) {
         Fighter self = fighters.get(attacker.getId());
         if (self == null || self.knockedOut || state != State.FIGHTING) {
-            return;
+            return 0;
         }
         long now = System.currentTimeMillis();
         int gap = RAPID_SKILLS.contains(attack.skill) ? config.PVP_MIN_ATTACK_GAP_MS / 5 : config.PVP_MIN_ATTACK_GAP_MS;
         if (now - self.lastAttackMs < gap) {
-            return;
+            return 0;
         }
         self.lastAttackMs = now;
         self.stats.packet(now);
@@ -336,7 +339,7 @@ public final class DuelField {
                 self.human, now, config.PVP_LAG_WINDOW_MS, config.PVP_HUMAN_HURTBOX_INSET_PX);
         if (met.isEmpty()) {
             self.stats.whiffs.incrementAndGet();
-            return;
+            return 0;
         }
         int skillLevel = attack.skill == 0 ? 0 : attacker.getSkillLevel(attack.skill);
         CombatFormulaProvider formulas = CombatFormulaProvider.getInstance();
@@ -347,12 +350,16 @@ public final class DuelField {
                 attacker.getJob().getId(), sample.gearBase(), sample.jobClass() == 2), PvpReference.get(), config);
         double share = PvpDamageModel.areaShare(met.size(), config);
         int lines = lineCount(attack, effect);
+        int landed = 0;
         for (PvpHitResolver.Candidate candidate : met) {
-            hit(self, fighters.get(candidate.character().getId()), attack, profile, lines, coefficient * share);
+            if (hit(self, fighters.get(candidate.character().getId()), attack, profile, lines, coefficient * share)) {
+                landed++;
+            }
         }
         if (decided()) {
             endBySides();
         }
+        return landed;
     }
 
     private static StatEffect effectOf(Character attacker, int skillId) {
@@ -370,8 +377,9 @@ public final class DuelField {
         return Math.max(1, Math.min(attack.numDamage, skillLines * 2));
     }
 
-    private void hit(Fighter attacker, Fighter victim, AttackInfo attack, CombatFormulaProvider.DamageProfile profile,
-                     int lines, double factor) {
+    /** One victim's share of an attack; true when it landed (not dodged). */
+    private boolean hit(Fighter attacker, Fighter victim, AttackInfo attack, CombatFormulaProvider.DamageProfile profile,
+                        int lines, double factor) {
         Character from = attacker.chr;
         Character to = victim.chr;
         CombatFormulaProvider formulas = CombatFormulaProvider.getInstance();
@@ -386,7 +394,7 @@ public final class DuelField {
             attacker.stats.dodged.incrementAndGet();
             map.broadcastMessage(PacketCreator.damagePlayer(-2, 0, to.getId(), 0, 0, direction, false, 0, false,
                     0, 0, 0));
-            return;
+            return false;
         }
         attacker.stats.hits.incrementAndGet();
         int defense = attack.magic ? to.getTotalMdef() : to.getTotalWdef();
@@ -416,6 +424,7 @@ public final class DuelField {
         if (applied.floored()) {
             knockOut(victim, from);
         }
+        return true;
     }
 
     /** The lines other clients draw: as rolled, shrunk together when a guard or Achilles took part of the hit. */
