@@ -1,6 +1,5 @@
 package server.agents.capabilities.combat;
 
-import server.agents.capabilities.movement.AgentMovementSubstepPolicy;
 import server.agents.capabilities.movement.AgentMovementTimers;
 
 import server.agents.runtime.AgentRuntimeEntry;
@@ -11,7 +10,8 @@ import server.agents.runtime.AgentRuntimeEntry;
  * <p>Each step takes off one movement tick (AgentMovementTimers.tickDown, MOVEMENT_TICK_MS). A foreground Agent runs
  * one step a tick. A BACKGROUND_ACTIVE Agent is ticked every DEFAULT_BACKGROUND_ACTIVE_TICK_MS (250 ms) and its
  * movement runs AgentMovementSubstepPolicy's substeps (5) to cover that time; with BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED
- * its lock runs the same number of steps, so a 700 ms swing holds the next one about 750 ms, not 3.5 s.</p>
+ * its lock runs the same number of steps, so a 700 ms swing holds the next one about 750 ms, not 3.5 s. The runtime
+ * tick (AgentCommonTickRuntime) passes that substep count in, so combat takes no new dependency on movement policy.</p>
  */
 public final class AgentCombatActionLockRuntime {
     private static final boolean BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED = config.AgentTuning.booleanValue(
@@ -20,13 +20,22 @@ public final class AgentCombatActionLockRuntime {
     private AgentCombatActionLockRuntime() {
     }
 
+    /** One foreground tick: one step of countdown. */
     public static void tickActionLock(AgentRuntimeEntry entry) {
-        tickActionLock(entry, countdownSteps(entry, BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED));
+        countDown(entry, 1);
     }
 
-    /** Steps this tick counts down: the movement substeps when the switch is on (1 outside BACKGROUND_ACTIVE), else 1. */
-    static int countdownSteps(AgentRuntimeEntry entry, boolean backgroundSubstepCountdown) {
-        return backgroundSubstepCountdown ? AgentMovementSubstepPolicy.substeps(entry) : 1;
+    /**
+     * One scheduled tick of an Agent whose movement runs {@code movementSubsteps} physics steps this tick
+     * (AgentMovementSubstepPolicy.substeps): that many steps of countdown when the switch is on, else one.
+     */
+    public static void tickActionLock(AgentRuntimeEntry entry, int movementSubsteps) {
+        countDown(entry, countdownSteps(movementSubsteps, BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED));
+    }
+
+    /** Steps a tick counts down: the movement substeps (at least 1) when the switch is on, else 1. */
+    static int countdownSteps(int movementSubsteps, boolean backgroundSubstepCountdown) {
+        return backgroundSubstepCountdown ? Math.max(1, movementSubsteps) : 1;
     }
 
     /**
@@ -34,7 +43,7 @@ public final class AgentCombatActionLockRuntime {
      * window once the lock is clear, as that many 50 ms ticks would, so time left over after the lock clears goes on
      * to the move window.
      */
-    static void tickActionLock(AgentRuntimeEntry entry, int steps) {
+    static void countDown(AgentRuntimeEntry entry, int steps) {
         for (int step = 0; step < steps; step++) {
             if (AgentCombatCooldownStateRuntime.hasAttackCooldown(entry)) {
                 AgentCombatCooldownStateRuntime.tickAttackCooldown(entry, AgentMovementTimers::tickDown);

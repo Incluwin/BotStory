@@ -4,6 +4,7 @@ import server.agents.capabilities.combat.AgentDeathStateRuntime;
 import server.agents.capabilities.movement.AgentActionLockPhysicsService;
 import server.agents.capabilities.combat.AgentMonsterControlService;
 
+import server.agents.capabilities.movement.AgentMovementSubstepPolicy;
 import server.agents.capabilities.movement.AgentMovementTimers;
 
 import client.Character;
@@ -64,7 +65,7 @@ public final class AgentCommonTickRuntime {
                         server.agents.integration.AgentInventoryGatewayRuntime.inventory()),
                 tickScriptTasks,
                 AgentPartyQuestHooks::isNpcLocked,
-                AgentCombatActionLockRuntime::tickActionLock,
+                entry -> AgentCombatActionLockRuntime.tickActionLock(entry, AgentMovementSubstepPolicy.substeps(entry)),
                 AgentCombatSkillCacheRuntime::rebuildSkillCacheIfNeeded,
                 (entry, agent) -> {
                     if (!AgentCombatDispelRuntime.tickDispel(entry, agent, AgentCombatConfig.cfg)) {
