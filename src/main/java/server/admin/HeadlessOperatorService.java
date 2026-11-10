@@ -40,8 +40,11 @@ public final class HeadlessOperatorService {
     private static final int OPERATOR_MAP = 180000000;
     private static final int RUN_HISTORY = 50;
 
-    /** Only harness commands may run headlessly; this is not a general remote GM console. */
-    static final Set<String> ALLOWED_COMMANDS = Set.of("skillprobe", "spawnbot", "combatarena");
+    /**
+     * Only harness commands may run headlessly; this is not a general remote GM console. {@code pvp} (2026-11-09, the
+     * user's call) runs practice duels, calibration and the rates reports without a logged-in client.
+     */
+    static final Set<String> ALLOWED_COMMANDS = Set.of("skillprobe", "spawnbot", "combatarena", "pvp");
     /** Off unless the server was started with {@code -Dagents.headless-operator=true}. */
     static final boolean ENABLED = Boolean.getBoolean("agents.headless-operator");
 
