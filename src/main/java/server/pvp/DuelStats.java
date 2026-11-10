@@ -18,6 +18,9 @@ public final class DuelStats {
     final AtomicInteger swingsRefused = new AtomicInteger();
     final AtomicInteger noSkillThinks = new AtomicInteger();
     final AtomicInteger walks = new AtomicInteger();
+    /** Footwork while in reach: steps to another spot, and hops. */
+    final AtomicInteger steps = new AtomicInteger();
+    final AtomicInteger hops = new AtomicInteger();
     final AtomicInteger packets = new AtomicInteger();
     final AtomicInteger whiffs = new AtomicInteger();
     final AtomicInteger dodged = new AtomicInteger();
@@ -73,7 +76,7 @@ public final class DuelStats {
 
     String summary() {
         return "thinks=" + thinks + " buffs=" + buffsCast + " sent=" + swingsSent + " deferred=" + swingsDeferred
-                + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " packets=" + packets
+                + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " steps=" + steps + " hops=" + hops + " packets=" + packets
                 + " whiffs=" + whiffs + " dodged=" + dodged + " hits=" + hits + " raw=" + rawRolled
                 + " top=" + topRefusal() + " waited=" + topDeferral();
     }

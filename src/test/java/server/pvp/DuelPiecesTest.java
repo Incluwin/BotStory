@@ -12,6 +12,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -129,6 +131,64 @@ class DuelPiecesTest {
         assertTrue(caster.x > 400 && caster.x <= 500, "on the platform, on the caster's side: " + caster);
         assertEquals(new Point(456, 100), melee, "70% of an 80 px reach");
         assertEquals(new Point(210, 100), atTheEdge, "no room on its side, so the other side");
+    }
+
+    /**
+     * Filmed 2026-11-10: in reach, neither fighter moved again for 29 s. A step goes to another spot inside the reach,
+     * on the fighter's own side and level, far enough to read as a step.
+     */
+    @Test
+    void aStepStaysInReachOnTheFightersSideAndLevel() {
+        Point target = new Point(200, 100);
+        Point at = new Point(450, 100);   // 250 px out, on the platform (x 0-500 at y 100)
+
+        Point near = DuelBrain.footworkSpot(at, target, 400, 0d, DuelPiecesTest::floorUnder);
+        Point middle = DuelBrain.footworkSpot(at, target, 400, 0.5d, DuelPiecesTest::floorUnder);
+
+        assertEquals(new Point(340, 100), near, "35% of a 400 px reach, on its own side");
+        assertEquals(new Point(340, 100), middle, "240 px is 10 px from where it stands, so the band's near end");
+    }
+
+    @Test
+    void aStepTooSmallToSeeGoesToTheBandsOtherEnd() {
+        Point target = new Point(100, 100);
+        Point at = new Point(240, 100);   // already at the near end (140 px of a 400 px reach)
+
+        assertEquals(new Point(440, 100), DuelBrain.footworkSpot(at, target, 400, 0d, DuelPiecesTest::floorUnder),
+                "the near end is where it stands, so the far end: 85% of the reach");
+    }
+
+    @Test
+    void aRangedFighterCrowdedByAMeleeOneStepsBack() {
+        Point target = new Point(200, 100);
+        Point crowded = new Point(230, 100);   // the melee foe 30 px away
+
+        Point spot = DuelBrain.footworkSpot(crowded, target, 400, 0.2d, DuelPiecesTest::floorUnder);
+
+        assertNotNull(spot);
+        assertTrue(spot.x - target.x >= 140, "back out to at least 35% of its reach: " + spot);
+    }
+
+    @Test
+    void aStepThatWouldLeaveTheFightersLevelIsNotTaken() {
+        Point target = new Point(400, 100);
+        Point at = new Point(480, 100);   // 80 px out; every step out is past the platform's edge (x 500)
+
+        assertNull(DuelBrain.footworkSpot(at, target, 400, 0.9d, DuelPiecesTest::floorUnder));
+    }
+
+    @Test
+    void aHopGoesInFromFarAndOutFromNearAndNeverPastTheTarget() {
+        Point target = new Point(100, 100);
+
+        assertEquals(-1, DuelBrain.hopDirection(new Point(450, 100), target, 400, DuelPiecesTest::floorUnder),
+                "350 px out of a 400 px reach: in, toward the target on its left");
+        assertEquals(1, DuelBrain.hopDirection(new Point(180, 100), target, 400, DuelPiecesTest::floorUnder),
+                "80 px out: away");
+        assertEquals(0, DuelBrain.hopDirection(new Point(150, 100), target, 80, DuelPiecesTest::floorUnder),
+                "an 80 px reach: a hop in lands past the target, a hop out leaves its reach, so it steps instead");
+        assertEquals(0, DuelBrain.hopDirection(new Point(470, 100), new Point(800, 100), 400,
+                DuelPiecesTest::floorUnder), "in drops off the platform's edge (x 500), out leaves its reach");
     }
 
     @Test

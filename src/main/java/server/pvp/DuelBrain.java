@@ -38,8 +38,8 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * A bot's side of a duel (docs/PVP_PLAN.md sections 4-5): priors only, no learning yet. While the duel
  * holds it, its own following and grinding are off; it thinks every 300-600 ms (a person's reaction, not a tick's),
- * swings its strongest attack skill whose box reaches the opponent, and otherwise walks to that skill's reach. Every
- * action runs on the Agent's own thread through its mailbox.
+ * swings its strongest attack skill whose box reaches the opponent, and otherwise walks to that skill's reach; in reach
+ * it steps or hops every few seconds instead of a swing. Every action runs on the Agent's own thread through its mailbox.
  */
 final class DuelBrain {
     private static final Logger log = LoggerFactory.getLogger(DuelBrain.class);
@@ -67,6 +67,25 @@ final class DuelBrain {
      */
     static final int KEY_REPEAT_MIN_MS = 30;
     static final int KEY_REPEAT_SPREAD_MS = 60;
+    /**
+     * Footwork: every 1.8-4.2 s a fighter in reach steps to another spot inside its reach, or hops, instead of its next
+     * swing. Filmed 2026-11-10: once in range neither fighter moved again, and two fighters traded hits standing still
+     * for 29 s, which no player does.
+     */
+    static final int FOOTWORK_EVERY_MIN_MS = 1_800;
+    static final int FOOTWORK_EVERY_SPREAD_MS = 2_400;
+    /** A step's spot lies this share of its last swing's reach from the target, near to far. */
+    static final double FOOTWORK_NEAR_SHARE = 0.35d;
+    static final double FOOTWORK_FAR_SHARE = 0.85d;
+    /** A smaller move than this does not read as a step. */
+    static final int FOOTWORK_MIN_STEP_PX = 40;
+    /** A step walks this long (plus up to the spread) before the next think, which stops it to swing. */
+    static final int STEP_MIN_MS = 350;
+    static final int STEP_SPREAD_MS = 250;
+    /** One footwork in this many is a hop: a ground jump of about {@link #HOP_PX}, thinking again as it lands. */
+    static final int HOP_ONE_IN = 3;
+    static final int HOP_PX = 90;
+    static final int HOP_MS = 600;
 
     private DuelBrain() {
     }
@@ -92,6 +111,10 @@ final class DuelBrain {
         volatile List<Integer> buffs = List.of();
         final java.util.Map<Integer, Long> buffDueMs = new java.util.concurrent.ConcurrentHashMap<>();
         volatile long nextPrepareMs;
+        /** Whether its last think swung (it is in reach), how far that swing reached, and when it next moves its feet. */
+        volatile boolean inReach;
+        volatile int lastReach;
+        volatile long nextFootworkMs;
     }
 
     static void enter(DuelField.Fighter fighter) {
@@ -239,6 +262,10 @@ final class DuelBrain {
         // a player cannot attack on a rope or ladder: it finishes the climb (filmed 2026-11-10, an assassin threw stars
         // from a ladder for six seconds)
         boolean mayAttack = mayAttackFrom(bot.getStance());
+        if (mind.inReach && now >= mind.nextFootworkMs && mayAttack && gateway.grounded(bot)
+                && footwork(entry, bot, at, aim, mind, stats, now)) {
+            return;
+        }
         for (int skillId : mind.skills) {
             AgentAttackPlan plan = AgentSkillAttackPlanRuntime.planSkillAttackAt(bot, aim, skillId);
             if (plan == null) {
@@ -261,6 +288,11 @@ final class DuelBrain {
                 if (result.committed()) {
                     stats.swingsSent.incrementAndGet();
                     swingAgainAt(mind, now, plan.cooldownMs);
+                    if (!mind.inReach) {
+                        mind.nextFootworkMs = now + footworkGapMs();
+                    }
+                    mind.inReach = true;
+                    mind.lastReach = reachToward(box, at, aim);
                     return;
                 }
                 if (result.status() == AgentAttackTransactionResult.Status.DEFERRED) {
@@ -284,8 +316,85 @@ final class DuelBrain {
             stats.noSkillThinks.incrementAndGet();
         }
         stats.walks.incrementAndGet();
+        mind.inReach = false;
         var map = bot.getMap();
         gateway.navigate(entry, standPoint(at, aim, reach, p -> gateway.groundPoint(map, p)), true);
+    }
+
+    private static int footworkGapMs() {
+        return FOOTWORK_EVERY_MIN_MS + ThreadLocalRandom.current().nextInt(FOOTWORK_EVERY_SPREAD_MS);
+    }
+
+    /** A step or a hop in place of the next swing; true when it moved. */
+    private static boolean footwork(AgentRuntimeEntry entry, Character bot, Point at, Point aim, Mind mind,
+                                    DuelStats stats, long now) {
+        var gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        mind.nextFootworkMs = now + footworkGapMs();
+        var map = bot.getMap();
+        java.util.function.Function<Point, Point> ground = p -> gateway.groundPoint(map, p);
+        if (random.nextInt(HOP_ONE_IN) == 0) {
+            int direction = hopDirection(at, aim, mind.lastReach, ground);
+            if (direction != 0 && gateway.jump(entry, direction)) {
+                stats.hops.incrementAndGet();
+                mind.nextThinkMs = now + HOP_MS;
+                return true;
+            }
+        }
+        Point spot = footworkSpot(at, aim, mind.lastReach, random.nextDouble(), ground);
+        if (spot == null) {
+            return false;
+        }
+        gateway.navigate(entry, spot, true);
+        stats.steps.incrementAndGet();
+        mind.nextThinkMs = now + STEP_MIN_MS + random.nextInt(STEP_SPREAD_MS);
+        return true;
+    }
+
+    /**
+     * Where a fighter in reach steps to: on its own side of the target and its own level, {@link #FOOTWORK_NEAR_SHARE}
+     * to {@link #FOOTWORK_FAR_SHARE} of {@code reach} away ({@code pick} in [0, 1) chooses where), and at least
+     * {@link #FOOTWORK_MIN_STEP_PX} from where it stands, so a ranged fighter crowded by a melee one steps back. Null
+     * when there is no such spot.
+     */
+    static Point footworkSpot(Point at, Point aim, int reach, double pick,
+                              java.util.function.Function<Point, Point> ground) {
+        int near = Math.max(MIN_STAND_PX, (int) Math.round(reach * FOOTWORK_NEAR_SHARE));
+        int far = Math.max(near, (int) Math.round(reach * FOOTWORK_FAR_SHARE));
+        int side = at.x >= aim.x ? 1 : -1;
+        int now = Math.abs(at.x - aim.x);
+        int want = near + (int) Math.round(pick * (far - near));
+        if (Math.abs(want - now) < FOOTWORK_MIN_STEP_PX) {
+            want = now - near > far - now ? near : far;   // too small to read as a step: the band's other end
+            if (Math.abs(want - now) < FOOTWORK_MIN_STEP_PX) {
+                return null;
+            }
+        }
+        Point floor = ground.apply(new Point(aim.x + side * want, at.y));
+        return floor != null && Math.abs(floor.y - at.y) <= LEVEL_TOLERANCE_PX ? floor : null;
+    }
+
+    /**
+     * Which way a fighter in reach hops (+1 right, -1 left, 0 not at all): toward the target from the far half of its
+     * footwork band, away from the near half, else the other way; only a hop that lands on its own level, on its own
+     * side of the target and still in {@code reach}.
+     */
+    static int hopDirection(Point at, Point aim, int reach, java.util.function.Function<Point, Point> ground) {
+        int side = at.x >= aim.x ? 1 : -1;
+        int middle = (int) Math.round(reach * (FOOTWORK_NEAR_SHARE + FOOTWORK_FAR_SHARE) / 2);
+        int first = Math.abs(at.x - aim.x) > middle ? -side : side;
+        for (int direction : new int[] {first, -first}) {
+            int landX = at.x + direction * HOP_PX;
+            int after = (landX - aim.x) * side;   // distance on its own side; negative once past the target
+            if (after < MIN_STAND_PX || after > reach) {
+                continue;
+            }
+            Point floor = ground.apply(new Point(landX, at.y));
+            if (floor != null && Math.abs(floor.y - at.y) <= LEVEL_TOLERANCE_PX) {
+                return direction;
+            }
+        }
+        return 0;
     }
 
     /** Whether a fighter in {@code stance} can swing: not while climbing a rope or ladder, as no player can. */
