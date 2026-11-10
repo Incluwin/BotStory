@@ -564,6 +564,9 @@ public final class ChatterEngine {
                 if ("map".equals(channel) && agent.getMiniGame() != null) {
                     return; // seated in a minigame room, a player can only type in the room
                 }
+                if (server.pvp.DuelRegistry.inDuel(agent.getId())) {
+                    return; // mid-duel a player fights, not chats (filming 2026-11-10: a ranger bragged about a 7/7 weapon)
+                }
                 if (channel.startsWith(ALLIANCE_CHANNEL)) {
                     int allianceId = Integer.parseInt(channel.substring(ALLIANCE_CHANNEL.length()));
                     Server.getInstance().allianceMessage(allianceId, PacketCreator.multiChat(agent.getName(), clean, 3),
