@@ -421,7 +421,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.getId());
             int ordinal = memberOrdinals.getOrDefault(member.getId(), 0);
             Point authored = new Point(npc.x + expeditionFormationOffset(
-                    ordinal, members.size(), POST_CLEAR_RALLY_SPACING_PX), npc.y);
+                    ordinal, Math.max(members.size(), ordinal + 1), POST_CLEAR_RALLY_SPACING_PX), npc.y);
             Point rally = AgentPrimitiveCapabilityGatewayRuntime.gateway()
                     .groundPoint(member.getMap(), authored);
             if (entry == null || rally == null) {

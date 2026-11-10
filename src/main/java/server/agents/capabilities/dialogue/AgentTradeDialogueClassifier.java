@@ -188,10 +188,10 @@ public final class AgentTradeDialogueClassifier {
         if (TRADE_TRASH_COMMAND_PATTERN.matcher(message).find()) return TRASH_CATEGORY;
         if (TRADE_ETC_COMMAND_PATTERN.matcher(message).find()) return "etc";
         Matcher viewSlotMatcher = TRADE_VIEW_SLOT_COMMAND_PATTERN.matcher(message);
-        if (viewSlotMatcher.find()) return namedItemCategory(AgentItemQueryNormalizer.normalize(viewSlotMatcher.group(1)));
+        if (viewSlotMatcher.find()) return namedItemCategoryOrNull(viewSlotMatcher.group(1));
 
         Matcher matcher = TRADE_ITEM_COMMAND_PATTERN.matcher(message);
-        return matcher.find() ? namedItemCategory(AgentItemQueryNormalizer.normalize(matcher.group(1))) : null;
+        return matcher.find() ? namedItemCategoryOrNull(matcher.group(1)) : null;
     }
 
     public static String matchChoiceCategory(String message) {
@@ -205,7 +205,7 @@ public final class AgentTradeDialogueClassifier {
         Matcher dropMatcher = DROP_ITEM_COMMAND_PATTERN.matcher(message);
         if (dropMatcher.find() && (DROP_ADDRESSED.matcher(message.substring(dropMatcher.start(), dropMatcher.start(1))).find()
                 || !QUESTION_BEFORE_DROP.matcher(message.substring(0, dropMatcher.start())).find())) {
-            return namedItemCategory(AgentItemQueryNormalizer.normalize(dropMatcher.group(1)));
+            return namedItemCategoryOrNull(dropMatcher.group(1));
         }
 
         if (ASK_SCROLLS_COMMAND_PATTERN.matcher(message).find()) return "scrolls";
@@ -216,7 +216,13 @@ public final class AgentTradeDialogueClassifier {
         if (ASK_ETC_COMMAND_PATTERN.matcher(message).find()) return "etc";
 
         Matcher matcher = ASK_ITEM_COMMAND_PATTERN.matcher(message);
-        return matcher.find() ? namedItemCategory(AgentItemQueryNormalizer.normalize(matcher.group(1))) : null;
+        return matcher.find() ? namedItemCategoryOrNull(matcher.group(1)) : null;
+    }
+
+    /** The named-item category for a typed fragment, or null when nothing of a name is left of it (a blank name matches every item). */
+    private static String namedItemCategoryOrNull(String fragment) {
+        String itemName = AgentItemQueryNormalizer.normalize(fragment);
+        return itemName == null || itemName.isBlank() ? null : namedItemCategory(itemName);
     }
 
     public static String namedItemCategory(String itemName) {

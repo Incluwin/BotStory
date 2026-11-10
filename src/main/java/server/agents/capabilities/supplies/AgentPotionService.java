@@ -280,7 +280,7 @@ public final class AgentPotionService {
         // Low on HP potions by the standard an ordinary trip uses: a full reserve in a few strong potions fights on.
         // A party quest whose own rest holds the member for its potions (the EPQ golem rest, whose fight from its rest
         // point is grind mode) owns its moves and words: no stop, no "walking to you" line.
-        if (pots[0] < AgentRuntimeConfig.cfg.POT_STOP && bot.getHp() < bot.getMaxHp() * 0.4f
+        if (pots[0] < AgentRuntimeConfig.cfg.POT_STOP && bot.getHp() < bot.getCurrentMaxHp() * 0.4f
                 && !AgentPartyQuestRuntime.ownsPotionRest(bot.getId(), bot.getMapId())
                 && AgentPotionReserve.tripNeeded(bot, AgentResourceCategory.HP_POTION,
                 AgentSupplyReadiness.standing(bot.getId()) != null)) {

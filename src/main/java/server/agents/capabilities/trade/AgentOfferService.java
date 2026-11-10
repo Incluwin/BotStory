@@ -214,7 +214,8 @@ public final class AgentOfferService {
             return false;
         }
 
-        if (POSITIVE_CONFIRM_PATTERN.matcher(message).find()) {
+        boolean declines = NEGATIVE_CONFIRM_PATTERN.matcher(message).find();
+        if (!declines && POSITIVE_CONFIRM_PATTERN.matcher(message).find()) {
             if (AgentOfferStateRuntime.pendingLootOfferBotRequesting(entry)) {
                 clearPendingOffer(entry);
                 AgentOfferRuntime.afterRandomDelay(entry, 400, 600, () ->
@@ -231,7 +232,7 @@ public final class AgentOfferService {
             }
             return true;
         }
-        if (NEGATIVE_CONFIRM_PATTERN.matcher(message).find()) {
+        if (declines) {
             Item declined = AgentOfferStateRuntime.pendingLootOfferItem(entry);
             if (declined != null) {
                 AgentOfferStateRuntime.rememberDeclinedOfferItem(entry, declined.getItemId());

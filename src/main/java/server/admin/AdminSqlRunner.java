@@ -51,7 +51,8 @@ final class AdminSqlRunner {
         if (isDml && !allowMutation) {
             return err("dml_requires_confirm");
         }
-        if (isSelect && !containsLimitClause(lower)) {
+        boolean needsLimit = lower.startsWith("select") || lower.startsWith("with");
+        if (needsLimit && !containsLimitClause(lower)) {
             return err("select_without_limit");
         }
 

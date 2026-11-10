@@ -384,6 +384,7 @@ class CompanionManagerTest {
         RosterResult result;
         try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
             inventory.when(() -> InventoryManipulator.checkSpace(any(), anyInt(), anyInt(), any())).thenReturn(true);
+            inventory.when(() -> InventoryManipulator.addById(any(), anyInt(), org.mockito.ArgumentMatchers.anyShort())).thenReturn(true);
             result = manager.release(h.ann, mira);
             inventory.verify(() -> InventoryManipulator.addById(any(), eq(4000021), eq((short) 143)));
         }
@@ -408,6 +409,7 @@ class CompanionManagerTest {
         h.store.seed(new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, HENESYS, 0L, 500L, 0L,
                 row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(), 0, null));
         try (MockedStatic<DueyProcessor> duey = mockStatic(DueyProcessor.class)) {
+            duey.when(() -> DueyProcessor.dueyCreatePackage(any(), anyInt(), any(), any(), anyInt())).thenReturn(true);
             assertEquals("Mira sends you 1 package with 500 meso by Duey.", h.roster().sendIt(h.ann, mira)); // not "0 package(s)"
         }
         assertEquals("Mira has nothing to hand over.", h.roster().handOver(h.ann, mira)); // not "0 item stack(s) and 0 meso"

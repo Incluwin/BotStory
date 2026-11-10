@@ -171,7 +171,7 @@ class AgentPotionServiceTest {
         Character bot = mock(Character.class);
         when(bot.getId()).thenReturn(id);
         when(bot.getHp()).thenReturn(300);
-        when(bot.getMaxHp()).thenReturn(1_000);
+        when(bot.getCurrentMaxHp()).thenReturn(1_000);
         when(bot.getMapId()).thenReturn(930_000_600);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
         AgentRelationshipRuntime.setCohortId(entry, id);

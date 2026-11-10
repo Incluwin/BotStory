@@ -198,6 +198,9 @@ public final class AgentMakerService {
         int status;
         try {
             status = step.run(bot);
+        } catch (RuntimeException failure) {
+            ACTIVE.remove(bot.getId());
+            throw failure;
         } finally {
             AgentClientGatewayRuntime.clients().release(bot);
         }
