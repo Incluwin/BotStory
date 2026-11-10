@@ -24,9 +24,21 @@ public final class DuelLog {
     static final String HEADER = "endedAt,duel,map,seconds,reason,winner,name,charId,jobId,level,kind,side,gearBase,"
             + "ko,left,thinks,buffs,sent,deferred,refused,noSkill,packets,whiffs,dodged,hits,raw,dealt,taken,engaged,"
             + "topRefusal";
-    /** A row counts toward a rate only with this many engaged seconds and attack packets. */
-    static final double MIN_ENGAGED_SECONDS = 15d;
+    /**
+     * A row counts toward a rate only with this many engaged seconds and attack packets. Below the 12 s target duel on
+     * purpose: at 15 s (the long run, 2026-11-09) 56 of 59 crossbowman rows were skipped because they won fast, so the
+     * learner never saw the jobs it most needed to correct.
+     */
+    static final double MIN_ENGAGED_SECONDS = 5d;
     static final int MIN_PACKETS = 5;
+    /** A fighter that found no usable attack on more than this share of its thinks (no ammo) measures that, not its job. */
+    static final double MAX_NO_SKILL_SHARE = 0.3d;
+
+    /** Whether a fighter's row measures its job's rate (players and bots, the learner and {@code !pvp rates} alike). */
+    static boolean measurable(double engaged, int packets, int noSkillThinks, int thinks) {
+        return engaged >= MIN_ENGAGED_SECONDS && packets >= MIN_PACKETS
+                && noSkillThinks <= MAX_NO_SKILL_SHARE * Math.max(1, thinks);
+    }
 
     private DuelLog() {
     }
@@ -80,7 +92,7 @@ public final class DuelLog {
                 int packets = Integer.parseInt(f[21]);
                 long raw = Long.parseLong(f[25]);
                 double engaged = Double.parseDouble(f[28]);
-                if (engaged < MIN_ENGAGED_SECONDS || packets < MIN_PACKETS) {
+                if (!measurable(engaged, packets, Integer.parseInt(f[20]), Integer.parseInt(f[15]))) {
                     continue;
                 }
                 byKey.computeIfAbsent(PvpReference.key(jobId, level), k -> new ArrayList<>()).add(raw / engaged);
@@ -120,7 +132,8 @@ public final class DuelLog {
                 long raw = Long.parseLong(f[25]);
                 double engaged = Double.parseDouble(f[28]);
                 int jobClass = jobId / 100 % 10;
-                if (engaged < MIN_ENGAGED_SECONDS || packets < MIN_PACKETS || gearBase <= 0 || jobClass < 1) {
+                if (!measurable(engaged, packets, Integer.parseInt(f[20]), Integer.parseInt(f[15])) || gearBase <= 0
+                        || jobClass < 1) {
                     continue;
                 }
                 double perBase = reference.ratePerBase(jobId, jobClass == 2);

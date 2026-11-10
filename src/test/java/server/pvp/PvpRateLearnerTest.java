@@ -130,11 +130,26 @@ class PvpRateLearnerTest {
         String fought = "1,1,0,30,x,0,A,1,112,95,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,126000,0,0,30.0,-";
         String human = "1,1,0,30,x,0,B,2,112,95,H,1,2000,0,0,1,0,1,0,0,0,20,0,0,20,126000,0,0,30.0,-";
         String left = "1,2,0,30,x,0,C,3,112,95,B,0,2000,0,1,1,0,1,0,0,0,20,0,0,20,126000,0,0,30.0,-";
-        String brief = "1,3,0,5,x,0,D,4,112,95,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,126000,0,0,5.0,-";
+        String brief = "1,3,0,4,x,0,D,4,112,95,B,0,2000,0,0,1,0,1,0,0,0,20,0,0,20,126000,0,0,4.0,-";
+        // 12 of 20 thinks found no usable attack (a thief out of stars): it measures the missing ammo, not the job
+        String starved = "1,4,0,30,x,0,E,5,112,95,B,0,2000,0,0,20,0,8,0,0,12,8,0,0,8,40000,0,0,30.0,-";
+        // a fast win (8 s) counts now: at the old 15 s cut the strongest fighters were never learned
+        String fast = "1,5,0,8,x,0,F,6,112,95,B,0,2000,0,0,10,0,9,0,0,0,9,0,0,9,40000,0,0,8.0,-";
 
-        int counted = learner.replay(List.of(header, fought, human, left, brief), REFERENCE, new PvpConfig());
+        int counted = learner.replay(List.of(header, fought, human, left, brief, starved, fast), REFERENCE,
+                new PvpConfig());
 
-        assertEquals(2, counted, "the bot and the player who fought; not the one who left nor the brief one");
-        assertEquals(2, learner.means().get("c1").fighters());
+        assertEquals(3, counted, "the bot, the player and the fast winner; not the one who left, the brief one or the"
+                + " one with no usable attack");
+        assertEquals(3, learner.means().get("c1").fighters());
+    }
+
+    @Test
+    void measurableRowsNeedFiveSecondsFiveAttacksAndAUsableAttack() {
+        assertTrue(DuelLog.measurable(5.0, 5, 0, 10));
+        assertFalse(DuelLog.measurable(4.9, 5, 0, 10));
+        assertFalse(DuelLog.measurable(30.0, 4, 0, 10));
+        assertTrue(DuelLog.measurable(30.0, 20, 3, 10), "30% of thinks without an attack still counts");
+        assertFalse(DuelLog.measurable(30.0, 20, 4, 10));
     }
 }

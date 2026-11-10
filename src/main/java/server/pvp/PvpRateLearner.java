@@ -131,8 +131,8 @@ public final class PvpRateLearner {
     public synchronized int observeAll(List<DuelLog.Row> rows, PvpReference reference, PvpConfig config) {
         int counted = 0;
         for (DuelLog.Row row : rows) {
-            if (!row.left() && row.engaged() >= DuelLog.MIN_ENGAGED_SECONDS
-                    && row.stats().packets.get() >= DuelLog.MIN_PACKETS
+            if (!row.left() && DuelLog.measurable(row.engaged(), row.stats().packets.get(),
+                    row.stats().noSkillThinks.get(), row.stats().thinks.get())
                     && observe(row.jobId(), row.level(), row.gearBase(), row.stats().rawRolled.get() / row.engaged(),
                     reference, config)) {
                 counted++;
@@ -155,7 +155,8 @@ public final class PvpRateLearner {
             try {
                 int packets = Integer.parseInt(f[21]);
                 double engaged = Double.parseDouble(f[28]);
-                if (f[14].equals("1") || engaged < DuelLog.MIN_ENGAGED_SECONDS || packets < DuelLog.MIN_PACKETS) {
+                if (f[14].equals("1")
+                        || !DuelLog.measurable(engaged, packets, Integer.parseInt(f[20]), Integer.parseInt(f[15]))) {
                     continue;
                 }
                 if (observe(Integer.parseInt(f[8]), Integer.parseInt(f[9]), Long.parseLong(f[12]),
