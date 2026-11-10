@@ -613,6 +613,24 @@ The server sees a human only through movement packets. Ties go to the human both
       - no sign of a magician edge from the 10% magic miss cap (51%).
       Open for the finish line: one round spreads 108 duels over 10 class pairs and several bands, so the per-pair,
       per-band 40-60% check (Lv 50, 80, 110) needs a longer run; the two filmed duels need a logged-in client.
+    - **Long run (7ebf2a054, 2026-11-09 20:44 to 11-10 01:44, 90 rounds headless; 1,080 duels, no errors).** Round
+      nine's balance did not hold. Cross-class: magician 289-88 (77%), bowman 61%, pirate 55%, warrior 31%, thief
+      28%; counting each distinct pairing once (319 pairings) gives the same picture (magician 76%, warrior 30%).
+      Knock-outs median 16 s (11-23 s); the higher level won 54% at a 1-2 gap and 61% at 3-5; dodges 2-3% for all
+      but pirates (10%).
+      - Pairings repeat: practice pairs whoever shares an empty map, so the same two citizens met up to 22 times, and
+        91 of 151 pairings fought 3+ times went 90%+ one way. With so little luck in a duel (PD14), a 15-20% edge in
+        throughput decides nearly every meeting of two given fighters.
+      - Per job, the share of a typical opponent's HP removed per second against the 1/12 target: the three magician
+        lines 0.079-0.089 and gunslingers 0.105, but pages 0.059, fighters 0.069, brawlers 0.050, assassins 0.071,
+        and crossbowmen 0.199.
+      - **Cause 1, the learner's filter:** a row counted only with 15+ engaged seconds, above the 12 s target duel, so
+        fighters who won or lost fast were never learned: 56 of 59 crossbowman rows were skipped. Fixed (ddaad2b5b):
+        5 s and 5 attacks.
+      - **Cause 2, ammo:** assassins found no usable attack on 36% of their thinks (`plan:ammo` refusals) and waited
+        5.8 s before their first throw (0.7-2.3 s for every other job); citizens short of stars measure the gap, not
+        the job. Fixed in the learner and `!pvp rates`: a fighter with no usable attack on more than 30% of its thinks
+        does not count. Restocking stars is a citizen supply matter, outside PvP.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
