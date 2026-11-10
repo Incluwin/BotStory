@@ -651,6 +651,14 @@ The server sees a human only through movement packets. Ties go to the human both
         inside the hit, after the damage, and the HP after that drink became the new baseline: the drink passed whole,
         an Elixir included. Low-HP classes trip the autopot most. Fixed: after the loss the baseline is what the loss
         left, then the allowance check runs.
+    - **Check run on that fix (3fca0d6c2, 2026-11-10 07:32-09:33; 401 duels, no errors).** The leak is closed: a
+      knocked-out fighter had absorbed, over its own max HP, warrior 1.11, magician 1.25, bowman 1.23, thief 1.24,
+      pirate 1.22 (max 1.63), within the allowance. Cross-class, leaving out the 20 duels with a fighter that found no
+      usable attack on more than 30% of its thinks (all with a thief): warrior 45% (44% by distinct pairing),
+      magician 60% (60%), bowman 58% (55%), thief 42% (34%, 18 pairings), pirate 25% (44%, 13 pairings). Level edge
+      43% at a 1-2 gap, 61% at 3-5; knock-outs median 14 s (11-16 s).
+      Still open for the finish line: the per-band, per-pair check (Lv 110 rarely meets a same-map opponent in
+      practice), thieves and pirates on small samples, and the two filmed duels.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
