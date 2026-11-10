@@ -104,7 +104,13 @@ class QuestClosingLineTest {
         when(store.questStates(ME, QuestStatus.ACTIVE)).thenReturn(
                 List.of(new QuestState(ME, "tess-the-beat", 1, 0, QuestStatus.ACTIVE, 1_000L, 0L, 0)));
 
-        new QuestLedger(world).onMapEntered(chr, 104000000);
+        QuestLedger ledger = new QuestLedger(world);
+        ledger.onMapEntered(chr, 104000000);
+        // a second event that read the same active state before the first wrote: the stored row is completed by now,
+        // so the rewards are given once
+        when(store.questState(ME, "tess-the-beat")).thenReturn(
+                new QuestState(ME, "tess-the-beat", 1, 0, QuestStatus.COMPLETED, 1_000L, 2_000L, 1));
+        ledger.onMapEntered(chr, 104000000);
 
         verify(store).setWorldFlag("test.opened", ME);
         InOrder order = inOrder(arcs);

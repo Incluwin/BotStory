@@ -120,6 +120,20 @@ class ContentAnswersTest {
     }
 
     @Test
+    void aFreshAnswerAfterTheRepeatWindowMayBeRepeatedOnceAgain() {
+        assertEquals(Outcome.ANSWERED, ask(12, "where is athena").orElseThrow().outcome());
+        assertEquals(Outcome.REPEAT, ask(12, "where is athena").orElseThrow().outcome());
+        now += 400_000;
+        ask(12, "where is grendel").orElseThrow(); // the conversation stays alive past the repeat window
+        now += 400_000;
+        ContentAnswer fresh = ask(12, "where is athena").orElseThrow();
+        assertEquals(Outcome.ANSWERED, fresh.outcome());
+        ContentAnswer again = ask(12, "where is athena").orElseThrow();
+        assertEquals(Outcome.REPEAT, again.outcome());
+        assertEquals("like i said, " + fresh.reply(), again.reply());
+    }
+
+    @Test
     void theHorizonBoundsWhatABotAdmitsToKnowing() {
         ContentAnswer low = say(11, 20, 410, HENESYS, 20, "what level for zhelm").orElseThrow();
         assertEquals(Outcome.DEFLECTED, low.outcome());

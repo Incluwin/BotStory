@@ -186,8 +186,10 @@ public final class LivingWorldHooks {
             return;
         }
         try {
-            world.quests().onItemGained(chr, itemId);
-            world.markers().forget(chr);
+            if (!AgentPresence.isAgent(chr)) { // a bot holds no living quest: no state read for each item it gains
+                world.quests().onItemGained(chr, itemId);
+                world.markers().forget(chr);
+            }
             server.living.population.PopulationHooks.itemGained(chr, itemId, quantity);
         } catch (RuntimeException failure) {
             log.warn("living world itemGained hook failed", failure);

@@ -936,6 +936,7 @@ public final class AdminControlPort {
         int saved = 0;
         for (World w : Server.getInstance().getWorlds()) {
             for (Character chr : w.getPlayerStorage().getAllCharacters()) {
+                if (chr.getClient() instanceof client.BotClient) continue; // bots are saved by their own systems
                 try { chr.saveCharToDB(); saved++; } catch (Throwable ignored) {}
             }
         }
@@ -948,6 +949,7 @@ public final class AdminControlPort {
             List<Character> copy = new ArrayList<>(w.getPlayerStorage().getAllCharacters());
             for (Character chr : copy) {
                 if (chr.isGM()) continue;
+                if (chr.getClient() instanceof client.BotClient) continue; // bots are not players to kick
                 try {
                     Client c = chr.getClient();
                     if (c != null) { c.disconnect(false, false); dced++; }

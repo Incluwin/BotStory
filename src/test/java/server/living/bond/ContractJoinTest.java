@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -102,6 +103,20 @@ class ContractJoinTest {
         verify(roster).recruit(ann, olwen);
         verify(ann).gainMeso(-1_000, true);
         verify(residents).reply(olwen, ann, "Olwen joins your party.");
+    }
+
+    @Test
+    void aLapsedOfferIsMadeAgainWithWhatWasPaidAndProvenKept() {
+        Bond lapsed = new Bond(ANN, "olwen", BondStage.MET, 0, new LinkedHashSet<>(), ContractState.OFFERED, 0L,
+                1L, 3, 400L, 0, 0L, 0L);
+        when(bonds.peek(ANN, "olwen")).thenReturn(lapsed);
+        when(bonds.bond(ann, olwen)).thenReturn(lapsed);
+        when(olwen.homeTown()).thenReturn("henesys"); // the terms window draws a portrait by home town
+
+        new ContractService(world).askToJoin(ann, olwen);
+
+        verify(bonds).save(argThat(offer -> offer.contractState() == ContractState.OFFERED && offer.paidMeso() == 400L
+                && offer.proofProgress() == 3 && offer.offerExpiresAtMs() > System.currentTimeMillis()));
     }
 
     @Test

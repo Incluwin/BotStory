@@ -204,6 +204,7 @@ public final class SocialFabric {
     /** Every minute: guilds exist and recruit, circles form and party up, acquaintances, fame. */
     public void tick() {
         long now = System.currentTimeMillis();
+        tickLevels = null;
         try {
             if (population.config().GUILDS_ENABLED) {
                 try {
@@ -238,6 +239,18 @@ public final class SocialFabric {
 
     // ---- guilds --------------------------------------------------------------------------
 
+    /** The citizens' stored levels for this tick: one query the first time a guild loop needs a level, none per citizen. */
+    private Map<Integer, int[]> tickLevels;
+
+    private int storedLevel(Citizen citizen) {
+        if (tickLevels == null) {
+            tickLevels = population.store().levelsAndJobs();
+        }
+        int[] row = tickLevels.get(citizen.characterId());
+        // one the bulk read does not hold (not stored as active yet) is read on its own, as before
+        return row != null ? row[0] : population.store().characterProgress(citizen.characterId())[0];
+    }
+
     private void ensureGuilds() {
         while (guilds.size() < population.config().GUILD_TARGET) {
             Citizen leader = null;
@@ -246,7 +259,7 @@ public final class SocialFabric {
                 if (citizen.state() != Citizen.State.ACTIVE || citizen.hired() || citizen.guildId() > 0) {
                     continue;
                 }
-                int level = population.store().characterProgress(citizen.characterId())[0];
+                int level = storedLevel(citizen);
                 if (level >= 10 && (leader == null || random.nextInt(3) == 0)) {
                     leader = citizen;
                     leaderLevel = level;
@@ -393,7 +406,7 @@ public final class SocialFabric {
                     || random.nextInt(100) >= 20) {
                 continue;
             }
-            int level = population.store().characterProgress(citizen.characterId())[0];
+            int level = storedLevel(citizen);
             List<GuildMeta> fitting = new ArrayList<>();
             for (GuildMeta meta : guilds.values()) {
                 if ("closed".equals(meta.stance()) || level < meta.levelMin() || level > meta.levelMax()) {

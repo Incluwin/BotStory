@@ -788,13 +788,16 @@ public final class Market {
                     if (unit > fair * BUY_BELOW_INDEX || view.bundlePrice() > agent.getMeso()) {
                         continue;
                     }
-                    if (!spend(session.characterId, view.bundlePrice(), now)) {
-                        return false;
+                    if (!spend(session.characterId, view.bundlePrice(), now, false)) {
+                        continue; // over the browse budget; a cheaper listing may still fit
                     }
                 }
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
                 if (result.success()) {
                     purchases++; // the sale itself reaches the index through sold()
+                    if (wanted <= 0L) {
+                        spend(session.characterId, view.bundlePrice(), now, true); // booked only once the buy went through
+                    }
                     if (wanted > 0L) {
                         if (population.needs() != null) {
                             population.needs().boughtAtMarket(session, agent, view.itemId(), stall.ownerCharacterId(), now);
@@ -1030,7 +1033,8 @@ public final class Market {
         buyBudgetScale = scale;
     }
 
-    private boolean spend(int characterId, long meso, long now) {
+    /** Whether {@code meso} fits in what is left of the day's browse budget; {@code book} also counts it as spent. */
+    private boolean spend(int characterId, long meso, long now, boolean book) {
         int day = (int) (now / 86_400_000L);
         long[] budget = buyBudget.computeIfAbsent(characterId, id -> new long[]{day, 0L});
         synchronized (budget) {
@@ -1041,7 +1045,9 @@ public final class Market {
             if (budget[1] + meso > Math.round(population.config().MARKET_BUY_BUDGET_PER_DAY * buyBudgetScale)) {
                 return false;
             }
-            budget[1] += meso;
+            if (book) {
+                budget[1] += meso;
+            }
             return true;
         }
     }

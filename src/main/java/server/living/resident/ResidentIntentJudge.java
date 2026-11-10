@@ -97,6 +97,13 @@ public final class ResidentIntentJudge {
         }
         double confidence = answer.get().probabilityOf(option);
         Decision decision = new Decision(intent, confidence, confidence >= ACT_CONFIDENCE, confidence >= ASK_CONFIDENCE);
+        // Answers past the cache window can never be served again: they go before this one is kept.
+        long window = world.config().JEV_ANSWER_CACHE_MS;
+        cacheAt.forEach((key, at) -> {
+            if (now - at >= window && cacheAt.remove(key, at)) {
+                cache.remove(key);
+            }
+        });
         cache.put(cacheKey, decision);
         cacheAt.put(cacheKey, now);
         return Optional.of(decision);

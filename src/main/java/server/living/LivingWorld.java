@@ -400,13 +400,14 @@ public final class LivingWorld {
         net.server.world.PartySeatGate.install(world.slots::admitsJoin);
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
+        // Started before the population, so a Resident materialized during its start already gets a known world.
+        server.knowledge.PersonalKnowledge.shared().start(); // bots' known worlds: recorded from here, written behind (plan 7.4)
         server.living.population.Population.start(world);
         // F6.4: each booked clear adds to the crew ties of the owners in it, and may give their crews an after-clear moment
         server.living.population.Population booted = server.living.population.Population.get();
         if (booted != null && booted.clears() != null) {
             booted.clears().onBooked(world.crew::booked);
         }
-        server.knowledge.PersonalKnowledge.shared().start(); // bots' known worlds: recorded from here, written behind (plan 7.4)
         // the roster's hire rows are the truth for the citizens' hired flags: checked once the population is up (P4)
         world.executor.submit("hire.reconcile", world.hiredHands::reconcileFlags);
     }

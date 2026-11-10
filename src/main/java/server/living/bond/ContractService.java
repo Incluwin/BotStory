@@ -18,6 +18,7 @@ import server.living.config.Content.LeaveRule;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.roster.Commitments;
+import server.living.roster.CompanionRoles;
 import server.living.roster.ResidentAllocation;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.ContractState;
@@ -126,7 +127,8 @@ public final class ContractService {
                 && System.currentTimeMillis() - bond.leftAtMs() < contract.terms().cooldownHoursAfterLeave() * 3_600_000L) {
             return "cooldown";
         }
-        if (world.roster().roster(chr).size() >= world.config().ROSTER_MAX) {
+        // Counted as recruit counts it: a mentor holds no roster slot.
+        if (CompanionRoles.rosterSlots(world, world.roster().roster(chr)) >= world.config().ROSTER_MAX) {
             return "roster-full";
         }
         ResidentAllocation allocation = world.residentAllocation();
@@ -151,8 +153,11 @@ public final class ContractService {
         boolean rejoin = bond.leftAtMs() > 0;
         long mesoDue = rejoin ? contract.terms().rejoinMeso() : contract.price().meso();
         if (bond.contractState() != ContractState.OFFERED || bond.offerExpiresAtMs() < now) {
+            // A lapsed offer keeps what was already paid and proven; only its clock starts again.
+            boolean lapsed = bond.contractState() == ContractState.OFFERED;
             Bond offered = new Bond(bond.characterId(), bond.personaId(), bond.stage(), bond.points(), bond.flags(),
-                    ContractState.OFFERED, 0L, now + world.config().CONTRACT_OFFER_MINUTES * 60_000L, 0, 0L,
+                    ContractState.OFFERED, 0L, now + world.config().CONTRACT_OFFER_MINUTES * 60_000L,
+                    lapsed ? bond.proofProgress() : 0, lapsed ? bond.paidMeso() : 0L,
                     bond.partySeconds(), bond.leftAtMs(), now);
             world.bonds().save(offered);
             world.store().event(chr.getId(), persona.id(), "contract.offered", persona.contract());
