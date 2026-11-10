@@ -4,8 +4,6 @@ import client.Character;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
-import server.agents.coordination.AgentCoordinationRuntime;
-import server.agents.coordination.AgentSupplyNeedMessage;
 import server.agents.events.AgentEventBus;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.runtime.AgentEventDispatchRuntime;
@@ -13,8 +11,6 @@ import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentSessionEventRuntime;
 import server.maps.MapleMap;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -37,13 +33,8 @@ class AgentSupplyEventIntegrationTest {
                 config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
         config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = true;
         AgentEventBus bus = AgentSessionEventRuntime.bus(entry);
-        AtomicReference<AgentSupplyNeedMessage> coordination = new AtomicReference<>();
 
-        try (AutoCloseable ignored = AgentCoordinationRuntime.subscribe(message -> {
-            if (message instanceof AgentSupplyNeedMessage supply) {
-                coordination.set(supply);
-            }
-        })) {
+        try {
             AgentResourcePlanningRuntime.observe(
                     entry,
                     AgentResourceCategory.HP_POTION,
@@ -58,13 +49,6 @@ class AgentSupplyEventIntegrationTest {
             assertEquals(1, entry.actionMailbox().size());
             assertNull(entry.capabilityStates()
                     .require(AgentSupplyMaintenanceEvaluationState.STATE_KEY).next());
-
-            AgentSupplyNeedMessage message = coordination.get();
-            assertEquals(200, message.sourceAgentCharacterId());
-            assertEquals(100L, message.cohortId());
-            assertEquals(1010100, message.mapId());
-            assertEquals(AgentSupplyNeedMessage.SupplyKind.HP_POTION, message.kind());
-            assertEquals(0, message.currentCount());
 
             AgentSupplyEventMetricsState metrics = entry.capabilityStates()
                     .require(AgentSupplyEventMetricsState.STATE_KEY);

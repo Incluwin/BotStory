@@ -5,7 +5,6 @@
 wz_victoria/*
 /wz_victoria/*
 /wz_victoria
-/wz/
 /target
 database-console/api/target/
 database-console/web/.next/
@@ -84,3 +83,6 @@ nul
 # wz-patcher pack: Nexon game data, never committed (on the host it is patch-server/wz-pack)
 /tools/wz-patcher/pack/
 /tools/wz-patcher/**/__pycache__/
+
+# Per-machine Claude Code settings.
+.claude/settings.local.json

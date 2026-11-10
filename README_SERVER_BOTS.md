@@ -1,5 +1,7 @@
 # Bot System — Quick Start Guide
 
+> This guide describes the earlier `server.bots` system and is kept for history. The current code is `server.agents.*`.
+
 [Patch Notes](docs/bot/patch-notes/README.md)
 
 ## Features

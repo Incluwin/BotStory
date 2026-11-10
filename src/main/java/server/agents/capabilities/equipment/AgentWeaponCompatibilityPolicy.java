@@ -2,6 +2,7 @@ package server.agents.capabilities.equipment;
 
 import client.Character;
 import client.Job;
+import client.inventory.Equip;
 import client.inventory.WeaponType;
 import constants.skills.Crusader;
 import constants.skills.DragonKnight;
@@ -51,6 +52,40 @@ public final class AgentWeaponCompatibilityPolicy {
                 || job == Job.IL_WIZARD || job == Job.IL_MAGE || job == Job.IL_ARCHMAGE
                 || job == Job.CLERIC || job == Job.PRIEST || job == Job.BISHOP
                 || job == Job.BLAZEWIZARD1 || job == Job.BLAZEWIZARD2 || job == Job.BLAZEWIZARD3;
+    }
+
+    /** Mage by job id, which also covers the Cygnus and Evan branches. */
+    public static boolean isMageBranch(int jobId) {
+        return (jobId >= 200 && jobId < 300)
+                || (jobId >= 1200 && jobId < 1300)
+                || jobId == 2001
+                || (jobId >= 2200 && jobId < 2300);
+    }
+
+    // Returns 2-char [main, secondary] stat codes: s=str, d=dex, i=int, l=luk
+    public static char[] mainSecondaryStats(int jobId) {
+        // Magician branches: INT main, LUK secondary
+        if (isMageBranch(jobId)) return new char[]{'i', 'l'};
+        // Bowman / Wind Archer: DEX main, STR secondary
+        if ((jobId >= 300 && jobId < 400) || (jobId >= 1300 && jobId < 1400)) return new char[]{'d', 's'};
+        // Thief / Night Walker: LUK main, DEX secondary
+        if ((jobId >= 400 && jobId < 500) || (jobId >= 1400 && jobId < 1500)) return new char[]{'l', 'd'};
+        // Pirate gunslinger sub-branch: DEX main, STR secondary
+        if (jobId >= 520 && jobId < 530) return new char[]{'d', 's'};
+        // Pirate brawler sub-branch + Thunderbreaker: STR main, DEX secondary
+        if ((jobId >= 510 && jobId < 520) || (jobId >= 1500 && jobId < 1600)) return new char[]{'s', 'd'};
+        // Warrior / Dawn Warrior / Aran / Pirate-beginner / fallback: STR main, DEX secondary
+        return new char[]{'s', 'd'};
+    }
+
+    public static int statValue(Equip eq, char code) {
+        return switch (code) {
+            case 's' -> eq.getStr();
+            case 'd' -> eq.getDex();
+            case 'i' -> eq.getInt();
+            case 'l' -> eq.getLuk();
+            default -> 0;
+        };
     }
 
     public static boolean isWeaponCompatible(Character agent, WeaponType weaponType) {

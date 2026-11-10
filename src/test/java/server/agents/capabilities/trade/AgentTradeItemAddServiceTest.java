@@ -69,6 +69,37 @@ class AgentTradeItemAddServiceTest {
     }
 
     @Test
+    void shareBudgetIsChargedOnlyForAnAddThatWentInAndASpentBudgetAddsNothing() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character agent = mock(Character.class);
+        AgentTradeWindow trade = mock(AgentTradeWindow.class);
+        Inventory inventory = mock(Inventory.class);
+        Item refused = item(2000000, (short) 3, (short) 10);
+        Item taken = item(2000000, (short) 4, (short) 10);
+        Item overBudget = item(2000000, (short) 5, (short) 10);
+        AgentTradeStateService.initializeBatch(entry, List.of(refused, taken, overBudget), 0);
+        AgentPendingTradeStateRuntime.setShareBudget(entry, 6);
+        when(agent.getInventory(InventoryType.USE)).thenReturn(inventory);
+        when(inventory.getItem((short) 3)).thenReturn(refused);
+        when(inventory.getItem((short) 4)).thenReturn(taken);
+        when(inventory.getItem((short) 5)).thenReturn(overBudget);
+        when(trade.addItem(any(Item.class))).thenReturn(false, true);
+
+        AgentTradeItemAddService.addNextItem(entry, agent, trade, 500,
+                (character, type, slot, quantity, fromDrop) -> {}, (recipient, number, tradeItem) -> {});
+        assertEquals(6, AgentPendingTradeStateRuntime.shareBudget(entry));
+
+        AgentTradeItemAddService.addNextItem(entry, agent, trade, 500,
+                (character, type, slot, quantity, fromDrop) -> assertEquals((short) 6, quantity),
+                (recipient, number, tradeItem) -> {});
+        assertEquals(0, AgentPendingTradeStateRuntime.shareBudget(entry));
+
+        assertTrue(AgentTradeItemAddService.addNextItem(entry, agent, trade, 500,
+                (character, type, slot, quantity, fromDrop) -> {}, (recipient, number, tradeItem) -> {}));
+        verify(trade, org.mockito.Mockito.times(2)).addItem(any(Item.class));
+    }
+
+    @Test
     void successfulAddCopiesItemRemovesInventoryAndSendsPackets() {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
         Character agent = mock(Character.class);

@@ -11,6 +11,9 @@ import java.util.Map;
  * Agent-owned adapter for temporary AgentRuntimeEntry-backed pending trade sequence state.
  */
 public final class AgentPendingTradeStateRuntime {
+    /** Share budget of a trade that has no cap. A budget of 0 is a cap that is used up. */
+    public static final int NO_SHARE_BUDGET = -1;
+
     private AgentPendingTradeStateRuntime() {
     }
 
@@ -71,17 +74,24 @@ public final class AgentPendingTradeStateRuntime {
     }
 
     public static void clearShareBudget(AgentRuntimeEntry entry) {
-        entry.pendingTradeSequenceState().setShareBudget(0);
+        entry.pendingTradeSequenceState().setShareBudget(NO_SHARE_BUDGET);
     }
 
+    /** How much of a stack the share budget still allows; 0 once the budget is used up. Charges nothing. */
     public static short capShareQuantity(AgentRuntimeEntry entry, short availableQuantity) {
         int budget = shareBudget(entry);
-        if (budget <= 0) {
+        if (budget < 0) {
             return availableQuantity;
         }
-        short tradeQuantity = (short) Math.min(availableQuantity, budget);
-        entry.pendingTradeSequenceState().setShareBudget(budget - tradeQuantity);
-        return tradeQuantity;
+        return (short) Math.min(availableQuantity, budget);
+    }
+
+    /** Takes a quantity that really went into the trade off the share budget. */
+    public static void chargeShareBudget(AgentRuntimeEntry entry, short tradedQuantity) {
+        int budget = shareBudget(entry);
+        if (budget >= 0) {
+            entry.pendingTradeSequenceState().setShareBudget(Math.max(0, budget - tradedQuantity));
+        }
     }
 
     public static String categoryMessage(AgentRuntimeEntry entry) {

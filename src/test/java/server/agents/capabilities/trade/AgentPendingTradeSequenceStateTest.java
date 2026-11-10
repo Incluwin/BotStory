@@ -27,7 +27,7 @@ class AgentPendingTradeSequenceStateTest {
         assertFalse(state.singleBatch());
         assertFalse(state.inviteAnnounced());
         assertNull(state.categoryMessage());
-        assertEquals(0, state.shareBudget());
+        assertEquals(-1, state.shareBudget());
         assertEquals(0, state.restoreSlots().size());
     }
 

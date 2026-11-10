@@ -43,6 +43,10 @@ public final class AgentTradeItemAddService {
         AgentPendingTradeStateRuntime.setTimerMs(entry, delayMs);
 
         short tradeQty = AgentPendingTradeStateRuntime.capShareQuantity(entry, item.getQuantity());
+        if (tradeQty <= 0 && item.getQuantity() > 0) {
+            // The share budget is used up: the rest of the list stays with the Agent.
+            return true;
+        }
         InventoryType invType = item.getInventoryType();
         Inventory inv = agent.getInventory(invType);
         inv.lockInventory();
@@ -57,6 +61,7 @@ public final class AgentTradeItemAddService {
             tradeItem.setQuantity(tradeQty);
 
             if (trade.addItem(tradeItem)) {
+                AgentPendingTradeStateRuntime.chargeShareBudget(entry, tradeQty);
                 AgentPendingTradeStateRuntime.transferRestoreSlot(entry, item, tradeItem);
                 inventoryRemover.remove(agent, invType, item.getPosition(), tradeQty, false);
                 packetSender.send(agent, (byte) 0, tradeItem);

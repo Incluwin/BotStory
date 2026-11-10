@@ -1,6 +1,7 @@
 package server.agents.capabilities.trade;
 
 import server.agents.capabilities.equipment.AgentEquipRecommendation;
+import server.agents.capabilities.equipment.AgentWeaponCompatibilityPolicy;
 
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 
@@ -392,14 +393,14 @@ public final class AgentOfferService {
         }
 
         int jobId = audience.getJob() == null ? 0 : audience.getJob().getId();
-        boolean mageBranch = isMageBranch(jobId);
+        boolean mageBranch = AgentWeaponCompatibilityPolicy.isMageBranch(jobId);
         boolean weapon = ItemConstants.isWeapon(item.getItemId());
-        char[] order = mainSecondaryStats(jobId);
+        char[] order = AgentWeaponCompatibilityPolicy.mainSecondaryStats(jobId);
 
         int attVal = mageBranch ? eq.getMatk() : eq.getWatk();
         String attLabel = mageBranch ? "matt" : "att";
-        int mainVal = statValue(eq, order[0]);
-        int secVal = statValue(eq, order[1]);
+        int mainVal = AgentWeaponCompatibilityPolicy.statValue(eq, order[0]);
+        int secVal = AgentWeaponCompatibilityPolicy.statValue(eq, order[1]);
 
         List<String> tokens = new ArrayList<>(2);
         if (attVal > 0) {
@@ -416,39 +417,6 @@ public final class AgentOfferService {
             return name;
         }
         return String.join(" ", tokens) + " " + name;
-    }
-
-    private static boolean isMageBranch(int jobId) {
-        return (jobId >= 200 && jobId < 300)
-                || (jobId >= 1200 && jobId < 1300)
-                || jobId == 2001
-                || (jobId >= 2200 && jobId < 2300);
-    }
-
-    // Returns 2-char [main, secondary] stat codes: s=str, d=dex, i=int, l=luk
-    private static char[] mainSecondaryStats(int jobId) {
-        // Magician branches: INT main, LUK secondary
-        if (isMageBranch(jobId)) return new char[]{'i', 'l'};
-        // Bowman / Wind Archer: DEX main, STR secondary
-        if ((jobId >= 300 && jobId < 400) || (jobId >= 1300 && jobId < 1400)) return new char[]{'d', 's'};
-        // Thief / Night Walker: LUK main, DEX secondary
-        if ((jobId >= 400 && jobId < 500) || (jobId >= 1400 && jobId < 1500)) return new char[]{'l', 'd'};
-        // Pirate gunslinger sub-branch: DEX main, STR secondary
-        if (jobId >= 520 && jobId < 530) return new char[]{'d', 's'};
-        // Pirate brawler sub-branch + Thunderbreaker: STR main, DEX secondary
-        if ((jobId >= 510 && jobId < 520) || (jobId >= 1500 && jobId < 1600)) return new char[]{'s', 'd'};
-        // Warrior / Dawn Warrior / Aran / Pirate-beginner / fallback: STR main, DEX secondary
-        return new char[]{'s', 'd'};
-    }
-
-    private static int statValue(Equip eq, char code) {
-        return switch (code) {
-            case 's' -> eq.getStr();
-            case 'd' -> eq.getDex();
-            case 'i' -> eq.getInt();
-            case 'l' -> eq.getLuk();
-            default -> 0;
-        };
     }
 
     private static String statName(char code) {

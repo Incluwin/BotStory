@@ -5,7 +5,6 @@ import java.util.List;
 
 public class WorldConfig {
     public int flag = 0;
-    public String server_message = "Welcome!";
     public String event_message = "";
     public String why_am_i_recommended = "";
     public int channels = 1;

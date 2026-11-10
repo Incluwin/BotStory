@@ -99,7 +99,7 @@ class AgentTradeStateServiceTest {
         assertFalse(AgentPendingTradeStateRuntime.botDone(entry));
         assertFalse(AgentPendingTradeStateRuntime.singleBatch(entry));
         assertFalse(AgentPendingTradeStateRuntime.inviteAnnounced(entry));
-        assertEquals(0, AgentPendingTradeStateRuntime.shareBudget(entry));
+        assertEquals(AgentPendingTradeStateRuntime.NO_SHARE_BUDGET, AgentPendingTradeStateRuntime.shareBudget(entry));
         assertFalse(AgentPendingTradeStateRuntime.hasOwnerGivenItems(entry));
     }
 }

@@ -1414,6 +1414,7 @@ class BotManagerTest {
         AgentPendingTradeStateRuntime.setShareBudget(entry, 2250);
 
         short tradeQty = AgentPendingTradeStateRuntime.capShareQuantity(entry, (short) 5000);
+        AgentPendingTradeStateRuntime.chargeShareBudget(entry, tradeQty);
 
         assertEquals(2250, tradeQty);
         assertEquals(0, AgentPendingTradeStateRuntime.shareBudget(entry));

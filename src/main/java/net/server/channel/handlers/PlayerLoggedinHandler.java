@@ -377,11 +377,6 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
 
                 player.reloadQuestExpirations();
 
-                    /*
-                    if (!c.hasVotedAlready()){
-                        player.sendPacket(PacketCreator.earnTitleMessage("You can vote now! Vote and earn a vote point!"));
-                    }
-                    */
                 if (player.isGM()) {
                     Server.getInstance().broadcastGMMessage(c.getWorld(), PacketCreator.earnTitleMessage((player.gmLevel() < 6 ? "GM " : "Admin ") + player.getName() + " has logged in"));
                 }
