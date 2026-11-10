@@ -37,7 +37,6 @@ Classifications:
 | `AgentIdleModeTickService` | `RUNTIME_SERVICE` | Dispatches the idle tick branch and reports whether the tick was consumed. |
 | `AgentInteractionRuntime` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Public server entry point coordinating registration, spawn, chat, relogin, and tick dispatch. |
 | `AgentLeaderSafetyCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Coordinates inactive-leader recovery across sessions and recovery capabilities. |
-| `AgentLeaderSessionResolver` | `RUNTIME_SERVICE` | Resolves the current live leader for a scheduled Agent tick. |
 | `AgentLeaderSessionService` | `RUNTIME_SERVICE` | Implements leader-session selection rules independently of server lookup. |
 | `AgentLeaderStateRuntime` | `RUNTIME_ADAPTER` | Adapts live entry identity storage to leader read/write operations. |
 | `AgentLifecyclePhase` | `RUNTIME_STATE` | Enumerates owner-free live session lifecycle phases. |
@@ -83,7 +82,6 @@ Classifications:
 | `runtime.scheduler.AgentSessionId` | `RUNTIME_STATE` | Typed Agent character and session-generation registration identity. |
 | `runtime.scheduler.AgentScheduleHandle` | `RUNTIME_STATE` | Generation-bound scheduler lifecycle handle. |
 | `AgentSchedulerRuntime` | `RUNTIME_SERVICE` | Shared delayed-callback facade preserving existing random delay behavior. |
-| `AgentSession` | `RUNTIME_STATE` | Stable public session identity contract for future entry-state replacement. |
 | `AgentSessionCleanupService` | `RUNTIME_SERVICE` | Cancels session-scoped tasks and releases lifecycle resources during cleanup. |
 | `AgentSessionEventRuntime` | `RUNTIME_ADAPTER` | Publishes typed session events through the entry-owned event runtime. |
 | `AgentSessionEventWiringRuntime` | `RUNTIME_ADAPTER` | Registers and closes the production event consumers belonging to one session. |
