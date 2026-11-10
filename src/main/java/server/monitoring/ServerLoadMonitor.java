@@ -25,10 +25,6 @@ public final class ServerLoadMonitor {
         return ServerLoadLevel.NORMAL;
     }
 
-    public static boolean allowNonCriticalWork() {
-        return currentLevel().compareTo(ServerLoadLevel.DEGRADED) < 0;
-    }
-
     public static String diagnostics() {
         return "loadLevel=" + currentLevel()
                 + " " + ThreadManager.getInstance().diagnostics()

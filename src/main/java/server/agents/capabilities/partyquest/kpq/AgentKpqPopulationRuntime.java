@@ -177,15 +177,6 @@ public final class AgentKpqPopulationRuntime {
         }
     }
 
-    private static void cleanupParty(List<Character> members, Character leader) {
-        members.stream().filter(member -> member != leader)
-                .filter(AgentPartyGatewayRuntime.party()::hasParty)
-                .forEach(AgentPartyGatewayRuntime.party()::leaveCurrentParty);
-        if (leader != null && AgentPartyGatewayRuntime.party().hasParty(leader)) {
-            AgentPartyGatewayRuntime.party().leaveCurrentParty(leader);
-        }
-    }
-
     private static boolean enabled() {
         return (populationEnabled.getAsBoolean() || hostEnabled.getAsBoolean()) && featureEnabled();
     }

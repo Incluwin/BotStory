@@ -233,11 +233,6 @@ public final class GuideKnowledge {
         return droppedAtLoad;
     }
 
-    /** The first thread that gave this claim. */
-    public Source source(Claim claim) {
-        return claim.sources.length > 0 && claim.sources[0] < sources.size() ? sources.get(claim.sources[0]) : null;
-    }
-
     /**
      * The maps guides recommend training on at this level, with how many guides do: the class's own spots plus the spots
      * given for any class, in the level's band. A job id of -1 (class unknown) counts the any-class spots only.

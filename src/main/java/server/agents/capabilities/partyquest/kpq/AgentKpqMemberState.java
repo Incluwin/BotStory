@@ -11,7 +11,7 @@ public final class AgentKpqMemberState {
     public enum MemberType { AGENT, HUMAN }
     public enum Role {
         EVENT_LEADER, COUPON_COLLECTOR, PASS_DELIVERER, COMBAT_HELPER,
-        PUZZLE_PARTICIPANT, STAGE5_PASS_COLLECTOR, STAGE5_PASS_CARRIER, SQUISHY_SHOES_COLLECTOR, WAITING
+        PUZZLE_PARTICIPANT, STAGE5_PASS_COLLECTOR, STAGE5_PASS_CARRIER, WAITING
     }
     public enum RewardState { PENDING, CLAIMING, CLAIMED, FORFEITED }
 
@@ -137,11 +137,6 @@ public final class AgentKpqMemberState {
     void forfeitReward() {
         if (rewardState == RewardState.PENDING) rewardState = RewardState.FORFEITED;
     }
-    public void markRewardClaimed() {
-        if (rewardState == RewardState.PENDING || rewardState == RewardState.CLAIMING) {
-            rewardState = RewardState.CLAIMED;
-        }
-    }
     public int assignedPosition() { return assignedPosition; }
     public void setAssignedPosition(int assignedPosition) {
         if (this.assignedPosition != assignedPosition) stableSinceMs = 0L;
@@ -168,7 +163,6 @@ public final class AgentKpqMemberState {
         fidgetUntilMs = 0L;
     }
     public String blocker() { return blocker; }
-    public void setBlocker(String blocker) { this.blocker = blocker == null ? "" : blocker; }
     public long blockerSinceMs() { return blockerSinceMs; }
     public int blockerAttempts() { return blockerAttempts; }
     public int observeBlocker(String reason, long nowMs) {
@@ -194,7 +188,6 @@ public final class AgentKpqMemberState {
     }
     public long nextRetryAtMs() { return nextRetryAtMs; }
     public void setNextRetryAtMs(long value) { nextRetryAtMs = Math.max(0L, value); }
-    public int enteredStage() { return enteredStage; }
     public long stageMovementNotBeforeMs() { return stageMovementNotBeforeMs; }
     public void beginStageMovement(int stage, long notBeforeMs) {
         if (enteredStage == stage) return;

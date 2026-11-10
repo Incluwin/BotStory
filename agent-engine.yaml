@@ -3736,14 +3736,6 @@ tuning:
     # Purpose: Limits how many complete snapshot -> goal -> plan -> command -> result cycles each Agent remembers. Higher values preserve more history and use more memory.
     # Technical: The deterministic autonomy kernel applies this as a per-Agent deque capacity and evicts the oldest completed or active cycle before appending beyond the bound.
     server.agents.runtime.autonomy.AgentAutonomyCycleState.MAX_RECORDS: '128'
-    # Values: a positive integer. Recommended: 1000-10000; 4096 supports large test cohorts while preventing abandoned social and transaction sessions from growing without a bound.
-    # Purpose: Limits how many live or recently terminal interaction sessions the Agent engine retains across trade, party, buddy, guild, town encounter, expedition, and market protocols. Higher values support more simultaneous interactions and use more memory.
-    # Technical: the shared interaction-session registry consumes this as a process-wide bounded session count.
-    server.agents.coordination.session.AgentInteractionSessionRegistry.MAX_SESSIONS: '4096'
-    # Values: a positive integer. Recommended: 32-256 per memory kind; 128 keeps useful recent context without making every Agent carry an unbounded history.
-    # Purpose: Limits how many working, episodic, social, and economic memories each Agent keeps in each category. Higher values let decisions and future LLM dialogue recall more facts; lower values evict old facts sooner and reduce memory use.
-    # Technical: the session memory repository consumes this per Agent and per memory category, evicting expired entries and then the oldest entry.
-    server.agents.memory.AgentMemoryState.MAX_PER_KIND: '128'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 6-24 around the tested baseline 12; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for arrival range. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "free market stall capability" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.

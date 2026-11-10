@@ -941,13 +941,4 @@ public final class RivalCrews implements ClearLog.Listener {
         }
         return out;
     }
-
-    /** For tests: the remembered main of an account. */
-    int seenMain(int accountId) {
-        return mainId(accountId);
-    }
-
-    Map<Integer, Long> leavingNow() {
-        return new HashMap<>(leaving);
-    }
 }

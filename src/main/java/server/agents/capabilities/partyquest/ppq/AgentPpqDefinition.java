@@ -36,7 +36,6 @@ public final class AgentPpqDefinition {
     public static final int MEDALS_PER_WAVE = 20;
     /** Free Etc slots an Agent needs for the clear: its Perfect Pitch (setEventCleared) and Wu Yang's Feather. */
     public static final int CLEAR_ETC_SLOTS = 2;
-    public static final int DOOR_COUNT = 4;
     public static final int PARTY_SIZE = 6;
     /** A companion run seats four to six (the user's stock party sizes; PiratePQ.js admits three to six). */
     public static final int COMPANION_MIN_PARTY_SIZE = 4;

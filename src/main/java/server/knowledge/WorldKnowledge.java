@@ -554,13 +554,6 @@ public final class WorldKnowledge {
         return Optional.empty();
     }
 
-    /** Chance per kill at the live rates of {@code worldId} (GM commands and MapleEdit change them at runtime). */
-    public static double effectiveChance(DropSource source, int worldId) {
-        World world = Server.getInstance().getWorld(worldId);
-        return world == null ? source.effectiveChance(1, 1)
-                : source.effectiveChance(world.getDropRate(), world.getBossDropRate());
-    }
-
     // ---- helpers --------------------------------------------------------------------------
 
     /** The mobs and everything they revive into, to a fixed point, ascending. */

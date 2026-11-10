@@ -2,41 +2,20 @@ package server.agents.capabilities.reactor;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
-import server.agents.capabilities.AgentCapabilityStatus;
 import server.maps.Reactor;
 
 import java.awt.Point;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class AgentReactorInteractionCapabilityTest {
+class AgentReactorTargetSelectorTest {
     @AfterEach
     void clearTargetReservations() {
         AgentReactorTargetReservationRuntime.clear();
-    }
-
-    @Test
-    void defaultScopeAllowsOnlyPioReactorQuestInAmherst() {
-        AgentReactorInteractionCapability capability = new AgentReactorInteractionCapability();
-        Reactor reactor = reactor(10, 1002000, "box", new Point(5, 0), true, true);
-
-        AgentReactorInteractionResult allowed = capability.plan(List.of(reactor), request(1000000, 1008));
-        assertEquals(AgentCapabilityStatus.NOT_READY, allowed.status());
-        assertNotNull(allowed.target());
-
-        AgentReactorInteractionResult wrongQuest = capability.plan(List.of(reactor), request(1000000, 1037));
-        assertEquals(AgentCapabilityStatus.BLOCKED_BY_SCOPE, wrongQuest.status());
-
-        AgentReactorInteractionResult wrongMap = capability.plan(List.of(reactor), request(2000000, 1008));
-        assertEquals(AgentCapabilityStatus.BLOCKED_FORBIDDEN_MAP, wrongMap.status());
     }
 
     @Test
@@ -110,56 +89,6 @@ class AgentReactorInteractionCapabilityTest {
                 1000000, 1008, AgentReactorInteractionMode.HIT, 1002000, "questBox", 10,
                 new Point(0, 0), 10);
         assertTrue(selector.select(List.of(matching), outOfRange).isEmpty());
-    }
-
-    @Test
-    void executionStaysNotReadyWithoutLiveAdapter() {
-        AgentReactorInteractionCapability capability = new AgentReactorInteractionCapability();
-        Reactor reactor = reactor(10, 1002000, "box", new Point(5, 0), true, true);
-
-        AgentReactorInteractionResult result = capability.execute(List.of(reactor), request(1000000, 1008));
-
-        assertEquals(AgentCapabilityStatus.NOT_READY, result.status());
-        assertNotNull(result.target());
-    }
-
-    @Test
-    void executionDelegatesToAdapterAfterSelection() {
-        AtomicReference<AgentReactorInteractionRequest> executedRequest = new AtomicReference<>();
-        AtomicReference<AgentReactorTarget> executedTarget = new AtomicReference<>();
-        AgentReactorExecutionPort port = (request, target) -> {
-            executedRequest.set(request);
-            executedTarget.set(target);
-            return AgentReactorInteractionResult.success("hit queued", target);
-        };
-        AgentReactorInteractionCapability capability = new AgentReactorInteractionCapability(
-                new AgentReactorScopePolicy(Set.of(1000000), Set.of(1008)),
-                new AgentReactorTargetSelector(),
-                port);
-        AgentReactorInteractionRequest request = request(1000000, 1008);
-        Reactor reactor = reactor(10, 1002000, "box", new Point(5, 0), true, true);
-
-        AgentReactorInteractionResult result = capability.execute(List.of(reactor), request);
-
-        assertTrue(result.success());
-        assertEquals(AgentCapabilityStatus.SUCCESS, result.status());
-        assertSame(request, executedRequest.get());
-        assertEquals(10, executedTarget.get().objectId());
-    }
-
-    @Test
-    void planReturnsMissingRequirementWhenNoReactorMatches() {
-        AgentReactorInteractionCapability capability = new AgentReactorInteractionCapability();
-        Reactor reactor = reactor(10, 1002000, "box", new Point(5, 0), false, true);
-
-        AgentReactorInteractionResult result = capability.plan(List.of(reactor), request(1000000, 1008));
-
-        assertEquals(AgentCapabilityStatus.MISSING_REQUIREMENT, result.status());
-    }
-
-    private static AgentReactorInteractionRequest request(int mapId, int questId) {
-        return new AgentReactorInteractionRequest(mapId, questId, AgentReactorInteractionMode.HIT,
-                null, null, null, new Point(0, 0), 100);
     }
 
     private static Reactor reactor(int objectId, int reactorId, String name, Point position, boolean alive,

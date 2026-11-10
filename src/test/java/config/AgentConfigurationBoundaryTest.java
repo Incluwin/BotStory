@@ -84,7 +84,6 @@ class AgentConfigurationBoundaryTest {
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_5_MISSING_ROOM_PASS_SETTLE_MS",
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_5_PASS_LOOT_SETTLE_MS",
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_5_UNOBSERVED_ASSIST_MS",
-            "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_9_BOSS_EDGE_MARGIN_PX",
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_9_FLOOR_LEFT_X",
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_9_FLOOR_RIGHT_X",
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_9_FLOOR_Y",

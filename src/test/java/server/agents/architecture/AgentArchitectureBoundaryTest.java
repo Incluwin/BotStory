@@ -198,9 +198,7 @@ class AgentArchitectureBoundaryTest {
                 AGENTS.resolve("policy"),
                 AGENTS.resolve("personality"),
                 AGENTS.resolve("runtime").resolve("decision"),
-                AGENTS.resolve("runtime").resolve("autonomy"),
-                AGENTS.resolve("memory"),
-                AGENTS.resolve("coordination").resolve("session"));
+                AGENTS.resolve("runtime").resolve("autonomy"));
         List<Path> llmGateway = llmGatewayRoots();
         roots = java.util.stream.Stream.concat(roots.stream(), llmGateway.stream()).toList();
         List<String> directMutations = List.of(

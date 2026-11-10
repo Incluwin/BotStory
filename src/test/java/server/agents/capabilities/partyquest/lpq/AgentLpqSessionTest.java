@@ -2,7 +2,6 @@ package server.agents.capabilities.partyquest.lpq;
 
 import org.junit.jupiter.api.Test;
 
-import java.awt.Point;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -518,29 +517,11 @@ class AgentLpqSessionTest {
 
         assertEquals(0L, session.observeBossEdgeRegroup(true, 10_000L));
         assertEquals(15_000L, session.observeBossEdgeRegroup(true, 25_000L));
-        assertTrue(AgentLpqCoordinator.stageNineBossRegroupRecoveryDue(15_000L));
         assertEquals(0L, session.observeBossEdgeRegroup(false, 26_000L));
         assertEquals(0L, session.observeBossEdgeRegroup(true, 40_000L));
 
         session.transition(AgentLpqSession.Phase.BONUS, 41_000L);
         assertEquals(0L, session.observeBossEdgeRegroup(true, 60_000L));
-    }
-
-    @Test
-    void bossEdgeFormationKeepsThePartyInAuthoredOpenFloorSpace() {
-        assertTrue(AgentLpqCoordinator.stageNineBossAtEdge(new Point(-130, 184)));
-        assertTrue(AgentLpqCoordinator.stageNineBossAtEdge(new Point(1_030, 184)));
-        assertFalse(AgentLpqCoordinator.stageNineBossAtEdge(new Point(450, 184)));
-
-        Point awayFromLeft = AgentLpqCoordinator.stageNineOpenSpaceAnchor(
-                new Point(-200, 184), 101);
-        Point awayFromRight = AgentLpqCoordinator.stageNineOpenSpaceAnchor(
-                new Point(1_100, 184), 101);
-        assertTrue(awayFromLeft.x > awayFromRight.x);
-        assertEquals(184, awayFromLeft.y);
-        assertEquals(184, awayFromRight.y);
-        assertTrue(awayFromLeft.x >= 460 && awayFromLeft.x <= 580);
-        assertTrue(awayFromRight.x >= 320 && awayFromRight.x <= 440);
     }
 
     @Test

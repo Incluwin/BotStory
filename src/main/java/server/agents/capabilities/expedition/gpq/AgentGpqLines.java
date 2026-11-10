@@ -42,9 +42,4 @@ final class AgentGpqLines {
 
     private AgentGpqLines() {
     }
-
-    /** {@code line} with {name} as {@code name}. */
-    static String with(String line, String name) {
-        return line.replace("{name}", name == null ? "" : name);
-    }
 }

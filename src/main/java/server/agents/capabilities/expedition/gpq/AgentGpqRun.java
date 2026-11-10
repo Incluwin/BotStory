@@ -219,15 +219,6 @@ public final class AgentGpqRun implements AgentBossFight {
         this.isAgent = agents;
     }
 
-    AgentGpqPaceMarks paceMarks() {
-        return paceMarks;
-    }
-
-    /** The instance leader (the human who registered the guild), as last seen. */
-    int leaderId() {
-        return leaderId;
-    }
-
     /** Tests: what happens as a member enters a stage. */
     void onEnteredStage(Consumer<Character> hook) {
         this.enteredStage = hook;
@@ -357,11 +348,6 @@ public final class AgentGpqRun implements AgentBossFight {
         return said.add(what);
     }
 
-    /** Forgets that {@code what} was said, so it may be said again (a phase that came round again). */
-    void unsay(String what) {
-        said.remove(what);
-    }
-
     /** A value the plays keep over the run (a count, a time); 0 when unset. */
     long mark(String key) {
         return marks.getOrDefault(key, 0L);
@@ -369,11 +355,6 @@ public final class AgentGpqRun implements AgentBossFight {
 
     void mark(String key, long value) {
         marks.put(key, value);
-    }
-
-    /** Counts {@code key} once more; the new count. */
-    long bump(String key) {
-        return marks.merge(key, 1L, Long::sum);
     }
 
     AgentGpqVassals vassals() {

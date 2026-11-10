@@ -282,20 +282,6 @@ public final class LivingStore {
         return out;
     }
 
-    /** Character id holding an ACTIVE contract with this persona, or 0. */
-    public int activeContractOwner(String personaId) {
-        String sql = "SELECT character_id FROM living_bond WHERE persona_id = ? AND contract_state = 'ACTIVE' LIMIT 1";
-        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, personaId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getInt(1) : 0;
-            }
-        } catch (SQLException failure) {
-            log.warn("living_bond owner lookup failed for {}", personaId, failure);
-            return 0;
-        }
-    }
-
     /** Sum of party_seconds over every bond with this persona. */
     public long partySecondsTotal(String personaId) {
         String sql = "SELECT COALESCE(SUM(party_seconds), 0) FROM living_bond WHERE persona_id = ?";
@@ -1767,17 +1753,6 @@ public final class LivingStore {
             ps.executeUpdate();
         } catch (SQLException failure) {
             log.warn("living_haul_item update failed for {}/{}", characterId, personaId, failure);
-        }
-    }
-
-    public void clearHaul(int characterId, String personaId) {
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("DELETE FROM living_haul_item WHERE character_id = ? AND persona_id = ?")) {
-            ps.setInt(1, characterId);
-            ps.setString(2, personaId);
-            ps.executeUpdate();
-        } catch (SQLException failure) {
-            log.warn("living_haul_item clear failed for {}/{}", characterId, personaId, failure);
         }
     }
 

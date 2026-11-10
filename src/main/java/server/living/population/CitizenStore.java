@@ -253,18 +253,6 @@ public final class CitizenStore {
 
     // ---- price index ---------------------------------------------------------------------
 
-    public long price(int itemId) {
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT price FROM living_price_index WHERE item_id = ?")) {
-            ps.setInt(1, itemId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0L;
-            }
-        } catch (SQLException failure) {
-            return 0L;
-        }
-    }
-
     public void savePrice(int itemId, long price, int samples) {
         String sql = "INSERT INTO living_price_index (item_id, price, samples) VALUES (?, ?, ?)"
                 + " ON DUPLICATE KEY UPDATE price = VALUES(price), samples = VALUES(samples)";

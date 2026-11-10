@@ -2324,10 +2324,6 @@ public class Character extends AbstractCharacterObject {
         applyPassiveSkillEffect(ILMage.SPELL_BOOSTER);
     }
 
-    public void applyNimbleFeetPassive() {
-        applyPassiveSkillEffect(Beginner.NIMBLE_FEET);
-    }
-
     public void changeTab(int tab) {
         this.currentTab = tab;
     }

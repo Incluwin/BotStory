@@ -54,8 +54,6 @@ final class AgentGpqWaterwayPlays {
     static final Point GRAVE_WAIT = new Point(1200, 185);
     static final String CLEAR = "stage4clear";
     static final int SEEK_PX = 1200;
-    /** How close a member walks to its room's carrier to hand over its Marks. */
-    static final int HAND_OVER_PX = 50;
 
     /**
      * A mark room: its monsters, the Marks its gate wants, the gate (its item box, Reactor.wz) and where to lay them.

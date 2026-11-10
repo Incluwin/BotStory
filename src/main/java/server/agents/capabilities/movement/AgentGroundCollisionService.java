@@ -349,7 +349,6 @@ public final class AgentGroundCollisionService {
             return GroundCollision.none();
         }
 
-        double yAtBoundary = previousPos.y + (nextPos.y - previousPos.y) * progress;
         return new GroundCollision(CollisionType.WALL, progress, null);
     }
 

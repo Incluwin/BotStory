@@ -89,10 +89,6 @@ final class AgentGpqPaceMarks {
         }
     }
 
-    synchronized Long mark(Step step) {
-        return marks.get(step);
-    }
-
     /**
      * The run's record: one span per segment, complete when both its ends were seen; null when the members' power was
      * never read (a cold profile, a run that ended while joining) or their number is outside the profile's 6-30.

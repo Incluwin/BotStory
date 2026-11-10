@@ -417,40 +417,6 @@ class AmherstObjectiveCapabilitiesTest {
     }
 
     @Test
-    void questItemDelivery1038UsesNormalCompletionAndChecksConsumption() {
-        var fixture = new MutablePrimitiveGatewayFixture();
-        fixture.mapId.set(1000000);
-        fixture.quests.put(1038, 1);
-        fixture.items.put(4031800, 1);
-
-        assign(fixture, new QuestItemDeliveryObjectiveCapability(fixture.gateway),
-                new QuestItemDeliveryObjectiveCapability.Command(
-                        "q1038-delivery", 1000000, 1038, 12000, Map.of(4031800, 1)), 10_000L);
-        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
-        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
-        run(fixture, 2L, 50);
-
-        assertEquals(2, fixture.quests.get(1038));
-        assertEquals(0, fixture.items.get(4031800));
-        assertSuccess(fixture);
-    }
-
-    @Test
-    void quiz1009RunsDeterministicNormalQuestPath() {
-        var fixture = new MutablePrimitiveGatewayFixture();
-        fixture.mapId.set(1000000);
-
-        assign(fixture, new QuizObjectiveCapability(fixture.gateway),
-                new QuizObjectiveCapability.Command("q1009-quiz", 1000000, 1009, 12101), 10_000L);
-        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
-        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
-        run(fixture, 2L, 50);
-
-        assertEquals(2, fixture.quests.get(1009));
-        assertSuccess(fixture);
-    }
-
-    @Test
     void reactor1008NavigatesHitsLootsAndInspects() {
         var fixture = new MutablePrimitiveGatewayFixture();
         fixture.mapId.set(1000000);

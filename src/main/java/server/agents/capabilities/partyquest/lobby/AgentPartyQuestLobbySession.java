@@ -69,14 +69,6 @@ public final class AgentPartyQuestLobbySession {
         if (members.remove(characterId) != null) markRosterProgress(nowMs);
     }
 
-    public synchronized void setMemberRole(int characterId, MemberRole role, long nowMs) {
-        Member member = members.get(characterId);
-        if (member != null && role != null && member.role != role) {
-            member.role = role;
-            markRosterProgress(nowMs);
-        }
-    }
-
     public synchronized void reconcileParty(
             int nextPartyId, int nextLeaderId, Set<Integer> actualMemberIds, long nowMs) {
         Set<Integer> actual = actualMemberIds == null ? Set.of() : Set.copyOf(actualMemberIds);

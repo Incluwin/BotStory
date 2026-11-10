@@ -86,12 +86,6 @@ public final class CitizenWhispers {
         }
     }
 
-    /** Whether {@code humanId}'s whisper to the citizen now would answer a thread of {@code topic} (tests, ops). */
-    boolean openThread(int citizenId, int humanId, String topic, long nowMs) {
-        Thread thread = threads.get(key(citizenId, humanId));
-        return thread != null && thread.topic().equals(topic) && nowMs - thread.atMs() <= population.config().WHISPER_THREAD_MS;
-    }
-
     /** A player's whisper to {@code targetName}; true when a loaded citizen of that name took it (said something or not). */
     public boolean onWhisper(Character human, String targetName, String text) {
         return onWhisper(human, targetName, text, System.currentTimeMillis());

@@ -84,11 +84,6 @@ public final class AgentSchedulerRuntime {
         });
     }
 
-    public static boolean isCurrentSession(AgentRuntimeEntry entry) {
-        return entry != null
-                && AgentRuntimeRegistry.isActiveSession(entry, entry.sessionGeneration());
-    }
-
     public static ScheduledFuture<?> register(Runnable action, long periodMs) {
         return AgentSchedulerGatewayRuntime.scheduler().register(action, periodMs);
     }

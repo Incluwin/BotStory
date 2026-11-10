@@ -226,7 +226,6 @@ class AgentLpqAuthoredFlowPreflightTest {
 
         assertFalse(bossFlow.contains("hitReactor("));
         assertFalse(bossFlow.contains("assignStageNineRoles(session)"));
-        assertFalse(bossFlow.contains("prepareStageNineBossFormation("));
         assertTrue(bossFlow.contains("AgentLpqStageNineBossPolicy.order(")
                 && bossFlow.replaceAll("\\s+", " ").contains("ACTIONS.grindFromAnchor(entry, order.point(), "));
     }

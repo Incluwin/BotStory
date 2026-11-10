@@ -162,7 +162,6 @@
       "role": "CONTEXT",
       "sourceRoots": [
         "server/agents/context",
-        "server/agents/memory",
         "server/agents/personality",
         "server/agents/model",
         "server/agents/profiles"

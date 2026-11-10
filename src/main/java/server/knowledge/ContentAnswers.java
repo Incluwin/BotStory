@@ -283,15 +283,6 @@ public final class ContentAnswers {
         installedPrices = lookup == null ? itemId -> null : lookup;
     }
 
-    /**
-     * Server-rule facts for grounding a reply (section 10 of the plan), read live from the asker's world:
-     * {@code prompted} false gives only the low-risk facts a bot may bring up unasked; true adds rates, quest EXP
-     * and the gear rule (when the asker asked about rules).
-     */
-    public Map<String, String> ruleFacts(int worldId, boolean prompted) {
-        return ServerRules.facts(rates.apply(worldId), prompted);
-    }
-
     /** Counters for {@code !knowledge status}. */
     public static String counters() {
         return "questions seen " + seen.get() + ", answered " + answered.get() + ", deflected " + deflected.get()

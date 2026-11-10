@@ -47,7 +47,6 @@ public final class AgentBossRunSession {
     private final AgentBossRunDefinition definition;
     private final Expedition expedition;
     private final AgentBossFight fight;
-    private final long createdAtMs;
     private final List<AgentBossRunMember> members = new CopyOnWriteArrayList<>();
     private volatile Phase phase = Phase.REGISTERING;
     /**
@@ -98,7 +97,6 @@ public final class AgentBossRunSession {
         this.definition = definition;
         this.expedition = expedition;
         this.fight = fight;
-        this.createdAtMs = nowMs;
         this.citizenRun = citizenLeaderId > 0;
         this.citizenLeaderId = Math.max(0, citizenLeaderId);
         this.citizenStartSelections = startSelections == null ? new int[0] : startSelections.clone();
@@ -116,7 +114,6 @@ public final class AgentBossRunSession {
         this.expedition = null;
         this.event = event;
         this.fight = fight;
-        this.createdAtMs = nowMs;
         this.startedAtMs = nowMs;
         this.phase = Phase.STARTING;
         this.citizenRun = false;
@@ -141,10 +138,6 @@ public final class AgentBossRunSession {
     /** The run's event: a party-instance run's from its open, an expedition's once a member went in; else null. */
     public EventInstanceManager event() {
         return event;
-    }
-
-    public long createdAtMs() {
-        return createdAtMs;
     }
 
     /** A citizen run (docs/CITIZEN_EXPEDITIONS_PLAN.md): the population hosts it, not the living world. */

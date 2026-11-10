@@ -652,7 +652,7 @@ public final class AgentJumpProbeService {
             if (!AgentWallCollisionPolicy.collides(map, foothold, moverZMass)) {
                 continue;
             }
-            AirCollision collision = wallCollision(map, foothold, previousPos, nextPos, false);
+            AirCollision collision = wallCollision(map, foothold, previousPos, nextPos);
             if (collision.type() == AirCollisionType.WALL && collision.progress() < best.progress()) {
                 best = collision;
             }
@@ -908,8 +908,7 @@ public final class AgentJumpProbeService {
     private static AirCollision wallCollision(MapleMap map,
                                               Foothold wall,
                                               Point previousPos,
-                                              Point nextPos,
-                                              boolean allowWalkableGroundEndpoint) {
+                                              Point nextPos) {
         int wallX = wall.getX1();
         int startX = previousPos.x;
         int endX = nextPos.x;
@@ -939,9 +938,6 @@ public final class AgentJumpProbeService {
 
         double yAtWall = previousPos.y + (nextPos.y - previousPos.y) * progress;
         if (yAtWall < minY || yAtWall > maxY) {
-            return AirCollision.none();
-        }
-        if (allowWalkableGroundEndpoint && isWalkableGroundWallEndpoint(yAtWall, minY, maxY)) {
             return AirCollision.none();
         }
 
@@ -978,14 +974,6 @@ public final class AgentJumpProbeService {
                 new Point((int) Math.round(xAtCeiling), ceilingY + 1),
                 foothold,
                 progress);
-    }
-
-    private static boolean isWalkableGroundWallEndpoint(double yAtWall, int minY, int maxY) {
-        if (Math.abs(yAtWall - minY) < 0.001) {
-            return true;
-        }
-        return Math.abs(yAtWall - maxY) < 0.001
-                && maxY - minY <= AgentMovementPhysicsConfig.configuredMaxSlopeUp();
     }
 
     private static float maxFallPerTick() {

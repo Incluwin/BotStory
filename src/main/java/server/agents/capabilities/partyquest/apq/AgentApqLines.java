@@ -161,8 +161,4 @@ final class AgentApqLines {
     static String leaderDown(String leader) {
         return leader + "! stay with us...";
     }
-
-    static String keepUp(String name) {
-        return name + ", this way!";
-    }
 }

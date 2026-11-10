@@ -12,7 +12,6 @@ public enum AgentRecommendedAction {
     REQUEST_TOWN_LIFE(AgentActivityKind.TOWN_LIFE),
     REQUEST_HUNTING(AgentActivityKind.HUNTING),
     REQUEST_QUESTING(AgentActivityKind.QUESTING),
-    REQUEST_COMMERCE(AgentActivityKind.COMMERCE),
     REQUEST_PARTY_QUEST(AgentActivityKind.PARTY_QUEST),
     ABANDON_OBJECTIVE(null),
     SAFE_FALLBACK(null);

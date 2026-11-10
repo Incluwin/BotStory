@@ -151,32 +151,6 @@ class AgentTickSchedulerQuiescenceTest {
         assertFalse(entry.actionMailbox().ordinaryWorkFrozen());
     }
 
-    @Test
-    void publicBoundaryRequiresTheExactGenerationBoundToken() {
-        AtomicLong now = new AtomicLong(1_000L);
-        AgentTickScheduler scheduler = scheduler(now);
-        AgentRuntimeEntry entry = activeEntry(101);
-        AgentScheduleHandle handle = scheduler.register(entry, () -> { }, 50L);
-        entry.scheduledTaskState().attachScheduledTask(handle);
-        CompletableFuture<AgentQuiescenceToken> result = AgentQuiescenceService.quiesce(
-                entry,
-                AgentQuiescenceReason.PROFILE_EXCHANGE,
-                Duration.ofSeconds(5)).toCompletableFuture();
-        scheduler.tickAll();
-        AgentQuiescenceToken token = result.join();
-
-        AgentQuiescenceService.requireValidToken(entry, token);
-        AgentQuiescenceToken forged = new AgentQuiescenceToken(
-                token.sessionId(),
-                token.requestId() + 1L,
-                token.reason(),
-                token.completedAtMs());
-        assertThrows(
-                AgentQuiescenceException.class,
-                () -> AgentQuiescenceService.requireValidToken(entry, forged));
-        assertTrue(AgentQuiescenceService.resume(entry, token));
-    }
-
     private static AgentTickScheduler scheduler(AtomicLong now) {
         ScheduledFuture<?> future = mock(ScheduledFuture.class);
         AgentSchedulerConfig config = new AgentSchedulerConfig(

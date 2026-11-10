@@ -149,10 +149,6 @@ final class AgentPqPaceModel {
             this(profile, calibration.companion(), calibration.leader());
         }
 
-        boolean isLeaderTerm(String term) {
-            return leaderTerms.contains(term);
-        }
-
         double value(String term) {
             Double value = (leaderTerms.contains(term) ? leader : companion).get(term);
             if (value == null) value = priors.get(term);
