@@ -77,8 +77,12 @@ final class DuelBrain {
     /** A step's spot lies this share of its last swing's reach from the target, near to far. */
     static final double FOOTWORK_NEAR_SHARE = 0.35d;
     static final double FOOTWORK_FAR_SHARE = 0.85d;
-    /** A smaller move than this does not read as a step. */
+    /**
+     * A smaller move than this does not read as a step; a short reach's band is narrower, so its fighter takes half
+     * the band, down to {@link #FOOTWORK_SHORT_STEP_PX} (an 80 px spear reach has 30-68 px to step in).
+     */
     static final int FOOTWORK_MIN_STEP_PX = 40;
+    static final int FOOTWORK_SHORT_STEP_PX = 20;
     /** A step walks this long (plus up to the spread) before the next think, which stops it to swing. */
     static final int STEP_MIN_MS = 350;
     static final int STEP_SPREAD_MS = 250;
@@ -353,20 +357,20 @@ final class DuelBrain {
 
     /**
      * Where a fighter in reach steps to: on its own side of the target and its own level, {@link #FOOTWORK_NEAR_SHARE}
-     * to {@link #FOOTWORK_FAR_SHARE} of {@code reach} away ({@code pick} in [0, 1) chooses where), and at least
-     * {@link #FOOTWORK_MIN_STEP_PX} from where it stands, so a ranged fighter crowded by a melee one steps back. Null
-     * when there is no such spot.
+     * to {@link #FOOTWORK_FAR_SHARE} of {@code reach} away ({@code pick} in [0, 1) chooses where), and a visible step
+     * from where it stands, so a ranged fighter crowded by a melee one steps back. Null when there is no such spot.
      */
     static Point footworkSpot(Point at, Point aim, int reach, double pick,
                               java.util.function.Function<Point, Point> ground) {
         int near = Math.max(MIN_STAND_PX, (int) Math.round(reach * FOOTWORK_NEAR_SHARE));
         int far = Math.max(near, (int) Math.round(reach * FOOTWORK_FAR_SHARE));
+        int minStep = Math.min(FOOTWORK_MIN_STEP_PX, Math.max(FOOTWORK_SHORT_STEP_PX, (far - near) / 2));
         int side = at.x >= aim.x ? 1 : -1;
         int now = Math.abs(at.x - aim.x);
         int want = near + (int) Math.round(pick * (far - near));
-        if (Math.abs(want - now) < FOOTWORK_MIN_STEP_PX) {
+        if (Math.abs(want - now) < minStep) {
             want = now - near > far - now ? near : far;   // too small to read as a step: the band's other end
-            if (Math.abs(want - now) < FOOTWORK_MIN_STEP_PX) {
+            if (Math.abs(want - now) < minStep) {
                 return null;
             }
         }
@@ -376,8 +380,9 @@ final class DuelBrain {
 
     /**
      * Which way a fighter in reach hops (+1 right, -1 left, 0 not at all): toward the target from the far half of its
-     * footwork band, away from the near half, else the other way; only a hop that lands on its own level, on its own
-     * side of the target and still in {@code reach}.
+     * footwork band, away from the near half, else the other way; only a hop that lands on its own level and still in
+     * {@code reach}. A short reach's hop in carries it over the target, as players jump over each other; it turns to
+     * swing.
      */
     static int hopDirection(Point at, Point aim, int reach, java.util.function.Function<Point, Point> ground) {
         int side = at.x >= aim.x ? 1 : -1;
@@ -385,7 +390,7 @@ final class DuelBrain {
         int first = Math.abs(at.x - aim.x) > middle ? -side : side;
         for (int direction : new int[] {first, -first}) {
             int landX = at.x + direction * HOP_PX;
-            int after = (landX - aim.x) * side;   // distance on its own side; negative once past the target
+            int after = Math.abs(landX - aim.x);
             if (after < MIN_STAND_PX || after > reach) {
                 continue;
             }

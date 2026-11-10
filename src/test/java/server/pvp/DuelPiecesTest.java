@@ -177,16 +177,25 @@ class DuelPiecesTest {
         assertNull(DuelBrain.footworkSpot(at, target, 400, 0.9d, DuelPiecesTest::floorUnder));
     }
 
+    /** An 80 px spear reach steps 30-68 px from its target, so its step is half that band, not 40 px. */
     @Test
-    void aHopGoesInFromFarAndOutFromNearAndNeverPastTheTarget() {
+    void aShortReachStillSteps() {
+        Point target = new Point(100, 100);
+
+        assertEquals(new Point(130, 100), DuelBrain.footworkSpot(new Point(156, 100), target, 80, 0.5d,
+                DuelPiecesTest::floorUnder), "56 px out (its stand spot): in to the band's near end, 26 px");
+    }
+
+    @Test
+    void aHopGoesInFromFarAndOutFromNearAndStaysInReach() {
         Point target = new Point(100, 100);
 
         assertEquals(-1, DuelBrain.hopDirection(new Point(450, 100), target, 400, DuelPiecesTest::floorUnder),
                 "350 px out of a 400 px reach: in, toward the target on its left");
         assertEquals(1, DuelBrain.hopDirection(new Point(180, 100), target, 400, DuelPiecesTest::floorUnder),
                 "80 px out: away");
-        assertEquals(0, DuelBrain.hopDirection(new Point(150, 100), target, 80, DuelPiecesTest::floorUnder),
-                "an 80 px reach: a hop in lands past the target, a hop out leaves its reach, so it steps instead");
+        assertEquals(-1, DuelBrain.hopDirection(new Point(150, 100), target, 80, DuelPiecesTest::floorUnder),
+                "an 80 px reach 50 px out: over the target, landing 40 px past it, still in reach");
         assertEquals(0, DuelBrain.hopDirection(new Point(470, 100), new Point(800, 100), 400,
                 DuelPiecesTest::floorUnder), "in drops off the platform's edge (x 500), out leaves its reach");
     }
