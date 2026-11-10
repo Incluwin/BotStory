@@ -601,6 +601,18 @@ The server sees a human only through movement packets. Ties go to the human both
       none; factors are clamped to 0.25-4x (wide, since a warrior's avoid can sit at a quarter of a thief's).
       `!pvp sim` builds its fighters the same way. The miss caps stay (physical 25%, magic 10%), so a magician keeps
       a small edge when the evened chance falls under 90%; practice round nine checks whether that matters.
+    - **Practice round nine (7ebf2a054, 2026-11-09 19:47-20:17, run headless over the admin port; 108 duels, no
+      errors).** `!pvp calibrate` read 154 characters: a warrior's median accuracy sits at 0.30-0.56 of its band's
+      class-balanced median and its avoid at 0.31-0.49; bowmen's accuracy at 1.42-1.60; magicians' avoid at
+      0.34-0.77 too. Every factor fits the 0.25-4x clamp. Results (same tally script on round eight for comparison):
+      - warriors' attacks dodged 2% (round eight 21%); no class above 4%;
+      - cross-class record: warrior 20-22 (48%, round eight 6-37), magician 27-26, bowman 17-17, thief 10-5, pirate
+        4-8 (thieves and pirates on 15 and 12 duels only); warrior against magician 13-13, against bowman 6-5;
+      - level edge: the higher level won 54% at a 1-2 level gap (35 duels) and 44% at 3-5 (55), under the 65% cap;
+      - 100 of 108 ended in a knock-out (8 forfeits), median 18 s, middle half 13-23 s, inside 10-25 s;
+      - no sign of a magician edge from the 10% magic miss cap (51%).
+      Open for the finish line: one round spreads 108 duels over 10 class pairs and several bands, so the per-pair,
+      per-band 40-60% check (Lv 50, 80, 110) needs a longer run; the two filmed duels need a logged-in client.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
