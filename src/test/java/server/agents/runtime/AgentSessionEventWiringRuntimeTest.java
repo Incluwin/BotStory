@@ -59,8 +59,8 @@ class AgentSessionEventWiringRuntimeTest {
                 ? 2 : 0;
         int behaviorListener = AgentBehaviorFeatureProfile.current().enabled() ? 1 : 0;
 
-        assertEquals(33 + personalityListeners + behaviorListener, bus.snapshot().subscriptions());
-        assertEquals(33 + personalityListeners + behaviorListener,
+        assertEquals(32 + personalityListeners + behaviorListener, bus.snapshot().subscriptions());
+        assertEquals(32 + personalityListeners + behaviorListener,
                 AgentSessionEventRuntime.bus(entry).snapshot().subscriptions());
 
         AgentSessionEventRuntime.close(entry);
@@ -96,7 +96,7 @@ class AgentSessionEventWiringRuntimeTest {
                 ? 2 : 0;
         int behaviorListener = AgentBehaviorFeatureProfile.current().enabled() ? 1 : 0;
 
-        assertEquals(27 + personalityListeners + behaviorListener, bus.snapshot().subscriptions());
+        assertEquals(26 + personalityListeners + behaviorListener, bus.snapshot().subscriptions());
 
         AgentSessionEventRuntime.close(entry);
     }

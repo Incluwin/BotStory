@@ -73,6 +73,16 @@ public final class ServerMobDamageService {
                 attack.diseaseSkill(), attack.diseaseLevel(), damagePercent, broadcast);
     }
 
+    /**
+     * A mob's touch on an Agent, already rolled: the same defenses and HP/MP loss as an ordinary attack that landed.
+     * Returns the damage left after the reductions, which is what the damage packet shows.
+     */
+    public static int applyTouchDamage(Character target, int damage) {
+        damage = applyDamageReduction(target, damage);
+        applyHpMpLoss(target, damage, 0);
+        return damage;
+    }
+
     private static int applyOrdinaryAttack(
             Monster attacker, Character target, int attackIndex, boolean magic,
             int physicalAttackOverride, int magicAttackOverride,
@@ -189,8 +199,7 @@ public final class ServerMobDamageService {
         Skill highDefense = SkillFactory.getSkill(Aran.HIGH_DEFENSE);
         int highDefenseLevel = highDefense == null ? 0 : target.getSkillLevel(highDefense);
         if (highDefenseLevel > 0) {
-            damage = (int) (damage * Math.ceil(
-                    highDefense.getEffect(highDefenseLevel).getX() / 1000.0d));
+            damage = (int) (damage * (highDefense.getEffect(highDefenseLevel).getX() / 1000.0d));
         }
         return Math.max(0, damage);
     }

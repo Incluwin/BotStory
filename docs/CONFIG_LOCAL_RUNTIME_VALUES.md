@@ -6,7 +6,6 @@ These values are intentionally recorded here so later commits/reviews can distin
 
 ## World 0
 
-- `server_message`: `Welcome to Scania!`
 - `event_message`: `Scania!`
 - `why_am_i_recommended`: `Welcome to Scania!`
 - `exp_rate`: `1`

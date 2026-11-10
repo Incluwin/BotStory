@@ -152,7 +152,7 @@ agent:
     # Values: true or false. Recommended: false for routine production; use true only for a bounded diagnostic or load-test session (tested baseline true).
     # Purpose: When enabled, records extra information for map transition packet diagnostics so problems can be investigated. It should not intentionally change normal Agent choices, but may add logging or test load.
     # Technical: the Agent engine deployment configuration consumes this as a boolean. Domain: true or false.
-    AGENT_MAP_TRANSITION_PACKET_DIAGNOSTICS: true
+    AGENT_MAP_TRANSITION_PACKET_DIAGNOSTICS: false
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 5000-20000 around the tested baseline 10000; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents remain in or wait for death respawn delay. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the Agent engine deployment configuration consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.

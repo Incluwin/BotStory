@@ -4,7 +4,6 @@
 worlds:
     #Properties for Scania 0
   - flag: 0
-    server_message: ""
     event_message: Scania!
     why_am_i_recommended: Welcome to Scania!
     channels: 3
@@ -27,140 +26,120 @@ worlds:
     allow_multiple_one_of_a_kind_items: false
     multiple_one_of_a_kind_item_allowlist: []
   - flag: 0
-    server_message: Welcome to Bera!
     event_message: Bera!
     why_am_i_recommended: Welcome to Bera!
     channels: 3
 
     #Properties for Broa 2
   - flag: 0
-    server_message: Welcome to Broa!
     event_message: Broa!
     why_am_i_recommended: Welcome to Broa!
     channels: 3
 
     #Properties for Windia 3
   - flag: 0
-    server_message: Welcome to Windia!
     event_message: Windia!
     why_am_i_recommended: Welcome to Windia!
     channels: 3
 
     #Properties for Khaini 4
   - flag: 0
-    server_message: Welcome to Khaini!
     event_message: Khaini!
     why_am_i_recommended: Welcome to Khaini!
     channels: 3
 
     #Properties for Bellocan 5
   - flag: 0
-    server_message: Welcome to Bellocan!
     event_message: Bellocan!
     why_am_i_recommended: Welcome to Bellocan!
     channels: 3
 
     #Properties for Mardia 6
   - flag: 0
-    server_message: Welcome to Mardia!
     event_message: Mardia!
     why_am_i_recommended: Welcome to Mardia!
     channels: 3
 
     #Properties for Kradia 7
   - flag: 0
-    server_message: Welcome to Kradia!
     event_message: Kradia!
     why_am_i_recommended: Welcome to Kradia!
     channels: 3
 
     #Properties for Yellonde 8
   - flag: 0
-    server_message: Welcome to Yellonde!
     event_message: Yellonde!
     why_am_i_recommended: Welcome to Yellonde!
     channels: 3
 
     #Properties for Demethos 9
   - flag: 0
-    server_message: Welcome to Demethos!
     event_message: Demethos!
     why_am_i_recommended: Welcome to Demethos!
     channels: 3
 
     #Properties for Galicia 10
   - flag: 0
-    server_message: Welcome to Galicia!
     event_message: Galicia!
     why_am_i_recommended: Welcome to Galicia!
     channels: 3
 
     #Properties for Kastia 11
   - flag: 0
-    server_message: Welcome to Kastia!
     event_message: Kastia!
     why_am_i_recommended: Welcome to Kastia!
     channels: 3
 
     #Properties for Judis 12
   - flag: 0
-    server_message: Welcome to Judis!
     event_message: Judis!
     why_am_i_recommended: Welcome to Judis!
     channels: 3
 
     #Properties for Arcenia 13
   - flag: 0
-    server_message: Welcome to Arcenia!
     event_message: Arcenia!
     why_am_i_recommended: Welcome to Arcenia!
     channels: 3
 
     #Properties for Plana 14
   - flag: 0
-    server_message: Welcome to Plana!
     event_message: Plana!
     why_am_i_recommended: Welcome to Plana!
     channels: 3
 
     #Properties for El Nido 15
   - flag: 0
-    server_message: Welcome to El Nido!
     event_message: El Nido!
     why_am_i_recommended: Welcome to El Nido!
     channels: 3
 
     #Properties for Kalluna 16
   - flag: 0
-    server_message: Welcome to Kalluna!
     event_message: Kalluna!
     why_am_i_recommended: Welcome to Kalluna!
     channels: 3
 
     #Properties for Stius 17
   - flag: 0
-    server_message: Welcome to Stius!
     event_message: Stius!
     why_am_i_recommended: Welcome to Stius!
     channels: 3
 
     #Properties for Croa 18
   - flag: 0
-    server_message: Welcome to Croa!
     event_message: Croa!
     why_am_i_recommended: Welcome to Croa!
     channels: 3
 
     #Properties for Zenith 19
   - flag: 0
-    server_message: Welcome to Zenith!
     event_message: Zenith!
     why_am_i_recommended: Welcome to Zenith!
     channels: 3
 
     #Properties for Medere 20
   - flag: 0
-    server_message: Welcome to Medere!
     event_message: Medere!
     why_am_i_recommended: Welcome to Medere!
     channels: 3
@@ -210,7 +189,6 @@ server:
     HOST: 127.0.0.1                 #WAN IPv4 address: what players on the internet connect to. Set SERVER_HOST in .env to your public IP to host them.
     LANHOST: 127.0.0.1              #LAN IPv4 address: what players on your home network connect to. Set SERVER_LANHOST in .env to this PC's LAN IP.
     LOCALHOST: 127.0.0.1            #Loopback IPv4 address
-    GMSERVER: false
 
     #Other configuration
     SHUTDOWNHOOK: true
@@ -260,7 +238,6 @@ server:
     USE_ENFORCE_UNMERCHABLE_PET: true   #Forces players to not sell pets via merchants, drops of it disappears. (since non-named pets gets dirty name and other possible DB-related issues)
     USE_ENFORCE_MERCHANT_SAVE: true     #Forces automatic DB save on merchant owners, at every item movement on shop.
     USE_ENFORCE_MDOOR_POSITION: false   #Forces mystic door to be spawned near spawnpoints.
-    USE_SPAWN_CLEAN_MDOOR: false         #Makes mystic doors to be spawned without deploy animation. This clears disconnecting issues that may happen when trying to cancel doors a couple seconds after deployment.
     USE_SPAWN_RELEVANT_LOOT: true       #Forces to only spawn loots that are collectable by the player or any of their party members.
     USE_ERASE_PERMIT_ON_OPENSHOP: true  #Forces "shop permit" item to be consumed when player deploy his/her player shop.
     USE_ERASE_UNTRADEABLE_DROP: true    #Forces flagged untradeable items to disappear when dropped.
@@ -270,7 +247,6 @@ server:
     USE_MULTIPLE_SAME_EQUIP_DROP: true  #Enables multiple drops by mobs of the same equipment, number of possible drops based on the quantities provided at the drop data.
     USE_ENABLE_FULL_RESPAWN: true        #At respawn task, always respawn missing mobs when they're available. Spawn count doesn't depend on how many players are currently there.
     USE_ENABLE_CHAT_LOG: false          #Write in-game chat to log
-    USE_MAP_OWNERSHIP_SYSTEM: false      #Flag to enable/disable map ownership system
     USE_FISHING_SYSTEM: false            #Flag to enable/disable custom fishing system
     USE_NPCS_SCRIPTABLE: true           #Flag to enable/disable serverside predefined script NPCs.
 
@@ -318,7 +294,6 @@ server:
     MAX_EVENT_LEVELS: 8                         #Event has different levels of rewarding system.
     BLOCK_NPC_RACE_CONDT: 500   # (0.5 * 1000) Time the player client must wait before reopening a conversation with an NPC.
     TOT_MOB_QUEST_REQUIREMENT: 0               #Overwrites old 999-mobs requirement for the ToT questline with new requirement value, set 0 for default.
-    MOB_REACTOR_REFRESH_TIME: 0         # (30 * 1000) Overwrites refresh time for those reactors oriented to inflict damage to bosses (Ice Queen, Riche), set 0 for default.
     PARTY_SEARCH_REENTRY_LIMIT: 10              #Max amount of times a party leader is allowed to persist on the Party Search before entry expiration (thus needing to manually restart the Party Search to be able to search for members).
     NAME_CHANGE_COOLDOWN: 2592000000      # (30*24*60*60*1000) Cooldown for name changes, default (GMS) is 30 days.
     WORLD_TRANSFER_COOLDOWN: 2592000000  # (30*24*60*60*1000) Cooldown for world tranfers, default is same as name change (30 days).
@@ -328,7 +303,6 @@ server:
     ITEM_EXPIRE_TIME: 180000    # (3 * 60 * 1000) Time before items start disappearing. Recommended to be set up to 3 minutes.
     KITE_EXPIRE_TIME: 3600000   # (60 * 60 * 1000) Time before kites (cash item) disappears.
     ITEM_MONITOR_TIME: 300000    # (5 * 60 * 1000) Interval between item monitoring tasks on maps, which checks for dangling (null) item objects on the map item history.
-    LOCK_MONITOR_TIME: 30000        # (30 * 1000) Waiting time for a lock to be released. If it reaches timeout, a critical server deadlock has made present.
 
     #Map Monitor Configuration
     ITEM_EXPIRE_CHECK: 10000        # (10 * 10000) Interval between item expiring tasks on maps, which checks and makes disappear expired items.
@@ -396,7 +370,6 @@ server:
     FAMILY_MAX_GENERATIONS: 1000         #Maximum depth of family tree. (Distance from leader to farthest junior)
 
     #Equipment Configuration
-    USE_EQUIPMNT_LVLUP_SLOTS: false  #Equips can upgrade slots at level up.
     USE_EQUIPMNT_LVLUP_POWER: false  #Enable more powerful stat upgrades at equip level up.
     USE_EQUIPMNT_LVLUP_CASH: false   #Enable equip leveling up on cash equipments as well.
     MAX_EQUIPMNT_LVLUP_STAT_UP: 10000   #Max stat upgrade an equipment can have on a levelup.
@@ -419,9 +392,6 @@ server:
 
     #Pet Auto-Pot Configuration
     USE_COMPULSORY_AUTOPOT: true    #Pets will consume as many potions as needed to fulfill the AUTOHP/MP ratio threshold.
-    USE_EQUIPS_ON_AUTOPOT: true     #Player MaxHP and MaxMP check values on autopot handler will be updated by the HP/MP bonuses on equipped items.
-    PET_AUTOHP_RATIO: 0.99          #Will automatically consume potions until given ratio of the MaxHP/MaxMP is reached.
-    PET_AUTOMP_RATIO: 0.99
 
     #Pet & Mount Configuration
     PET_EXHAUST_COUNT: 3               #Number of proc counts (1 per minute) on the exhaust schedule for fullness.
@@ -582,6 +552,7 @@ server:
     ALLOW_DROPS_ON_DROP_LIMIT_MAPS: false                   # Independent map-rule override; not coupled to item tradeability.
     USE_TYPESAFE_NAME_SCREEN: false                         # TypeSafe (Jev) second opinion on new character names: staff impersonation and disguised slurs. Needs TYPESAFE_API_KEY.
     USE_TYPESAFE_REPORT_TRIAGE: false                       # TypeSafe (Jev) severity/category triage of player reports, posted to GMs and recorded as a security event. Needs TYPESAFE_API_KEY.
+    SECURITY_EVENT_RETENTION_DAYS: 90                       # Days a security event row is kept before the daily cleanup removes it (at least 1).
 
 # Living world: resident bots with quest lines, contracts, roster and bench (docs/LIVING_RPG_PLAN.md).
 # Content is read from living_world.CONTENT_DIR; hot reload with !world reload. ASCII only in this file.
@@ -1211,6 +1182,7 @@ population:
     FIELD_AFK_MAX_MS: 110000
     LEDGER_MS: 600000
     PRESENCE_MULTIPLIER: 1.5
+    # PERCEPTION_HOPS is not read by any code yet: changing it does nothing.
     PERCEPTION_HOPS: 1
     # No map shows more than MAP_VISIBLE_MAX citizens (2026-10-25, docs/SCALE_PLATFORM_PLAN.md section 1). A citizen
     # counts on the map it stands on and on the map an admitted move is taking it to. A login to a full map logs in on
@@ -1596,6 +1568,8 @@ economy:
     LEDGER_ENABLED: true
     JOURNAL_RETENTION_DAYS: 90
     CPI_MIN_SALES: 3
+    # The price basket (CPI): item ids, each priced every day from sales, else open listings, else the price index.
+    CPI_BASKET: "2000004,2000005,2000006,2002004,2020014,2040804,2043001,2043801,2044701,2044501,2044001,2043301,2040001,2040301,2040501,2040701,2041013,2040805,2043002,2044702,2040502,2049100,2070005,2070006,4011000,4011001,4011004,4011006,4021007,4021008,4005000,4005001,4005002,4005003,4005004,1302020,1382009,1452022,1472030,1092030,1332025,1002357,1082149"
     MESO_CHANCE_IGNORES_DROP_RATE: true     # D2: drop_rate no longer multiplies a mob's meso chance (meso_rate still applies)
     DROP_COUPONS_SKIP_MESO: true            # D3: drop coupons double item drops only
     CITIZEN_POCKET_MONEY_ONCE: true         # pocket money at a citizen's first load only, not a top-up on every load

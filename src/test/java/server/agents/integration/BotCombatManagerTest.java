@@ -1497,6 +1497,7 @@ class BotCombatManagerTest {
     void shouldKeepDirectionAwareDeadStanceAfterFatalMobHit() {
         MapleMap map = mock(MapleMap.class);
         Character bot = mockBot(new Point(100, 200), map, 1, null);
+        when(bot.getClient()).thenReturn(mock(client.BotClient.class));
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
         AgentMovementStateRuntime.setFacingDirection(entry, -1);
         Monster mob = mockMob(new Point(140, 200), 9300003);
@@ -1551,6 +1552,7 @@ class BotCombatManagerTest {
     void shouldTakeContactDamageFromHostileMonster() {
         MapleMap map = mock(MapleMap.class);
         Character bot = mockBot(new Point(100, 200), map, 20_000, null);
+        when(bot.getClient()).thenReturn(mock(client.BotClient.class));
         Monster hostile = mockMob(new Point(100, 200), 9300503);
         when(map.getAllMonsters()).thenReturn(List.of(hostile));
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);

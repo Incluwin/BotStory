@@ -163,6 +163,10 @@ public final class AgentEquipHandler extends AbstractPacketHandler {
 
     // PLAYER -> BOT transfer. Add a copy to the bot first; only remove from the
     // player if the add succeeded (so a full bot never loses the player's item).
+    // Both inventories stay locked from reading the slot to removing from it, because
+    // with the agent mailbox on this runs off the player's packet thread and the slot
+    // could otherwise empty or change in between. The player's inventory is always
+    // locked before the bot's (in takeFromBot too), so the two directions cannot deadlock.
     private static void giveToBot(Client c, Character player, Character bot, int srcType, int srcPos) {
         Client bc = bot.getClient();
         if (bc == null || srcType < 1 || srcType > 5 || srcPos < 1) {
@@ -173,23 +177,31 @@ public final class AgentEquipHandler extends AbstractPacketHandler {
             return;
         }
         Inventory inv = player.getInventory(type);
-        Item item = inv.getItem((short) srcPos);
-        if (item == null) {
-            return;
-        }
-        // Cash items carry cash-shop SN/ownership semantics; never move them between a player and a bot
-        // (taking a bot's worn cash cosmetic back would mint a free copy). Blocked in both directions.
-        if (ItemInformationProvider.getInstance().isCash(item.getItemId())) {
-            return;
-        }
-        // All-or-nothing: only proceed if the bot can hold the FULL quantity. addFromDrop does a PARTIAL
-        // add for stackables and returns false for the leftover; without this guard we'd add part to the
-        // bot but skip the source removal (false) -> the player keeps the whole stack = duplication.
-        if (!InventoryManipulator.checkSpace(bc, item.getItemId(), item.getQuantity(), item.getOwner())) {
-            return;
-        }
-        if (InventoryManipulator.addFromDrop(bc, item.copy(), false)) {
-            InventoryManipulator.removeFromSlot(c, type, (short) srcPos, item.getQuantity(), false);
+        Inventory botInv = bot.getInventory(type);
+        inv.lockInventory();
+        botInv.lockInventory();
+        try {
+            Item item = inv.getItem((short) srcPos);
+            if (item == null) {
+                return;
+            }
+            // Cash items carry cash-shop SN/ownership semantics; never move them between a player and a bot
+            // (taking a bot's worn cash cosmetic back would mint a free copy). Blocked in both directions.
+            if (ItemInformationProvider.getInstance().isCash(item.getItemId())) {
+                return;
+            }
+            // All-or-nothing: only proceed if the bot can hold the FULL quantity. addFromDrop does a PARTIAL
+            // add for stackables and returns false for the leftover; without this guard we'd add part to the
+            // bot but skip the source removal (false) -> the player keeps the whole stack = duplication.
+            if (!InventoryManipulator.checkSpace(bc, item.getItemId(), item.getQuantity(), item.getOwner())) {
+                return;
+            }
+            if (InventoryManipulator.addFromDrop(bc, item.copy(), false)) {
+                InventoryManipulator.removeFromSlot(c, type, (short) srcPos, item.getQuantity(), false);
+            }
+        } finally {
+            botInv.unlockInventory();
+            inv.unlockInventory();
         }
     }
 
@@ -206,22 +218,33 @@ public final class AgentEquipHandler extends AbstractPacketHandler {
             return;
         }
         Inventory inv = bot.getInventory(type);
-        Item item = inv.getItem((short) srcPos);
-        if (item == null) {
-            return;
-        }
-        if (ItemInformationProvider.getInstance().isCash(item.getItemId())) {
-            return;   // see giveToBot: cash items don't transfer via the bot window
-        }
-        // All-or-nothing (see giveToBot): avoid the partial-add duplication on a full player inventory.
-        if (!InventoryManipulator.checkSpace(c, item.getItemId(), item.getQuantity(), item.getOwner())) {
-            return;
-        }
-        if (InventoryManipulator.addFromDrop(c, item.copy(), false)) {
-            InventoryManipulator.removeFromSlot(bc, type, (short) srcPos, item.getQuantity(), false);
-            if (worn) {
-                bot.equipChanged();   // refresh the bot's on-screen look after losing worn gear
+        // Worn gear lands in the player's EQUIP tab. Player first, then bot: see giveToBot.
+        Inventory playerInv = player.getInventory(worn ? InventoryType.EQUIP : type);
+        boolean taken = false;
+        playerInv.lockInventory();
+        inv.lockInventory();
+        try {
+            Item item = inv.getItem((short) srcPos);
+            if (item == null) {
+                return;
             }
+            if (ItemInformationProvider.getInstance().isCash(item.getItemId())) {
+                return;   // see giveToBot: cash items don't transfer via the bot window
+            }
+            // All-or-nothing (see giveToBot): avoid the partial-add duplication on a full player inventory.
+            if (!InventoryManipulator.checkSpace(c, item.getItemId(), item.getQuantity(), item.getOwner())) {
+                return;
+            }
+            if (InventoryManipulator.addFromDrop(c, item.copy(), false)) {
+                InventoryManipulator.removeFromSlot(bc, type, (short) srcPos, item.getQuantity(), false);
+                taken = true;
+            }
+        } finally {
+            inv.unlockInventory();
+            playerInv.unlockInventory();
+        }
+        if (taken && worn) {
+            bot.equipChanged();   // refresh the bot's on-screen look after losing worn gear
         }
     }
 

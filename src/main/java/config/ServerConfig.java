@@ -50,7 +50,6 @@ public class ServerConfig {
     public String LANHOST;
     public String LOCALHOST;
     public String TAILSCALEHOST;
-    public boolean GMSERVER;
 
     //Other configuration
     public boolean SHUTDOWNHOOK;
@@ -117,7 +116,6 @@ public class ServerConfig {
     public boolean USE_ENFORCE_UNMERCHABLE_PET;
     public boolean USE_ENFORCE_MERCHANT_SAVE;
     public boolean USE_ENFORCE_MDOOR_POSITION;
-    public boolean USE_SPAWN_CLEAN_MDOOR;
     public boolean USE_SPAWN_RELEVANT_LOOT;
     public boolean USE_ERASE_PERMIT_ON_OPENSHOP;
     public boolean USE_ERASE_UNTRADEABLE_DROP;
@@ -128,7 +126,6 @@ public class ServerConfig {
     public boolean USE_GACHA_V2;
     public boolean USE_ENABLE_FULL_RESPAWN;
     public boolean USE_ENABLE_CHAT_LOG;
-    public boolean USE_MAP_OWNERSHIP_SYSTEM;
     public boolean USE_FISHING_SYSTEM;
     public boolean USE_NPCS_SCRIPTABLE;
     public int MOB_RESPAWN_TIME_OVERRIDE_SECONDS;
@@ -183,7 +180,6 @@ public class ServerConfig {
     public int MAX_EVENT_LEVELS;
     public long BLOCK_NPC_RACE_CONDT;
     public int TOT_MOB_QUEST_REQUIREMENT;
-    public int MOB_REACTOR_REFRESH_TIME;
     public int PARTY_SEARCH_REENTRY_LIMIT;
     public long NAME_CHANGE_COOLDOWN;
     public long WORLD_TRANSFER_COOLDOWN = NAME_CHANGE_COOLDOWN;//Cooldown for world tranfers, default is same as name change (30 days).
@@ -193,7 +189,6 @@ public class ServerConfig {
     public int ITEM_EXPIRE_TIME;
     public int KITE_EXPIRE_TIME;
     public int ITEM_MONITOR_TIME;
-    public int LOCK_MONITOR_TIME;
     public boolean ITEMS_NEVER_EXPIRE;
     public boolean PETS_NEVER_EXPIRE;
 
@@ -297,7 +292,6 @@ public class ServerConfig {
     public int FAMILY_MAX_GENERATIONS;
 
     //Equipment Configuration
-    public boolean USE_EQUIPMNT_LVLUP_SLOTS;
     public boolean USE_EQUIPMNT_LVLUP_POWER;
     public boolean USE_EQUIPMNT_LVLUP_CASH;
     public int MAX_EQUIPMNT_LVLUP_STAT_UP;
@@ -320,9 +314,6 @@ public class ServerConfig {
 
     //Pet Auto-Pot Configuration
     public boolean USE_COMPULSORY_AUTOPOT;
-    public boolean USE_EQUIPS_ON_AUTOPOT;
-    public double PET_AUTOHP_RATIO;
-    public double PET_AUTOMP_RATIO;
 
     //Pet & Mount Configuration
     public byte PET_EXHAUST_COUNT;
