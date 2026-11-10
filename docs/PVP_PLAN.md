@@ -659,6 +659,20 @@ The server sees a human only through movement packets. Ties go to the human both
       43% at a 1-2 gap, 61% at 3-5; knock-outs median 14 s (11-16 s).
       Still open for the finish line: the per-band, per-pair check (Lv 110 rarely meets a same-map opponent in
       practice), thieves and pirates on small samples, and the two filmed duels.
+    - **Filming (2026-11-10, Crewfriend hidden as the camera; clips in `docs/agents/evidence/pvp-v2-film/`).**
+      First takes in Henesys found two tells, both fixed and live: a dueling Ranger bragged in public chat about
+      its weapon (2dd4fc832: a citizen in a duel says nothing), and an Assassin threw stars from a ladder for
+      about 6 s (c37de6fb4: a duel bot never swings from a rope or ladder; it may still climb to reach its foe).
+      The camera missed most of those fights, so the takes were redone on c37de6fb4 with fighters picked on one
+      floor of a town map and the camera walking after one of them:
+      - `duel-mage-v-thief-elnath.mp4`: xTiax (Fire/Poison Wizard, Lv 100) against BunnyCleric (Hermit, Lv 99),
+        23 s; the Hermit won.
+      - `duel-melee-v-ranged-kerning.mp4`: EvilPirate (Dragon Knight, Lv 112) against WainTheSader (Sniper,
+        Lv 110), 29 s; the Dragon Knight won (the same pair's earlier take went to the Sniper in 14 s).
+      Seen in both: hits land with purple numbers on both sides, and the fighters say nothing. A possible tell:
+      once in range neither fighter moves again; they trade hits standing still (the Dragon Knight fought from
+      about 230 px with Dragon Roar, standing on top of an NPC, and never closed to spear range). Filming
+      artifacts, not tells: the GM's own "PvP duel N starts" line in chat, Crewfriend's companions in frame.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
