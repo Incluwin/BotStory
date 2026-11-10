@@ -157,6 +157,9 @@ final class GpqWorld implements AgentGpqPorts {
             this.pos = new Point(pos);
             this.dropper = dropper;
             when(item.getItemId()).thenReturn(itemId);
+            client.inventory.Item stack = stub(client.inventory.Item.class);
+            when(stack.getQuantity()).thenReturn((short) quantity);
+            when(item.getItem()).thenReturn(stack);
             when(item.getObjectId()).thenReturn(oid);
             when(item.getPosition()).thenAnswer(call -> new Point(this.pos));
             when(item.isPickedUp()).thenAnswer(call -> picked);

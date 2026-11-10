@@ -410,13 +410,14 @@ public final class AgentTownLifeRuntime {
         }
         Point facing = peerPosition(state, agent);
         gateway.facePosition(agent, facing == null ? target : facing);
-        AgentTownLifeEventPublisher.activity(
-                entry, agent, state, AgentTownLifeActivityEvent.Phase.ARRIVED, nowMs);
         AgentTownLifeEncounterCoordinator.Activation activation =
                 AgentTownLifeEncounterCoordinator.activate(entry, agent, nowMs);
         if (activation == AgentTownLifeEncounterCoordinator.Activation.WAITING) {
             return true;
         }
+        // Published once the wait for an encounter peer is over: a waiting Agent comes back here every tick.
+        AgentTownLifeEventPublisher.activity(
+                entry, agent, state, AgentTownLifeActivityEvent.Phase.ARRIVED, nowMs);
         if (activation == AgentTownLifeEncounterCoordinator.Activation.CANCELLED) {
             abandonDestination(entry, agent, state, nowMs, gateway);
             return true;

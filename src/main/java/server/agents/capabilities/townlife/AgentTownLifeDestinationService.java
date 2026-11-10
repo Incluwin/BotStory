@@ -68,17 +68,8 @@ final class AgentTownLifeDestinationService {
         }
         if (requested == AgentTownLifeState.Activity.SOCIALIZE
                 || requested == AgentTownLifeState.Activity.SHOW_OFF) {
-            Character peer = choosePeer(agent, state, seed, decision.targetAgentId(), nowMs);
-            if (peer != null) {
-                int side = AgentTownLifeRolePolicy.variation(seed, state.sequence(), 2, 73) == 0 ? -1 : 1;
-                Point target = new Point(peer.getPosition().x + side * 52, peer.getPosition().y);
-                String key = "peer:" + peer.getId() + ':' + side;
-                Point reserved = reserveFirst(agent, state, nowMs,
-                        List.of(space("town-social", agent.getMapId(), target, socialSpotNumber(target))), key);
-                if (reserved != null) {
-                    return new Destination(requested, reserved, peer.getId(), key, "");
-                }
-            }
+            // No venue was directed, and an encounter only begins at a venue: a spot beside a peer would be selected
+            // and abandoned at once, so the Agent strolls instead.
             requested = AgentTownLifeState.Activity.STROLL;
         }
         if (requested == AgentTownLifeState.Activity.REST) {
@@ -161,14 +152,6 @@ final class AgentTownLifeDestinationService {
                                       AgentTownLifeState state,
                                       long nowMs,
                                       List<CharacterSpace> spaces,
-                                      String key) {
-        return reserveFirst(agent, state, nowMs, spaces, key, spaces.get(0));
-    }
-
-    private static Point reserveFirst(Character agent,
-                                      AgentTownLifeState state,
-                                      long nowMs,
-                                      List<CharacterSpace> spaces,
                                       String key,
                                       CharacterSpace candidate) {
         if (!state.memory().destinationAvailable(key, nowMs)) {
@@ -200,10 +183,6 @@ final class AgentTownLifeDestinationService {
     private static CharacterSpace space(String catalogId, int mapId, Point point, int spotNumber) {
         return new CharacterSpace(catalogId, Math.max(1, spotNumber), mapId, 0,
                 Math.max(0, spotNumber - 1), point.x, point.y);
-    }
-
-    private static int socialSpotNumber(Point point) {
-        return Math.max(1, Math.floorDiv(point.x + 20_000, 24) + 1);
     }
 
     private static Destination directedVenueDestination(Character agent,

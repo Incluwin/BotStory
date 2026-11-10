@@ -85,6 +85,24 @@ class AgentNormalBalrogFightTest {
     }
 
     @Test
+    void normalRewardReactorOpensTheHumanLootGraceInItsOwnClearRoom() throws Exception {
+        String reactor = java.nio.file.Files.readString(java.nio.file.Path.of("scripts/reactor/1052001.js"));
+        assertTrue(reactor.contains("claimEventReactorAction(\"balrog-reward\")"));
+        assertTrue(reactor.indexOf("sprayItems") < reactor.indexOf("balrogRewardOpenedAt"));
+
+        long openedAt = 10_000L;
+        Character bot = mock(Character.class);
+        scripting.event.EventInstanceManager event = mock(scripting.event.EventInstanceManager.class);
+        when(bot.getMapId()).thenReturn(AgentBalrogFight.NORMAL.clearMapId());
+        when(bot.getEventInstance()).thenReturn(event);
+        assertTrue(AgentEasyBalrogRewardGracePolicy.blocksAgentLoot(bot, openedAt), "not opened yet");
+        when(event.getProperty(AgentEasyBalrogRewardGracePolicy.REWARD_OPENED_AT_PROPERTY))
+                .thenReturn(Long.toString(openedAt));
+        assertTrue(AgentEasyBalrogRewardGracePolicy.blocksAgentLoot(bot, openedAt + 6_999L));
+        assertTrue(!AgentEasyBalrogRewardGracePolicy.blocksAgentLoot(bot, openedAt + 7_000L));
+    }
+
+    @Test
     void membersHitTheInitialClawFirstThenTheReleasedOneAndEasyHitsBoth() {
         Map<Integer, Boolean> both = Map.of(8830001, true, 8830002, true);
         assertEquals(Set.of(8830002), AgentBalrogFight.NORMAL.clawTargets(both::get));

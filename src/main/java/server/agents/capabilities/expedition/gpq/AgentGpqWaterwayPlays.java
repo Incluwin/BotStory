@@ -106,8 +106,8 @@ final class AgentGpqWaterwayPlays {
             case WATERWAY -> hub(ports, members, event, run, nowMs);
             case GOLEM_MAZE -> markRoom(ports, GOLEMS, members, event, run, nowMs);
             case GARGOYLE_MAZE -> {
-                gargoyleReactor(ports, members, run, nowMs);
-                markRoom(ports, GARGOYLES, members, event, run, nowMs);
+                Character ordered = gargoyleReactor(ports, members, run, nowMs);
+                markRoom(ports, GARGOYLES, members, event, run, nowMs, ordered);
             }
             case SLIME_MAZE -> markRoom(ports, SLIMES, members, event, run, nowMs);
             case PANTS_END -> endRoom(ports, PANTS, members, event, run, nowMs);
@@ -187,20 +187,31 @@ final class AgentGpqWaterwayPlays {
      */
     static void markRoom(AgentGpqPorts ports, MarkRoom room, List<Character> members, EventInstanceManager event,
                          AgentGpqRun run, long nowMs) {
+        markRoom(ports, room, members, event, run, nowMs, null);
+    }
+
+    /** {@code ordered}: a member the room's own first step already gave this tick's order to, left alone here. */
+    private static void markRoom(AgentGpqPorts ports, MarkRoom room, List<Character> members,
+                                 EventInstanceManager event, AgentGpqRun run, long nowMs, Character ordered) {
         List<Character> bySlot = bySlot(members, run);
         Character carrier = bySlot.getFirst();
         String stage = AgentGpqMoves.lower(room.stage());
         boolean fighting = ports.monstersOn(event, room.stage().mapId(), room.mobs()) > 0;
         int held = bySlot.stream().mapToInt(member -> ports.carried(member, MARK)).sum();
         for (Character member : bySlot) {
+            if (member == ordered) {
+                continue;
+            }
             Reactor gate = reactorNamed(ports, member, room.gate());
             if (gate != null && gate.getState() > 0) {
                 noteRole(run, member, stage, "go through the open gate");
                 takePortal(ports, run, member, "in00", nowMs);
                 continue;
             }
-            boolean onGate = !dropsIn(ports, member, MARK, room.gateBox()).isEmpty();
-            if (pickUpMark(ports, run, member, room, member == carrier, nowMs)) {
+            // The gate takes one stack of the exact count; any other stack in its box is just lying there.
+            boolean onGate = dropsIn(ports, member, MARK, room.gateBox()).stream()
+                    .anyMatch(drop -> drop.getItem() != null && drop.getItem().getQuantity() == room.marks());
+            if (pickUpMark(ports, run, member, room, member == carrier, onGate, nowMs)) {
                 noteRole(run, member, stage, "pick up a mark");
                 continue;
             }
@@ -227,7 +238,11 @@ final class AgentGpqWaterwayPlays {
             }
             boolean lying = ports.items(member).stream()
                     .anyMatch(drop -> drop.getItemId() == MARK && !drop.isPickedUp());
-            if (member == carrier && !lying && held < room.marks() && run.once("short-" + room.stage())) {
+            // The gargoyle maze's Marks come only once its reactor has taken the Gargoyle's drop: not short before.
+            boolean marksToCome = room == GARGOYLES && AgentGpqMoves.live(ports, member, GARGOYLE_REACTOR).stream()
+                    .anyMatch(reactor -> reactor.getState() == 0);
+            if (member == carrier && !lying && !marksToCome && held < room.marks()
+                    && run.once("short-" + room.stage())) {
                 ports.sayInParty(member, AgentGpqLines.MARKS_SHORT);
             }
             noteRole(run, member, stage, "wait by the gate");
@@ -237,15 +252,18 @@ final class AgentGpqWaterwayPlays {
 
     /**
      * Picks up the nearest Mark lying off the gate; the carrier takes any, the others only a monster's drop (a Mark a
-     * member handed over is the carrier's to take, and the carrier's own stack on the gate stays there).
+     * member handed over is the carrier's to take, and the carrier's own stack on the gate stays there). With no full
+     * stack on the gate ({@code onGate} false) the carrier also takes the Marks lying in the gate's box, which the
+     * gate will never take: Marks handed to a carrier who stands there land in it.
      */
     private static boolean pickUpMark(AgentGpqPorts ports, AgentGpqRun run, Character member, MarkRoom room,
-                                      boolean carrier, long nowMs) {
+                                      boolean carrier, boolean onGate, long nowMs) {
         Point at = member.getPosition();
         MapItem nearest = null;
         for (MapItem drop : ports.items(member)) {
             if (drop.getItemId() != MARK || drop.isPickedUp() || drop.getPosition() == null || at == null
-                    || room.gateBox().contains(drop.getPosition()) || !carrier && drop.isPlayerDrop()) {
+                    || room.gateBox().contains(drop.getPosition()) && (!carrier || onGate)
+                    || !carrier && drop.isPlayerDrop()) {
                 continue;
             }
             if (drop.getPosition().distanceSq(at) <= (double) SEEK_PX * SEEK_PX && (nearest == null
@@ -268,27 +286,28 @@ final class AgentGpqWaterwayPlays {
 
     /**
      * The gargoyle maze's first step: the Gargoyle's drop must lie on the reactor under its ledge; one that fell
-     * elsewhere is picked up and laid there (anyone may take it here).
+     * elsewhere is picked up and laid there (anyone may take it here). Returns the member it gave an order to, or null.
      */
-    static void gargoyleReactor(AgentGpqPorts ports, List<Character> members, AgentGpqRun run, long nowMs) {
+    static Character gargoyleReactor(AgentGpqPorts ports, List<Character> members, AgentGpqRun run, long nowMs) {
         for (Character member : bySlot(members, run)) {
             boolean armed = AgentGpqMoves.live(ports, member, GARGOYLE_REACTOR).stream()
                     .anyMatch(reactor -> reactor.getState() == 0);
             if (!armed) {
-                return;
+                return null;
             }
             if (ports.carried(member, GARGOYLE_DROP) > 0) {
                 noteRole(run, member, "gargoyle_maze", "lay the gargoyle's drop on its ledge");
                 dropAt(ports, run, member, GARGOYLE_DROP, 1, GARGOYLE_STAND, nowMs);
-                return;
+                return member;
             }
             boolean lyingOff = ports.items(member).stream().anyMatch(drop -> drop.getItemId() == GARGOYLE_DROP
                     && !drop.isPickedUp() && drop.getPosition() != null && !GARGOYLE_BOX.contains(drop.getPosition()));
             if (lyingOff && pickUpNearest(ports, run, member, GARGOYLE_DROP, SEEK_PX * 2, nowMs)) {
                 noteRole(run, member, "gargoyle_maze", "pick up the gargoyle's drop");
-                return;
+                return member;
             }
         }
+        return null;
     }
 
     // ---- the end rooms ----

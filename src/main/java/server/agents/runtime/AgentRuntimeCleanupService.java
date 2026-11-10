@@ -1,6 +1,8 @@
 package server.agents.runtime;
 
 import server.agents.capabilities.movement.AgentFormationService;
+import server.agents.capabilities.movement.AgentPartyGatherService;
+import server.agents.capabilities.navigation.AgentNavigationPathService;
 import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
 import server.maps.reservation.CharacterSpaceOwner;
 import server.maps.reservation.CharacterSpaceReservationRuntime;
@@ -107,6 +109,7 @@ public final class AgentRuntimeCleanupService {
         AgentSocialDialogueRuntime.clearAgentRuntimeState(agentId);
         AgentMakerService.clearAgentRuntimeState(agentId);
         AgentManualTradeService.clearAgentRuntimeState(agentId);
+        AgentNavigationPathService.clearAgentRuntimeState(agentId);
         CharacterSpaceReservationRuntime.release(CharacterSpaceOwner.character(agentId));
         AgentReactorTargetReservationRuntime.release(agentId);
         AgentRunObservationRuntime.unregister(agentId);
@@ -118,6 +121,7 @@ public final class AgentRuntimeCleanupService {
         }
         int compatibilityId = Math.toIntExact(cohortId);
         AgentFormationService.formationsByLeaderId().remove(compatibilityId);
+        AgentPartyGatherService.clearLeaderRuntimeState(compatibilityId);
         AgentLeaderSafetyService.townClusterAnchorsByLeaderId().remove(compatibilityId);
         AgentPotionService.clearLeaderRuntimeState(compatibilityId);
         AgentAmmoService.clearLeaderRuntimeState(compatibilityId);

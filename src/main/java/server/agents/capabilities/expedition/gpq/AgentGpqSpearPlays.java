@@ -334,7 +334,7 @@ final class AgentGpqSpearPlays {
         if (run.once("key-hunt")) {
             ports.sayInParty(member, AgentGpqLines.KEY_HUNT);
         }
-        if (pickUpNearest(ports, run, member, KEY, SEEK_PX, nowMs)) {
+        if (pickUpNearest(ports, run, member, KEY, ROOM_PX, nowMs)) {
             return;
         }
         AgentRuntimeEntry entry = ports.entry(member.getId());

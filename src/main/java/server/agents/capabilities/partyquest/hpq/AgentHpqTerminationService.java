@@ -39,7 +39,7 @@ final class AgentHpqTerminationService {
 
     /**
      * Ends a companion run after its clear (a stall): its companions leave through the event's own exit, and the event
-     * and the players still in it stay as they are. Nothing is disposed.
+     * and the players still in it stay as they are; an event left with no player is disposed.
      */
     static void failAfterClear(AgentHpqSession session, String reason, long nowMs) {
         if (session == null || session.terminationStarted()) return;
@@ -66,6 +66,21 @@ final class AgentHpqTerminationService {
             } catch (RuntimeException failure) {
                 log.warn("HPQ companion exit failed: event={} member={}", event.getName(), participant.getId(), failure);
             }
+        }
+        disposeIfEmpty(session, event);
+    }
+
+    /**
+     * An exit can leave the event with no player, and the event does not end itself then: HenesysPQ's playerExit only
+     * unregisters, and an empty instance never disposes itself, so its lobby would stay taken. Every such exit calls
+     * this; an event already disposed, or with a player left, is not touched. Never throws.
+     */
+    static void disposeIfEmpty(AgentHpqSession session, EventInstanceManager event) {
+        if (event == null) return;
+        try {
+            if (!event.isEventDisposed() && event.getPlayers().isEmpty()) event.dispose();
+        } catch (RuntimeException failure) {
+            log.warn("HPQ empty event dispose failed: session={}", session.sessionId(), failure);
         }
     }
 

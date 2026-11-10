@@ -1150,6 +1150,8 @@ public final class AgentBossRunSession {
                 log.warn("Boss run fight end failed: session={} boss={}", sessionId, definition.key(), failure);
             }
         }
+        // A member's swings counted since its last status line would otherwise stay for good.
+        members.forEach(member -> AgentBossClientLoad.drain(member.agentId()));
         List<AgentBossRunHost.MemberResult> results = members.stream().map(AgentBossRunMember::result).toList();
         log.info("Boss run ended: session={} boss={} reason={} started={} cleared={} members={}", sessionId,
                 definition.key(), reason, started, cleared, results.size());

@@ -130,10 +130,11 @@ final class AgentLpqTerminationService {
                     session.sessionId(), session.phase(), reason, pastTheClear(session), session.companionAdopted(),
                     session.memberCount()));
         }
-        session.members().forEach(member -> {
+        // Each member's step on its own: one that throws never leaves the run registered and terminating.
+        session.members().forEach(member -> quietly(session, "stop-" + member.characterId(), () -> {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
-        });
+        }));
         // A companion run's full-rate holds go with it (a stock run never holds one, so this does nothing there).
         quietly(session, "release-full-rate", () -> AgentLpqFullRateSimulation.releaseAll(session));
         if (session.companionAdopted()) {
@@ -142,24 +143,38 @@ final class AgentLpqTerminationService {
         }
         EventInstanceManager event = session.eventInstance();
         if (dispose && event != null) {
-            for (Character participant : new ArrayList<>(event.getPlayers())) {
-                try { event.exitPlayer(participant); } catch (RuntimeException ignored) { }
-            }
-            try { event.dispose(); } catch (RuntimeException ignored) { }
+            quietly(session, "exit-players", () -> {
+                for (Character participant : new ArrayList<>(event.getPlayers())) {
+                    try {
+                        event.exitPlayer(participant);
+                    } catch (RuntimeException failure) {
+                        log.warn("LPQ participant exit failed: session={} member={}", session.sessionId(),
+                                participant == null ? -1 : participant.getId(), failure);
+                    }
+                }
+            });
+            quietly(session, "dispose-event", event::dispose);
         }
-        if (!keepPartyAfterRelease(session.mode(), completed, session.companionAdopted())) {
+        quietly(session, "cleanup-party", () -> {
+            if (keepPartyAfterRelease(session.mode(), completed, session.companionAdopted())) return;
             session.members().stream().filter(member -> session.partyOwnership() == AgentLpqSession.PartyOwnership.LPQ_OWNED
                             || member.memberType() == AgentLpqMemberState.MemberType.AGENT)
-                    .map(member -> character(member.characterId())).filter(java.util.Objects::nonNull)
-                    .filter(AgentPartyGatewayRuntime.party()::hasParty)
-                    .forEach(AgentPartyGatewayRuntime.party()::leaveCurrentParty);
+                    .forEach(member -> quietly(session, "leave-party-" + member.characterId(), () -> {
+                        Character character = character(member.characterId());
+                        if (character != null && AgentPartyGatewayRuntime.party().hasParty(character)) {
+                            AgentPartyGatewayRuntime.party().leaveCurrentParty(character);
+                        }
+                    }));
+        });
+        try {
+            session.clearEventInstance();
+            if (completed) session.complete(nowMs); else session.fail(reason, nowMs);
+        } finally {
+            AgentLpqSessionRegistry.remove(session);
+            // A companion run's pace goes to the host's clear-time records; a stock run reports none.
+            AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
+                    session.companionAdopted() ? pace(session, nowMs) : null);
         }
-        session.clearEventInstance();
-        if (completed) session.complete(nowMs); else session.fail(reason, nowMs);
-        AgentLpqSessionRegistry.remove(session);
-        // A companion run's pace goes to the host's clear-time records; a stock run reports none.
-        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
-                session.companionAdopted() ? pace(session, nowMs) : null);
         quietly(session, "log-released", () -> log.info(
                 "LPQ session released: session={} outcome={} members={} companionRun={}",
                 session.sessionId(), completed ? "completed" : reason, session.memberCount(),
