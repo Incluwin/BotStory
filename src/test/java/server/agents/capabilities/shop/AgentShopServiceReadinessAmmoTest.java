@@ -274,6 +274,58 @@ class AgentShopServiceReadinessAmmoTest {
         assertTrue(transactions.stream().noneMatch(line -> line.endsWith(" x " + SHOWA_ARROW)), transactions.toString());
     }
 
+    /**
+     * Found 2026-11-10 from the PvP practice duels: 21 of the 37 Assassin citizens homed off Victoria carried no
+     * throwing star (2 of the 51 homed on it), each with stacks thrown down to nothing in its bag, because off Victoria
+     * an ordinary visit (a potion trip) never refilled them. Every shop recharges, so it refills them now, the best
+     * first and before its potions, at a shop that sells no star at all.
+     */
+    @Test
+    void anOrdinaryVisitOutsideVictoriaRefillsTheStarsItCarries() {
+        trip = null;
+        mapId = NEW_LEAF_CITY;
+        carryPotions(80, 100);
+        use.addItem(Items.itemWithQuantity(SUBI, 120));
+        use.addItem(Items.itemWithQuantity(ILBI, 0)); // a rechargeable thrown to nothing stays in the bag
+
+        AgentShopPurchaseSequence<AgentRuntimeEntry> visit = visit(List.of(RED, WHITE, BLUE), WeaponType.CLAW);
+
+        assertEquals(800 + 500, stars(), transactions.toString());
+        assertEquals(List.of("refill x " + ILBI, "refill x " + SUBI), transactions.subList(0, 2),
+                "the best stack first, before the potions");
+        assertTrue(visit.bought().contains("refilled 2 sets of my throwing stars"), visit.bought().toString());
+    }
+
+    @Test
+    void anOrdinaryVisitOutsideVictoriaStillBuysNoStarSet() {
+        trip = null;
+        mapId = MAYOREN;
+        carryPotions(80, 100);
+
+        visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
+
+        assertEquals(0, stars(), "a set takes a Use slot: Victoria's top-up alone buys one before the potions");
+        assertTrue(transactions.stream().noneMatch(line -> line.endsWith(" x " + SUBI)), transactions.toString());
+    }
+
+    @Test
+    void aReadinessTripOutsideVictoriaStillRefillsItsStarsAfterThePotionStandard() {
+        trip = EPQ;
+        carryPotions(20, 25);
+        use.addItem(Items.itemWithQuantity(ILBI, 0));
+
+        visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
+
+        int refill = transactions.indexOf("refill x " + ILBI);
+        int firstPotion = -1;
+        for (int i = 0; i < transactions.size() && firstPotion < 0; i++) {
+            if (transactions.get(i).endsWith(" x " + WHITE) || transactions.get(i).endsWith(" x " + BLUE)) {
+                firstPotion = i;
+            }
+        }
+        assertTrue(firstPotion >= 0 && refill > firstPotion, "potions first, then its own stack: " + transactions);
+    }
+
     @Test
     void aVictoriaReadinessTripKeepsTheTopUpBeforeThePotions() {
         trip = KPQ;
