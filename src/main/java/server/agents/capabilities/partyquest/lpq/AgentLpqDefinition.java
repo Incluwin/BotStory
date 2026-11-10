@@ -83,8 +83,6 @@ public final class AgentLpqDefinition {
         return Math.max(0L, itemExpireTimeMs - Math.max(0L, itemExpireCheckMs));
     }
 
-    public static List<Integer> eventMaps() { return EVENT_MAPS; }
-
     public static boolean isEventMap(int mapId) { return EVENT_MAPS.contains(mapId); }
 
     public static int stageNumber(int mapId) {

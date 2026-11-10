@@ -105,6 +105,18 @@ class ServerMobDamageServiceTest {
     }
 
     @Test
+    void touchDamageOnAnAgentGoesThroughTheSameGuards() {
+        DamageFixture fixture = damageFixture(mock(BotClient.class));
+        when(fixture.target().getBuffedValue(client.BuffStat.MAGIC_GUARD)).thenReturn(80);
+        when(fixture.target().getMp()).thenReturn(1_000);
+
+        int damage = ServerMobDamageService.applyTouchDamage(fixture.target(), 100);
+
+        assertEquals(100, damage);
+        verify(fixture.target()).addMPHPAndTriggerAutopot(-20, -80);
+    }
+
+    @Test
     void serverOwnedHitDamagesHumanThroughNormalCharacterPath() {
         DamageFixture fixture = damageFixture(mock(Client.class));
 

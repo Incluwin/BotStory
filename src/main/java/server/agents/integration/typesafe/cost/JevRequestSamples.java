@@ -67,7 +67,6 @@ public final class JevRequestSamples {
                 row("resupply", "Send Agents to resupply potions", "town_life"),
                 row("train", "Move Agents to a training map", "hunting"),
                 row("quest", "Resume the current quest plan", "questing"),
-                row("market", "Visit the Free Market", "commerce"),
                 row("kpq", "Run Kerning City Party Quest", "party_quest"),
                 row("rest", "Return to town and idle", "town_life"));
         state.put("actions", rows);

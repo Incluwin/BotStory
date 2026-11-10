@@ -50,10 +50,6 @@ public final class IntList extends AbstractList<Integer> implements RandomAccess
         return false;
     }
 
-    public int[] toIntArray() {
-        return values.clone();
-    }
-
     @Override
     public Integer get(int index) {
         return values[index];

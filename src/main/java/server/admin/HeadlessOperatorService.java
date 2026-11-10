@@ -13,12 +13,9 @@ import server.maps.MapleMap;
 import server.maps.Portal;
 
 import java.awt.Point;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -38,14 +35,12 @@ public final class HeadlessOperatorService {
     private static final int WORLD = 0;
     private static final int CHANNEL = 1;
     private static final int OPERATOR_MAP = 180000000;
-    private static final int RUN_HISTORY = 50;
 
     /** Only harness commands may run headlessly; this is not a general remote GM console. */
     static final Set<String> ALLOWED_COMMANDS = Set.of("skillprobe", "spawnbot", "combatarena");
     /** Off unless the server was started with {@code -Dagents.headless-operator=true}. */
     static final boolean ENABLED = Boolean.getBoolean("agents.headless-operator");
 
-    private static final Map<Integer, Run> RUNS = new ConcurrentHashMap<>();
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
     private static volatile Run activeRun;
 
@@ -69,8 +64,6 @@ public final class HeadlessOperatorService {
         }
         Character operator = ensureOnline(operatorName);
         Run run = new Run(SEQUENCE.incrementAndGet(), operator.getName(), command, System.currentTimeMillis());
-        RUNS.put(run.id(), run);
-        trimHistory();
         activeRun = run;
         OperatorMessageTap.install(operator.getId(), line -> {
             Run current = activeRun;
@@ -80,10 +73,6 @@ public final class HeadlessOperatorService {
         });
         CommandsExecutor.getInstance().handle(operator.getClient(), "!" + command);
         return run;
-    }
-
-    public static Run find(int id) {
-        return RUNS.get(id);
     }
 
     public static Run latest() {
@@ -109,16 +98,5 @@ public final class HeadlessOperatorService {
         }
         log.warn("Headless operator {} ({}) brought online in map {}", operator.getName(), operator.getId(), operator.getMapId());
         return operator;
-    }
-
-    private static void trimHistory() {
-        if (RUNS.size() <= RUN_HISTORY) {
-            return;
-        }
-        List<Integer> ids = new ArrayList<>(RUNS.keySet());
-        ids.sort(null);
-        for (int i = 0; i < ids.size() - RUN_HISTORY; i++) {
-            RUNS.remove(ids.get(i));
-        }
     }
 }

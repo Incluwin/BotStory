@@ -39,8 +39,6 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.StatEffect;
-import server.agents.coordination.AgentCoordinationRuntime;
-import server.agents.coordination.AgentSupplyNeedMessage;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 
@@ -506,20 +504,7 @@ public final class AgentPotionService {
             }
         }
 
-        int[] currentPots = bot.getInventory(InventoryType.USE) == null
-                ? new int[]{-1, -1}
-                : countPotions(bot);
-        int currentCount = forHp ? currentPots[0] : currentPots[1];
         if (bypassShareLimits && !thresholdEventPublished) {
-            AgentCoordinationRuntime.publish(new AgentSupplyNeedMessage(
-                    bot.getId(),
-                    cohortId,
-                    bot.getMapId(),
-                    forHp ? AgentSupplyNeedMessage.SupplyKind.HP_POTION
-                            : AgentSupplyNeedMessage.SupplyKind.MP_POTION,
-                    currentCount,
-                    "",
-                    now));
             AgentPotionRuntime.sayMapNow(bot, AgentDialogueSelector.randomReply(
                     forHp ? AgentDialogueCatalog.potRequestHpReplies()
                             : AgentDialogueCatalog.potRequestMpReplies()));

@@ -45,11 +45,6 @@ public final class AgentCwkpqSigils {
             this.skillNames = skillNames;
         }
 
-        /** The job niche, (jobId / 100) % 10. */
-        public int niche() {
-            return niche;
-        }
-
         /** "Warrior", as Jack names it. */
         public String label() {
             return label;

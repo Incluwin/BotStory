@@ -57,7 +57,7 @@ final class AdminSsoAuth {
         int maxLevel = 0;
         try (Connection con = DatabaseConnection.getConnection()) {
             try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT id, password, banned FROM accounts WHERE name = ?")) {
+                    "SELECT id, password, banned, tempban FROM accounts WHERE name = ?")) {
                 ps.setString(1, account);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
@@ -65,6 +65,9 @@ final class AdminSsoAuth {
                     }
                     accountId = rs.getInt("id");
                     boolean banned = rs.getByte("banned") == 1;
+                    // A temporary ban still running refuses the account, as the game login does.
+                    java.sql.Timestamp tempban = rs.getTimestamp("tempban");
+                    banned |= tempban != null && tempban.getTime() > System.currentTimeMillis();
                     String storedHash = rs.getString("password");
                     if (!verifyPassword(password, storedHash)) {
                         return "{\"ok\":false,\"error\":\"invalid_credentials\"}";

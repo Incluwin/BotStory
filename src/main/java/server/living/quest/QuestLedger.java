@@ -53,9 +53,17 @@ public final class QuestLedger {
 
     private final LivingWorld world;
     private final Map<String, Offer> offers = new ConcurrentHashMap<>();
+    /**
+     * Stripes by character id for {@link #moveOn}. Leaf locks: only the store is called under one, so it is safe to take
+     * one while an inventory lock is held (the item-gain hook does), and nothing else is ever taken under it.
+     */
+    private final Object[] stateLocks = new Object[64];
 
     public QuestLedger(LivingWorld world) {
         this.world = world;
+        for (int i = 0; i < stateLocks.length; i++) {
+            stateLocks[i] = new Object();
+        }
     }
 
     // ---- availability --------------------------------------------------------------------
@@ -424,21 +432,21 @@ public final class QuestLedger {
                 int ownerId = companion == null ? 0 : world.roster().ownerOf(companion.id());
                 Character owner = ownerId == 0 ? null : map.getCharacterById(ownerId);
                 boolean coPresent = owner != null && sameParty(owner, attacker);
-                if (companion != null) {
-                    creditKill(owner == null ? onlineOwner(ownerId) : owner, mobId, map.getId(), companion.id(), coPresent);
+                Character credited = companion == null ? null : owner == null ? onlineOwner(ownerId) : owner;
+                if (credited != null) {
+                    creditKill(credited, active(credited), mobId, map.getId(), companion.id(), coPresent);
                 }
             } else {
-                creditKill(attacker, mobId, map.getId(), null, true);
+                List<QuestState> states = active(attacker); // read once per kill, for the credit and the drop roll
+                creditKill(attacker, states, mobId, map.getId(), null, true);
+                rollCustomDrops(attacker, states, mobId);
             }
         }
-        rollCustomDrops(mobId, attackerIds, map);
     }
 
-    private void creditKill(Character player, int mobId, int mapId, String byPersona, boolean coPresent) {
-        if (player == null) {
-            return;
-        }
-        for (QuestState state : active(player)) {
+    private void creditKill(Character player, List<QuestState> states, int mobId, int mapId, String byPersona,
+                            boolean coPresent) {
+        for (QuestState state : states) {
             Quest quest = world.content().quest(state.questId());
             Step step = quest == null ? null : quest.step(state.stepIndex());
             if (step == null || !step.mobIds().contains(mobId)) {
@@ -538,28 +546,23 @@ public final class QuestLedger {
         }
     }
 
-    private void rollCustomDrops(int mobId, Set<Integer> attackerIds, MapleMap map) {
-        for (int attackerId : attackerIds) {
-            Character chr = map.getCharacterById(attackerId);
-            if (chr == null || AgentPresence.isAgent(chr)) {
+    /** A human attacker's collect steps that drop from this mob; {@code states} is what the kill credit read. */
+    private void rollCustomDrops(Character chr, List<QuestState> states, int mobId) {
+        for (QuestState state : states) {
+            Quest quest = world.content().quest(state.questId());
+            Step step = quest == null ? null : quest.step(state.stepIndex());
+            if (step == null || step.type() != StepType.COLLECT_ITEM || step.dropFrom() == null
+                    || !step.dropFrom().mobIds().contains(mobId)) {
                 continue;
             }
-            for (QuestState state : active(chr)) {
-                Quest quest = world.content().quest(state.questId());
-                Step step = quest == null ? null : quest.step(state.stepIndex());
-                if (step == null || step.type() != StepType.COLLECT_ITEM || step.dropFrom() == null
-                        || !step.dropFrom().mobIds().contains(mobId)) {
-                    continue;
-                }
-                if (countEligible(chr, quest, step.itemId()) >= step.count()) {
-                    continue;
-                }
-                if (ThreadLocalRandom.current().nextDouble() < step.dropFrom().chance()
-                        && InventoryManipulator.checkSpace(chr.getClient(), step.itemId(), 1, "")) {
-                    InventoryManipulator.addById(chr.getClient(), step.itemId(), (short) 1);
-                    chr.dropMessage(5, "You found " + (step.label() != null ? step.label() : itemName(step.itemId())) + ".");
-                    onItemGained(chr, step.itemId());
-                }
+            if (countEligible(chr, quest, step.itemId()) >= step.count()) {
+                continue;
+            }
+            if (ThreadLocalRandom.current().nextDouble() < step.dropFrom().chance()
+                    && InventoryManipulator.checkSpace(chr.getClient(), step.itemId(), 1, "")) {
+                InventoryManipulator.addById(chr.getClient(), step.itemId(), (short) 1);
+                chr.dropMessage(5, "You found " + (step.label() != null ? step.label() : itemName(step.itemId())) + ".");
+                // addById recounts the step itself (LivingWorldHooks.itemGained), so nothing is counted here
             }
         }
     }
@@ -619,6 +622,24 @@ public final class QuestLedger {
         }
     }
 
+    /**
+     * Saves {@code next} unless the quest already left the step {@code seen} was read at (a later step, completed, or
+     * taken again). Kills, item gains and map entries of one player run on different threads and may each read the same
+     * state before any of them writes; only the first then moves the quest on, so a step or the rewards come once. A row
+     * that cannot be read lets the save through.
+     */
+    private boolean moveOn(QuestState seen, QuestState next) {
+        synchronized (stateLocks[Math.floorMod(seen.characterId(), stateLocks.length)]) {
+            QuestState stored = world.store().questState(seen.characterId(), seen.questId());
+            if (stored != null && (stored.status() != QuestStatus.ACTIVE || stored.stepIndex() != seen.stepIndex()
+                    || stored.repeats() != seen.repeats())) {
+                return false;
+            }
+            world.store().saveQuestState(next);
+            return true;
+        }
+    }
+
     private void advance(Character chr, Persona giver, Quest quest, QuestState state) {
         int next = state.stepIndex() + 1;
         if (next >= quest.steps().size()) {
@@ -632,7 +653,9 @@ public final class QuestLedger {
             updated = new QuestState(chr.getId(), quest.id(), next, Math.min(step.count(),
                     countEligible(chr, quest, step.itemId())), QuestStatus.ACTIVE, state.startedAtMs(), 0L, state.repeats());
         }
-        world.store().saveQuestState(updated);
+        if (!moveOn(state, updated)) {
+            return; // another thread already took the quest past this step
+        }
         world.questLog().progressed(chr, quest, updated);
         world.markers().forget(chr);
         world.store().event(chr.getId(), quest.persona(), "quest.step", quest.id() + " -> " + step.id());
@@ -651,7 +674,9 @@ public final class QuestLedger {
         long now = System.currentTimeMillis();
         QuestState done = new QuestState(chr.getId(), quest.id(), state.stepIndex(), state.progress(),
                 QuestStatus.COMPLETED, state.startedAtMs(), now, state.repeats() + 1);
-        world.store().saveQuestState(done);
+        if (!moveOn(state, done)) {
+            return; // another thread already completed it: the rewards are given once
+        }
         world.markers().forget(chr);
         Reward reward = quest.rewards();
         if (reward.meso() > 0) {

@@ -61,22 +61,6 @@ final class AgentKpqPuzzleParticipantOrder {
         return available.getLast();
     }
 
-    static double[] parseWeights(String value) {
-        String[] tokens = value == null ? new String[0] : value.split(",");
-        if (tokens.length != 3) {
-            throw new IllegalStateException("KPQ human puzzle role weights require three ratios");
-        }
-        double[] weights = new double[3];
-        for (int index = 0; index < tokens.length; index++) {
-            try {
-                weights[index] = Double.parseDouble(tokens[index].trim());
-            } catch (NumberFormatException failure) {
-                throw new IllegalStateException("KPQ human puzzle role weight is not numeric", failure);
-            }
-        }
-        return validateWeights(weights);
-    }
-
     private static double[] validateWeights(double[] weights) {
         double total = 0.0d;
         for (double weight : weights) {

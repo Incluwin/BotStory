@@ -552,7 +552,8 @@ final class AgentEpqCompanionRun {
                 nowMs - enteredAtMs, COMPANION_ENTRY_WAIT_MS, AgentEpqDefinition.MIN_PARTY_SIZE)) {
             case EJECT_ABSENT -> {
                 for (AgentEpqMemberState member : absent) departMember(session, member, "did not enter", nowMs);
-                return false;
+                // The absent may have been every companion: the run then detaches rather than staying registered.
+                return !carriesOn(session, AgentEpqParting.SILENT, nowMs);
             }
             case GIVE_UP -> {
                 fail(session, "Fewer than four of the companion run entered EPQ within the entry wait",

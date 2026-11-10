@@ -29,6 +29,8 @@ if not exist logs\gc mkdir logs\gc
 if not exist logs\heapdumps mkdir logs\heapdumps
 if not exist logs\crash mkdir logs\crash
 if not exist logs\jfr\repo mkdir logs\jfr\repo
+REM --- Each exit leaves a 130-210 MB dump in logs\jfr: delete the ones older than 7 days (logs\jfr\repo is not touched).
+forfiles /p logs\jfr /m *.jfr /d -7 /c "cmd /c del @path" >nul 2>nul
 REM --- A rolling flight recording of the last 2 hours (JFR default profile, ~1%% CPU). Its chunks live in
 REM ---   logs\jfr\repo, so a java killed from outside (no hs_err, no heap dump) still leaves them there;
 REM ---   a normal exit dumps one .jfr into logs\jfr. Open either with JDK Mission Control or `jfr print`.

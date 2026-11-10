@@ -384,10 +384,6 @@ public final class AgentBuildService {
         };
     }
 
-    private static List<BuildStep> getBuildOrder(Job job, String variant) {
-        return getBuildOrder(job, variant, AgentSkillGatewayRuntime.skills());
-    }
-
     private static List<BuildStep> getBuildOrder(Job job, String variant, SkillGateway skills) {
         List<BuildStep> warriorBuild = WarriorBuilds.getBuildOrder(job, variant, skills);
         if (warriorBuild != null) {

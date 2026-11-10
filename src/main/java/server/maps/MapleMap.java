@@ -5076,15 +5076,6 @@ public class MapleMap {
     }
 
 
-    public final List<HiredMerchant> getAllHiredMerchants() {
-        List<HiredMerchant> list = new LinkedList<>();
-        for (MapObject mmo : getHiredMerchants()) {
-            list.add((HiredMerchant) mmo);
-        }
-
-        return list;
-    }
-
     public final List<PlayerShop> getAllPlayerShops() {
         List<PlayerShop> list = new LinkedList<>();
         for (MapObject mmo : getPlayerStores()) {
@@ -5094,109 +5085,8 @@ public class MapleMap {
         return list;
     }
 
-    public final List<MapObject> getHiredMerchants() {
-        return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapObjectType.HIRED_MERCHANT));
-    }
-
     public final List<MapObject> getPlayerStores() {
         return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapObjectType.SHOP));
-    }
-
-    public void moveBot(Character player, Point newPosition) {
-        player.setPosition(newPosition);
-
-//        // is this try needed? idk
-//        try {
-//            MapObject[] visibleObjects = player.getVisibleMapObjects();
-//
-//            Map<Integer, MapObject> mapObjects = getCopyMapObjects();
-//            for (MapObject mo : visibleObjects) {
-//                if (mo != null) {
-//                    if (mapObjects.get(mo.getObjectId()) == mo) {
-//                        updateMapObjectVisibility(player, mo);
-//                    } else {
-//                        player.removeVisibleMapObject(mo);
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-
-//        for (MapObject mo : getMapObjectsInRange(player.getPosition(), getRangedDistance(), rangedMapobjectTypes)) {
-//            if (!player.isMapObjectVisible(mo)) {
-//                try {
-////                    mo.sendSpawnData(player.getClient()); // not needed. cause a lot of MapItem errors
-//                    player.addVisibleMapObject(mo);
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
-    }
-
-    public final MapItem spawnItemDropNoExpire(final MapObject dropper, final Character owner, final Item item, Point pos,
-                                    final boolean ffaDrop, final boolean playerDrop) {
-        if (FieldLimit.DROP_LIMIT.check(this.getFieldLimit())) {
-            this.disappearingItemDrop(dropper, owner, item, pos);
-            return null;
-        }
-
-        final Point droppos = calcDropPos(pos, pos);
-        final MapItem mdrop = new MapItem(item, droppos, dropper, owner, owner.getClient(), (byte) (ffaDrop ? 2 : 0), playerDrop);
-        mdrop.setDropTime(Server.getInstance().getCurrentTime());
-
-        spawnAndAddRangedMapObject(mdrop, c -> {
-            mdrop.lockItem();
-            try {
-                c.sendPacket(PacketCreator.dropItemFromMapObject(c.getPlayer(), mdrop, dropper.getPosition(), droppos,
-                        (byte) 1, (short) 0));
-            } finally {
-                mdrop.unlockItem();
-            }
-        }, null);
-
-        mdrop.lockItem();
-        try {
-            broadcastItemDropMessage(mdrop, dropper.getPosition(), droppos, (byte) 0, (short) 0);
-        } finally {
-            mdrop.unlockItem();
-        }
-
-        // Use no-expire registration instead of standard
-        if (droppedItemCount.get() >= YamlConfig.config.server.ITEM_LIMIT_ON_MAP) {
-            MapObject mapobj;
-            do {
-                mapobj = null;
-                objectWLock.lock();
-                try {
-                    while (mapobj == null) {
-                        if (registeredDrops.isEmpty()) {
-                            break;
-                        }
-                        mapobj = registeredDrops.remove(0).get();
-                    }
-                } finally {
-                    objectWLock.unlock();
-                }
-            } while (!makeDisappearItemFromMap(mapobj));
-        }
-
-        objectWLock.lock();
-        try {
-            registerItemDropNoExpire(mdrop);
-            registeredDrops.add(new WeakReference<>(mdrop));
-        } finally {
-            objectWLock.unlock();
-        }
-        droppedItemCount.incrementAndGet();
-
-        activateItemReactors(mdrop, owner.getClient());
-        return mdrop;
-    }
-
-    private void registerItemDropNoExpire(MapItem mdrop) {
-        droppedItems.put(mdrop, Long.MAX_VALUE);
     }
 
 }

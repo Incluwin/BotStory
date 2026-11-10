@@ -57,16 +57,6 @@ public final class Floor {
         return out;
     }
 
-    /** True while every one of these drops still lies on the floor. */
-    public static boolean allDown(MapleMap map, List<MapItem> drops) {
-        for (MapItem drop : drops) {
-            if (drop.isPickedUp() || map == null || map.getMapObject(drop.getObjectId()) != drop) {
-                return false;
-            }
-        }
-        return !drops.isEmpty();
-    }
-
     /**
      * {@code from} drops chips out of its own bag at {@code at}: a payout or a citizen's bet that only {@code owner} can pick
      * up, or ({@code owner} null) an ordinary player drop anyone may. Returns the drops; empty when it lacks the chips.

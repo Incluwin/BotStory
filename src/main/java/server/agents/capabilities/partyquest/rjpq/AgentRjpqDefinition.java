@@ -107,8 +107,6 @@ public final class AgentRjpqDefinition {
             List.of(-52, -352, -656, -944, -1250, -1534, -1842, -2128, -2434, -2720);
     /** Map.wz 926100301: the ledge past the last row (success, y -3042) lies 322 px above row 9; this far up is past it. */
     public static final int LAB_UNIT_PAST_LAST_ROW_PX = 120;
-    public static final String LAB_UNIT_FAIL_PORTAL = "fail";
-    public static final String LAB_UNIT_SUCCESS_PORTAL = "success";
     public static final String LAB_UNIT_EXIT_PORTAL = "out00";
 
     private AgentRjpqDefinition() {

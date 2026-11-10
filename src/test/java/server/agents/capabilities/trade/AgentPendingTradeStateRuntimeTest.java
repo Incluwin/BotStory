@@ -73,12 +73,16 @@ class AgentPendingTradeStateRuntimeTest {
 
         assertEquals(2250, AgentPendingTradeStateRuntime.shareBudget(entry));
         assertEquals((short) 2250, AgentPendingTradeStateRuntime.capShareQuantity(entry, (short) 5000));
+        assertEquals(2250, AgentPendingTradeStateRuntime.shareBudget(entry));
+        AgentPendingTradeStateRuntime.chargeShareBudget(entry, (short) 2250);
         assertEquals(0, AgentPendingTradeStateRuntime.shareBudget(entry));
+        assertEquals((short) 0, AgentPendingTradeStateRuntime.capShareQuantity(entry, (short) 5000));
 
         AgentPendingTradeStateRuntime.setShareBudget(entry, 1000);
         AgentPendingTradeStateRuntime.clearShareBudget(entry);
 
-        assertEquals(0, AgentPendingTradeStateRuntime.shareBudget(entry));
+        assertEquals(AgentPendingTradeStateRuntime.NO_SHARE_BUDGET, AgentPendingTradeStateRuntime.shareBudget(entry));
+        assertEquals((short) 5000, AgentPendingTradeStateRuntime.capShareQuantity(entry, (short) 5000));
     }
 
     @Test

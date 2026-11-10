@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClientPacketHardeningTest {
     @Test
@@ -22,5 +25,17 @@ class ClientPacketHardeningTest {
         assertArrayEquals(new byte[]{1, 2, 3}, packet.getBytes(3));
         assertEquals(0, packet.getPosition());
         assertEquals(5, packet.available());
+    }
+
+    @Test
+    void shouldCountOnlyPacketReadFailuresAsMalformed() {
+        ByteBufInPacket packet = new ByteBufInPacket(Unpooled.wrappedBuffer(new byte[]{1}));
+        ByteBufInPacket negativeLength = new ByteBufInPacket(Unpooled.wrappedBuffer(new byte[]{-1, -1}));
+
+        assertTrue(Client.isPacketReadFailure(assertThrows(IndexOutOfBoundsException.class, packet::readInt)));
+        assertTrue(Client.isPacketReadFailure(
+                assertThrows(NegativeArraySizeException.class, negativeLength::readString)));
+        assertFalse(Client.isPacketReadFailure(new IndexOutOfBoundsException("handler bug")));
+        assertFalse(Client.isPacketReadFailure(new NullPointerException("handler bug")));
     }
 }

@@ -122,10 +122,6 @@ final class BlackjackGame {
         return seats;
     }
 
-    List<String> dealerHand() {
-        return dealer;
-    }
-
     Seat seat(int id) {
         for (Seat seat : seats) {
             if (seat.id == id) {

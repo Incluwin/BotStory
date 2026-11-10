@@ -33,7 +33,6 @@ public final class AgentOpqPortalRoute {
     }
 
     public synchronized boolean solved(int row) { validateRow(row); return correctChoice[row] >= 0; }
-    public synchronized int solvedChoice(int row) { validateRow(row); return correctChoice[row]; }
     private void validateRow(int row) {
         if (row < 0 || row >= correctChoice.length) throw new IllegalArgumentException("invalid portal row");
     }

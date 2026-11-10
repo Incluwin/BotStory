@@ -123,6 +123,12 @@ public final class AgentSwimPhysicsService {
             velocityX = 0.0;
             AgentSwimStateRuntime.setSwimWallBlocked(
                     entry, AgentSwimStateRuntime.swimMoveDirection(entry) != 0);
+        } else if (collision.type() == AgentJumpProbeService.AirCollisionType.CEILING) {
+            // A ceiling stops a swimmer as it stops a jump (AgentAirbornePhysicsService.collideWithAirCeiling).
+            nextX = collision.point().x;
+            nextY = collision.point().y;
+            velocityY = 0.0;
+            AgentSwimStateRuntime.setSwimWallBlocked(entry, false);
         } else {
             AgentSwimStateRuntime.setSwimWallBlocked(entry, false);
         }

@@ -39,31 +39,37 @@ final class AgentRjpqTerminationService {
             return;
         }
         AgentRjpqSession.Phase phaseAtRelease = session.phase();
-        AgentRjpqFullRateSimulation.releaseAll(session);
+        // Each step on its own: one that throws never leaves the run registered and terminating.
+        quietly(session, "release-full-rate", () -> AgentRjpqFullRateSimulation.releaseAll(session));
         for (AgentRjpqMemberState member : session.members()) {
-            AgentRuntimeEntry entry = session.departed(member.characterId()) ? null
-                    : AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
-            if (entry != null) {
-                entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY).clear();
-                AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
-            }
+            quietly(session, "stop-" + member.characterId(), () -> {
+                AgentRuntimeEntry entry = session.departed(member.characterId()) ? null
+                        : AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
+                if (entry != null) {
+                    entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY).clear();
+                    AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
+                }
+            });
         }
         EventInstanceManager event = session.eventInstance();
         boolean pastTheClear = pastTheClear(event);
         logPotions(session);
         boolean leaveEvent = dispose || phaseAtRelease != AgentRjpqSession.Phase.COMPLETED;
         if (event != null && (leaveEvent || pastTheClear)) {
-            exitAgentsOnly(session);
+            quietly(session, "exit-agents", () -> exitAgentsOnly(session));
             disposeIfEmpty(session, event);
         }
-        session.clearEventInstance();
         boolean completed = session.phase() == AgentRjpqSession.Phase.COMPLETED;
-        if (!completed) {
-            session.fail(reason, nowMs);
+        try {
+            session.clearEventInstance();
+            if (!completed) {
+                session.fail(reason, nowMs);
+            }
+        } finally {
+            AgentRjpqSessionRegistry.remove(session);
+            AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
+                    pace(session, nowMs));
         }
-        AgentRjpqSessionRegistry.remove(session);
-        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
-                pace(session, nowMs));
         log.info("RJPQ session released: session={} side={} outcome={} phase={} members={} pastTheClear={}",
                 session.sessionId(), session.side().key(), completed ? "completed" : reason, phaseAtRelease,
                 session.memberCount(), pastTheClear);
@@ -153,10 +159,28 @@ final class AgentRjpqTerminationService {
                 .collect(Collectors.joining(", ", "{", "}"));
     }
 
-    /** The run's pace for the host's records (Step 4), with one 'RJPQ pace span:' line per begun span. */
+    /**
+     * The run's pace for the host's records (Step 4), with one 'RJPQ pace span:' line per begun span. A report that
+     * fails leaves it null rather than the release unfinished.
+     */
     static AgentPqPace pace(AgentRjpqSession session, long nowMs) {
-        AgentRjpqPaceReport.logSpans(session, nowMs);
-        return AgentRjpqPaceReport.of(session, nowMs);
+        try {
+            AgentRjpqPaceReport.logSpans(session, nowMs);
+            return AgentRjpqPaceReport.of(session, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("RJPQ pace report failed: session={}", session.sessionId(), failure);
+            return null;
+        }
+    }
+
+    /** Runs one step of the release; a failure is logged and the release goes on. */
+    private static void quietly(AgentRjpqSession session, String operation, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException failure) {
+            log.warn("RJPQ cleanup failed but release will continue: session={} operation={}",
+                    session.sessionId(), operation, failure);
+        }
     }
 
     private static void logPotions(AgentRjpqSession session) {

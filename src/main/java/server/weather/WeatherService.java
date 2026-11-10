@@ -173,10 +173,6 @@ public final class WeatherService {
     public static final int DUSK_START = 17 * 60;
     public static final int DUSK_END = 19 * 60;
 
-    public static boolean isNight() {
-        return nightLevel() > 0.5f;
-    }
-
     // ---------------------------------------------------------------- the sky
 
     /**

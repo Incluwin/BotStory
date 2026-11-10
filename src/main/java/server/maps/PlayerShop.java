@@ -744,25 +744,5 @@ public class PlayerShop extends AbstractMapObject {
         }
     }
 
-    public void setItems(List<PlayerShopItem> premadeShop) {
-        synchronized (items) {
-            items.addAll(premadeShop);
-        }
-    }
-
-
-    public void chat(Character player, String chat) {
-        byte s = getVisitorSlot(player);
-
-        synchronized (chatLog) {
-            chatLog.add(new Pair<>(player, chat));
-            if (chatLog.size() > 25) {
-                chatLog.remove(0);
-            }
-            chatSlot.put(player.getId(), s);
-        }
-
-        broadcast(PacketCreator.getPlayerShopChat(player, chat, s));
-    }
 
 }

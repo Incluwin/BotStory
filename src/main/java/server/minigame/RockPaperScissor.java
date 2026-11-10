@@ -21,7 +21,7 @@ public class RockPaperScissor {
 
     public RockPaperScissor(final Client c, final byte mode) {
         c.sendPacket(PacketCreator.rpsMode((byte) (9 + mode)));
-        if (mode == 0) {
+        if (mode == 0 || mode == 5) { // a retry is a new game and costs the same fee
             try (var ledgerScope = MesoFlows.as(MesoAccount.SERVICE)) { c.getPlayer().gainMeso(-1000, true, true, true); }
         }
     }

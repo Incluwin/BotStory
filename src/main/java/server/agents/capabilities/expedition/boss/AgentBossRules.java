@@ -461,12 +461,6 @@ public final class AgentBossRules {
         return boss == null ? List.of() : boss.entryItems();
     }
 
-    /** P20: the keep-out boxes of boss {@code key}; empty when it names none. */
-    public static List<KeepOut> keepOut(String key) {
-        Boss boss = of(key);
-        return boss == null ? List.of() : boss.keepOut();
-    }
-
     /** The drops boss {@code key}'s run members leave on the floor; empty when the catalog lists none. */
     public static List<Integer> markerItems(String key) {
         Boss boss = of(key);

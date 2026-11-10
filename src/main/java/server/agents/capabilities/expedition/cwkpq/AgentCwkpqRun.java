@@ -203,10 +203,6 @@ public final class AgentCwkpqRun implements AgentBossFight {
         this.isAgent = agents;
     }
 
-    AgentCwkpqPaceMarks marks() {
-        return marks;
-    }
-
     /** The maps before the battle map (boss-rules.json stageMaps for cwkpq), in order. */
     public static List<Integer> stageMapsBeforeCouncil() {
         List<Integer> maps = new ArrayList<>();

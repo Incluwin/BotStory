@@ -26,8 +26,6 @@ public final class AgentOpqMemberState {
     private int committedReactorObjectId;
     private Point lastPosition;
     private long lastMovementProgressAtMs;
-    private int portalRow;
-    private int portalChoice;
     private int loungeBaselineMapId;
     private int loungeBaselineCount;
     private int bossObjectId;
@@ -53,8 +51,6 @@ public final class AgentOpqMemberState {
     public synchronized long nextActionAtMs() { return nextActionAtMs; }
     public synchronized int committedReactorMapId() { return committedReactorMapId; }
     public synchronized int committedReactorObjectId() { return committedReactorObjectId; }
-    public synchronized int portalRow() { return portalRow; }
-    public synchronized int portalChoice() { return portalChoice; }
 
     public synchronized void assign(Role role, AgentOpqDefinition.Room room, int subroomMapId) {
         if (role == null || subroomMapId < 0) throw new IllegalArgumentException("valid OPQ assignment required");
@@ -82,8 +78,6 @@ public final class AgentOpqMemberState {
         committedReactorObjectId = objectId;
     }
     public synchronized void clearReactor() { committedReactorMapId = 0; committedReactorObjectId = 0; }
-    public synchronized void advancePortalChoice() { portalChoice++; }
-    public synchronized void solvePortalRow() { portalRow++; portalChoice = 0; }
     public synchronized void beginLoungeCollection(int mapId, int currentCount) {
         if (loungeBaselineMapId != mapId) {
             loungeBaselineMapId = mapId;
@@ -142,8 +136,6 @@ public final class AgentOpqMemberState {
         lastPosition = null;
         lastMovementProgressAtMs = 0L;
         clearWayUpStaging();
-        portalRow = 0;
-        portalChoice = 0;
         clearBossCombat();
     }
 

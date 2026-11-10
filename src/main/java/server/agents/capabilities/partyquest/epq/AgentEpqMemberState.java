@@ -9,7 +9,6 @@ public final class AgentEpqMemberState {
     private final int characterId;
     private final MemberType memberType;
     private long nextActionAtMs;
-    private int committedObjectId;
     private int stageTwoTaggedObjectId;
     private int stageTwoBestTreeDistance = Integer.MAX_VALUE;
     private long stageTwoLastLureProgressAtMs;
@@ -43,10 +42,7 @@ public final class AgentEpqMemberState {
     public int characterId() { return characterId; }
     public MemberType memberType() { return memberType; }
     public long nextActionAtMs() { return nextActionAtMs; }
-    public int committedObjectId() { return committedObjectId; }
     public void deferUntil(long value) { nextActionAtMs = Math.max(0L, value); }
-    public void commitObject(int value) { committedObjectId = Math.max(0, value); }
-    public void clearObject() { committedObjectId = 0; }
     public int stageTwoTaggedObjectId() { return stageTwoTaggedObjectId; }
     public void tagStageTwoObject(int objectId) {
         stageTwoTaggedObjectId = Math.max(0, objectId);

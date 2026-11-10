@@ -486,9 +486,7 @@ public final class AgentKpqSession implements AgentCompanionRunSession {
     public synchronized Phase phase() { return phase; }
     public synchronized int eventLeaderId() { return eventLeaderId; }
     public synchronized int executionAgentId() { return executionAgentId; }
-    public synchronized void setExecutionAgentId(int id) { executionAgentId = id; }
     public synchronized int formationCallerId() { return formationCallerId; }
-    public synchronized void setFormationCallerId(int id) { formationCallerId = id; }
     public synchronized List<AgentKpqMemberState> members() { return new ArrayList<>(members.values()); }
     public synchronized AgentKpqMemberState member(int id) { return members.get(id); }
     public synchronized int memberCount() { return members.size(); }

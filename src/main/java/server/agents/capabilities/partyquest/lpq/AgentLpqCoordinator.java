@@ -165,7 +165,6 @@ final class AgentLpqCoordinator {
     private static final long MEMBER_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
-    private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_7_FIRING_ANCHOR_RADIUS");
     /**
@@ -181,7 +180,6 @@ final class AgentLpqCoordinator {
     private static final int STAGE_9_FLOOR_Y = 184;
     private static final int STAGE_9_PRE_BOSS_RALLY_X = 430;
     private static final int STAGE_9_PRE_BOSS_RALLY_SPACING_PX = 28;
-    private static final int STAGE_9_BOSS_EDGE_MARGIN_PX = 180;
     private static final int STAGE_9_FORMATION_RADIUS_PX = 70;
     private static final long STAGE_7_FORCE_LOOT_DELAY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_7_FORCE_LOOT_DELAY_MS");
@@ -1238,7 +1236,8 @@ final class AgentLpqCoordinator {
 
         int transferred = 0;
         for (AgentLpqMemberState member : session.members()) {
-            if (leaderPasses >= required || member.characterId() == leader.getId()) break;
+            if (leaderPasses >= required) break;
+            if (member.characterId() == leader.getId()) continue;
             Character participant = character(member.characterId());
             if (participant == null) continue;
             int held = participant.getItemQuantity(AgentLpqDefinition.PASS, false);
@@ -4571,14 +4570,6 @@ final class AgentLpqCoordinator {
         }
     }
 
-    static int stageNineTriggerPriority(Character character) {
-        if (character == null || character.getJob() == null) return 4;
-        if (character.getJob().isA(client.Job.BOWMAN)) return 0;
-        if (character.getJob().isA(client.Job.ASSASSIN)) return 1;
-        if (character.getJob().isA(client.Job.GUNSLINGER)) return 2;
-        return AgentLpqRosterRequirementPolicy.rangedAttack(character) ? 3 : 4;
-    }
-
     private static void engageBossTriggerRatz(
             AgentLpqSession session, AgentLpqMemberState member,
             AgentRuntimeEntry entry, Character agent, long nowMs) {
@@ -4697,65 +4688,6 @@ final class AgentLpqCoordinator {
         if (triggerPosition == null) throw new IllegalArgumentException("trigger position is required");
         Rectangle triggerPoint = new Rectangle(triggerPosition.x, triggerPosition.y, 1, 1);
         return ordinaryHitBox == null ? triggerPoint : ordinaryHitBox.union(triggerPoint);
-    }
-
-    private static boolean prepareStageNineBossFormation(
-            AgentLpqSession session, Monster boss, long nowMs) {
-        Point bossPosition = boss == null ? null : boss.getPosition();
-        boolean edge = stageNineBossAtEdge(bossPosition);
-        long elapsedMs = session.observeBossEdgeRegroup(edge, nowMs);
-        if (!edge) return true;
-        boolean recoveryDue = stageNineBossRegroupRecoveryDue(elapsedMs);
-        boolean ready = true;
-        int recovered = 0;
-        for (AgentLpqMemberState member : session.members()) {
-            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
-            Character agent = character(member.characterId());
-            AgentRuntimeEntry entry = entry(member.characterId());
-            if (agent == null || entry == null
-                    || agent.getMapId() != AgentLpqDefinition.stage(9).mapId()) {
-                ready = false;
-                continue;
-            }
-            Point desired = stageNineOpenSpaceAnchor(bossPosition, agent.getId());
-            Point grounded = ACTIONS.groundPoint(agent.getMap(), desired);
-            Point target = grounded == null ? desired : grounded;
-            if (near(agent.getPosition(), target, STAGE_9_FORMATION_RADIUS_PX)) continue;
-            ready = false;
-            if (recoveryDue) {
-                ACTIONS.stop(entry);
-                rescueTeleport(session, "stage9-formation", entry, agent, target);
-                recovered++;
-            } else {
-                ACTIONS.navigate(entry, target, true);
-            }
-        }
-        if (recovered > 0) {
-            session.markProgress(nowMs);
-            log.warn("LPQ Stage 9 edge formation recovery moved {} members into open "
-                            + "space after {}ms: session={} bossPosition={}",
-                    recovered, elapsedMs, session.sessionId(), bossPosition);
-            return false;
-        }
-        return ready;
-    }
-
-    static boolean stageNineBossAtEdge(Point bossPosition) {
-        return bossPosition != null
-                && (bossPosition.x <= STAGE_9_FLOOR_LEFT_X + STAGE_9_BOSS_EDGE_MARGIN_PX
-                || bossPosition.x >= STAGE_9_FLOOR_RIGHT_X - STAGE_9_BOSS_EDGE_MARGIN_PX);
-    }
-
-    static Point stageNineOpenSpaceAnchor(Point bossPosition, int characterId) {
-        if (bossPosition == null) throw new IllegalArgumentException("boss position is required");
-        int baseX = bossPosition.x <= (STAGE_9_FLOOR_LEFT_X + STAGE_9_FLOOR_RIGHT_X) / 2
-                ? 520 : 380;
-        int offset = Math.floorMod(characterId * 37, 121) - 60;
-        return new Point(baseX + offset, STAGE_9_FLOOR_Y);
-    }
-
-    static boolean stageNineBossRegroupRecoveryDue(long elapsedMs) {
-        return elapsedMs >= recovery(9).rallyRecoveryMs();
     }
 
     private static boolean reachStageNineBalloonPlatform(

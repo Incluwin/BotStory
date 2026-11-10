@@ -703,14 +703,6 @@ public final class NameIndex {
         return knowledge.map(mapId).map(map -> cleanSay(map.name())).orElse("");
     }
 
-    int compositeCount() {
-        return composites.size();
-    }
-
-    int nameCount() {
-        return keys.length;
-    }
-
     /** Rough retained size for the boot log and {@code !knowledge status}. */
     long approxBytes() {
         long bytes = (long) (keyTokenIds.length + keyTokenStart.length + postingIds.length + postingStart.length) * Integer.BYTES

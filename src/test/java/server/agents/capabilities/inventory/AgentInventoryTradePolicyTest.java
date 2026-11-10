@@ -16,6 +16,24 @@ import static org.mockito.Mockito.when;
 
 class AgentInventoryTradePolicyTest {
     @Test
+    void tradeScoreUsesTheMainStatsOfCygnusBranches() {
+        client.inventory.Equip equip = mock(client.inventory.Equip.class);
+        when(equip.getStr()).thenReturn((short) 1);
+        when(equip.getDex()).thenReturn((short) 10);
+        when(equip.getInt()).thenReturn((short) 100);
+        when(equip.getLuk()).thenReturn((short) 1000);
+
+        assertEquals(11, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.DAWNWARRIOR2));
+        assertEquals(1100, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.BLAZEWIZARD2));
+        assertEquals(11, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.WINDARCHER2));
+        assertEquals(1010, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.NIGHTWALKER2));
+        assertEquals(11, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.THUNDERBREAKER2));
+        assertEquals(11, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.ARAN2));
+        assertEquals(1010, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.ASSASSIN));
+        assertEquals(11, AgentInventoryTradePolicy.equipTradeScore(equip, client.Job.OUTLAW));
+    }
+
+    @Test
     void shouldBuildReservedEquipsCategoryLikeLegacyInventory() {
         assertEquals("equips:reserved:3", AgentInventoryTradePolicy.reservedEquipsCategory(3));
         assertTrue(AgentInventoryTradePolicy.isReservedEquipsCategory("equips:reserved:2"));

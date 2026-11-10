@@ -20,8 +20,6 @@ import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.integration.InventoryGateway;
 import server.agents.runtime.AgentSessionLifecycleRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
-import server.agents.coordination.AgentCoordinationRuntime;
-import server.agents.coordination.AgentSupplyNeedMessage;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 
@@ -175,14 +173,6 @@ public final class AgentAmmoService {
         }
 
         if (bypassShareLimits && !thresholdEventPublished) {
-            AgentCoordinationRuntime.publish(new AgentSupplyNeedMessage(
-                    bot.getId(),
-                    cohortId,
-                    bot.getMapId(),
-                    AgentSupplyNeedMessage.SupplyKind.AMMUNITION,
-                    currentAmmo,
-                    weaponType.name(),
-                    now));
             AgentAmmoRuntime.sayMapNow(bot, AgentDialogueSelector.randomReply(
                     weaponType == WeaponType.BOW
                             ? AgentDialogueCatalog.arrowRequestReplies()

@@ -16,7 +16,6 @@ import server.agents.capabilities.townlife.AgentTownLifeActivityEvent;
 import server.agents.capabilities.townlife.AgentTownLifeLifecycleEvent;
 import server.agents.runtime.townlife.AgentTownLifeTestScenarioEvent;
 import server.agents.social.projection.AgentSocialContextProjectionService;
-import server.agents.capabilities.supplies.AgentSupplyCoordinationProjectionService;
 import server.agents.capabilities.supplies.AgentSupplyMaintenanceEventListener;
 import server.agents.capabilities.supplies.AgentSupplyMonitoringProjectionService;
 import server.agents.capabilities.supplies.AgentSupplyThresholdChangedEvent;
@@ -72,10 +71,6 @@ public final class AgentSessionEventWiringRuntime {
                 if (rollout.reactionsEnabled()) {
                     subscriptions.add(bus.subscribe(AgentSupplyThresholdChangedEvent.TYPE,
                             new AgentSupplyMaintenanceEventListener(entry)));
-                }
-                if (rollout.coordinationEnabled()) {
-                    subscriptions.add(bus.subscribe(AgentSupplyThresholdChangedEvent.TYPE,
-                            new AgentSupplyCoordinationProjectionService()));
                 }
                 if (rollout.dialogueEnabled()) {
                     subscriptions.add(bus.subscribe(AgentSupplyThresholdChangedEvent.TYPE,

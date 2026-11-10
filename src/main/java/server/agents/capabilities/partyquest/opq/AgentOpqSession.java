@@ -387,7 +387,6 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
         if (AgentOpqDefinition.LOUNGE_ROOM_MAPS.contains(mapId) && completedLoungeSubrooms.add(mapId)) markProgress(nowMs);
     }
     public synchronized boolean loungeSubroomComplete(int mapId) { return completedLoungeSubrooms.contains(mapId); }
-    public synchronized Set<Integer> completedLoungeSubrooms() { return Set.copyOf(completedLoungeSubrooms); }
     public synchronized void observePapaPixie(boolean alive, long nowMs) {
         if (alive) {
             if (!papaPixieEngaged) markProgress(nowMs);

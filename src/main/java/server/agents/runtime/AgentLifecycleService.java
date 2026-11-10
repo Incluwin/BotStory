@@ -424,71 +424,7 @@ public final class AgentLifecycleService {
         return true;
     }
 
-    public static void removeLeaderEntries(Map<Integer, List<AgentRuntimeEntry>> entriesByLeaderId,
-                                           Map<Integer, ?> leaderFormations,
-                                           Map<Integer, ?> townClusterAnchors,
-                                           int leaderCharId,
-                                           Consumer<AgentRuntimeEntry> beforeRemove) {
-        List<AgentRuntimeEntry> entries = entriesByLeaderId.remove(leaderCharId);
-        if (entries != null) {
-            for (AgentRuntimeEntry entry : entries) {
-                beforeRemove.accept(entry);
-            }
-        }
-        leaderFormations.remove(leaderCharId);
-        townClusterAnchors.remove(leaderCharId);
-    }
-
     public static void cancelScheduledTickIfPresent(AgentRuntimeEntry entry) {
         AgentSessionCleanupService.cancelScheduledWork(entry);
-    }
-
-    public static boolean removeAgentByCharacterId(Map<Integer, List<AgentRuntimeEntry>> entriesByLeaderId,
-                                                   Map<Integer, ?> leaderFormations,
-                                                   Map<Integer, ?> townClusterAnchors,
-                                                   int agentCharId,
-                                                   Consumer<AgentRuntimeEntry> beforeRemove) {
-        boolean removed = false;
-        for (Map.Entry<Integer, List<AgentRuntimeEntry>> leaderEntry : entriesByLeaderId.entrySet()) {
-            List<AgentRuntimeEntry> entries = leaderEntry.getValue();
-            boolean removedFromLeader = entries.removeIf(entry -> {
-                if (AgentRuntimeIdentityRuntime.botIs(entry, agentCharId)) {
-                    beforeRemove.accept(entry);
-                    return true;
-                }
-                return false;
-            });
-            if (removedFromLeader) {
-                removed = true;
-                if (entries.isEmpty() && entriesByLeaderId.remove(leaderEntry.getKey(), entries)) {
-                    leaderFormations.remove(leaderEntry.getKey());
-                    townClusterAnchors.remove(leaderEntry.getKey());
-                }
-            }
-        }
-        return removed;
-    }
-
-    public static boolean removeAgentEntry(Map<Integer, List<AgentRuntimeEntry>> entriesByLeaderId,
-                                           Map<Integer, ?> leaderFormations,
-                                           Map<Integer, ?> townClusterAnchors,
-                                           AgentRuntimeEntry expectedEntry,
-                                           Consumer<AgentRuntimeEntry> beforeRemove) {
-        if (expectedEntry == null) {
-            return false;
-        }
-        for (Map.Entry<Integer, List<AgentRuntimeEntry>> leaderEntry : entriesByLeaderId.entrySet()) {
-            List<AgentRuntimeEntry> entries = leaderEntry.getValue();
-            if (!entries.remove(expectedEntry)) {
-                continue;
-            }
-            beforeRemove.accept(expectedEntry);
-            if (entries.isEmpty() && entriesByLeaderId.remove(leaderEntry.getKey(), entries)) {
-                leaderFormations.remove(leaderEntry.getKey());
-                townClusterAnchors.remove(leaderEntry.getKey());
-            }
-            return true;
-        }
-        return false;
     }
 }

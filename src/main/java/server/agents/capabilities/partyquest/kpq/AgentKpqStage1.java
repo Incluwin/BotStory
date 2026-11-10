@@ -27,9 +27,6 @@ public final class AgentKpqStage1 {
     private static final int ITEM_COUPON_ID = 4_001_007;
     private static final int ITEM_PASS_ID = 4_001_008;
 
-    // Question index (1-9) -> required coupon count; index 0 unused.
-    private static final int[] ANSWERS = {0, 8, 10, 10, 10, 15, 20, 25, 25, 35};
-
     public static final int IDLE = 0;
     static final int FIRST_WALK = 1;
     static final int FIRST_WAIT = 2;
@@ -133,10 +130,12 @@ public final class AgentKpqStage1 {
         EventInstanceManager eim = ctx.bot().getEventInstance();
         int question = (eim != null) ? eim.gridCheck(ctx.bot()) : -1;
         if (question == -1) {
-            question = ThreadLocalRandom.current().nextInt(1, ANSWERS.length);
+            question = ThreadLocalRandom.current().nextInt(1, AgentKpqDefinition.couponTargets().size() + 1);
             if (eim != null) eim.gridInsert(ctx.bot(), question);
         }
-        int target = (question < ANSWERS.length) ? ANSWERS[question] : ANSWERS[1];
+        // Cloto's own table (9020001.js), so the count the Agent collects is the one she takes.
+        int target = AgentKpqDefinition.couponTarget(question);
+        if (target < 0) target = AgentKpqDefinition.couponTarget(1);
         AgentPqRuntime.setKpqCouponTarget(ctx.entry(), target);
         if (target >= 25) {
             AgentPqRuntime.queueSay(ctx.entry(), "I need " + target + ", smh");

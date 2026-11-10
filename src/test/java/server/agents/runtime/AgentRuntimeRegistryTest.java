@@ -36,8 +36,6 @@ class AgentRuntimeRegistryTest {
         assertSame(leader, AgentRuntimeRegistry.activeLeaderByAgentCharacterId(entries, alpha.getId()));
         assertSame(alpha, AgentRuntimeRegistry.firstAgent(entries, leader.getId()));
         assertSame(alphaEntry, AgentRuntimeRegistry.firstEntry(entries, leader.getId()));
-        assertTrue(AgentRuntimeRegistry.isFirstEntryForLeader(entries, alphaEntry));
-        assertFalse(AgentRuntimeRegistry.isFirstEntryForLeader(entries, betaEntry));
     }
 
     @Test
@@ -50,7 +48,6 @@ class AgentRuntimeRegistryTest {
         assertNull(AgentRuntimeRegistry.activeLeaderByAgentCharacterId(entries, 200));
         assertNull(AgentRuntimeRegistry.firstAgent(entries, 100));
         assertNull(AgentRuntimeRegistry.firstEntry(entries, 100));
-        assertFalse(AgentRuntimeRegistry.isFirstEntryForLeader(entries, null));
         assertEquals(List.of(), AgentRuntimeRegistry.entriesForLeader(entries, 100));
     }
 
@@ -96,7 +93,6 @@ class AgentRuntimeRegistryTest {
         assertSame(entry, AgentRuntimeRegistry.findByCharacterId(leader.getId(), alpha.getId()));
         assertSame(entry, AgentRuntimeRegistry.findByName(leader.getId(), "alpha"));
         assertSame(leader, AgentRuntimeRegistry.activeLeaderByAgentCharacterId(alpha.getId()));
-        assertTrue(AgentRuntimeRegistry.isFirstEntryForLeader(entry));
         assertEquals(List.of(entry), AgentRuntimeRegistry.entriesForLeader(leader.getId()));
         AgentRuntimeRegistry.clear();
     }

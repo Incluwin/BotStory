@@ -87,12 +87,6 @@ public record Citizen(int characterId,
                 scheduledMinutes, lifeSummary);
     }
 
-    public Citizen withChannel(int newChannel) {
-        return new Citizen(characterId, name, cohort, circleId, guildId, homeRegion, career, personality, voice, pace,
-                offsetMinutes, newChannel, flags, state, joinedAtMs, retiresAtMs, lastOnlineAtMs, lastLedgerAtMs, accruedExp,
-                scheduledMinutes, lifeSummary);
-    }
-
     public Citizen withLedger(long ledgerAtMs, long exp, int minutes) {
         return new Citizen(characterId, name, cohort, circleId, guildId, homeRegion, career, personality, voice, pace,
                 offsetMinutes, channel, flags, state, joinedAtMs, retiresAtMs, lastOnlineAtMs, ledgerAtMs, exp, minutes, lifeSummary);

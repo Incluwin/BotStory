@@ -1,7 +1,7 @@
 {
 "format": 1,
 "exporter": "KnowledgeExportMain 3",
-"generatedAt": "2026-11-08T19:27:07Z",
+"generatedAt": "2026-11-10T09:37:06Z",
 "sources": [
 {"path": "wz/String.wz/Map.img.xml", "fileCount": 1, "totalBytes": 830008},
 {"path": "wz/String.wz/Mob.img.xml", "fileCount": 1, "totalBytes": 142842},
@@ -37,8 +37,8 @@
 {"path": "wz/Character.wz/TamingMob", "fileCount": 47, "totalBytes": 1042473},
 {"path": "wz/Character.wz/Weapon", "fileCount": 1346, "totalBytes": 24351272},
 {"path": "scripts/npc", "fileCount": 708, "totalBytes": 2450393},
-{"path": "scripts/event", "fileCount": 108, "totalBytes": 544614},
-{"path": "scripts/reactor", "fileCount": 292, "totalBytes": 313525},
+{"path": "scripts/event", "fileCount": 108, "totalBytes": 544656},
+{"path": "scripts/reactor", "fileCount": 292, "totalBytes": 313728},
 {"path": "scripts/portal", "fileCount": 460, "totalBytes": 403293},
 {"path": "scripts/map", "fileCount": 90, "totalBytes": 60473},
 {"path": "scripts/quest", "fileCount": 253, "totalBytes": 560092},

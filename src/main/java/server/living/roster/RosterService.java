@@ -2161,10 +2161,12 @@ public final class RosterService {
                 skipped++;
             }
         }
-        long meso = entry.haulMeso();
+        // Only what the purse can take leaves the haul; the rest waits there.
+        long held = entry.haulMeso();
+        long meso = Math.max(0L, Math.min(held, (long) Integer.MAX_VALUE - owner.getMeso()));
         if (meso > 0) {
-            try (var ledgerScope = MesoFlows.as(MesoAccount.HAUL)) { owner.gainMeso((int) Math.min(meso, Integer.MAX_VALUE), true); }
-            saveHaulMeso(entry, 0L);
+            try (var ledgerScope = MesoFlows.as(MesoAccount.HAUL)) { owner.gainMeso((int) meso, true); }
+            saveHaulMeso(entry, held - meso);
         }
         CompanionViews.invalidate(world, owner.getId(), persona.id()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.handover", moved + " stacks, " + meso + " meso, skipped " + skipped);
@@ -2178,6 +2180,7 @@ public final class RosterService {
         String line = !given.isEmpty() ? persona.name() + " hands you " + String.join(" and ", given)
                 : skipped > 0 ? persona.name() + " has nothing that fits in your bag" : persona.name() + " has nothing to hand over";
         return line + (skipped > 0 ? "; " + stacks(skipped) + (skipped == 1 ? " does" : " do") + " not fit in your bag." : ".")
+                + (meso < held ? " Your purse is full; the rest of the meso stays in its haul." : "")
                 + keptLine(owner, persona);
     }
 
@@ -2306,11 +2309,18 @@ public final class RosterService {
             return persona.name() + " has no meso to bank.";
         }
         server.Storage storage = owner.getStorage();
-        storage.setMeso((int) Math.min((long) storage.getMeso() + meso, Integer.MAX_VALUE));
+        // Only what the storage can take leaves the haul; the rest waits there.
+        long held = meso;
+        meso = Math.min(held, (long) Integer.MAX_VALUE - storage.getMeso());
+        if (meso <= 0) {
+            return "Your storage can hold no more meso.";
+        }
+        storage.setMeso((int) (storage.getMeso() + meso));
         owner.saveCharToDB();
-        saveHaulMeso(entry, 0L);
+        saveHaulMeso(entry, held - meso);
         world.store().event(owner.getId(), persona.id(), "haul.bank", meso + " meso");
-        return persona.name() + String.format(Locale.ROOT, " banks %,d meso into your storage.", meso);
+        return persona.name() + String.format(Locale.ROOT, " banks %,d meso into your storage.", meso)
+                + (meso < held ? " Your storage is full; the rest stays in its haul." : "");
     }
 
     void saveHaulMeso(RosterEntry entry, long meso) {

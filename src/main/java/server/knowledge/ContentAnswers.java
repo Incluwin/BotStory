@@ -283,15 +283,6 @@ public final class ContentAnswers {
         installedPrices = lookup == null ? itemId -> null : lookup;
     }
 
-    /**
-     * Server-rule facts for grounding a reply (section 10 of the plan), read live from the asker's world:
-     * {@code prompted} false gives only the low-risk facts a bot may bring up unasked; true adds rates, quest EXP
-     * and the gear rule (when the asker asked about rules).
-     */
-    public Map<String, String> ruleFacts(int worldId, boolean prompted) {
-        return ServerRules.facts(rates.apply(worldId), prompted);
-    }
-
     /** Counters for {@code !knowledge status}. */
     public static String counters() {
         return "questions seen " + seen.get() + ", answered " + answered.get() + ", deflected " + deflected.get()
@@ -537,12 +528,17 @@ public final class ContentAnswers {
             }
         } else {
             Entity chosen = null;
+            boolean several = false; // two or more candidates matched: none is chosen, however many more do
             for (Entity candidate : pending.candidates) {
                 for (String token : distinguishing(candidate, pending.candidates)) {
                     if ((" " + said + " ").contains(" " + token + " ")) {
-                        chosen = chosen == null || chosen == candidate ? candidate : null;
+                        several |= chosen != null && chosen != candidate;
+                        chosen = candidate;
                     }
                 }
+            }
+            if (several) {
+                chosen = null;
             }
             if (chosen == null) {
                 chosen = byTown(c, said, pending.candidates); // "the henesys one"
@@ -674,6 +670,7 @@ public final class ContentAnswers {
             long key = result.subject().key() * 31 + result.kind().ordinal();
             m.answeredAt.put(key, now);
             m.answeredReply.put(key, result.reply());
+            m.repeated.remove(key); // a fresh answer may be followed by one "like i said" again
             m.answersInWindow++;
             m.turn++;
             trim(m.answeredAt);

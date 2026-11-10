@@ -29,10 +29,6 @@ public record TellSnapshot(String build, long startedAtMs, long atMs, double hou
             return new Row(id, code, value, n, null, Verdict.INFO, detail);
         }
 
-        public String bandText() {
-            return band == null ? null : band.human();
-        }
-
         public String verdictName() {
             return verdict.name();
         }

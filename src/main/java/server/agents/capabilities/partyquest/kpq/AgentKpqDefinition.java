@@ -70,11 +70,6 @@ public final class AgentKpqDefinition {
         return combinations.get(combinations.size() - answerIndex - 1);
     }
 
-    public static int stageForMap(int mapId) {
-        return mapId >= STAGE_1_MAP && mapId <= STAGE_5_MAP
-                ? mapId - STAGE_1_MAP + 1 : 0;
-    }
-
     private static Rectangle rect(int x, int y, int width, int height) {
         return new Rectangle(x, y, width, height);
     }
@@ -111,10 +106,6 @@ public final class AgentKpqDefinition {
 
         public boolean contains(int oneBasedPosition, Point point) {
             return point != null && positions.get(oneBasedPosition - 1).contains(point);
-        }
-
-        public boolean containsAny(Point point) {
-            return point != null && positions.stream().anyMatch(area -> area.contains(point));
         }
 
         /** The one-based position Cloto counts this point on, the first that contains it as 9020001.js does; 0 if none. */

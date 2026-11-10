@@ -306,22 +306,6 @@ public final class AgentRuntimeRegistry {
         return firstEntry(entriesByLeaderId, leaderCharId);
     }
 
-    public static boolean isFirstEntryForLeader(Map<Integer, List<AgentRuntimeEntry>> entriesByLeaderId, AgentRuntimeEntry entry) {
-        if (entry == null) {
-            return false;
-        }
-        for (List<AgentRuntimeEntry> entries : entriesByLeaderId.values()) {
-            if (entries.contains(entry)) {
-                return !entries.isEmpty() && entries.getFirst() == entry;
-            }
-        }
-        return false;
-    }
-
-    public static boolean isFirstEntryForLeader(AgentRuntimeEntry entry) {
-        return isFirstEntryForLeader(entriesByLeaderId, entry);
-    }
-
     public static List<AgentRuntimeEntry> entriesForLeader(Map<Integer, List<AgentRuntimeEntry>> entriesByLeaderId,
                                                            int leaderCharId) {
         List<AgentRuntimeEntry> entries = entriesByLeaderId.get(leaderCharId);

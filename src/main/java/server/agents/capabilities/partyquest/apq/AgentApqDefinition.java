@@ -54,7 +54,6 @@ public final class AgentApqDefinition {
     /** Stage 4's mobs drop them; the leader hands Amos fifty, the couples' vault takes thirty-five. */
     public static final int CUPID_CODE_PIECE = 4_031_597;
     public static final int PIECES_FOR_GATES = 50;
-    public static final int PIECES_FOR_CAPE = 35;
     /** AmoriaPQ.js setEventExclusives: taken from a member as it leaves the event. */
     public static final Set<Integer> EXCLUSIVE_ITEMS = Set.of(GEIST_FANG, MIRROR_SHARD, WING_HAMMER, CUPID_CODE_PIECE);
 
@@ -69,7 +68,6 @@ public final class AgentApqDefinition {
     public static final long GATE_RUN_BANK_THRESHOLD_MS = 300_000L;
     /** 9201045.js: the bonus vault's timer, and the couples' vault's. */
     public static final long BONUS_TIMER_MS = 60_000L;
-    public static final long COUPLES_VAULT_TIMER_MS = 120_000L;
 
     // ---- stage 1, the Magik Mirror (670010200) ----
     /** gendergo.js: female00 takes a girl (gender 1) to female01, male00 a boy (gender 0) to male01. */
@@ -120,8 +118,6 @@ public final class AgentApqDefinition {
     public static final int GATE_COUNT = 7;
     /** Each gate's portal (gtXXWP, apqDoor.js: only an open gate passes), ids 16-22, west to east. */
     public static final List<Integer> GATE_PORTAL_IDS = List.of(16, 17, 18, 19, 20, 21, 22);
-    /** The shortcut gm00 -> gm01 (portal 14): Amos refuses a party that came that way. */
-    public static final int SHORTCUT_PORTAL_ID = 14;
     /** Where everyone alive gathers by Amos with every gate open (Map.wz area 2, 9201045.js getArea(2)). */
     public static final Rectangle GATHER_AREA = new Rectangle(8536, -126, 482, 276);
     public static final Point GATHER_AT = new Point(8800, 90);

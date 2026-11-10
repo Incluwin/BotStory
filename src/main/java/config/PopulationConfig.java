@@ -37,7 +37,10 @@ public class PopulationConfig {
     public int LEDGER_MS = 600000;
     /** Global multiplier on cohort online probability (1.0 = as authored; 0.5 = half as many online). */
     public double PRESENCE_MULTIPLIER = 1.0;
-    /** How many maps away from a human a loaded citizen may be before it is unloaded to the ledger (0 = only human maps). */
+    /**
+     * Meant as how many maps away from a human a loaded citizen may be before it is unloaded to the ledger
+     * (0 = only human maps). Nothing reads it yet: changing it does nothing.
+     */
     public int PERCEPTION_HOPS = 1;
     /**
      * Visible citizens cap on any single map instance (docs/SCALE_PLATFORM_PLAN.md section 1): a login or move to a map

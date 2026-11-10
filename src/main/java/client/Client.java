@@ -101,7 +101,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -167,7 +166,6 @@ public class Client extends ChannelInboundHandlerAdapter {
     // thanks Masterrulax & try2hack for pointing out a bottleneck issue with shared locks, shavit for noticing an opportunity for improvement
     private Calendar tempBanCalendar;
     private int votePoints;
-    private int voteTime = -1;
     private int visibleWorlds;
     private long lastNpcClick;
     private long lastPacket = System.currentTimeMillis();
@@ -371,8 +369,10 @@ public class Client extends ChannelInboundHandlerAdapter {
                 handler.handlePacket(packet, this);
             } catch (final Throwable t) {
                 final String chrInfo = player != null ? player.getName() + " on map " + player.getMapId() : "?";
+                // A handler that fails on a well-formed packet is a server fault, so only a
+                // failed packet read counts toward closing the session.
                 handleMalformedPacket("handler:" + handler.getClass().getSimpleName(), opcode, packet, t,
-                        "Chr " + chrInfo + ", account " + getAccountName());
+                        "Chr " + chrInfo + ", account " + getAccountName(), isPacketReadFailure(t));
             }
         }
 
@@ -406,10 +406,11 @@ public class Client extends ChannelInboundHandlerAdapter {
     }
 
     private void handleMalformedPacket(String reason, short opcode, InPacket packet, Throwable cause) {
-        handleMalformedPacket(reason, opcode, packet, cause, "account " + getAccountName());
+        handleMalformedPacket(reason, opcode, packet, cause, "account " + getAccountName(), true);
     }
 
-    private void handleMalformedPacket(String reason, short opcode, InPacket packet, Throwable cause, String context) {
+    private void handleMalformedPacket(String reason, short opcode, InPacket packet, Throwable cause, String context,
+                                       boolean countTowardDisconnect) {
         int length = packet.getPosition() + packet.available();
         String preview = HexTool.toHexString(packet.getBytes(PACKET_PREVIEW_BYTES));
         ThrottledLogger.warn("packet:" + reason, log,
@@ -417,9 +418,24 @@ public class Client extends ChannelInboundHandlerAdapter {
                 reason, opcode, length, preview, context);
         SecurityEventRuntime.record(this, SecurityEventType.MALFORMED_PACKET, SecuritySeverity.WARNING,
                 Map.of("reason", reason, "opcode", Short.toUnsignedInt(opcode) + "", "length", length + ""));
-        if (malformedPacketTracker.record(System.currentTimeMillis())) {
+        if (countTowardDisconnect && malformedPacketTracker.record(System.currentTimeMillis())) {
             SessionCoordinator.getInstance().closeSession(this, true);
         }
+    }
+
+    // Reading past the end of a packet throws from Netty's buffer classes, and a negative
+    // string length throws from the packet reader; the same error raised anywhere else is
+    // the handler's own bug.
+    static boolean isPacketReadFailure(Throwable t) {
+        if (!(t instanceof IndexOutOfBoundsException) && !(t instanceof NegativeArraySizeException)) {
+            return false;
+        }
+        StackTraceElement[] stack = t.getStackTrace();
+        if (stack.length == 0) {
+            return false;
+        }
+        String thrower = stack[0].getClassName();
+        return thrower.startsWith("io.netty.buffer.") || thrower.startsWith("net.packet.");
     }
 
     static String packetPreview(byte[] content) {
@@ -575,38 +591,6 @@ public class Client extends ChannelInboundHandlerAdapter {
             log.error("Failed to check banned IP remote={}", remoteAddress, e);
         }
         return ret;
-    }
-
-    public int getVoteTime() {
-        if (voteTime != -1) {
-            return voteTime;
-        }
-
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT date FROM bit_votingrecords WHERE UPPER(account) = UPPER(?)")) {
-            ps.setString(1, accountName);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    return -1;
-                }
-                voteTime = rs.getInt("date");
-            }
-        } catch (SQLException e) {
-            log.error("Error getting voting time");
-            return -1;
-        }
-        return voteTime;
-    }
-
-    public void resetVoteTime() {
-        voteTime = -1;
-    }
-
-    public boolean hasVotedAlready() {
-        Date currentDate = new Date();
-        int timeNow = (int) (currentDate.getTime() / 1000);
-        int difference = (timeNow - getVoteTime());
-        return difference < 86400 && difference > 0;
     }
 
     public boolean hasBannedHWID() {
@@ -1413,7 +1397,8 @@ public class Client extends ChannelInboundHandlerAdapter {
             } catch (NullPointerException e) {
                 log.warn("Idle check skipped because client state was already cleared remote={}", remoteAddress, e);
             }
-        }, SECONDS.toMillis(15000));
+            // Upstream Cosmic waits 15 s; 60 s leaves room for a client that stalls on a map load.
+        }, SECONDS.toMillis(60));
     }
 
     public Set<String> getMacs() {

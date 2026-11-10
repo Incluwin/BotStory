@@ -22,10 +22,6 @@ public final class OperatorMessageTap {
         TAPS.put(characterId, sink);
     }
 
-    public static void remove(int characterId) {
-        TAPS.remove(characterId);
-    }
-
     public static void offer(Character chr, String message) {
         if (TAPS.isEmpty() || chr == null || message == null) {
             return;

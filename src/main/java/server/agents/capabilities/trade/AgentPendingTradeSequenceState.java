@@ -19,7 +19,8 @@ public final class AgentPendingTradeSequenceState {
     private boolean singleBatch = false;
     private boolean inviteAnnounced = false;
     private String categoryMessage = null;
-    private int shareBudget = 0;
+    // -1 means no cap; 0 means the cap is used up.
+    private int shareBudget = -1;
     private final Map<Item, Short> restoreSlots = new IdentityHashMap<>();
 
     public String category() {

@@ -45,9 +45,6 @@ public final class AgentOpqDefinition {
     public static final Set<Integer> PAPA_PIXIE_SUMMONS = Set.of(9_300_054, 9_300_055, 9_300_056);
     public static final List<Integer> STATUE_PIECES = List.of(
             4_001_044, 4_001_045, 4_001_046, 4_001_047, 4_001_048, 4_001_049);
-    public static final Set<Integer> LP_ITEMS = Set.of(
-            4_001_056, 4_001_057, 4_001_058, 4_001_059,
-            4_001_060, 4_001_061, 4_001_062);
     public static final Set<Integer> EXCLUSIVE_ITEMS = Set.of(
             CLOUD_PIECE, WALKWAY_FRAGMENT, LOUNGE_FRAGMENT, STRANGE_SEED,
             EVEN_STRANGER_SEED, ROOT_OF_LIFE, TRANSPARENT_TRIGGER,
@@ -59,8 +56,6 @@ public final class AgentOpqDefinition {
     public static final Set<Integer> LOUNGE_MOBS = Set.of(9_300_041, 9_300_042, 9_300_043);
     public static final Set<Integer> GARDEN_SETUP_MOBS = Set.of(
             9_300_048, 9_300_049, 9_300_054, 9_300_055, 9_300_056);
-    public static final Set<Integer> GARDEN_MOBS = Set.of(
-            9_300_048, 9_300_049, 9_300_054, 9_300_055, 9_300_056, PAPA_PIXIE);
     public static final Set<Integer> HIDDEN_ROOM_MOBS = Set.of(9_300_051, 9_300_052, 9_300_053);
     /** The centre's four Flying Boogies (Map.wz 920010100: mobTime -1, so they never come back; firstAttack). */
     public static final Set<Integer> CENTER_MOBS = Set.of(9_300_050);

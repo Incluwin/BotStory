@@ -728,6 +728,7 @@ public final class AgentNavigationGraphService {
             LAST_BUILD_REPORTS.remove(evictedKey);
             if (!GRAPHS.anyKeyMatches(candidate -> candidate.mapId() == evictedKey.mapId())) {
                 COLLIDABLE_FROM_BELOW_IDS_BY_MAP_ID.remove(evictedKey.mapId());
+                AgentNavigationWalkRegionLookupService.forgetMap(evictedKey.mapId());
             }
         }
         for (int mapId : affectedMapIds) {

@@ -142,9 +142,15 @@ public final class AgentCombatDamageRuntime {
             return;
         }
 
-        AgentIncomingDamagePolicy.DamageSplit split = AgentIncomingDamagePolicy.splitMagicGuard(
-                dmg, bot.getBuffedValue(BuffStat.MAGIC_GUARD), bot.getMp());
-        bot.addMPHPAndTriggerAutopot(-split.hpLoss(), -split.mpLoss());
+        if (attacker != null) {
+            // A mob's touch meets the same defenses as a mob attack the server runs (Combo Barrier,
+            // Achilles, High Defense, Magic Guard, Meso Guard); a fall is only split by Magic Guard.
+            dmg = ServerMobDamageService.applyTouchDamage(bot, dmg);
+        } else {
+            AgentIncomingDamagePolicy.DamageSplit split = AgentIncomingDamagePolicy.splitMagicGuard(
+                    dmg, bot.getBuffedValue(BuffStat.MAGIC_GUARD), bot.getMp());
+            bot.addMPHPAndTriggerAutopot(-split.hpLoss(), -split.mpLoss());
+        }
 
         AgentPacketGatewayRuntime.packets().broadcastDamagePlayer(
                 bot, damageFrom, monsterId, dmg, 0, broadcastDirection, false, 0, false, 0, 0, 0);

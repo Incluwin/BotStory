@@ -147,7 +147,6 @@ public final class AgentDirectorChatService {
     private AgentDirectorProposal keywordProposal(
             AgentDirectorExecutiveView view, String prompt, long nowMs) {
         String keyword = prompt.contains("supply") || prompt.contains("potion") ? "resupply"
-                : prompt.contains("market") || prompt.contains("commerce") ? "commerce"
                 : prompt.contains("town") || prompt.contains("rest") ? "town-life"
                 : prompt.contains("hunt") || prompt.contains("grind") ? "hunting"
                 : prompt.contains("quest") ? "quest"

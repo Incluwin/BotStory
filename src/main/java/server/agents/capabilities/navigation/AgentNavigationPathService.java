@@ -1154,6 +1154,12 @@ public final class AgentNavigationPathService {
         }
     }
 
+    /** Drops a removed Agent's recovered route and capped fragment: only its own later searches would. */
+    public static void clearAgentRuntimeState(int agentId) {
+        RECOVERED_ROUTES.forget(agentId, "agent-removed");
+        CAPPED_FRAGMENTS.forget(agentId, "agent-removed");
+    }
+
     /**
      * Whether a route from {@code regionId} can start with an edge the mover keeps when the
      * target lies on that same region: a self-loop (an intra-region portal) or a no-movement

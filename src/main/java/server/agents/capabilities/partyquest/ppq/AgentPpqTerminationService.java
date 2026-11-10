@@ -39,43 +39,57 @@ public final class AgentPpqTerminationService {
     public static void release(AgentPpqSession session, String reason, long nowMs, boolean dispose) {
         if (session == null || !session.beginTermination()) return;
         boolean companionRun = session.companionAdopted();
-        session.members().forEach(member -> {
+        // Each member's step on its own: one that throws never leaves the run registered and terminating.
+        session.members().forEach(member -> quietly(session, "stop-" + member.characterId(), () -> {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
-        });
+        }));
         EventInstanceManager event = session.eventInstance();
         if (companionRun) {
-            AgentPpqFullRateSimulation.releaseAll(session);
-            logPotions(session);
+            quietly(session, "release-full-rate", () -> AgentPpqFullRateSimulation.releaseAll(session));
+            quietly(session, "log-potions", () -> logPotions(session));
             if (event != null && !cleared(event)) {
-                exitAgentsOnly(session, event);
+                quietly(session, "exit-agents", () -> exitAgentsOnly(session, event));
                 disposeIfEmpty(session, event);
             }
         } else if (dispose && event != null) {
-            for (Character participant : new ArrayList<>(event.getPlayers())) {
-                try { event.exitPlayer(participant); } catch (RuntimeException ignored) { }
-            }
-            try { event.dispose(); } catch (RuntimeException ignored) { }
+            quietly(session, "exit-players", () -> {
+                for (Character participant : new ArrayList<>(event.getPlayers())) {
+                    try {
+                        event.exitPlayer(participant);
+                    } catch (RuntimeException failure) {
+                        log.warn("PPQ participant exit failed: session={} member={}", session.sessionId(),
+                                participant == null ? -1 : participant.getId(), failure);
+                    }
+                }
+            });
+            quietly(session, "dispose-event", event::dispose);
         }
         if (event != null && cleared(event)) {
-            session.members().stream()
+            quietly(session, "leave-clear-room", () -> session.members().stream()
                     .filter(member -> member.memberType() == AgentPpqMemberState.MemberType.AGENT)
                     .map(member -> AgentPpqCoordinator.character(member.characterId()))
                     .filter(Objects::nonNull)
                     .filter(agent -> agent.getMapId() == AgentPpqDefinition.CLEAR_MAP)
-                    .forEach(agent -> leaveWuYangsRoom(session, agent));
+                    .forEach(agent -> leaveWuYangsRoom(session, agent)));
         }
         boolean completed = session.phase() == AgentPpqSession.Phase.COMPLETED;
         if (!keepPartyAfterRelease(session.mode(), completed, companionRun)) {
-            session.members().stream().map(member -> AgentPpqCoordinator.character(member.characterId()))
-                    .filter(Objects::nonNull).filter(AgentPartyGatewayRuntime.party()::hasParty)
-                    .forEach(AgentPartyGatewayRuntime.party()::leaveCurrentParty);
+            session.members().forEach(member -> quietly(session, "leave-party-" + member.characterId(), () -> {
+                Character character = AgentPpqCoordinator.character(member.characterId());
+                if (character != null && AgentPartyGatewayRuntime.party().hasParty(character)) {
+                    AgentPartyGatewayRuntime.party().leaveCurrentParty(character);
+                }
+            }));
         }
-        session.clearEventInstance();
-        if (!completed) session.fail(reason, nowMs);
-        AgentPpqSessionRegistry.remove(session);
-        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
-                companionRun ? pace(session, nowMs) : null);
+        try {
+            session.clearEventInstance();
+            if (!completed) session.fail(reason, nowMs);
+        } finally {
+            AgentPpqSessionRegistry.remove(session);
+            AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
+                    companionRun ? pace(session, nowMs) : null);
+        }
         if (companionRun) {
             log.info("PPQ session released: session={} outcome={} members={} companionRun=true",
                     session.sessionId(), completed ? "completed" : reason, session.memberCount());
@@ -87,10 +101,28 @@ public final class AgentPpqTerminationService {
         return companionRun;
     }
 
-    /** The run's pace for the host's records (P6i Step 5), with one 'PPQ pace span:' line per begun span. */
+    /**
+     * The run's pace for the host's records (P6i Step 5), with one 'PPQ pace span:' line per begun span. A report that
+     * fails leaves it null rather than the release unfinished.
+     */
     static AgentPqPace pace(AgentPpqSession session, long nowMs) {
-        AgentPpqPaceReport.logSpans(session, nowMs);
-        return AgentPpqPaceReport.of(session, nowMs);
+        try {
+            AgentPpqPaceReport.logSpans(session, nowMs);
+            return AgentPpqPaceReport.of(session, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("PPQ pace report failed: session={}", session.sessionId(), failure);
+            return null;
+        }
+    }
+
+    /** Runs one step of the release; a failure is logged and the release goes on. */
+    private static void quietly(AgentPpqSession session, String operation, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException failure) {
+            log.warn("PPQ cleanup failed but release will continue: session={} operation={}",
+                    session.sessionId(), operation, failure);
+        }
     }
 
     /** "{name:hp/mp, ...}" of the run's companions, for the 'PPQ potions:' line. Never throws. */

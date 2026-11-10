@@ -82,4 +82,20 @@ class AgentPpqTerminationCompanionTest {
                     anyLong(), eq(null)), times(1));
         }
     }
+
+    @Test
+    void aReleaseStepThatThrowsStillEndsTheRunAndTellsTheHost() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.DECK_ONE_MAP);
+             MockedStatic<AgentPartyQuestLifecycleRuntime> lifecycle = mockStatic(AgentPartyQuestLifecycleRuntime.class)) {
+            org.mockito.Mockito.doThrow(new IllegalStateException("stop")).when(run.actions).stop(any());
+            org.mockito.Mockito.doThrow(new IllegalStateException("exit")).when(run.event).exitPlayer(any());
+
+            AgentPpqTerminationService.release(run.session, "why", 5_000L, true);
+
+            assertEquals(AgentPpqSession.Phase.FAILED, run.session.phase());
+            assertTrue(AgentPpqSessionRegistry.sessions().stream().noneMatch(session -> session == run.session));
+            lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(eq(run.session.sessionId()),
+                    eq(false), eq("why"), eq(5_000L), any()), times(1));
+        }
+    }
 }

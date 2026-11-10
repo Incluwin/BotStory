@@ -65,9 +65,7 @@ public enum MesoAccount {
             case SHOP_BUYBACK -> NPC_BUYBACK;
             case PLAYER_SHOP_LIST, PLAYER_SHOP_SALE -> PLAYER_SHOP;
             case PLAYER_TRADE -> TRADE;
-            case OFFSCREEN_FARM_SETTLEMENT, VENUE_SUBSIDY -> AGENT_SIM;
             case SCROLL_APPLY -> SERVICE;
-            case QUEST_START, QUEST_TURN_IN -> QUEST;
             case COMPANION_GIFT -> COMPANION;
             case CASH_SHOP_WINDOW -> CASH_SHOP;
             case NEED_FULFILLED -> NEEDS;

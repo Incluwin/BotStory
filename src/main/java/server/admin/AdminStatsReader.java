@@ -30,11 +30,15 @@ final class AdminStatsReader {
     static String playerSamples(int hours) {
         if (hours <= 0 || hours > 24 * 30) hours = 24;
         String sql =
-                "SELECT UNIX_TIMESTAMP(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(ts)/300)*300)) AS bucket_s, " +
-                "       SUM(player_count) AS total " +
-                "FROM admin_player_samples " +
-                "WHERE ts >= (NOW() - INTERVAL ? HOUR) " +
-                "GROUP BY bucket_s ORDER BY bucket_s ASC";
+                // A bucket holds several 60 s samples per channel: each channel is averaged over the bucket, then the
+                // channels are added, so the figure is players online and not samples times players.
+                "SELECT bucket_s, ROUND(SUM(channel_avg)) AS total FROM (" +
+                "  SELECT UNIX_TIMESTAMP(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(ts)/300)*300)) AS bucket_s, " +
+                "         AVG(player_count) AS channel_avg " +
+                "  FROM admin_player_samples " +
+                "  WHERE ts >= (NOW() - INTERVAL ? HOUR) " +
+                "  GROUP BY bucket_s, world_id, channel_id" +
+                ") per_channel GROUP BY bucket_s ORDER BY bucket_s ASC";
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, hours);

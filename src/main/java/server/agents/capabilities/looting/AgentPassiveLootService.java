@@ -90,18 +90,6 @@ public final class AgentPassiveLootService {
                 continue;
             }
 
-            if (drop.getMeso() <= 0 && drop.getItemId() > 0) {
-                InventoryType type = ItemConstants.getInventoryType(drop.getItemId());
-                Inventory inventory = agent.getInventory(type);
-                if (inventory != null && inventory.isFull()) {
-                    recordLootDecision(entry, AgentLootDecisionTraceState.Outcome.INVENTORY_FULL,
-                            now, postKill.killCount(), drop, targetAgeMs);
-                    warnInventoryFull(entry, agent, type, inventory, callbacks);
-                    mentionFullBag(entry, agent, drop, now);
-                    continue;
-                }
-            }
-
             Item pickedItem = drop.getItem();
             int pickedItemId = drop.getItemId();
             callbacks.pickup(agent, drop);

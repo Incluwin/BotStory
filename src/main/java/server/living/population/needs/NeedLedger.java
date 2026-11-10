@@ -803,6 +803,10 @@ public final class NeedLedger {
             return false;
         }
         synchronized (lock(need.citizenId())) {
+            need = live.get(needId); // read again under the lock: it may have closed or changed hands meanwhile
+            if (need == null || need.holder(nowMs) != playerId) {
+                return false;
+            }
             replace(need.withClaim(0, 0L));
         }
         return true;

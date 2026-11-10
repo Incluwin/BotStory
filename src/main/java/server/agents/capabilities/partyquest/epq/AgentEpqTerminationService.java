@@ -45,19 +45,22 @@ final class AgentEpqTerminationService {
                                 boolean mayLeaveEvent) {
         if (session == null || !session.beginTermination()) return;
         AgentEpqSession.Phase phaseAtRelease = session.phase();
-        session.members().forEach(member -> {
+        // Each member's step on its own: one that throws never leaves the run registered and terminating.
+        session.members().forEach(member -> quietly(session, "stop-" + member.characterId(), () -> {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) {
                 entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY).clear();
                 AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
             }
-        });
-        AgentEpqFullRateSimulation.releaseAll(session); // Step 2.12: the run's full-rate holds end with it
+        }));
+        // Step 2.12: the run's full-rate holds end with it
+        quietly(session, "release-full-rate", () -> AgentEpqFullRateSimulation.releaseAll(session));
         EventInstanceManager event = session.eventInstance();
         boolean companionRun = session.companionAdopted();
         boolean pastTheClear = pastTheClear(event);
         if (companionRun) logPotions(session);
-        log.info("EPQ vitals: session={} phase={} members={}", session.sessionId(), phaseAtRelease, vitals(session));
+        quietly(session, "log-vitals", () -> log.info("EPQ vitals: session={} phase={} members={}",
+                session.sessionId(), phaseAtRelease, vitals(session)));
         // A companion run keeps its party, so no party leave runs EllinPQ's own exit for it as it does for a stock run:
         // one that did not complete leaves the event as the tick's failure release has it leave, whoever releases it
         // (AgentEpqRuntime.requestStop passes no dispose, and can land between the fail and the tick's release).
@@ -65,35 +68,49 @@ final class AgentEpqTerminationService {
                 && (dispose || (companionRun && phaseAtRelease != AgentEpqSession.Phase.COMPLETED));
         if (leaveEvent && event != null) {
             if (companionRun && pastTheClear) {
-                exitAgentsOnly(session);
+                quietly(session, "exit-agents", () -> exitAgentsOnly(session));
             } else {
-                for (Character participant : new ArrayList<>(event.getPlayers())) {
-                    try { event.exitPlayer(participant); } catch (RuntimeException ignored) { }
-                }
-                try { event.dispose(); } catch (RuntimeException ignored) { }
+                quietly(session, "exit-players", () -> {
+                    for (Character participant : new ArrayList<>(event.getPlayers())) {
+                        try {
+                            event.exitPlayer(participant);
+                        } catch (RuntimeException failure) {
+                            log.warn("EPQ participant exit failed: session={} member={}", session.sessionId(),
+                                    participant == null ? -1 : participant.getId(), failure);
+                        }
+                    }
+                });
+                quietly(session, "dispose-event", event::dispose);
             }
         }
         if (!keepPartyAfterRelease(companionRun)) {
-            session.members().stream().map(member -> AgentEpqCoordinator.character(member.characterId()))
-                    .filter(java.util.Objects::nonNull).filter(AgentPartyGatewayRuntime.party()::hasParty)
-                    .forEach(AgentPartyGatewayRuntime.party()::leaveCurrentParty);
+            session.members().forEach(member -> quietly(session, "leave-party-" + member.characterId(), () -> {
+                Character character = AgentEpqCoordinator.character(member.characterId());
+                if (character != null && AgentPartyGatewayRuntime.party().hasParty(character)) {
+                    AgentPartyGatewayRuntime.party().leaveCurrentParty(character);
+                }
+            }));
         }
-        session.clearEventInstance();
         boolean completed = session.phase() == AgentEpqSession.Phase.COMPLETED;
         // Step 2.10: a companion run past the clear is cleared whoever ends it (a stall, the host's stop, an Agent
         // removed): it reads COMPLETED and its host hears success. Every other run that did not complete fails.
         boolean cleared = completed || (companionRun && pastTheClear);
-        if (cleared && !completed) {
-            session.complete(nowMs);
-            log.info("EPQ cleared run wrapped up: session={} reason={}", session.sessionId(), reason);
-        } else if (!completed) {
-            session.fail(reason, nowMs);
+        try {
+            session.clearEventInstance();
+            if (cleared && !completed) {
+                session.complete(nowMs);
+                log.info("EPQ cleared run wrapped up: session={} reason={}", session.sessionId(), reason);
+            } else if (!completed) {
+                session.fail(reason, nowMs);
+            }
+        } finally {
+            AgentEpqSessionRegistry.remove(session);
+            // Step 5.3: measurement only
+            if (companionRun) quietly(session, "log-pace-spans", () -> AgentEpqPaceReport.logSpans(session, nowMs));
+            // A companion run's pace goes to the host's clear-time records; a stock run reports none.
+            AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), cleared, reason, nowMs,
+                    companionRun ? pace(session, nowMs) : null);
         }
-        AgentEpqSessionRegistry.remove(session);
-        if (companionRun) AgentEpqPaceReport.logSpans(session, nowMs); // Step 5.3: measurement only
-        // A companion run's pace goes to the host's clear-time records; a stock run reports none.
-        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), cleared, reason, nowMs,
-                companionRun ? pace(session, nowMs) : null);
         log.info("EPQ session released: session={} outcome={} phase={} members={} companionRun={} pastTheClear={}"
                         + " rescues={}", session.sessionId(), completed ? "completed" : reason, phaseAtRelease,
                 session.memberCount(), companionRun, pastTheClear, session.rescueCounts());
@@ -189,9 +206,27 @@ final class AgentEpqTerminationService {
         return companionRun;
     }
 
-    /** A companion run's pace for the host's records (Step 5.3); none for no run. */
+    /**
+     * A companion run's pace for the host's records (Step 5.3); none for no run. A report that fails leaves it null
+     * rather than the release unfinished.
+     */
     static AgentPqPace pace(AgentEpqSession session, long nowMs) {
-        return session == null ? null : AgentEpqPaceReport.of(session, nowMs);
+        try {
+            return session == null ? null : AgentEpqPaceReport.of(session, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("EPQ pace report failed: session={}", session.sessionId(), failure);
+            return null;
+        }
+    }
+
+    /** Runs one step of the release; a failure is logged and the release goes on. */
+    private static void quietly(AgentEpqSession session, String operation, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException failure) {
+            log.warn("EPQ cleanup failed but release will continue: session={} operation={}",
+                    session.sessionId(), operation, failure);
+        }
     }
 
     private static void logPotions(AgentEpqSession session) {

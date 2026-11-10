@@ -193,23 +193,10 @@ public final class AgentInventoryTradePolicy {
 
     /** Score used to order own-class equips worst-to-best: 4*watk + matk + main + sec. */
     public static int equipTradeScore(Equip equip, Job job) {
-        int main;
-        int secondary;
-        if (AgentWeaponCompatibilityPolicy.isMageJob(job)) {
-            main = equip.getInt();
-            secondary = equip.getLuk();
-        } else if (job != null && (job.isA(Job.BOWMAN)
-                || job == Job.GUNSLINGER || job == Job.OUTLAW || job == Job.CORSAIR)) {
-            main = equip.getDex();
-            secondary = equip.getStr();
-        } else if (job != null && job.isA(Job.THIEF)) {
-            main = equip.getLuk();
-            secondary = equip.getDex();
-        } else {
-            main = equip.getStr();
-            secondary = equip.getDex();
-        }
-        return 4 * equip.getWatk() + equip.getMatk() + main + secondary;
+        char[] order = AgentWeaponCompatibilityPolicy.mainSecondaryStats(job == null ? 0 : job.getId());
+        return 4 * equip.getWatk() + equip.getMatk()
+                + AgentWeaponCompatibilityPolicy.statValue(equip, order[0])
+                + AgentWeaponCompatibilityPolicy.statValue(equip, order[1]);
     }
 
     public static List<Item> prioritizeEtcTradeItems(List<Item> items, Character recipient) {

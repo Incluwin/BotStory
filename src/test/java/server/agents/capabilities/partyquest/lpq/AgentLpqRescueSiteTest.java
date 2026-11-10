@@ -61,7 +61,7 @@ class AgentLpqRescueSiteTest {
         WRAPPERS.put("vacuumPassDrops", "VACUUM");
     }
 
-    /** The REVIEWED inventory: 46 rows, (calling method, site label, kind). */
+    /** The REVIEWED inventory: 45 rows, (calling method, site label, kind). */
     private static final Set<String> INVENTORY = new TreeSet<>(List.of(
             "enter entering-not-in-event EVENT_REREGISTER",
             "catchUpLaggingMembers dead-agent-reentry EVENT_REREGISTER",
@@ -81,7 +81,6 @@ class AgentLpqRescueSiteTest {
             "movePartyToNextStageTogether next-stage-portal TELEPORT",
             "approachStageSixPortal stage6-portal-approach TELEPORT",
             "occupyStageEightPlatformWithRecovery stage8-platform TELEPORT",
-            "prepareStageNineBossFormation stage9-formation TELEPORT",
             "recoverBossKey boss-key-holder TELEPORT",
             "approachRewardNpc reward-npc-approach TELEPORT",
             "hitReactorFromCandidates reactor-approach TELEPORT",
@@ -279,7 +278,7 @@ class AgentLpqRescueSiteTest {
 
         assertEquals(triples.size(), new TreeSet<>(triples).size(), "no (method, site, kind) twice: " + triples);
         assertEquals(INVENTORY, new TreeSet<>(triples));
-        assertEquals(46, triples.size());
+        assertEquals(45, triples.size());
     }
 
     @Test

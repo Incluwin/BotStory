@@ -83,8 +83,9 @@ final class AdminSsoKey {
                 try {
                     cached = loadFromDisk(path);
                 } catch (Exception e) {
-                    log.warn("sso-key.json present but unreadable; regenerating", e);
-                    cached = null;
+                    // The key is pinned elsewhere, so a damaged file is never replaced by a new key here.
+                    throw new IOException("sso-key.json at " + path.toAbsolutePath()
+                            + " is present but unreadable; restore it, or delete it to have a new key generated", e);
                 }
             }
             if (cached == null) {
