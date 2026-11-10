@@ -631,6 +631,17 @@ The server sees a human only through movement packets. Ties go to the human both
         5.8 s before their first throw (0.7-2.3 s for every other job); citizens short of stars measure the gap, not
         the job. Fixed in the learner and `!pvp rates`: a fighter with no usable attack on more than 30% of its thinks
         does not count. Restocking stars is a citizen supply matter, outside PvP.
+    - **Check run (55a064af7, 2026-11-10 02:16-04:13, 36 rounds; 413 duels, no errors)**, learned rates reset and
+      replayed from rounds five to nine plus the long run (2,792 fighter rows; class rates warrior x0.68, magician
+      x1.08, bowman x0.88, thief x0.76, pirate x1.10). Cross-class: magician 74%, bowman 56%, pirate 43%, warrior
+      41%, thief 22%; level edge 48% at 1-2, 61% at 3-5; knock-outs median 16 s.
+      - Offense is normalized: landed damage per engaged second over the target (a typical opponent's HP in 12 s)
+        is warrior 1.02, magician 0.98, thief 1.02, bowman 0.91, pirate 0.77; landed per raw damage is flat across
+        victim classes, so defense and the class HP ratio are not it.
+      - **Cause 3, a heal leak:** a knocked-out fighter had absorbed, over its class's typical max HP, warrior 1.07,
+        bowman 1.31, thief 1.37, pirate 1.37, magician 1.66 (cleric 1.82). The allowance permits at most about 1.3 in
+        a 16 s duel. Every landed hit reset the heal baseline to the victim's HP, so a potion or Heal between a tick
+        and a hit passed uncounted. Fixed: a hit runs the allowance check on the victim first.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

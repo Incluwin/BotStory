@@ -210,6 +210,33 @@ class DuelPiecesTest {
         verify(b).updateHpMp(3000, 4000);
     }
 
+    /**
+     * Long run 2026-11-09: a hit reset the heal baseline, so a potion or Heal between a tick and a hit passed whole.
+     * A hit now runs this check first (no time passes, so no new allowance): the heal beyond what is left is taken back.
+     */
+    @Test
+    void aHealBeyondTheAllowanceIsTakenBackBeforeAHitMovesTheBaseline() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        when(a.getCurrentMaxHp()).thenReturn(5000);
+        when(a.getCurrentMaxMp()).thenReturn(800);
+        DuelField field = new DuelField(97, map, List.of(a), List.of(b));
+        DuelField.Fighter healed = field.fighters().stream().filter(f -> f.chr == a).findFirst().orElseThrow();
+        healed.lastHp = 1000;
+        healed.lastMp = 800;
+        healed.hpAllowance = 500;
+        healed.mpAllowance = 80;
+        when(a.getHp()).thenReturn(3000);   // +2000 since the last look
+        when(a.getMp()).thenReturn(800);
+
+        field.accountHealing(healed, 0d);
+
+        verify(a).updateHp(1500);
+        assertEquals(1500, healed.lastHp);
+        assertEquals(0d, healed.hpAllowance, 1e-9);
+    }
+
     /** A held attack key: the next think comes as the attack lock ends, not a whole reaction later. */
     @Test
     void aBotSwingsAgainAsItsAttackLockEnds() {

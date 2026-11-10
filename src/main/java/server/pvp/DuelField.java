@@ -248,7 +248,7 @@ public final class DuelField {
     }
 
     /** HP or MP gained since the last look, beyond the allowance, is taken back (any source: potions, Heal, regen). */
-    private void accountHealing(Fighter fighter, double dtMs) {
+    void accountHealing(Fighter fighter, double dtMs) {
         Character chr = fighter.chr;
         double window = Math.max(1, config.PVP_HEAL_WINDOW_MS);
         double hpCap = healCap(chr.getCurrentMaxHp());
@@ -419,6 +419,10 @@ public final class DuelField {
         }
         CharacterHitApplier.Guards guards = even ? CharacterHitApplier.Guards.NONE
                 : new CharacterHitApplier.Guards(config.PVP_MAGIC_GUARD_FACTOR, config.PVP_MESO_GUARD_HP_SHARE);
+        // a heal since the last look must meet the allowance before this hit moves the baseline: without it, a potion
+        // or Heal between a tick and a hit passed whole (long run 2026-11-09: knocked-out magicians had absorbed 1.66x
+        // their typical HP, warriors 1.07x, beyond what the allowance permits)
+        accountHealing(victim, 0d);
         CharacterHitApplier.Applied applied = CharacterHitApplier.applyLoss(to, damage, 0, guards, true);
         victim.lastHp = to.getHp();
         victim.lastMp = to.getMp();
