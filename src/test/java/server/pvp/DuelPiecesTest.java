@@ -237,6 +237,30 @@ class DuelPiecesTest {
         assertEquals(0d, healed.hpAllowance, 1e-9);
     }
 
+    /**
+     * Heal-fixed run 2026-11-10: a bot's autopot drinks inside the hit's loss, and the HP after it became the baseline,
+     * so knocked-out magicians had absorbed 1.59x their max HP. The baseline is now what the loss left.
+     */
+    @Test
+    void anAutopotDrinkInsideAHitMeetsTheAllowance() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        when(a.getCurrentMaxHp()).thenReturn(5000);
+        when(a.getCurrentMaxMp()).thenReturn(800);
+        DuelField field = new DuelField(96, map, List.of(a), List.of(b));
+        DuelField.Fighter hit = field.fighters().stream().filter(f -> f.chr == a).findFirst().orElseThrow();
+        hit.hpAllowance = 500;
+        hit.mpAllowance = 80;
+        when(a.getHp()).thenReturn(5000);   // 3000 - 1000 from the hit, then an Elixir drunk inside it
+        when(a.getMp()).thenReturn(800);
+
+        field.settleAfterLoss(hit, 3000, 800, new server.combat.CharacterHitApplier.Applied(1000, 0, false));
+
+        verify(a).updateHp(2500);
+        assertEquals(2500, hit.lastHp);
+    }
+
     /** A held attack key: the next think comes as the attack lock ends, not a whole reaction later. */
     @Test
     void aBotSwingsAgainAsItsAttackLockEnds() {

@@ -248,6 +248,18 @@ public final class DuelField {
     }
 
     /** HP or MP gained since the last look, beyond the allowance, is taken back (any source: potions, Heal, regen). */
+    /**
+     * After a hit's loss: the baseline is what the loss left, then the allowance check. A bot's loss goes through
+     * {@code addMPHPAndTriggerAutopot}, so its autopot can drink inside the hit; taking the HP after that as the
+     * baseline let the drink pass whole, an Elixir included (heal-fixed run 2026-11-10: knocked-out magicians had
+     * absorbed 1.59x their own max HP, warriors 1.02x).
+     */
+    void settleAfterLoss(Fighter victim, int hpBefore, int mpBefore, CharacterHitApplier.Applied applied) {
+        victim.lastHp = Math.max(0, hpBefore - applied.hpLoss());
+        victim.lastMp = Math.max(0, mpBefore - applied.mpLoss());
+        accountHealing(victim, 0d);
+    }
+
     void accountHealing(Fighter fighter, double dtMs) {
         Character chr = fighter.chr;
         double window = Math.max(1, config.PVP_HEAL_WINDOW_MS);
@@ -423,9 +435,10 @@ public final class DuelField {
         // or Heal between a tick and a hit passed whole (long run 2026-11-09: knocked-out magicians had absorbed 1.66x
         // their typical HP, warriors 1.07x, beyond what the allowance permits)
         accountHealing(victim, 0d);
+        int hpBefore = to.getHp();
+        int mpBefore = to.getMp();
         CharacterHitApplier.Applied applied = CharacterHitApplier.applyLoss(to, damage, 0, guards, true);
-        victim.lastHp = to.getHp();
-        victim.lastMp = to.getMp();
+        settleAfterLoss(victim, hpBefore, mpBefore, applied);
         attacker.dealt += applied.hpLoss() + applied.mpLoss();
         victim.taken += applied.hpLoss() + applied.mpLoss();
         for (int line : shown(scaled, total, damage)) {

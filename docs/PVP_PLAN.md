@@ -642,6 +642,15 @@ The server sees a human only through movement packets. Ties go to the human both
         bowman 1.31, thief 1.37, pirate 1.37, magician 1.66 (cleric 1.82). The allowance permits at most about 1.3 in
         a 16 s duel. Every landed hit reset the heal baseline to the victim's HP, so a potion or Heal between a tick
         and a hit passed uncounted. Fixed: a hit runs the allowance check on the victim first.
+    - **Check run on that fix (f4c8fe579, 2026-11-10 04:45-06:47; 297 duels, no errors).** Unchanged: magician 83%
+      cross-class (75% by distinct pairing), warrior 43%, bowman 49%, thief 6%, pirate 16%; level edge 54% at both
+      gaps; knock-outs median 15 s. Against each fighter's own stored max HP (characters table), a knocked-out
+      magician had absorbed 1.59x (p75 2.26), bowman 1.29x, warrior 1.02x, thief 1.05x, pirate 1.03x; fire/poison
+      and ice/lightning mages (no Heal) as much as clerics.
+      - **Cause 4, the real leak:** a bot's loss goes through `addMPHPAndTriggerAutopot`, so its autopot drinks
+        inside the hit, after the damage, and the HP after that drink became the new baseline: the drink passed whole,
+        an Elixir included. Low-HP classes trip the autopot most. Fixed: after the loss the baseline is what the loss
+        left, then the allowance check runs.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
