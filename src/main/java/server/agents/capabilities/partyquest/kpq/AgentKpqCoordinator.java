@@ -2984,6 +2984,7 @@ final class AgentKpqCoordinator {
             }
             Character newLeader = memberCharacter(liveLeaderId, partyAnchor);
             session.setLeadership(liveLeaderId, executionAgentId);
+            session.resetFormation();
             if (newLeader != null) event.setLeader(newLeader);
             session.markProgress(nowMs);
             log.info("KPQ leadership reconciled to live party: session={} leader={} executionAgent={} members={}",

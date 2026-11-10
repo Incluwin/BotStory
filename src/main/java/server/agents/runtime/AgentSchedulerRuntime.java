@@ -104,6 +104,6 @@ public final class AgentSchedulerRuntime {
     }
 
     public static long randomDelayMs(int minMs, int maxMs) {
-        return minMs + ThreadLocalRandom.current().nextInt(maxMs - minMs);
+        return maxMs <= minMs ? minMs : minMs + ThreadLocalRandom.current().nextInt(maxMs - minMs);
     }
 }

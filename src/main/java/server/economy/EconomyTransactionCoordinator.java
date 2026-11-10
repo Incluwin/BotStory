@@ -93,10 +93,8 @@ public final class EconomyTransactionCoordinator {
         } finally {
             if (second != null) {
                 second.unlock();
-                removeUnusedLock(secondId, second);
             }
             first.unlock();
-            removeUnusedLock(firstId, first);
         }
     }
 
@@ -130,12 +128,6 @@ public final class EconomyTransactionCoordinator {
                 Map.of("transactionId", operation.transactionId().toString(),
                         "operation", operation.kind().name(),
                         "failure", failure.getClass().getSimpleName()));
-    }
-
-    private static void removeUnusedLock(int id, ReentrantLock lock) {
-        if (!lock.hasQueuedThreads()) {
-            participantLocks.remove(id, lock);
-        }
     }
 
     static void installJournalForTesting(EconomyTransactionJournal testJournal) {

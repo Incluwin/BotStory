@@ -6,14 +6,26 @@
 # Not used by the build.
 docs
 handbook
-sql
 tools
+installer
+database-console
+director-panel
+video-assets
+reports
+tmp
+v83 clean wz files
+
+# Local tooling state: session worktrees (GBs), the code graph, a local Maven repository.
+.claude
+graphify-out
+.m2
 
 # Created by the db when using docker-compose, large and causes rebuild issues if sent to the context.
 **/docker-db-data
 
 # Local secrets and build/runtime output.
 .env
+sso-key.json
 target
 logs
 .runtime

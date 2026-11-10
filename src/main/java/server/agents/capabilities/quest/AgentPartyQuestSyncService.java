@@ -89,6 +89,9 @@ public final class AgentPartyQuestSyncService {
         }
         int npc = resolveQuestNpc(source, quest, quest.npc(source));
         for (Character agent : partyAgents(source)) {
+            if (quest.completedForGood(agent)) {
+                continue;
+            }
             ensureQuestStarted(agent, quest, npc);
             agent.setQuestProgress(questId, infoNumber, progress);
         }

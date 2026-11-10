@@ -32,5 +32,4 @@ function act() {
     const PacketCreator = Java.type('tools.PacketCreator');
     rm.getClient().getMap().startMapEffect("Protect the Moon Bunny that's pounding the mill, and gather up 10 Moon Bunny's Rice Cakes!", 5120016, 7000);
     rm.getClient().getMap().broadcastMessage(PacketCreator.bunnyPacket()); // Protect the Moon Bunny!
-    rm.getClient().getMap().broadcastMessage(PacketCreator.showHPQMoon());
 }

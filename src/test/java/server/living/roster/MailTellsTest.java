@@ -66,6 +66,7 @@ class MailTellsTest {
     void mesoAloneGoInAPackageWithNoItemAndTheOwnerIsNotified() {
         try (LifecycleHarness game = new LifecycleHarness();
              MockedStatic<DueyProcessor> duey = mockStatic(DueyProcessor.class)) {
+            duey.when(() -> DueyProcessor.dueyCreatePackage(any(), anyInt(), any(), anyString(), anyInt())).thenReturn(true);
             Persona mira = game.companion("mira", "Mira", 950, RosterState.BENCHED, HENESYS);
             seedHaulMeso(game, mira, 500L);
 
@@ -82,6 +83,7 @@ class MailTellsTest {
     void eachPieceOfAnEquipStackIsAFreshDropInAPackageOfItsOwn() {
         try (LifecycleHarness game = new LifecycleHarness();
              MockedStatic<DueyProcessor> duey = mockStatic(DueyProcessor.class)) {
+            duey.when(() -> DueyProcessor.dueyCreatePackage(any(), anyInt(), any(), anyString(), anyInt())).thenReturn(true);
             Persona mira = game.companion("mira", "Mira", 950, RosterState.BENCHED, HENESYS);
             assertSame(RosterService.DROP_LIKE, game.roster().mailedEquips, "live, a mailed equip is a randomizeStats drop");
             List<Equip> made = new ArrayList<>();
@@ -112,6 +114,7 @@ class MailTellsTest {
     void oneSendMailsAHundredPackagesAtMostAndTheRestWaitsInTheHaul() {
         try (LifecycleHarness game = new LifecycleHarness();
              MockedStatic<DueyProcessor> duey = mockStatic(DueyProcessor.class)) {
+            duey.when(() -> DueyProcessor.dueyCreatePackage(any(), anyInt(), any(), anyString(), anyInt())).thenReturn(true);
             Persona mira = game.companion("mira", "Mira", 950, RosterState.BENCHED, HENESYS);
             game.roster().mailedEquips = itemId -> Equip.restored(itemId, (short) 0);
             game.store.store.addHaul(ANN, "mira", SWORD, 150);

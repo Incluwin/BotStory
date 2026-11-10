@@ -51,10 +51,11 @@ public final class ItemMoveHandler extends AbstractPacketHandler {
 
         // Locked rings (Quest Ring + Evolving Ring chain) cannot be unequipped, dropped, or moved.
         // The unequip path is the only one a normal player can hit (src < 0 means EQUIPPED slot),
-        // but we also guard drop/move so a packet edit can't dislodge them. Equip-into a locked
-        // slot from inventory is impossible anyway because the rings are never in EQUIP — they
-        // live exclusively in EQUIPPED from character creation onward.
-        if (isLockedEquippedItem(c, type, src) || isLockedEquippedItem(c, InventoryType.EQUIPPED, src)) {
+        // but we also guard drop/move so a packet edit can't dislodge them. Equipping another item
+        // onto a locked slot (action < 0 names the EQUIPPED slot) would swap the locked item out
+        // into the EQUIP tab, where nothing guards it, so that is refused too.
+        if (isLockedEquippedItem(c, type, src) || isLockedEquippedItem(c, InventoryType.EQUIPPED, src)
+                || isLockedEquippedItem(c, InventoryType.EQUIPPED, action)) {
             c.sendPacket(PacketCreator.enableActions());
             return;
         }

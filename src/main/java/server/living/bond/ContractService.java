@@ -543,6 +543,7 @@ public final class ContractService {
     /** Called by the roster whenever a persona leaves a roster, whatever the reason (its owner may be offline or gone). */
     public void onReleased(int ownerId, Persona persona, String reason) {
         afterTheRun.values().removeIf(due -> due.ownerId() == ownerId && due.personaId().equals(persona.id()));
+        deaths.remove(ownerId + ":" + persona.id());
         Bond bond = world.bonds().peek(ownerId, persona.id());
         if (bond == null) {
             return;

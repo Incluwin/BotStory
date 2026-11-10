@@ -2134,10 +2134,28 @@ public final class RosterService {
         int moved = 0;
         int skipped = 0;
         for (HaulItem item : world.store().haul(owner.getId(), persona.id())) {
-            if (InventoryManipulator.checkSpace(owner.getClient(), item.itemId(), item.quantity(), "")) {
-                InventoryManipulator.addById(owner.getClient(), item.itemId(), (short) Math.min(item.quantity(), Short.MAX_VALUE));
-                world.store().removeHaul(owner.getId(), persona.id(), item.itemId(), item.quantity());
-                world.store().recordTransfer(owner.getId(), persona.id(), item.itemId(), item.quantity());
+            // an equip stack is that many pieces, each added on its own; a stack moves at most a short's worth at once.
+            // Only what the owner received leaves the haul.
+            boolean equip = ItemConstants.isEquipment(item.itemId());
+            int given = 0;
+            if (equip) {
+                while (given < item.quantity()
+                        && InventoryManipulator.checkSpace(owner.getClient(), item.itemId(), 1, "")
+                        && InventoryManipulator.addById(owner.getClient(), item.itemId(), (short) 1)) {
+                    given++;
+                }
+            } else {
+                int batch = Math.min(item.quantity(), Short.MAX_VALUE);
+                if (InventoryManipulator.checkSpace(owner.getClient(), item.itemId(), batch, "")
+                        && InventoryManipulator.addById(owner.getClient(), item.itemId(), (short) batch)) {
+                    given = batch;
+                }
+            }
+            if (given > 0) {
+                world.store().removeHaul(owner.getId(), persona.id(), item.itemId(), given);
+                world.store().recordTransfer(owner.getId(), persona.id(), item.itemId(), given);
+            }
+            if (given >= item.quantity()) {
                 moved++;
             } else {
                 skipped++;
@@ -2201,6 +2219,8 @@ public final class RosterService {
         }
         int packages = 0;
         boolean left = false;
+        boolean mesoSent = false;
+        boolean failed = false;
         for (HaulItem stack : haul) {
             boolean equip = ItemConstants.isEquipment(stack.itemId());
             // an equip stack is that many pieces, each a package of its own; past the cap the rest waits in the haul
@@ -2209,22 +2229,44 @@ public final class RosterService {
                 left = true;
                 break;
             }
+            // only a package Duey took leaves the haul: a failed one keeps its stack, and the meso it would have carried
+            int mailed = 0;
             for (int piece = 0; piece < pieces; piece++) {
-                DueyProcessor.dueyCreatePackage(mailItem(mailedEquips, stack.itemId(), stack.quantity()),
-                        packages == 0 ? (int) Math.min(meso, Integer.MAX_VALUE) : 0, null, persona.name(), owner.getId());
+                boolean carriesMeso = packages == 0 && meso > 0;
+                if (!DueyProcessor.dueyCreatePackage(mailItem(mailedEquips, stack.itemId(), stack.quantity()),
+                        carriesMeso ? (int) Math.min(meso, Integer.MAX_VALUE) : 0, null, persona.name(), owner.getId())) {
+                    failed = true;
+                    break;
+                }
+                mesoSent |= carriesMeso;
                 packages++;
+                mailed++;
             }
-            int sent = equip ? pieces : stack.quantity();
+            int sent = equip ? mailed : mailed == 0 ? 0 : Math.min(stack.quantity(), Short.MAX_VALUE);
             left |= sent < stack.quantity();
-            world.store().removeHaul(owner.getId(), persona.id(), stack.itemId(), sent);
-            world.store().recordTransfer(owner.getId(), persona.id(), stack.itemId(), sent);
+            if (sent > 0) {
+                world.store().removeHaul(owner.getId(), persona.id(), stack.itemId(), sent);
+                world.store().recordTransfer(owner.getId(), persona.id(), stack.itemId(), sent);
+            }
+            if (failed) {
+                break;
+            }
         }
-        if (packages == 0 && meso > 0) {
-            DueyProcessor.dueyCreatePackage(null, (int) Math.min(meso, Integer.MAX_VALUE), null, persona.name(), owner.getId());
+        if (packages == 0 && meso > 0 && !failed
+                && DueyProcessor.dueyCreatePackage(null, (int) Math.min(meso, Integer.MAX_VALUE), null, persona.name(), owner.getId())) {
+            mesoSent = true;
             packages++;
         }
+        if (packages == 0) {
+            return persona.name() + " could not send anything by Duey just now.";
+        }
         DueyProcessor.dueyNotify(owner);
-        saveHaulMeso(entry, 0L);
+        long mesoMailed = mesoSent ? Math.min(meso, Integer.MAX_VALUE) : 0L;
+        if (mesoSent) {
+            saveHaulMeso(entry, meso - mesoMailed);
+        }
+        left |= mesoMailed < meso;
+        meso = mesoMailed;
         CompanionViews.invalidate(world, owner.getId(), persona.id()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.duey", packages + " packages, " + meso + " meso");
         return persona.name() + " sends you " + packages + (packages == 1 ? " package" : " packages")

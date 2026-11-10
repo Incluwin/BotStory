@@ -76,16 +76,17 @@ public final class AgentActionMailbox {
             }
             if (options.overflowPolicy() == AgentMailboxOverflowPolicy.COALESCE_LATEST) {
                 replaced = findByCoalescingKey(options.coalescingKey());
-                if (replaced != null) {
-                    actions.remove(replaced);
-                }
             }
             int capacityLimit = options.workClass().quiescenceCritical()
                     ? capacity + criticalReserve
                     : capacity;
-            if (actions.size() >= capacityLimit) {
+            // the replaced action leaves only once the new one is sure of its place, so a rejection keeps it queued
+            if (actions.size() - (replaced == null ? 0 : 1) >= capacityLimit) {
                 return rejected(result, AgentMailboxSubmissionStatus.REJECTED_FULL,
                         AgentMailboxFailureReason.FULL, "Agent mailbox is full", actions.size());
+            }
+            if (replaced != null) {
+                actions.remove(replaced);
             }
             actions.addLast(new Envelope<>(sessionGeneration, action, options, result));
             depth = actions.size();
