@@ -261,6 +261,17 @@ class DuelPiecesTest {
         assertEquals(2500, hit.lastHp);
     }
 
+    /** Filmed 2026-11-10: an assassin threw stars from a ladder for six seconds. No player can attack while climbing. */
+    @Test
+    void aBotNeverSwingsFromARopeOrLadder() {
+        assertFalse(DuelBrain.mayAttackFrom(constants.game.CharacterStance.LADDER_LEFT_STANCE));
+        assertFalse(DuelBrain.mayAttackFrom(constants.game.CharacterStance.LADDER_RIGHT_STANCE));
+        assertFalse(DuelBrain.mayAttackFrom(constants.game.CharacterStance.ROPE_LEFT_STANCE));
+        assertFalse(DuelBrain.mayAttackFrom(constants.game.CharacterStance.ROPE_RIGHT_STANCE));
+        assertTrue(DuelBrain.mayAttackFrom(constants.game.CharacterStance.WALK_LEFT_STANCE));
+        assertTrue(DuelBrain.mayAttackFrom(constants.game.CharacterStance.WALK_RIGHT_STANCE));
+    }
+
     /** A held attack key: the next think comes as the attack lock ends, not a whole reaction later. */
     @Test
     void aBotSwingsAgainAsItsAttackLockEnds() {

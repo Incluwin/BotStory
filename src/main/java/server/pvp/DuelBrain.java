@@ -236,6 +236,9 @@ final class DuelBrain {
         Rectangle body = PvpHitResolver.hurtbox(aim, 0);
         int reach = 0;
         boolean anyPlan = false;
+        // a player cannot attack on a rope or ladder: it finishes the climb (filmed 2026-11-10, an assassin threw stars
+        // from a ladder for six seconds)
+        boolean mayAttack = mayAttackFrom(bot.getStance());
         for (int skillId : mind.skills) {
             AgentAttackPlan plan = AgentSkillAttackPlanRuntime.planSkillAttackAt(bot, aim, skillId);
             if (plan == null) {
@@ -251,7 +254,7 @@ final class DuelBrain {
             if (box == null) {
                 continue;
             }
-            if (box.intersects(body)) {
+            if (mayAttack && box.intersects(body)) {
                 gateway.stop(entry);
                 gateway.facePosition(bot, aim);
                 var result = AgentCombatAttackRuntime.attackAtNothing(entry, bot, plan);
@@ -283,6 +286,11 @@ final class DuelBrain {
         stats.walks.incrementAndGet();
         var map = bot.getMap();
         gateway.navigate(entry, standPoint(at, aim, reach, p -> gateway.groundPoint(map, p)), true);
+    }
+
+    /** Whether a fighter in {@code stance} can swing: not while climbing a rope or ladder, as no player can. */
+    static boolean mayAttackFrom(int stance) {
+        return !constants.game.CharacterStance.isClimbing(stance);
     }
 
     /**
