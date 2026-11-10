@@ -398,6 +398,27 @@ class CompanionManagerTest {
     }
 
     @Test
+    void haulMesoThatDoesNotFitStaysInTheHaul() {
+        RosterEntry row = h.row(mira);
+        h.store.seed(new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, HENESYS, 0L, 3_120L, 0L,
+                row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(), 0, null));
+        Storage storage = mock(Storage.class);
+        when(storage.getMeso()).thenReturn(Integer.MAX_VALUE - 120);
+        when(h.ann.getStorage()).thenReturn(storage);
+
+        assertEquals("Mira banks 120 meso into your storage. Your storage is full; the rest stays in its haul.",
+                h.roster().bankIt(h.ann, mira));
+        verify(storage).setMeso(Integer.MAX_VALUE);
+        assertEquals(3_000L, h.row(mira).haulMeso());
+
+        when(h.ann.getMeso()).thenReturn(Integer.MAX_VALUE - 1_000);
+        assertEquals("Mira hands you 1,000 meso. Your purse is full; the rest of the meso stays in its haul.",
+                h.roster().handOver(h.ann, mira));
+        verify(h.ann).gainMeso(1_000, true);
+        assertEquals(2_000L, h.row(mira).haulMeso());
+    }
+
+    @Test
     void theHaulLinesReadAsSentencesWithFormattedMesoAndRealPlurals() {
         RosterEntry row = h.row(mira);
         h.store.seed(new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, HENESYS, 0L, 3_120L, 0L,

@@ -64,8 +64,13 @@ public final class AdminSampler {
              PreparedStatement ps = con.prepareStatement(sql)) {
             for (World w : Server.getInstance().getWorlds()) {
                 for (Channel ch : w.getChannels()) {
-                    int count;
-                    try { count = ch.getPlayerStorage().getAllCharacters().size(); }
+                    int count = 0;
+                    try {
+                        // Players only: a bot character is not a concurrent player.
+                        for (Character chr : ch.getPlayerStorage().getAllCharacters()) {
+                            if (!(chr.getClient() instanceof client.BotClient)) count++;
+                        }
+                    }
                     catch (Throwable t) { count = 0; }
                     ps.setInt(1, w.getId());
                     ps.setInt(2, ch.getId());

@@ -80,6 +80,7 @@ public final class KnowledgeLoader {
      * reload}); false when nothing was queued because knowledge is disabled.
      */
     public static boolean reload() {
+        failureLogged = false; // an asked-for reload reports its own failure, whatever failed before it
         fileRequested.set(true);
         requestOverlayRebuild();
         return worker != null;
@@ -150,7 +151,7 @@ public final class KnowledgeLoader {
             if (!failureLogged) {
                 failureLogged = true;
                 log.warn("[knowledge] load failed ({}): {}", WorldKnowledge.current().ready()
-                        ? "keeping the previous snapshot" : "content answers stay off until a reload succeeds", failure.toString());
+                        ? "keeping the previous snapshot" : "content answers stay off until a reload succeeds", failure.toString(), failure);
             }
         }
     }

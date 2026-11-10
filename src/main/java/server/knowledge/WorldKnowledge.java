@@ -693,9 +693,10 @@ public final class WorldKnowledge {
                 return cached;
             }
             Found found = search(fromMapId, toMapId);
-            if (cache.size() < CACHE_MAX) {
-                cache.put(key, found);
+            if (cache.size() >= CACHE_MAX) {
+                cache.clear(); // full: start over, as the distance tables do, so later routes are cached again
             }
+            cache.put(key, found);
             return found;
         }
 

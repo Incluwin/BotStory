@@ -165,13 +165,18 @@ public final class ItcgForge {
         return recipe.resultCount();
     }
 
-    /** Takes one input from the inventory: a whole slot for throwing stars (one set), else {@code count} by id. */
+    /**
+     * Takes one input from the inventory: a whole slot for throwing stars (one set), else {@code count} by id. The set
+     * taken is one that holds the count, as {@link #have} counted it: never an empty set lying before a filled one.
+     */
     private static void take(AbstractPlayerInteraction pi, Stack input) {
         InventoryType type = ItemConstants.getInventoryType(input.itemId());
         if (ItemConstants.isRechargeable(input.itemId())) {
-            Item set = pi.getPlayer().getInventory(type).findById(input.itemId());
-            if (set != null) {
-                InventoryManipulator.removeFromSlot(pi.getClient(), type, set.getPosition(), set.getQuantity(), false);
+            for (Item set : pi.getPlayer().getInventory(type).list()) {
+                if (set.getItemId() == input.itemId() && set.getQuantity() >= input.count()) {
+                    InventoryManipulator.removeFromSlot(pi.getClient(), type, set.getPosition(), set.getQuantity(), false);
+                    return;
+                }
             }
             return;
         }
