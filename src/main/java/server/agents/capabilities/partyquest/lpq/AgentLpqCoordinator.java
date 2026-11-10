@@ -1238,7 +1238,8 @@ final class AgentLpqCoordinator {
 
         int transferred = 0;
         for (AgentLpqMemberState member : session.members()) {
-            if (leaderPasses >= required || member.characterId() == leader.getId()) break;
+            if (leaderPasses >= required) break;
+            if (member.characterId() == leader.getId()) continue;
             Character participant = character(member.characterId());
             if (participant == null) continue;
             int held = participant.getItemQuantity(AgentLpqDefinition.PASS, false);

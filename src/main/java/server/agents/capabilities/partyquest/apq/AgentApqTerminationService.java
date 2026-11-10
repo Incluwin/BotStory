@@ -34,40 +34,62 @@ public final class AgentApqTerminationService {
 
     public static void release(AgentApqSession session, String reason, long nowMs) {
         if (session == null || !session.beginTermination()) return;
-        session.members().forEach(member -> {
+        // Each member's step on its own: one that throws never leaves the run registered and terminating.
+        session.members().forEach(member -> quietly(session, "stop-" + member.characterId(), () -> {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
-        });
+        }));
         EventInstanceManager event = session.eventInstance();
-        AgentApqFullRateSimulation.releaseAll(session);
-        log.info("APQ potions: session={} start={} end={}", session.sessionId(), session.potionsAtEntry(),
-                potions(session));
+        quietly(session, "release-full-rate", () -> AgentApqFullRateSimulation.releaseAll(session));
+        quietly(session, "log-potions", () -> log.info("APQ potions: session={} start={} end={}",
+                session.sessionId(), session.potionsAtEntry(), potions(session)));
         if (event != null && !cleared(event)) {
-            exitAgentsOnly(session, event);
+            quietly(session, "exit-agents", () -> exitAgentsOnly(session, event));
             disposeIfEmpty(session, event);
         }
-        session.members().stream()
+        quietly(session, "leave-to-gate", () -> session.members().stream()
                 .filter(member -> member.memberType() == AgentApqMemberState.MemberType.AGENT)
                 .map(member -> AgentApqCoordinator.character(member.characterId()))
                 .filter(Objects::nonNull)
                 .filter(agent -> agent.getMapId() == AgentApqDefinition.EXIT_MAP
                         || agent.getMapId() >= AgentApqDefinition.MIRROR_MAP && agent.getEventInstance() == null
                         && AgentApqDefinition.isEventMap(agent.getMapId()))
-                .forEach(agent -> leaveToTheGate(session, agent));
+                .forEach(agent -> leaveToTheGate(session, agent)));
         boolean completed = session.phase() == AgentApqSession.Phase.COMPLETED;
-        session.clearEventInstance();
-        if (!completed) session.fail(reason, nowMs);
-        AgentApqSessionRegistry.remove(session);
-        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
-                pace(session, nowMs));
+        try {
+            session.clearEventInstance();
+            if (!completed) session.fail(reason, nowMs);
+        } finally {
+            AgentApqSessionRegistry.remove(session);
+            AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
+                    pace(session, nowMs));
+        }
         log.info("APQ session released: session={} outcome={} members={} companionRun=true", session.sessionId(),
                 completed ? "completed" : reason, session.memberCount());
     }
 
-    /** The run's pace for the host's records, with one 'APQ pace span:' line per begun span. */
+    /**
+     * The run's pace for the host's records, with one 'APQ pace span:' line per begun span. A report that fails leaves
+     * it null rather than the release unfinished.
+     */
     static AgentPqPace pace(AgentApqSession session, long nowMs) {
-        AgentApqPaceReport.logSpans(session, nowMs);
-        return AgentApqPaceReport.of(session, nowMs);
+        try {
+            AgentApqPaceReport.logSpans(session, nowMs);
+            return AgentApqPaceReport.of(session, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("APQ pace report failed: session={}", session.sessionId(), failure);
+            return null;
+        }
+    }
+
+    /** Runs one step of the release; a failure is logged and the release goes on. */
+    private static void quietly(AgentApqSession session, String operation, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException failure) {
+            log.warn("APQ cleanup failed but release will continue: session={} operation={}",
+                    session.sessionId(), operation, failure);
+        }
     }
 
     /** "{name:hp/mp, ...}" of the run's companions, for the 'APQ potions:' line. Never throws. */

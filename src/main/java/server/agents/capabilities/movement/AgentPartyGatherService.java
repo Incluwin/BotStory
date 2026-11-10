@@ -166,6 +166,11 @@ public final class AgentPartyGatherService {
         return claimed[0];
     }
 
+    /** Forgets when an owner with no Agent left last called the party together. */
+    public static void clearLeaderRuntimeState(int ownerId) {
+        LAST_ASSEMBLE_MS.remove(ownerId);
+    }
+
     /** Spot offsets from the owner: -s, +s, -2s, +2s, ... (the owner keeps the middle). */
     static List<Integer> spotOffsets(int count, int spacingPx) {
         List<Integer> offsets = new ArrayList<>(count);

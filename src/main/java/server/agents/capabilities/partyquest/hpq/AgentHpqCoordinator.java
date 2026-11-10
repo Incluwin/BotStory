@@ -1558,7 +1558,10 @@ final class AgentHpqCoordinator {
         log.warn("HPQ claim failed: session={} member={} reason=inventory failures={}", session.sessionId(),
                 member.characterId(), member.claimFailures());
         EventInstanceManager event = session.eventInstance();
-        if (event != null && hpq().event(agent) == event) event.exitPlayer(agent);
+        if (event != null && hpq().event(agent) == event) {
+            event.exitPlayer(agent);
+            AgentHpqTerminationService.disposeIfEmpty(session, event);
+        }
     }
 
     /** Done once every companion is up and out of the event; no line and no walk, they follow their owner. */

@@ -14,7 +14,7 @@ public final class AgentEasyBalrogRewardGracePolicy {
     }
 
     public static boolean blocksAgentLoot(Character agent, long nowMs) {
-        if (agent == null || agent.getMapId() != AgentBalrogDefinition.CLEAR_MAP) {
+        if (agent == null || !isClearMap(agent.getMapId())) {
             return false;
         }
         EventInstanceManager event = agent.getEventInstance();
@@ -26,7 +26,7 @@ public final class AgentEasyBalrogRewardGracePolicy {
     }
 
     public static boolean permitsAgentLoot(Character agent, MapItem drop, long nowMs) {
-        if (agent == null || agent.getMapId() != AgentBalrogDefinition.CLEAR_MAP
+        if (agent == null || !isClearMap(agent.getMapId())
                 || agent.getEventInstance() == null) {
             return true;
         }
@@ -35,6 +35,11 @@ public final class AgentEasyBalrogRewardGracePolicy {
                 && agent.getPosition() != null && drop != null && drop.getPosition() != null
                 && agent.getPosition().distanceSq(drop.getPosition())
                 <= (long) AGENT_PICKUP_DISTANCE_PX * AGENT_PICKUP_DISTANCE_PX;
+    }
+
+    /** Easy and Normal Balrog have twin clear rooms; the grace applies in both. */
+    private static boolean isClearMap(int mapId) {
+        return mapId == AgentBalrogDefinition.CLEAR_MAP || mapId == AgentBalrogDefinition.NORMAL_CLEAR_MAP_ID;
     }
 
     public static long rewardOpenedAt(EventInstanceManager event) {
