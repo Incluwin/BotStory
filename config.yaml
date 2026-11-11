@@ -1717,8 +1717,11 @@ mods:
 # act in a duel; gear defense, level and gear still do. It evens dodging too (PD17, 2026-11-09): each side's accuracy
 # and avoid count against its own class's median at its level band, taken from the characters online every 10 min
 # (server.pvp.PvpHitBalance; "!pvp calibrate" prints it), so a DEX/LUK class no longer dodges a warrior by build while
-# avoid gear above the class median still helps. Off, warriors win about nine duels in ten from Lv 70 (!pvp sim
-# matrix, 2026-11-08), raw accuracy and avoid decide dodges, and PVP_MAGIC_GUARD_FACTOR / PVP_MESO_GUARD_HP_SHARE apply.
+# avoid gear above the class median still helps. Defense the same way (2026-11-11): a median victim of every class
+# meets weapon hits and spells with one common defense, the mean of its band's WDEF and MDEF, since most gear carries far
+# more WDEF than MDEF and spells won 68% cross-class (check run 14). Off, warriors win about nine duels in ten from
+# Lv 70 (!pvp sim matrix, 2026-11-08), raw accuracy, avoid and defense decide, and PVP_MAGIC_GUARD_FACTOR /
+# PVP_MESO_GUARD_HP_SHARE apply.
 # Technical: server.pvp.PvpDamageModel scales lines from CombatFormulaProvider.rollPvpLines with the reference table
 # scripts/config/pvp/reference.yaml (written by "!pvp calibrate"); server.pvp.PvpHitResolver tests attack boxes
 # against hurtboxes with PVP_LAG_WINDOW_MS of position history; server.pvp.DuelField owns sides, rounds, knock-outs

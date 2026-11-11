@@ -37,8 +37,9 @@ public class PvpConfig {
      * class-balanced median, so a median fighter of every class lasts {@link #PVP_TTK_SECONDS}, and the class defense
      * skills (Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard, Meso Guard) do not act in a duel. It
      * evens the hit chance too (PD17, 2026-11-09): each side's accuracy and avoid count against its own class's median
-     * at its level band ({@link server.pvp.PvpHitBalance}), so DEX/LUK classes no longer dodge warriors by build.
-     * Off: a warrior's double HP stands, raw accuracy and avoid decide dodges, and the two guard keys below apply.
+     * at its level band ({@link server.pvp.PvpHitBalance}), so DEX/LUK classes no longer dodge warriors by build; and
+     * defense (2026-11-11): a median victim meets weapon hits and spells with one common defense.
+     * Off: a warrior's double HP stands, raw accuracy, avoid and defense decide, and the two guard keys below apply.
      */
     public boolean PVP_EVEN_CLASSES = true;
     /** Magic Guard moves this share of its PvE share to MP (full strength makes the mage the tankiest class). */

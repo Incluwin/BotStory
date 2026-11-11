@@ -19,6 +19,11 @@ import java.util.TreeMap;
  * at a level band has that band's class-balanced accuracy and avoid. Gear still counts inside the class: an Assassin
  * with more avoid than other Assassins still dodges more.
  *
+ * <p>Defense is evened the same way, with one more step (the user's call 2026-11-11): a median victim of every class
+ * meets the band's common defense, the mean of its class-balanced WDEF and MDEF, against weapon hits and spells
+ * alike. Check run 14 (2026-11-10): most gear carries far more WDEF than MDEF, so spells kept several percent more
+ * of every hit than weapons did, and magicians won 68% cross-class.
+ *
  * <p>The medians come from the characters online (players and citizens, GMs left out), refreshed every
  * {@link #REFRESH_MS}: accuracy is magic accuracy for magicians, physical for the others, as each attacks.
  */
@@ -30,69 +35,112 @@ public final class PvpHitBalance {
     static final double MIN_FACTOR = 0.25d;
     static final double MAX_FACTOR = 4.0d;
 
-    /** One character: level, class (1 warrior .. 5 pirate), the accuracy it attacks with, and its avoid. */
-    public record Sample(int level, int jobClass, int accuracy, int avoid) { }
+    /** One character: level, class (1 warrior .. 5 pirate), the accuracy it attacks with, its avoid, WDEF and MDEF. */
+    public record Sample(int level, int jobClass, int accuracy, int avoid, int wdef, int mdef) {
+        /** No defense known: the sample counts toward accuracy and avoid only. */
+        public Sample(int level, int jobClass, int accuracy, int avoid) {
+            this(level, jobClass, accuracy, avoid, 0, 0);
+        }
+    }
 
     private static volatile PvpHitBalance current;
     private static volatile long builtAtMs;
 
-    /** class -> band -> median over the band's class-balanced median. */
+    /** class -> band -> median over the band's class-balanced median (defense: over the band's common defense). */
     private final Map<Integer, TreeMap<Integer, Double>> accuracyRatio;
     private final Map<Integer, TreeMap<Integer, Double>> avoidRatio;
+    private final Map<Integer, TreeMap<Integer, Double>> wdefRatio;
+    private final Map<Integer, TreeMap<Integer, Double>> mdefRatio;
     private final int samples;
 
     private PvpHitBalance(Map<Integer, TreeMap<Integer, Double>> accuracyRatio,
-                          Map<Integer, TreeMap<Integer, Double>> avoidRatio, int samples) {
+                          Map<Integer, TreeMap<Integer, Double>> avoidRatio,
+                          Map<Integer, TreeMap<Integer, Double>> wdefRatio,
+                          Map<Integer, TreeMap<Integer, Double>> mdefRatio, int samples) {
         this.accuracyRatio = accuracyRatio;
         this.avoidRatio = avoidRatio;
+        this.wdefRatio = wdefRatio;
+        this.mdefRatio = mdefRatio;
         this.samples = samples;
     }
 
     public static PvpHitBalance build(List<Sample> samples) {
         Map<Integer, Map<Integer, List<Integer>>> accuracy = new TreeMap<>();
         Map<Integer, Map<Integer, List<Integer>>> avoid = new TreeMap<>();
+        Map<Integer, Map<Integer, List<Integer>>> wdef = new TreeMap<>();
+        Map<Integer, Map<Integer, List<Integer>>> mdef = new TreeMap<>();
         int used = 0;
         for (Sample sample : samples) {
             if (sample.jobClass() < 1 || sample.jobClass() > 5) {
                 continue;
             }
             int band = sample.level() / 10;
-            accuracy.computeIfAbsent(band, b -> new TreeMap<>())
-                    .computeIfAbsent(sample.jobClass(), c -> new ArrayList<>()).add(sample.accuracy());
-            avoid.computeIfAbsent(band, b -> new TreeMap<>())
-                    .computeIfAbsent(sample.jobClass(), c -> new ArrayList<>()).add(sample.avoid());
+            add(accuracy, band, sample.jobClass(), sample.accuracy());
+            add(avoid, band, sample.jobClass(), sample.avoid());
+            if (sample.wdef() > 0 || sample.mdef() > 0) {
+                add(wdef, band, sample.jobClass(), sample.wdef());
+                add(mdef, band, sample.jobClass(), sample.mdef());
+            }
             used++;
         }
-        return new PvpHitBalance(ratios(accuracy), ratios(avoid), used);
+        Map<Integer, TreeMap<Integer, Double>> wdefRatio = new HashMap<>();
+        Map<Integer, TreeMap<Integer, Double>> mdefRatio = new HashMap<>();
+        for (int band : wdef.keySet()) {
+            Map<Integer, Double> w = classMedians(wdef.get(band));
+            Map<Integer, Double> m = classMedians(mdef.get(band));
+            if (w == null || m == null) {
+                continue;
+            }
+            // one value for both kinds, so a spell and a weapon hit meet the same defense on a median victim
+            double common = (mean(w) + mean(m)) / 2d;
+            if (common > 0) {
+                put(wdefRatio, band, w, common);
+                put(mdefRatio, band, m, common);
+            }
+        }
+        return new PvpHitBalance(ratios(accuracy), ratios(avoid), wdefRatio, mdefRatio, used);
     }
 
-    /**
-     * Per band, each class's median over the mean of the class medians (classes with at least
-     * {@link #MIN_SAMPLES}); a band with fewer than two such classes gives no ratios.
-     */
+    private static void add(Map<Integer, Map<Integer, List<Integer>>> into, int band, int jobClass, int value) {
+        into.computeIfAbsent(band, b -> new TreeMap<>()).computeIfAbsent(jobClass, c -> new ArrayList<>()).add(value);
+    }
+
+    /** Per band, each class's median over the mean of the class medians (none for a band of fewer than two classes). */
     private static Map<Integer, TreeMap<Integer, Double>> ratios(Map<Integer, Map<Integer, List<Integer>>> byBand) {
         Map<Integer, TreeMap<Integer, Double>> ratios = new HashMap<>();
         for (Map.Entry<Integer, Map<Integer, List<Integer>>> band : byBand.entrySet()) {
-            Map<Integer, Double> medians = new TreeMap<>();
-            for (Map.Entry<Integer, List<Integer>> jobClass : band.getValue().entrySet()) {
-                List<Integer> values = jobClass.getValue();
-                if (values.size() < MIN_SAMPLES) {
-                    continue;
-                }
+            Map<Integer, Double> medians = classMedians(band.getValue());
+            if (medians != null && mean(medians) > 0) {
+                put(ratios, band.getKey(), medians, mean(medians));
+            }
+        }
+        return ratios;
+    }
+
+    /** Each class's median (classes with at least {@link #MIN_SAMPLES}); null with fewer than two such classes. */
+    private static Map<Integer, Double> classMedians(Map<Integer, List<Integer>> byClass) {
+        if (byClass == null) {
+            return null;
+        }
+        Map<Integer, Double> medians = new TreeMap<>();
+        for (Map.Entry<Integer, List<Integer>> jobClass : byClass.entrySet()) {
+            List<Integer> values = jobClass.getValue();
+            if (values.size() >= MIN_SAMPLES) {
                 values.sort(null);
                 medians.put(jobClass.getKey(), median(values));
             }
-            if (medians.size() < 2) {
-                continue;
-            }
-            double reference = medians.values().stream().mapToDouble(Double::doubleValue).average().orElse(0d);
-            if (reference <= 0) {
-                continue;
-            }
-            medians.forEach((jobClass, median) -> ratios.computeIfAbsent(jobClass, c -> new TreeMap<>())
-                    .put(band.getKey(), Math.max(1d, median) / reference));
         }
-        return ratios;
+        return medians.size() < 2 ? null : medians;
+    }
+
+    private static double mean(Map<Integer, Double> medians) {
+        return medians.values().stream().mapToDouble(Double::doubleValue).average().orElse(0d);
+    }
+
+    private static void put(Map<Integer, TreeMap<Integer, Double>> ratios, int band, Map<Integer, Double> medians,
+                            double reference) {
+        medians.forEach((jobClass, median) -> ratios.computeIfAbsent(jobClass, c -> new TreeMap<>())
+                .put(band, Math.max(1d, median) / reference));
     }
 
     private static double median(List<Integer> sorted) {
@@ -108,6 +156,16 @@ public final class PvpHitBalance {
     /** Multiplies the avoid of a fighter of {@code jobId} at {@code level}. */
     public double avoidFactor(int jobId, int level) {
         return factor(avoidRatio, jobId, level);
+    }
+
+    /** Multiplies the WDEF a victim of {@code jobId} at {@code level} meets a weapon hit with. */
+    public double wdefFactor(int jobId, int level) {
+        return factor(wdefRatio, jobId, level);
+    }
+
+    /** Multiplies the MDEF a victim of {@code jobId} at {@code level} meets a spell with. */
+    public double mdefFactor(int jobId, int level) {
+        return factor(mdefRatio, jobId, level);
     }
 
     /** 1 over the class's ratio at the band, or at the nearest band it has one; 1 for a beginner or no data. */
@@ -134,8 +192,8 @@ public final class PvpHitBalance {
 
     /** Class -> band -> ratio, for the GM report. */
     public String report() {
-        return "accuracy " + accuracyRatio + ", avoid " + avoidRatio + " (class -> band -> median / band median, n="
-                + samples + ")";
+        return "accuracy " + accuracyRatio + ", avoid " + avoidRatio + ", wdef " + wdefRatio + ", mdef " + mdefRatio
+                + " (class -> band -> median / band median, n=" + samples + ")";
     }
 
     /** The balance from the characters online, rebuilt when older than {@link #REFRESH_MS}. */
@@ -166,6 +224,7 @@ public final class PvpHitBalance {
     static Sample sample(Character chr, CombatFormulaProvider formulas) {
         int jobClass = chr.getJob().getId() / 100 % 10;
         int accuracy = jobClass == 2 ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
-        return new Sample(chr.getLevel(), jobClass, accuracy, formulas.getTotalAvoidability(chr));
+        return new Sample(chr.getLevel(), jobClass, accuracy, formulas.getTotalAvoidability(chr), chr.getTotalWdef(),
+                chr.getTotalMdef());
     }
 }

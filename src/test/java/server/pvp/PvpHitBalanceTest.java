@@ -88,6 +88,64 @@ class PvpHitBalanceTest {
         assertEquals(1d, balance.avoidFactor(500 + 12, 75), "pirates absent from the data");
     }
 
+    private static final int MAGICIAN = 212;
+
+    /** Three of a class at Lv 75 with this WDEF and MDEF (the same accuracy and avoid for all). */
+    private static void addDefense(List<PvpHitBalance.Sample> samples, int jobClass, int wdef, int mdef) {
+        for (int i = 0; i < 3; i++) {
+            samples.add(new PvpHitBalance.Sample(75, jobClass, 150, 100, wdef, mdef));
+        }
+    }
+
+    /** Check run 14's shape: WDEF far above MDEF on most gear, a warrior's WDEF the most, a magician's MDEF. */
+    private static PvpHitBalance defenseShape() {
+        List<PvpHitBalance.Sample> samples = new ArrayList<>();
+        addDefense(samples, 1, 900, 150);
+        addDefense(samples, 2, 250, 500);
+        addDefense(samples, 4, 400, 200);
+        return PvpHitBalance.build(samples);
+    }
+
+    /** Check run 14 (2026-11-10): spells met far less MDEF than weapons met WDEF, and magicians won 68%. */
+    @Test
+    void aMedianVictimMeetsSpellsAndWeaponHitsWithOneDefense() {
+        PvpHitBalance balance = defenseShape();
+        double common = ((900 + 250 + 400) / 3d + (150 + 500 + 200) / 3d) / 2d;   // 400
+        assertEquals(common, 900 * balance.wdefFactor(WARRIOR, 75), 1e-9);
+        assertEquals(common, 150 * balance.mdefFactor(WARRIOR, 75), 1e-9);
+        assertEquals(common, 250 * balance.wdefFactor(MAGICIAN, 75), 1e-9);
+        assertEquals(common, 500 * balance.mdefFactor(MAGICIAN, 75), 1e-9);
+        assertEquals(common, 400 * balance.wdefFactor(THIEF, 75), 1e-9);
+        assertEquals(common, 200 * balance.mdefFactor(THIEF, 75), 1e-9);
+    }
+
+    @Test
+    void aSpellAndAWeaponHitTakeTheSameCutFromAMedianVictim() {
+        PvpHitBalance balance = defenseShape();
+        PvpConfig config = new PvpConfig();
+        double weapon = PvpDamageModel.defenseFactor(
+                (int) Math.round(900 * balance.wdefFactor(WARRIOR, 75)), 75, config);
+        double spell = PvpDamageModel.defenseFactor(
+                (int) Math.round(150 * balance.mdefFactor(WARRIOR, 75)), 75, config);
+        assertEquals(weapon, spell, 1e-9);
+        assertTrue(PvpDamageModel.defenseFactor(900, 75, config) < PvpDamageModel.defenseFactor(150, 75, config),
+                "unevened, the spell kept more");
+    }
+
+    @Test
+    void defenseAboveTheClassMedianStillCutsMore() {
+        PvpHitBalance balance = defenseShape();
+        assertEquals(1200d / 900d, 1200 * balance.wdefFactor(WARRIOR, 75) / (900 * balance.wdefFactor(WARRIOR, 75)),
+                1e-9);
+    }
+
+    @Test
+    void samplesWithoutDefenseLeaveDefenseAlone() {
+        PvpHitBalance balance = roundEightShape();
+        assertEquals(1d, balance.wdefFactor(WARRIOR, 75));
+        assertEquals(1d, balance.mdefFactor(THIEF, 75));
+    }
+
     @Test
     void factorsAreClamped() {
         List<PvpHitBalance.Sample> samples = new ArrayList<>();

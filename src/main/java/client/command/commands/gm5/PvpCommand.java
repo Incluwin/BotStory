@@ -528,16 +528,20 @@ public class PvpCommand extends Command {
         server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
         int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
         int avoid = formulas.getTotalAvoidability(chr);
+        int wdef = chr.getTotalWdef();
+        int mdef = chr.getTotalMdef();
         if (config.PVP_EVEN_CLASSES) {
-            // as the duel does (PD17): accuracy and avoid against the class's own median at the band
+            // as the duel does (PD17): accuracy, avoid and defense against the class's own median at the band
             server.pvp.PvpHitBalance balance = server.pvp.PvpHitBalance.current();
             accuracy = (int) Math.round(accuracy * balance.accuracyFactor(jobId, level));
             avoid = (int) Math.round(avoid * balance.avoidFactor(jobId, level));
+            wdef = (int) Math.round(wdef * balance.wdefFactor(jobId, level));
+            mdef = (int) Math.round(mdef * balance.mdefFactor(jobId, level));
         }
         double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
         return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
-                rawDps, coefficient, accuracy, avoid, chr.getTotalWdef(),
-                chr.getTotalMdef(), reduce, magicGuardPercent(chr), reference.classHpRatio(jobId),
+                rawDps, coefficient, accuracy, avoid, wdef,
+                mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId),
                 reference.hRef(level));
     }
 

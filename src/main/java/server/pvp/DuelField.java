@@ -398,9 +398,9 @@ public final class DuelField {
         int direction = to.getPosition().x < from.getPosition().x ? 0 : 1;
         int accuracy = attack.magic ? formulas.getTotalMagicAccuracy(from) : formulas.getTotalAccuracy(from);
         int avoid = formulas.getTotalAvoidability(to);
-        if (config.PVP_EVEN_CLASSES) {
+        PvpHitBalance balance = config.PVP_EVEN_CLASSES ? PvpHitBalance.current() : null;
+        if (balance != null) {
             // even classes (PD17): each side's accuracy / avoid against its own class's median at its band
-            PvpHitBalance balance = PvpHitBalance.current();
             accuracy = (int) Math.round(accuracy * balance.accuracyFactor(from.getJob().getId(), from.getLevel()));
             avoid = (int) Math.round(avoid * balance.avoidFactor(to.getJob().getId(), to.getLevel()));
         }
@@ -416,6 +416,13 @@ public final class DuelField {
         }
         attacker.stats.hits.incrementAndGet();
         int defense = attack.magic ? to.getTotalMdef() : to.getTotalWdef();
+        if (balance != null) {
+            // even classes: a median victim meets spells and weapon hits with one common defense (check run 14: spells
+            // met far less MDEF than weapons met WDEF, and magicians won 68% cross-class)
+            int jobId = to.getJob().getId();
+            defense = (int) Math.round(defense * (attack.magic ? balance.mdefFactor(jobId, to.getLevel())
+                    : balance.wdefFactor(jobId, to.getLevel())));
+        }
         boolean even = config.PVP_EVEN_CLASSES;
         double scale = factor * PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config)
                 * PvpDamageModel.levelHpShare(from.getLevel(), to.getLevel(), PvpReference.get())
