@@ -349,14 +349,20 @@ final class DuelBrain {
             return;
         }
         mind.lastDrinkTryMs = now;
+        stats.drinkTries.incrementAndGet();
         var choice = CosmicAgentPotionCheckRequestBridge.selectAutopotForCurrentDeficit(bot, true);
         if (choice == null) {
+            stats.drinkNoPotion.incrementAndGet();
             return;
         }
         int before = bot.getHp();
+        boolean refused = PvpHooks.refusesDrink(bot, choice.itemId());   // the gate keeps no state: asking twice is safe
         PetAutopotProcessor.runAutopotAction(bot.getClient(), choice.position(), choice.itemId());
         if (bot.getHp() > before) {
             stats.drinks.incrementAndGet();
+        } else {
+            stats.drinkNoGain.incrementAndGet();
+            stats.lastNoGain = choice.itemId() + (refused ? "/refused" : "/" + before + "of" + bot.getCurrentMaxHp());
         }
     }
 

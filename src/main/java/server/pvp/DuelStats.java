@@ -23,6 +23,12 @@ public final class DuelStats {
     final AtomicInteger hops = new AtomicInteger();
     /** Potions its duel brain drank (the autopot's own drinks are not counted). */
     final AtomicInteger drinks = new AtomicInteger();
+    /** Its duel brain's potion tries, the ones with no potion to pick, and the ones that left HP where it was. */
+    final AtomicInteger drinkTries = new AtomicInteger();
+    final AtomicInteger drinkNoPotion = new AtomicInteger();
+    final AtomicInteger drinkNoGain = new AtomicInteger();
+    /** The item of the last try that left HP where it was, and whether the duel refused it. */
+    volatile String lastNoGain = "-";
     final AtomicInteger packets = new AtomicInteger();
     final AtomicInteger whiffs = new AtomicInteger();
     final AtomicInteger dodged = new AtomicInteger();
@@ -78,7 +84,8 @@ public final class DuelStats {
 
     String summary() {
         return "thinks=" + thinks + " buffs=" + buffsCast + " sent=" + swingsSent + " deferred=" + swingsDeferred
-                + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " steps=" + steps + " hops=" + hops + " drinks=" + drinks + " packets=" + packets
+                + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " steps=" + steps + " hops=" + hops + " drinks=" + drinks + " drinkTries=" + drinkTries + " noPotion=" + drinkNoPotion + " noGain=" + drinkNoGain
+                + " lastNoGain=" + lastNoGain + " packets=" + packets
                 + " whiffs=" + whiffs + " dodged=" + dodged + " hits=" + hits + " raw=" + rawRolled
                 + " top=" + topRefusal() + " waited=" + topDeferral();
     }
