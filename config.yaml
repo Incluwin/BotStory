@@ -1710,7 +1710,8 @@ mods:
 # no defense, then scaled so a median attacker needs PVP_TTK_SECONDS of non-stop hitting to knock out a median-HP
 # victim of its level; better gear deals (gear / job median)^PVP_GEAR_EXPONENT more; one attack takes at most
 # PVP_MAX_HIT_PERCENT of the victim's max HP. Healing in a duel (potions, Heal, autopot) restores at most
-# PVP_HEAL_PERCENT of max HP and MP per PVP_HEAL_WINDOW_MS, and a potion is refused until that window has passed.
+# PVP_HEAL_PERCENT of max HP and MP per PVP_HEAL_WINDOW_MS (an allowance that refills at that rate), and a potion is
+# refused while the allowance of what it restores is under half full.
 # PVP_EVEN_CLASSES (the user's choice, 2026-11-08) evens the classes out: a hit is scaled by the victim class's median
 # HP (class_hp_ratio in the reference table: warrior 1.78, magician 0.50), so a median warrior and a median magician
 # both last PVP_TTK_SECONDS, and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard do not

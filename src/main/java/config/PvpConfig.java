@@ -48,7 +48,7 @@ public class PvpConfig {
     public double PVP_MESO_GUARD_HP_SHARE = 0.75d;
     /** Healing from any source restores at most this percent of max HP (and MP) per window ... */
     public int PVP_HEAL_PERCENT = 10;
-    /** ... of this many ms; a potion is refused until the window since the last drink has passed. */
+    /** ... of this many ms (an allowance refilling at that rate); a potion is refused while it is under half full. */
     public int PVP_HEAL_WINDOW_MS = 5000;
     /** How old the server's copy of a moving human may be (V0.3: a movement packet every 510 ms). */
     public int PVP_LAG_WINDOW_MS = 600;

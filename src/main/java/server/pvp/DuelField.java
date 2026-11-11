@@ -59,8 +59,6 @@ public final class DuelField {
         int lastMp;
         double hpAllowance;
         double mpAllowance;
-        long lastHpDrinkMs = Long.MIN_VALUE / 2;
-        long lastMpDrinkMs = Long.MIN_VALUE / 2;
         long dealt;
         long taken;
         final DuelBrain.Mind mind = new DuelBrain.Mind();
@@ -292,30 +290,27 @@ public final class DuelField {
         fighter.lastMp = mp;
     }
 
+    /** A potion goes through once the allowance of what it restores has refilled to this share of its cap. */
+    static final double DRINK_ROOM_SHARE = 0.5d;
+
     /**
-     * A potion is refused within the heal window of the last one (the allowance would take it back anyway). HP and MP
-     * each have their own window, as a player has a key for each: check run 16 (2026-11-11) shared one, so a warrior's
-     * MP autopot, drinking every few skills, kept it running and 59% of warriors never got an HP drink in. A potion is
-     * refused only while every resource it restores is inside its window; one that goes through starts those windows.
+     * A potion is refused while the heal allowance of every resource it restores is under {@link #DRINK_ROOM_SHARE}
+     * full (what passes the allowance is taken back anyway), so a nearly spent allowance does not swallow a potion.
+     * Check runs 16-17 (2026-11-11) refused any potion within 5 s of the last one instead: a warrior's first small
+     * drink (300 HP of 8,000) shut out the rest, a magician's (300 of 1,500) filled its allowance, and a knocked-out
+     * warrior had absorbed 1.00x its HP against a magician's 1.39x. HP and MP count apart, as a player has a key each.
      */
     synchronized boolean refusesDrink(Character chr, boolean restoresHp, boolean restoresMp) {
         Fighter fighter = fighters.get(chr.getId());
         if (fighter == null || state == State.ENDED) {
             return false;
         }
-        long now = System.currentTimeMillis();
-        boolean hpOpen = restoresHp && now - fighter.lastHpDrinkMs >= config.PVP_HEAL_WINDOW_MS;
-        boolean mpOpen = restoresMp && now - fighter.lastMpDrinkMs >= config.PVP_HEAL_WINDOW_MS;
-        if (!hpOpen && !mpOpen) {
-            return true;
-        }
-        if (hpOpen) {
-            fighter.lastHpDrinkMs = now;
-        }
-        if (mpOpen) {
-            fighter.lastMpDrinkMs = now;
-        }
-        return false;
+        accountHealing(fighter, 0d);   // a heal since the last look counts first
+        boolean hpRoom = restoresHp
+                && fighter.hpAllowance >= DRINK_ROOM_SHARE * healCap(chr.getCurrentMaxHp());
+        boolean mpRoom = restoresMp
+                && fighter.mpAllowance >= DRINK_ROOM_SHARE * healCap(chr.getCurrentMaxMp());
+        return !hpRoom && !mpRoom;
     }
 
     private Fighter nearestFoe(Fighter self) {

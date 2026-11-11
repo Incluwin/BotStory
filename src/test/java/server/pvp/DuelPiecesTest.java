@@ -321,21 +321,51 @@ class DuelPiecesTest {
     }
 
     /**
-     * Check run 16 (2026-11-11): HP and MP potions shared one window, so a warrior's MP autopot crowded out its HP
-     * drinks and 59% of warriors never got one in.
+     * Check runs 16-17 (2026-11-11): one potion per 5 s let a warrior's first small drink (300 HP of 8,000) shut out
+     * the rest, so it absorbed 1.00x its HP against a magician's 1.39x. A potion now goes through while the allowance
+     * of what it restores is at least half full, HP and MP apart.
      */
     @Test
-    void hpAndMpPotionsEachHaveTheirOwnWindow() {
+    void aPotionGoesThroughWhileItsAllowanceIsHalfFull() {
         MapleMap map = mock(MapleMap.class);
         Character a = fighter(1, map, true);
         Character b = fighter(2, map, true);
+        when(a.getCurrentMaxHp()).thenReturn(8000);   // HP allowance cap 800 (10%)
+        when(a.getCurrentMaxMp()).thenReturn(1000);   // MP allowance cap 100
+        when(a.getHp()).thenReturn(6000);
+        when(a.getMp()).thenReturn(500);
         DuelField field = new DuelField(95, map, List.of(a), List.of(b));
+        DuelField.Fighter drinker = field.fighters().stream().filter(f -> f.chr == a).findFirst().orElseThrow();
+        drinker.lastHp = 6000;
+        drinker.lastMp = 500;
+        drinker.hpAllowance = 800;
+        drinker.mpAllowance = 30;
 
-        assertFalse(field.refusesDrink(a, false, true), "an MP potion");
-        assertFalse(field.refusesDrink(a, true, false), "an HP potion right after it");
-        assertTrue(field.refusesDrink(a, true, false), "a second HP potion inside its window");
-        assertTrue(field.refusesDrink(a, true, true), "an Elixir while both windows run");
-        assertFalse(field.refusesDrink(b, true, true), "the other fighter's windows are its own");
+        assertFalse(field.refusesDrink(a, true, false), "a White Potion with the HP allowance full");
+        assertFalse(field.refusesDrink(a, true, false), "and another: nothing was drunk in between");
+        assertTrue(field.refusesDrink(a, false, true), "an MP potion with the MP allowance under half");
+        assertFalse(field.refusesDrink(a, true, true), "an Elixir: its HP has room");
+        drinker.hpAllowance = 399;
+        assertTrue(field.refusesDrink(a, true, false), "the HP allowance under half");
+    }
+
+    @Test
+    void aHealSinceTheLastLookCountsBeforeTheNextPotion() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        when(a.getCurrentMaxHp()).thenReturn(8000);
+        when(a.getCurrentMaxMp()).thenReturn(1000);
+        when(a.getHp()).thenReturn(6300);   // a 300 HP potion went in since the last look
+        when(a.getMp()).thenReturn(500);
+        DuelField field = new DuelField(94, map, List.of(a), List.of(b));
+        DuelField.Fighter drinker = field.fighters().stream().filter(f -> f.chr == a).findFirst().orElseThrow();
+        drinker.lastHp = 6000;
+        drinker.lastMp = 500;
+        drinker.hpAllowance = 600;
+
+        assertTrue(field.refusesDrink(a, true, false), "600 - 300 leaves 300, under half of 800");
+        assertEquals(300d, drinker.hpAllowance, 1e-9);
     }
 
     /**

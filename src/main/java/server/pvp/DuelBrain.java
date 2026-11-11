@@ -97,7 +97,7 @@ final class DuelBrain {
      * whatever passes PVP_HEAL_PERCENT a window. Check runs 14-15 (2026-11-10/11): the autopot drank only under its
      * own alert, so a knocked-out warrior had absorbed 1.11x its HP against a magician's 1.29x (Heal, and a potion is a
      * big share of a small pool), and magicians won 68-77% cross-class. Tried about once a second: the duel refuses a
-     * drink inside its window without using the potion.
+     * drink while the allowance is under half full, without using the potion.
      */
     static final double DRINK_AT_HP_SHARE = 0.9d;
     static final long DRINK_RETRY_MS = 1_000L;
