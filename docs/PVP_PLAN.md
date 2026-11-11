@@ -690,6 +690,21 @@ The server sees a human only through movement packets. Ties go to the human both
       the Crusader swung 3 times (its strongest skills wait on combo orbs).
       **Review (user, 2026-11-10): the two footwork clips pass.** That meets the filmed-duels item of the finish
       line; the per-band, per-pair win rates and the +5-level edge remain.
+    - **Check run on footwork (be45c53dc, 2026-11-10 19:54-23:55; 1,152 duels, no errors; `logs/pvp/
+      duels-run14-be45c53dc.csv`).** Knock-outs median 14 s (p25 12, p75 18): the learned rates took back the
+      footwork's slowdown within the first half hour. Level edge 54% at a 1-2 gap, 62% at 3-5, 63% at exactly 5
+      (finish line: at most 65%, met). Cross-class: warrior 39%, magician 68%, bowman 49%, thief 43%, pirate 31%;
+      footwork moved warriors down (45%) and magicians up (60%). Per band, 3 of 19 class-pair cells with 20+ duels sit
+      inside 40-60%; practice pairs the same two citizens again and again with their own gear, so a cell is mostly
+      one pairing, and only 48 duels had both sides' gear within 25%, too few for an equal-gear table.
+      - **Why magicians:** per engaged second, as a share of the victim's own max HP, magicians deal 7.8-8.6%,
+        warriors 6.2-8.9% (7.4% against magicians, against 8.3% the other way), pirates 5.0-13.1% (small n). Not a
+        head start: the first attack comes 1.7 s in for warriors, 1.9 s for magicians (3.7 s for thieves). The
+        learned rates even out raw damage, which is rolled before defense; the defense step then cuts a weapon hit
+        by the victim's WDEF and a spell by its MDEF (`def / (def + 40 x level)`, at most 25%), and most gear
+        carries far more WDEF than MDEF, so spells keep several percent more of every hit. In near-deterministic
+        fights that is enough for 68%.
+      - Also seen: pirates' attacks are dodged 11% of the time (others 2-3%), and thieves start late (stars).
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
