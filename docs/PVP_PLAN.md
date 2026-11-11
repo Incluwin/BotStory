@@ -673,6 +673,21 @@ The server sees a human only through movement packets. Ties go to the human both
       once in range neither fighter moves again; they trade hits standing still (the Dragon Knight fought from
       about 230 px with Dragon Roar, standing on top of an NPC, and never closed to spear range). Filming
       artifacts, not tells: the GM's own "PvP duel N starts" line in chat, Crewfriend's companions in frame.
+    - **Footwork (user: "Yes, add footwork"; 489403632 + be45c53dc, LIVE 2026-11-10 18:50; suite 16,309 / 0 / 33).**
+      Every 1.8-4.2 s a bot in reach steps or hops instead of its next swing. A step goes to a spot 35-85% of its
+      last swing's reach from the foe, on its own side and level, at least 40 px away (half the band, 20-40 px, for
+      a short melee reach), so a crowded ranged fighter backs off. One footwork in three is a hop: in from far, out
+      from near; a short reach may hop over its foe; never off its level or out of reach. Eight practice duels: 15
+      of 16 fighters stepped (up to 5) or hopped (up to 2); duels ran 14-25 s (median ~21 s, was 14 s), since steps
+      sometimes leave reach and both walk back in; the learned rates should pull that back toward 12 s.
+      Refilmed in Free Market rooms (the whole room fits on screen, no monsters):
+      - `footwork-melee-v-ranged-fm.mp4`: DarkMuffin (Hunter, Lv 64) against Neus (Page, Lv 63), 26 s; the Hunter
+        won. The Hunter came down a ladder without shooting, backed off as the Page pressed, and hopped away.
+      - `footwork-mage-v-thief-fm.mp4`: xFanx (Priest, Lv 60) against Anvith (Assassin, Lv 57), 13 s; the
+        Assassin won, backing off about 180 px with a hop while the Priest pressed in.
+      Seen while filming, for the per-band check: a Lv 110 Sniper knocked out a Lv 108 Crusader in 6 s (Strafe on
+      flat ground, about 20,000 raw a swing, against about 3,600 a swing when its foe stood on a raised pipe), while
+      the Crusader swung 3 times (its strongest skills wait on combo orbs).
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
