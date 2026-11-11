@@ -720,6 +720,30 @@ The server sees a human only through movement packets. Ties go to the human both
       cell with 100+ duels) but absorbed HP is not: magician 1.35x, thief 1.27x, warrior 1.02x, bowman 1.05x.
       59% of warriors never got an HP drink in (magicians 21%): HP and MP potions shared one 5 s window, and a
       warrior's MP autopot drank every few skills. Fixed in b3b09fc72: each resource has its own window.
+    - **Runs 17-19 (2026-11-11).** Separate windows did not help (run 17: warriors still 1.00x): at 90% HP the
+      chooser picks a potion sized to the gap, a 300 HP White Potion for an 8,700 HP warrior, and that drink shut
+      the window on the rest. fbadc6063 gates potions on the allowance itself (a drink passes while the allowance of
+      what it restores is at least half full). Run 18 still showed warriors at 1.01x; drink counters (fbf9a2b7d)
+      showed why: 18 of 56 warrior and 11 of 14 pirate fighters had no HP potion on any try. Potions heal flat
+      amounts, so filling a % allowance costs a big pool three White Potions a window to a magician's one, and
+      practice pairs the same citizens every 2.5 minutes. Dry warriors absorbed 1.01x, supplied ones 1.29x.
+      edb7ce446: practice skips a citizen whose HP potions heal less than its max HP. Citizen side (21% of warrior
+      citizens carry no HP potion, magicians 1%): own session, branch `fix/hp-potion-restock` 74f18ab72 (a full Use
+      tab blocked new potion stacks), not merged.
+    - **Check run 20 (edb7ce446, 2026-11-11 13:37-17:35, 857 duels, `duels-run20-edb7ce446.csv`).** No errors.
+      Rounds skipped 14-35 dry citizens and started 3-12 duels. Healing is even now: absorbed HP before a knock-out
+      warrior 1.34x, magician 1.43x, bowman 1.38x, thief 1.37x, pirate 1.45x. Classes are not: warrior 39%,
+      magician 64%, bowman 44%, thief 42%, pirate 60% (80 duels); warrior against magician 32-83, 0-13 at equal
+      level. Knock-outs median 17 s; level edge 61% at 1-2 and at 3-5; per band 2 of 9 cells with 20+ duels inside.
+      The gap is on the victim side: every attacker class takes 8.3-8.6% of a warrior's max HP a second and 7.0-7.5%
+      of a magician's, at the same landed hits a second (0.91 against 0.90), each hit 8.8% of a warrior's real HP
+      against 7.5% of a magician's. Three parts found:
+      1. `class_hp_ratio` is fixed and measured on base HP (`getMaxHp`, 11-08); the fighters carry 0.98 of the HP it
+         assumes for warriors and 1.05 for magicians (base + equipped HP), about 7%.
+      2. Weapon hits on magicians are dodged 5.8-8.8% (every magician line, not only Bless casters), on warriors 1-5%,
+         on thieves 0-1.5%: the avoid evening comes out high for magicians at duel time; cause not found.
+      3. Warriors' MDEF ratio is 0.17-0.24 of the band's common defense in four bands, past the 4x factor clamp, so
+         spells still meet less defense on a warrior than intended (bowmen and thieves too).
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
