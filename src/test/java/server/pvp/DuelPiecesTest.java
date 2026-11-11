@@ -321,6 +321,24 @@ class DuelPiecesTest {
     }
 
     /**
+     * Check run 16 (2026-11-11): HP and MP potions shared one window, so a warrior's MP autopot crowded out its HP
+     * drinks and 59% of warriors never got one in.
+     */
+    @Test
+    void hpAndMpPotionsEachHaveTheirOwnWindow() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        DuelField field = new DuelField(95, map, List.of(a), List.of(b));
+
+        assertFalse(field.refusesDrink(a, false, true), "an MP potion");
+        assertFalse(field.refusesDrink(a, true, false), "an HP potion right after it");
+        assertTrue(field.refusesDrink(a, true, false), "a second HP potion inside its window");
+        assertTrue(field.refusesDrink(a, true, true), "an Elixir while both windows run");
+        assertFalse(field.refusesDrink(b, true, true), "the other fighter's windows are its own");
+    }
+
+    /**
      * Heal-fixed run 2026-11-10: a bot's autopot drinks inside the hit's loss, and the HP after it became the baseline,
      * so knocked-out magicians had absorbed 1.59x their max HP. The baseline is now what the loss left.
      */

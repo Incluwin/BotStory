@@ -59,7 +59,8 @@ public final class DuelField {
         int lastMp;
         double hpAllowance;
         double mpAllowance;
-        long lastDrinkMs = Long.MIN_VALUE / 2;
+        long lastHpDrinkMs = Long.MIN_VALUE / 2;
+        long lastMpDrinkMs = Long.MIN_VALUE / 2;
         long dealt;
         long taken;
         final DuelBrain.Mind mind = new DuelBrain.Mind();
@@ -291,17 +292,29 @@ public final class DuelField {
         fighter.lastMp = mp;
     }
 
-    /** A potion is refused within the heal window of the last one (the allowance would take it back anyway). */
-    synchronized boolean refusesDrink(Character chr) {
+    /**
+     * A potion is refused within the heal window of the last one (the allowance would take it back anyway). HP and MP
+     * each have their own window, as a player has a key for each: check run 16 (2026-11-11) shared one, so a warrior's
+     * MP autopot, drinking every few skills, kept it running and 59% of warriors never got an HP drink in. A potion is
+     * refused only while every resource it restores is inside its window; one that goes through starts those windows.
+     */
+    synchronized boolean refusesDrink(Character chr, boolean restoresHp, boolean restoresMp) {
         Fighter fighter = fighters.get(chr.getId());
         if (fighter == null || state == State.ENDED) {
             return false;
         }
         long now = System.currentTimeMillis();
-        if (now - fighter.lastDrinkMs < config.PVP_HEAL_WINDOW_MS) {
+        boolean hpOpen = restoresHp && now - fighter.lastHpDrinkMs >= config.PVP_HEAL_WINDOW_MS;
+        boolean mpOpen = restoresMp && now - fighter.lastMpDrinkMs >= config.PVP_HEAL_WINDOW_MS;
+        if (!hpOpen && !mpOpen) {
             return true;
         }
-        fighter.lastDrinkMs = now;
+        if (hpOpen) {
+            fighter.lastHpDrinkMs = now;
+        }
+        if (mpOpen) {
+            fighter.lastMpDrinkMs = now;
+        }
         return false;
     }
 

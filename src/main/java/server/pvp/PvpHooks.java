@@ -57,15 +57,12 @@ public final class PvpHooks {
             return false;
         }
         DuelField field = DuelRegistry.of(user.getId());
-        if (field == null || !heals(itemId)) {
+        if (field == null) {
             return false;
         }
-        return field.refusesDrink(user);
-    }
-
-    static boolean heals(int itemId) {
         StatEffect effect = ItemInformationProvider.getInstance().getItemEffect(itemId);
-        return effect != null && (effect.getHp() > 0 || effect.getMp() > 0 || effect.getHpRate() > 0
-                || effect.getMpRate() > 0);
+        boolean hp = effect != null && (effect.getHp() > 0 || effect.getHpRate() > 0);
+        boolean mp = effect != null && (effect.getMp() > 0 || effect.getMpRate() > 0);
+        return (hp || mp) && field.refusesDrink(user, hp, mp);
     }
 }
