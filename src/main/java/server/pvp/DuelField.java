@@ -294,6 +294,19 @@ public final class DuelField {
     static final double DRINK_ROOM_SHARE = 0.5d;
 
     /**
+     * A bot enters a duel only when its HP potions restore at least this many times its max HP: practice 2026-11-11
+     * paired dry warriors and pirates run after run (potions heal flat amounts, so filling the % allowance costs an
+     * 8,700 HP Crusader three White Potions per window to a magician's one), and a dry fighter heals nothing (1.01x its
+     * HP absorbed against 1.29x for a supplied warrior).
+     */
+    static final int DUEL_HP_STOCK_POOLS = 1;
+
+    /** True when a bot carrying {@code hpPotionStock} HP of potions is supplied for a duel at {@code maxHp}. */
+    public static boolean suppliedForDuel(long hpPotionStock, int maxHp) {
+        return hpPotionStock >= (long) Math.max(1, maxHp) * DUEL_HP_STOCK_POOLS;
+    }
+
+    /**
      * A potion is refused while the heal allowance of every resource it restores is under {@link #DRINK_ROOM_SHARE}
      * full (what passes the allowance is taken back anyway), so a nearly spent allowance does not swallow a potion.
      * Check runs 16-17 (2026-11-11) refused any potion within 5 s of the last one instead: a warrior's first small

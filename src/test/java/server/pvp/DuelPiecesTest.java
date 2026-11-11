@@ -403,6 +403,15 @@ class DuelPiecesTest {
         assertTrue(DuelBrain.mayAttackFrom(constants.game.CharacterStance.WALK_RIGHT_STANCE));
     }
 
+    @Test
+    void aBotEntersADuelOnlyWithPotionsForItsWholeHpPool() {
+        assertFalse(DuelField.suppliedForDuel(0, 8_700));          // the dry Crusader of practice 2026-11-11
+        assertFalse(DuelField.suppliedForDuel(8_699, 8_700));
+        assertTrue(DuelField.suppliedForDuel(8_700, 8_700));        // 29 White Potions
+        assertTrue(DuelField.suppliedForDuel(1_500, 1_500));        // five for a 1,500 HP magician
+        assertFalse(DuelField.suppliedForDuel(0, 0));               // a broken max HP still needs a potion
+    }
+
     /** A held attack key: the next think comes as the attack lock ends, not a whole reaction later. */
     @Test
     void aBotSwingsAgainAsItsAttackLockEnds() {

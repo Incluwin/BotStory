@@ -300,9 +300,16 @@ public class PvpCommand extends Command {
         int span = Math.max(0, Math.min(20, number(params, 2, 5)));
         server.living.population.Population population = server.living.population.Population.get();
         java.util.Map<server.maps.MapleMap, List<Character>> byMap = new java.util.LinkedHashMap<>();
+        int dry = 0;
         for (World world : Server.getInstance().getWorlds()) {
             for (Character chr : world.getPlayerStorage().getAllCharacters()) {
                 if (practiceReady(chr, population) && !humanOn(chr.getMap())) {
+                    if (!DuelField.suppliedForDuel(
+                            server.agents.integration.cosmic.CosmicAgentPotionCheckRequestBridge.hpPotionStock(chr),
+                            chr.getCurrentMaxHp())) {
+                        dry++;   // left to restock: a dry fighter's rows measure its supplies, not its class
+                        continue;
+                    }
                     byMap.computeIfAbsent(chr.getMap(), m -> new ArrayList<>()).add(chr);
                 }
             }
@@ -339,8 +346,10 @@ public class PvpCommand extends Command {
                 break;
             }
         }
-        gm.yellowMessage("PvP practice: " + started + " duel(s) started" + (started == 0
+        gm.yellowMessage("PvP practice: " + started + " duel(s) started, " + dry
+                + " free citizen(s) skipped for too few HP potions" + (started == 0
                 ? " (no two free citizens within " + span + " levels on a map with no player)." : ":"));
+        log.info("PvP practice: {} started, {} skipped for too few HP potions", started, dry);
         for (String pair : pairs) {
             gm.yellowMessage(pair);
             log.info("PvP practice {}", pair);

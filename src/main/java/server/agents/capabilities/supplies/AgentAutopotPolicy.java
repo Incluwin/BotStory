@@ -102,6 +102,33 @@ public final class AgentAutopotPolicy {
         return best;
     }
 
+    /**
+     * HP (or MP) the carried potions restore all told, counting the same items {@link #select} would drink: buff
+     * items are left out and a rate potion counts against today's maximum.
+     */
+    public static long recoveryStock(
+            Collection<Item> items,
+            Function<Integer, StatEffect> effectLookup,
+            int maxHp,
+            int maxMp,
+            boolean forHp) {
+        long stock = 0;
+        for (Item item : items) {
+            if (item.getQuantity() <= 0) {
+                continue;
+            }
+            StatEffect effect = effectLookup.apply(item.getItemId());
+            if (effect == null || !effect.getStatups().isEmpty()) {
+                continue;
+            }
+            Recovery recovery = AgentPotionRecoveryPolicy.recovery(effect, maxHp, maxMp, forHp);
+            if (recovery != null) {
+                stock += (long) recovery.primary() * item.getQuantity();
+            }
+        }
+        return stock;
+    }
+
     private static boolean better(
             AutopotItemChoice candidate, AutopotItemChoice current, int targetDeficit) {
         if (current == null) {
