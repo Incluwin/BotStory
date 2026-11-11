@@ -21,6 +21,8 @@ public final class DuelStats {
     /** Footwork while in reach: steps to another spot, and hops. */
     final AtomicInteger steps = new AtomicInteger();
     final AtomicInteger hops = new AtomicInteger();
+    /** Potions its duel brain drank (the autopot's own drinks are not counted). */
+    final AtomicInteger drinks = new AtomicInteger();
     final AtomicInteger packets = new AtomicInteger();
     final AtomicInteger whiffs = new AtomicInteger();
     final AtomicInteger dodged = new AtomicInteger();
@@ -76,7 +78,7 @@ public final class DuelStats {
 
     String summary() {
         return "thinks=" + thinks + " buffs=" + buffsCast + " sent=" + swingsSent + " deferred=" + swingsDeferred
-                + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " steps=" + steps + " hops=" + hops + " packets=" + packets
+                + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " steps=" + steps + " hops=" + hops + " drinks=" + drinks + " packets=" + packets
                 + " whiffs=" + whiffs + " dodged=" + dodged + " hits=" + hits + " raw=" + rawRolled
                 + " top=" + topRefusal() + " waited=" + topDeferral();
     }

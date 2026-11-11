@@ -4,6 +4,7 @@ import client.Character;
 import client.Skill;
 import client.SkillFactory;
 import client.inventory.WeaponType;
+import client.processor.action.PetAutopotProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
@@ -21,6 +22,7 @@ import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.integration.cosmic.CosmicAgentPotionCheckRequestBridge;
 import server.agents.runtime.field.AgentFieldActivityRuntime;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.agents.runtime.AgentMailboxRuntime;
@@ -90,6 +92,15 @@ final class DuelBrain {
     static final int HOP_ONE_IN = 3;
     static final int HOP_PX = 90;
     static final int HOP_MS = 600;
+    /**
+     * A bot drinks once its HP is at or under this share, as a player spams potions mid-fight; the duel takes back
+     * whatever passes PVP_HEAL_PERCENT a window. Check runs 14-15 (2026-11-10/11): the autopot drank only under its
+     * own alert, so a knocked-out warrior had absorbed 1.11x its HP against a magician's 1.29x (Heal, and a potion is a
+     * big share of a small pool), and magicians won 68-77% cross-class. Tried about once a second: the duel refuses a
+     * drink inside its window without using the potion.
+     */
+    static final double DRINK_AT_HP_SHARE = 0.9d;
+    static final long DRINK_RETRY_MS = 1_000L;
 
     private DuelBrain() {
     }
@@ -119,6 +130,8 @@ final class DuelBrain {
         volatile boolean inReach;
         volatile int lastReach;
         volatile long nextFootworkMs;
+        /** When it last reached for a potion. */
+        volatile long lastDrinkTryMs;
     }
 
     static void enter(DuelField.Fighter fighter) {
@@ -256,6 +269,7 @@ final class DuelBrain {
         }
         stats.thinks.incrementAndGet();
         long now = System.currentTimeMillis();
+        drinkIfDue(bot, mind, stats, now);   // a potion costs no action: it still swings this think
         if (buffUp(entry, bot, mind, stats, now)) {
             return;
         }
@@ -323,6 +337,27 @@ final class DuelBrain {
         mind.inReach = false;
         var map = bot.getMap();
         gateway.navigate(entry, standPoint(at, aim, reach, p -> gateway.groundPoint(map, p)), true);
+    }
+
+    /** Whether a fighter at {@code hp} of {@code maxHp} reaches for a potion, {@code sinceTryMs} after its last try. */
+    static boolean wantsDrink(int hp, int maxHp, long sinceTryMs) {
+        return maxHp > 0 && hp > 0 && hp <= maxHp * DRINK_AT_HP_SHARE && sinceTryMs >= DRINK_RETRY_MS;
+    }
+
+    private static void drinkIfDue(Character bot, Mind mind, DuelStats stats, long now) {
+        if (!wantsDrink(bot.getHp(), bot.getCurrentMaxHp(), now - mind.lastDrinkTryMs)) {
+            return;
+        }
+        mind.lastDrinkTryMs = now;
+        var choice = CosmicAgentPotionCheckRequestBridge.selectAutopotForCurrentDeficit(bot, true);
+        if (choice == null) {
+            return;
+        }
+        int before = bot.getHp();
+        PetAutopotProcessor.runAutopotAction(bot.getClient(), choice.position(), choice.itemId());
+        if (bot.getHp() > before) {
+            stats.drinks.incrementAndGet();
+        }
     }
 
     private static int footworkGapMs() {

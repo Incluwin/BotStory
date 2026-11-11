@@ -177,6 +177,20 @@ class DuelPiecesTest {
         assertNull(DuelBrain.footworkSpot(at, target, 400, 0.9d, DuelPiecesTest::floorUnder));
     }
 
+    /**
+     * Check runs 14-15: a warrior's autopot drank only under its own alert, so it absorbed 1.11x its HP against a
+     * magician's 1.29x. A duel bot reaches for a potion at 90% HP, about once a second.
+     */
+    @Test
+    void aBotDrinksFromNinetyPercentAboutOnceASecond() {
+        assertTrue(DuelBrain.wantsDrink(900, 1000, 5_000L), "at 90%");
+        assertFalse(DuelBrain.wantsDrink(901, 1000, 5_000L), "above 90% a drink would mostly be wasted");
+        assertFalse(DuelBrain.wantsDrink(500, 1000, 400L), "it tried under a second ago");
+        assertTrue(DuelBrain.wantsDrink(500, 1000, DuelBrain.DRINK_RETRY_MS));
+        assertFalse(DuelBrain.wantsDrink(0, 1000, 5_000L), "knocked out or dead: no drink");
+        assertFalse(DuelBrain.wantsDrink(0, 0, 5_000L));
+    }
+
     /** An 80 px spear reach steps 30-68 px from its target, so its step is half that band, not 40 px. */
     @Test
     void aShortReachStillSteps() {
