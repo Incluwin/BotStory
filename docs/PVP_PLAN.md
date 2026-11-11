@@ -688,6 +688,8 @@ The server sees a human only through movement packets. Ties go to the human both
       Seen while filming, for the per-band check: a Lv 110 Sniper knocked out a Lv 108 Crusader in 6 s (Strafe on
       flat ground, about 20,000 raw a swing, against about 3,600 a swing when its foe stood on a raised pipe), while
       the Crusader swung 3 times (its strongest skills wait on combo orbs).
+      **Review (user, 2026-11-10): the two footwork clips pass.** That meets the filmed-duels item of the finish
+      line; the per-band, per-pair win rates and the +5-level edge remain.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
