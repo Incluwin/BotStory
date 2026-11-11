@@ -220,4 +220,34 @@ class AgentMasteryBooksTest {
 
         assertEquals(Set.of(), AgentMasteryBooks.waitingSkills(hero, skills, this::stats));
     }
+
+    /** 2026-11-11: a shop visit's room sale (AgentUseRoomLoot) keeps the books it may read in time. */
+    @Test
+    void aBookForItsJobOrALaterJobOfItsLineIsKeptAndAnotherJobsIsNot() {
+        // the book data answers per job (ItemInformationProvider.getSkillStats): Brandish books for a Hero (112) only
+        AgentMasteryBooks.BookStats perJob = (itemId, jobId) -> itemId == BRANDISH_20 && jobId == Job.HERO.getId()
+                ? books.get(BRANDISH_20) : books.get(TRIPLE_THROW_20);
+
+        assertTrue(AgentMasteryBooks.forItsLine(hero, BRANDISH_20, perJob), "a Hero's own book");
+        assertFalse(AgentMasteryBooks.forItsLine(hero, TRIPLE_THROW_20, perJob), "a Night Lord's book");
+
+        when(hero.getJob()).thenReturn(Job.CRUSADER);
+        assertTrue(AgentMasteryBooks.forItsLine(hero, BRANDISH_20, perJob), "a Crusader reads it as a Hero");
+        when(hero.getJob()).thenReturn(Job.WARRIOR);
+        assertTrue(AgentMasteryBooks.forItsLine(hero, BRANDISH_20, perJob), "a first-job warrior may become a Hero");
+        when(hero.getJob()).thenReturn(Job.DRAGONKNIGHT);
+        assertFalse(AgentMasteryBooks.forItsLine(hero, BRANDISH_20, perJob), "another branch never reads it");
+        assertFalse(AgentMasteryBooks.forItsLine(hero, POTION, perJob), "not a book");
+    }
+
+    @Test
+    void itsLineIsItsJobAndTheLaterOnesOfItsBranch() {
+        assertEquals(List.of(111, 112), AgentMasteryBooks.lineJobs(111));
+        assertEquals(List.of(112), AgentMasteryBooks.lineJobs(112));
+        assertEquals(List.of(110, 111, 112), AgentMasteryBooks.lineJobs(110));
+        assertEquals(List.of(100, 110, 111, 112, 120, 121, 122, 130, 131, 132), AgentMasteryBooks.lineJobs(100));
+        assertEquals(List.of(2111, 2112), AgentMasteryBooks.lineJobs(2111), "an Aran");
+        assertEquals(List.of(), AgentMasteryBooks.lineJobs(0), "a Beginner reads none");
+        assertEquals(List.of(), AgentMasteryBooks.lineJobs(1000), "nor a Noblesse");
+    }
 }

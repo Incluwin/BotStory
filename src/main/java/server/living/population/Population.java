@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.inventory.AgentStallHolds;
+import server.agents.capabilities.inventory.AgentUseRoomLoot;
 import server.agents.capabilities.inventory.demand.AgentEtcRoomPlan;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.economy.ledger.EconomyLedger;
@@ -178,6 +179,7 @@ public final class Population {
         population.controller.start(); // the last applied E4 setting (docs/ECONOMY_PLAN.md E4)
         AgentLootPolicy.installSelectivity(population.controller);
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
+        AgentUseRoomLoot.install(population.useRoomLoot()); // loot sold for potion room, cheapest first
         EconomyLedger.onClose(population.controller::onClose);
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
@@ -231,6 +233,7 @@ public final class Population {
         AgentStallHolds.install(null);
         AgentLootPolicy.installSelectivity(null);
         AgentEtcRoomPlan.installKeepsFree(null);
+        AgentUseRoomLoot.install(null);
         EconomyLedger.onClose(null);
         AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
@@ -416,6 +419,25 @@ public final class Population {
     int etcRoomFor(int characterId) {
         Citizen citizen = citizen(characterId);
         return citizen == null || citizen.hired() ? 0 : config.ETC_ROOM_FREE_SLOTS;
+    }
+
+    /**
+     * Installed as the Agents' AgentUseRoomLoot rule: a citizen no player hired sells looted scrolls and books for potion
+     * room while USE_ROOM_SELLS_LOOT is on, cheapest first by the market's price (read-only: Market.quote never seeds).
+     */
+    AgentUseRoomLoot.Rule useRoomLoot() {
+        return new AgentUseRoomLoot.Rule() {
+            @Override
+            public boolean sellsLoot(Character agent) {
+                Citizen citizen = citizen(agent.getId());
+                return config.USE_ROOM_SELLS_LOOT && citizen != null && !citizen.hired();
+            }
+
+            @Override
+            public long worth(int itemId) {
+                return market.quote(itemId);
+            }
+        };
     }
 
     public Citizen citizenByName(String name) {

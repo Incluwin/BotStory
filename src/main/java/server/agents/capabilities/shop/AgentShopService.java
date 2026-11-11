@@ -29,6 +29,7 @@ import constants.game.GameConstants;
 import constants.inventory.ItemConstants;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.dialogue.AgentDialogueSelector;
+import server.agents.capabilities.build.AgentMasteryBooks;
 import server.agents.capabilities.inventory.AgentInventoryItemPolicy;
 import server.agents.capabilities.inventory.AgentInventorySellTrashService;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
@@ -1802,10 +1803,12 @@ public final class AgentShopService {
     /**
      * Use room for the potions a visit buys to its reserve bars: with fewer free slots than they take
      * ({@link #potionSlotsNeeded}), it sells one stack of ammo for a weapon it does not wield
-     * (AgentInventorySellTrashService.collectUnusableAmmo) per slot missing, and nothing else. Found live 2026-10-13:
+     * (AgentInventorySellTrashService.collectUnusableAmmo) per slot missing. Found live 2026-10-13:
      * the Spearman Demon744 kept 8 Unagi in the last slot of a Use tab of 96 holding some 20 stacks of looted arrows,
      * so Perion's shop refused its White Potions (NO_SPACE) on every visit, and the trip was given up and taken again
-     * every ten minutes while its potions ran out.
+     * every ten minutes while its potions ran out. With no such ammo left, the looted scroll or book stacks worth least
+     * go instead, when its host lets it (AgentUseRoomLoot; 2026-11-11, warriors with no looted ammo were refused their
+     * HP potions on every visit).
      */
     static AgentShopPurchaseSequence<AgentRuntimeEntry> makeUseRoomForPotions(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, WeaponType wt) {
@@ -1847,15 +1850,22 @@ public final class AgentShopService {
     }
 
     /**
-     * Stacks of ammo for a weapon {@code bot} does not wield: the Use room a visit can make
-     * ({@link #makeUseRoom}), which the readiness checks count beside the free slots.
+     * The Use room a visit can make ({@link #makeUseRoom}), which the readiness checks count beside the free slots:
+     * stacks of ammo for a weapon {@code bot} does not wield, and the looted scrolls and books its host lets it sell
+     * (AgentInventorySellTrashService.collectRoomLoot).
      */
-    public static int sellableAmmoStacks(AgentRuntimeEntry entry, Character bot) {
+    public static int sellableUseStacks(AgentRuntimeEntry entry, Character bot) {
+        InventoryGateway inventory = AgentInventoryGatewayRuntime.inventory();
         return AgentInventorySellTrashService.collectUnusableAmmo(entry, bot,
-                AgentAttackExecutionProvider.getEquippedWeaponType(bot), AgentInventoryGatewayRuntime.inventory()).size();
+                AgentAttackExecutionProvider.getEquippedWeaponType(bot), inventory).size()
+                + AgentInventorySellTrashService.collectRoomLoot(entry, bot, inventory,
+                itemId -> AgentMasteryBooks.forItsLine(bot, itemId)).size();
     }
 
-    /** Sells one stack of ammo for a weapon it does not wield per Use slot it lacks of {@code slotsWanted}. */
+    /**
+     * Sells one stack per Use slot it lacks of {@code slotsWanted}: ammo for a weapon it does not wield first, then,
+     * when its host lets it (AgentUseRoomLoot), the looted scroll or book stacks worth least.
+     */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> makeUseRoom(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, WeaponType wt, int slotsWanted,
             String forWhat) {
@@ -1870,14 +1880,32 @@ public final class AgentShopService {
             if (sold.size() >= missing) {
                 break;
             }
-            AgentShopGatewayRuntime.shop().sell(bot, shop, InventoryType.USE, item.getPosition(), item.getQuantity());
-            if (!AgentInventoryItemPolicy.hasItem(bot, item)) {
+            if (sellWholeStack(bot, shop, item)) {
                 sold.add(item.getItemId());
             }
         }
-        log.info("Agent '{}' needs {} more free Use slot(s) for {} on map {}: sold ammo it does not use {}",
-                bot.getName(), missing, forWhat, bot.getMapId(), sold);
+        List<Integer> lootSold = new ArrayList<>();
+        if (sold.size() < missing) {
+            for (Item item : AgentInventorySellTrashService.collectRoomLoot(sequence.entry(), bot,
+                    sequence.inventory(), itemId -> AgentMasteryBooks.forItsLine(bot, itemId))) {
+                if (sold.size() + lootSold.size() >= missing) {
+                    break;
+                }
+                if (sellWholeStack(bot, shop, item)) {
+                    lootSold.add(item.getItemId());
+                }
+            }
+        }
+        log.info("Agent '{}' needs {} more free Use slot(s) for {} on map {}: sold ammo it does not use {}{}",
+                bot.getName(), missing, forWhat, bot.getMapId(), sold,
+                lootSold.isEmpty() ? "" : " and looted scrolls or books " + lootSold);
         return sequence;
+    }
+
+    /** Sells {@code item}'s whole Use stack to {@code shop}; true when the stack is gone from its slot. */
+    private static boolean sellWholeStack(Character bot, Shop shop, Item item) {
+        AgentShopGatewayRuntime.shop().sell(bot, shop, InventoryType.USE, item.getPosition(), item.getQuantity());
+        return !AgentInventoryItemPolicy.hasItem(bot, item);
     }
 
     /**

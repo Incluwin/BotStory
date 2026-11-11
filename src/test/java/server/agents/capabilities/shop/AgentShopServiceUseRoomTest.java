@@ -14,7 +14,10 @@ import org.mockito.MockedStatic;
 import server.Shop;
 import server.ShopItem;
 import server.StatEffect;
+import server.agents.capabilities.build.AgentMasteryBooks;
+import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.capabilities.inventory.AgentUseRoomLoot;
 import server.agents.capabilities.supplies.AgentPotionInventoryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.integration.AgentInventoryGatewayRuntime;
@@ -39,7 +42,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * A potion restock at a full Use tab (2026-10-13): before it buys, the visit sells a stack of ammo for a weapon the
- * Agent does not wield for each Use slot its potions need, and nothing else. Live: the Lv67 Spearman Demon744 carried 8
+ * Agent does not wield for each Use slot its potions need; since 2026-11-11, with no such ammo left and a host that lets
+ * it (AgentUseRoomLoot), the looted scroll or book stack worth least instead. Live: the Lv67 Spearman Demon744 carried 8
  * Unagi (Perion sells none) in the last free slot of a Use tab full of looted arrows and scrolls, so every visit to
  * Perion's potion shop (NPC 1021100) was refused the White Potions (NO_SPACE), logged "HP_POTION 8 -> 8", and the trip
  * was given up and taken again every ten minutes while its potions ran out.
@@ -56,6 +60,10 @@ class AgentShopServiceUseRoomTest {
     private static final int SUBI = 2_070_000;
     private static final int HELMET_SCROLL = 2_040_001;
     private static final int GLOVE_SCROLL = 2_040_804;
+    /** A mastery book for a later job of its line (AgentMasteryBooks.forItsLine): it keeps it. */
+    private static final int OWN_LINE_BOOK = 2_290_000;
+    /** A Night Lord's mastery book. */
+    private static final int OTHER_JOB_BOOK = 2_290_084;
     private static final int PERION_POTION_SHOP = 102_000_002;
     /** Perion's potions and arrows (102-shopitems-data.sql, NPC 1021100), its food, pills and scrolls left out. */
     private static final List<Integer> PERION = List.of(RED, ORANGE_POTION, WHITE, BLUE, MANA_ELIXIR, ARROW,
@@ -65,6 +73,9 @@ class AgentShopServiceUseRoomTest {
     private final Map<Integer, Integer> prices = new HashMap<>();
     private final Map<Integer, Integer> stackSizes = new HashMap<>();
     private final List<String> transactions = new ArrayList<>();
+    /** What the host's market prices one of each at (live index rows, 2026-11-11). */
+    private final Map<Integer, Long> worth = new HashMap<>(Map.of(HELMET_SCROLL, 25_000L, GLOVE_SCROLL, 2_984_993L,
+            OWN_LINE_BOOK, 5_000_000L, OTHER_JOB_BOOK, 5_000_000L));
     private final ShopGateway gateway = mock(ShopGateway.class);
     private final InventoryGateway inventory = mock(InventoryGateway.class);
     private int purse = 23_389_064;
@@ -75,6 +86,7 @@ class AgentShopServiceUseRoomTest {
     private MockedStatic<AgentShopGatewayRuntime> shops;
     private MockedStatic<AgentInventoryGatewayRuntime> inventories;
     private MockedStatic<AgentShopRuntime> speech;
+    private MockedStatic<AgentMasteryBooks> books;
 
     @BeforeEach
     void demon744AtPerionsPotionShop() {
@@ -115,6 +127,9 @@ class AgentShopServiceUseRoomTest {
         inventories = mockStatic(AgentInventoryGatewayRuntime.class);
         inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
         speech = mockStatic(AgentShopRuntime.class);
+        books = mockStatic(AgentMasteryBooks.class); // the book data needs WZ: a Spearman's line keeps OWN_LINE_BOOK
+        books.when(() -> AgentMasteryBooks.forItsLine(any(), anyInt()))
+                .thenAnswer(inv -> (int) inv.getArgument(1) == OWN_LINE_BOOK);
 
         // as the live shop: a purchase fills the stacks of it carried, then takes free slots, or is refused whole
         when(gateway.buy(any(), any(), anyShort(), anyInt(), anyShort())).thenAnswer(inv -> {
@@ -153,6 +168,8 @@ class AgentShopServiceUseRoomTest {
 
     @AfterEach
     void close() {
+        AgentUseRoomLoot.install(null);
+        books.close();
         speech.close();
         inventories.close();
         shops.close();
@@ -195,7 +212,112 @@ class AgentShopServiceUseRoomTest {
 
         visit(WeaponType.CLAW);
 
-        assertEquals(List.of(), transactions, "nothing it does not use to sell: the shop refuses the potions as today");
+        assertEquals(List.of(), transactions,
+                "no host lets it sell its loot: nothing it does not use to sell, the shop refuses the potions as before");
+    }
+
+    /**
+     * Live 2026-11-11: the Lv110 Crusader TinyCat carried 49 stacks of scrolls, 35 books, cures and pills in 96 of 96
+     * Use slots and no ammo, so every visit logged "sold ammo it does not use []" and "stopped buying HP potions ... a
+     * full Use tab" (42 times in two days) and it trained on with no HP potion. Its host's market prices the loot; the
+     * cheapest stack goes, a book of its own line stays even when it is cheaper.
+     */
+    @Test
+    void aSpearmanWithNoAmmoLeftSellsItsCheapestScrollForItsWhitePotions() {
+        hostSellsLoot(true);
+        useTab(6, List.of(stack(UNAGI, 8), stack(BLUE, 100),
+                stack(GLOVE_SCROLL, 1), stack(HELMET_SCROLL, 1),
+                stack(OWN_LINE_BOOK, 1), stack(OTHER_JOB_BOOK, 1)));
+
+        visit(WeaponType.SPEAR_STAB);
+
+        assertEquals(List.of("sold 1 x " + HELMET_SCROLL, "100 x " + WHITE), transactions,
+                "one slot for its HP potions: the scroll worth least, nothing more");
+        assertEquals(List.of(UNAGI, BLUE, GLOVE_SCROLL, WHITE, OWN_LINE_BOOK, OTHER_JOB_BOOK), itemIds());
+    }
+
+    @Test
+    void ammoForAnotherWeaponStillGoesBeforeAnyLoot() {
+        hostSellsLoot(true);
+        useTab(6, List.of(stack(UNAGI, 8), stack(BLUE, 100),
+                stack(ARROW, 2_000), stack(CROSSBOW_ARROW, 2_000),
+                stack(HELMET_SCROLL, 1), stack(GLOVE_SCROLL, 1)));
+
+        visit(WeaponType.SPEAR_STAB);
+
+        assertEquals(List.of("sold 2000 x " + ARROW, "100 x " + WHITE), transactions);
+    }
+
+    @Test
+    void anotherJobsBookGoesWhenItIsWorthLeastAndItsOwnLinesNever() {
+        hostSellsLoot(true);
+        worth.put(OTHER_JOB_BOOK, 1_000L);
+        worth.put(OWN_LINE_BOOK, 1L);
+        useTab(6, List.of(stack(UNAGI, 8), stack(BLUE, 100),
+                stack(GLOVE_SCROLL, 1), stack(HELMET_SCROLL, 1),
+                stack(OWN_LINE_BOOK, 1), stack(OTHER_JOB_BOOK, 1)));
+
+        visit(WeaponType.SPEAR_STAB);
+
+        assertEquals(List.of("sold 1 x " + OTHER_JOB_BOOK, "100 x " + WHITE), transactions);
+    }
+
+    @Test
+    void anAssassinKeepsItsStarsAndSellsAScrollWhenItsHostLetsIt() {
+        hostSellsLoot(true);
+        when(bot.getJob()).thenReturn(Job.ASSASSIN);
+        useTab(6, List.of(stack(UNAGI, 8), stack(BLUE, 100),
+                stack(SUBI, 500), stack(SUBI, 500),
+                stack(GLOVE_SCROLL, 1), stack(HELMET_SCROLL, 1)));
+
+        visit(WeaponType.CLAW);
+
+        assertEquals(List.of("sold 1 x " + HELMET_SCROLL, "100 x " + WHITE), transactions);
+        assertEquals(List.of(UNAGI, BLUE, SUBI, SUBI, GLOVE_SCROLL, WHITE), itemIds());
+    }
+
+    @Test
+    void anAgentItsHostDoesNotLetSellLootKeepsItAll() {
+        hostSellsLoot(false); // a hired hand, a player's character, or USE_ROOM_SELLS_LOOT off
+        useTab(6, List.of(stack(UNAGI, 8), stack(BLUE, 100),
+                stack(GLOVE_SCROLL, 1), stack(HELMET_SCROLL, 1),
+                stack(OWN_LINE_BOOK, 1), stack(OTHER_JOB_BOOK, 1)));
+
+        visit(WeaponType.SPEAR_STAB);
+
+        assertEquals(List.of(), transactions);
+    }
+
+    @Test
+    void aReadinessTripCountsTheLootItMaySellAsRoom() {
+        hostSellsLoot(true);
+        useTab(6, List.of(stack(UNAGI, 8), stack(ARROW, 2_000),
+                stack(GLOVE_SCROLL, 1), stack(HELMET_SCROLL, 1),
+                stack(OWN_LINE_BOOK, 1), stack(OTHER_JOB_BOOK, 1)));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        try (MockedStatic<AgentAttackExecutionProvider> weapons = mockStatic(AgentAttackExecutionProvider.class)) {
+            weapons.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot))
+                    .thenReturn(WeaponType.SPEAR_STAB);
+
+            assertEquals(4, AgentShopService.sellableUseStacks(entry, bot),
+                    "the arrows, both scrolls and the other job's book; never its own line's book");
+            hostSellsLoot(false);
+            assertEquals(1, AgentShopService.sellableUseStacks(entry, bot), "the arrows alone");
+        }
+    }
+
+    private void hostSellsLoot(boolean sells) {
+        AgentUseRoomLoot.install(new AgentUseRoomLoot.Rule() {
+            @Override
+            public boolean sellsLoot(Character agent) {
+                return sells && agent == bot;
+            }
+
+            @Override
+            public long worth(int itemId) {
+                return worth.getOrDefault(itemId, Long.MAX_VALUE);
+            }
+        });
     }
 
     /**
