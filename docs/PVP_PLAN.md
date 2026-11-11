@@ -705,6 +705,21 @@ The server sees a human only through movement packets. Ties go to the human both
         carries far more WDEF than MDEF, so spells keep several percent more of every hit. In near-deterministic
         fights that is enough for 68%.
       - Also seen: pirates' attacks are dodged 11% of the time (others 2-3%), and thieves start late (stars).
+    - **Defense evened (user: "Even defense by class"; d35dda8d3, LIVE 2026-11-11 04:55).** PvpHitBalance also takes
+      each class's median WDEF and MDEF per band; a median victim meets weapon hits and spells with the band's
+      common defense (the mean of the two). Check run 15 (stopped after 346 night-time duels, `duels-run15-d35dda8d3
+      .csv`): magician 69%, warrior 38%; warriors won 7 of 60 against magicians. The rate gap stayed (magician on
+      warrior 8.4% of max HP a second, warrior on magician 7.2%), and a second cause showed: a knocked-out magician
+      had absorbed 1.31x its max HP, a warrior 1.16x. Magicians fill the heal allowance (Heal; a potion is a big
+      share of a small pool); a bot's autopot drinks only under its own alert.
+    - **Bots fill the allowance (user: "Bots fill the allowance"; c7dbf88e4, LIVE 06:33).** Each think a bot at or
+      under 90% HP reaches for the potion its autopot would pick, about once a second. Check run 16 (06:39-10:40,
+      997 duels, `duels-run16-c7dbf88e4.csv`): warrior 49%, magician 63%, bowman 39%, thief 48%, pirate 35%;
+      knock-outs median 14 s; level edge 51% at 1-2, 61% at 3-5, 65% at exactly 5; per band 6 of 15 class-pair
+      cells with 20+ duels inside 40-60% (was 3 of 19). Rates are close now (7.2-8.6% of max HP a second in every
+      cell with 100+ duels) but absorbed HP is not: magician 1.35x, thief 1.27x, warrior 1.02x, bowman 1.05x.
+      59% of warriors never got an HP drink in (magicians 21%): HP and MP potions shared one 5 s window, and a
+      warrior's MP autopot drank every few skills. Fixed in b3b09fc72: each resource has its own window.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
