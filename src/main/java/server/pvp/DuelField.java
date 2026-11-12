@@ -65,6 +65,9 @@ public final class DuelField {
         double neutralShare;
         /** As a victim: what they took of its own max HP, the learned toughness divided out. */
         double bareShare;
+        /** The spells' part of the two shares above (PvpToughness learns weapon hits and spells apart). */
+        double neutralSpellShare;
+        double bareSpellShare;
         final DuelBrain.Mind mind = new DuelBrain.Mind();
         final DuelStats stats = new DuelStats();
 
@@ -438,8 +441,12 @@ public final class DuelField {
         double levelFactor = PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config);
         double levelHpShare = PvpDamageModel.levelHpShare(from.getLevel(), to.getLevel(), reference);
         // a dodged attack counts here too, so the toughness a victim learns includes how often it dodges
-        victim.neutralShare += PvpToughness.neutralShare(rawSum, factor, levelFactor, levelHpShare,
+        double neutral = PvpToughness.neutralShare(rawSum, factor, levelFactor, levelHpShare,
                 reference.hRef(to.getLevel()));
+        victim.neutralShare += neutral;
+        if (attack.magic) {
+            victim.neutralSpellShare += neutral;
+        }
         if (to.getBuffedValue(BuffStat.DARKSIGHT) != null || ThreadLocalRandom.current().nextDouble() > chance) {
             attacker.stats.dodged.incrementAndGet();
             map.broadcastMessage(PacketCreator.damagePlayer(-2, 0, to.getId(), 0, 0, direction, false, 0, false,
@@ -458,7 +465,7 @@ public final class DuelField {
         boolean even = config.PVP_EVEN_CLASSES;
         // learned toughness (the user's call 2026-11-11): what this victim's class and band take over a reference victim
         double toughness = PvpToughness.on(config)
-                ? PvpToughness.multiplier(to.getJob().getId(), to.getLevel(), config) : 1d;
+                ? PvpToughness.multiplier(to.getJob().getId(), to.getLevel(), config, attack.magic) : 1d;
         double scale = factor * levelFactor * levelHpShare
                 * PvpDamageModel.defenseFactor(defense, from.getLevel(), config)
                 * (even ? reference.classHpRatio(to.getJob().getId()) : 1d) * toughness;
@@ -466,7 +473,11 @@ public final class DuelField {
         long total = scaled.stream().mapToLong(Integer::longValue).sum();
         // even classes: the class defense skills sit out, the class HP ratio above stands in for them
         int damage = even ? (int) total : CharacterHitApplier.reduce(to, (int) total);
-        victim.bareShare += damage / (toughness * Math.max(1, to.getCurrentMaxHp()));
+        double bare = damage / (toughness * Math.max(1, to.getCurrentMaxHp()));
+        victim.bareShare += bare;
+        if (attack.magic) {
+            victim.bareSpellShare += bare;
+        }
         Integer powerGuard = to.getBuffedValue(BuffStat.POWERGUARD);
         if (!even && powerGuard != null && !attack.ranged && !attack.magic) {
             damage = damage * Math.max(0, 100 - powerGuard) / 100;
@@ -590,7 +601,8 @@ public final class DuelField {
             rows.add(new DuelLog.Row(endMs, id, map.getId(), seconds, why, winnerSide, chr.getName(), chr.getId(),
                     chr.getJob() == null ? 0 : chr.getJob().getId(), chr.getLevel(), fighter.human, fighter.side,
                     gearBase(chr), fighter.knockedOut, fighter.forfeited, fighter.stats, fighter.dealt, fighter.taken,
-                    fighter.stats.engagedSeconds(endMs), fighter.neutralShare, fighter.bareShare));
+                    fighter.stats.engagedSeconds(endMs), fighter.neutralShare, fighter.bareShare,
+                    fighter.neutralSpellShare, fighter.bareSpellShare));
         }
         rowSink.accept(rows);
         DuelRegistry.release(this);

@@ -88,12 +88,23 @@ public final class PvpRateLearner {
 
     /** What the reference rate is multiplied by: the band's mean once it has enough fighters, else the class's, else 1. */
     public double multiplier(int jobId, int level, PvpConfig config) {
-        Mean job = means.get(PvpReference.key(jobId, level));
+        return multiplier(jobId, level, config, "");
+    }
+
+    /**
+     * The same for keys ending in {@code suffix} ({@link PvpToughness} keeps spell hits under "m"); a suffixed class
+     * that has heard too few fighters falls back to the plain class's mean.
+     */
+    double multiplier(int jobId, int level, PvpConfig config, String suffix) {
+        Mean job = means.get(PvpReference.key(jobId, level) + suffix);
         if (job != null && job.fighters() >= config.PVP_LEARN_JOB_MIN_FIGHTERS) {
             return job.multiplier();
         }
-        Mean jobClass = means.get(classKey(jobId));
-        return jobClass != null && jobClass.fighters() >= MIN_CLASS_FIGHTERS ? jobClass.multiplier() : 1d;
+        Mean jobClass = means.get(classKey(jobId) + suffix);
+        if (jobClass != null && jobClass.fighters() >= MIN_CLASS_FIGHTERS) {
+            return jobClass.multiplier();
+        }
+        return suffix.isEmpty() ? 1d : multiplier(jobId, level, config, "");
     }
 
     /** One fighter's duel; false when it does not count (no class, no gear, no damage). */
@@ -117,10 +128,18 @@ public final class PvpRateLearner {
 
     /** Moves the class's and the job path and band's means a step toward one fighter's (clipped) log measurement. */
     synchronized void learn(int jobId, int level, double observedLog, PvpConfig config) {
-        String classKey = classKey(jobId);
-        Mean classMean = step(classKey, means.getOrDefault(classKey, new Mean(0d, 0)), observedLog,
+        learn(jobId, level, observedLog, config, "");
+    }
+
+    /** The same under keys ending in {@code suffix}; a new suffixed class starts from the plain class's mean. */
+    synchronized void learn(int jobId, int level, double observedLog, PvpConfig config, String suffix) {
+        String plainClass = classKey(jobId);
+        String classKey = plainClass + suffix;
+        Mean start = suffix.isEmpty() ? null : means.get(plainClass);
+        Mean classMean = step(classKey, means.getOrDefault(classKey,
+                        new Mean(start == null ? 0d : start.logMean(), 0)), observedLog,
                 config.PVP_LEARN_CLASS_STEP, CLASS_PRIOR_WEIGHT);
-        String jobKey = PvpReference.key(jobId, level);
+        String jobKey = PvpReference.key(jobId, level) + suffix;
         step(jobKey, means.getOrDefault(jobKey, new Mean(classMean.logMean(), 0)), observedLog,
                 config.PVP_LEARN_JOB_STEP, JOB_PRIOR_WEIGHT);
     }

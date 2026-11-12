@@ -558,7 +558,8 @@ public class PvpCommand extends Command {
         return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
                 rawDps, coefficient, accuracy, avoid, wdef,
                 mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId)
-                * (server.pvp.PvpToughness.on(config) ? server.pvp.PvpToughness.multiplier(jobId, level, config) : 1d),
+                * (server.pvp.PvpToughness.on(config)   // the sim knows no attacker here: weapon hits' value
+                ? server.pvp.PvpToughness.multiplier(jobId, level, config, false) : 1d),
                 reference.hRef(level));
     }
 

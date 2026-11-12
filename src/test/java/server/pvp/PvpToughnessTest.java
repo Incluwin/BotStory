@@ -24,8 +24,51 @@ class PvpToughnessTest {
     }
 
     private static DuelLog.Row victim(int jobId, int level, boolean left, double neutral, double bare) {
+        return row(jobId, level, left, neutral, bare, 0d, 0d);
+    }
+
+    /** A victim whose hits were all spells. */
+    private static DuelLog.Row spellVictim(int jobId, int level, double neutral, double bare) {
+        return row(jobId, level, false, neutral, bare, neutral, bare);
+    }
+
+    private static DuelLog.Row row(int jobId, int level, boolean left, double neutral, double bare,
+                                   double neutralSpell, double bareSpell) {
         return new DuelLog.Row(0L, 1L, 100000000, 15L, "knock-out", 1, "v", 7, jobId, level, false, 2, 100L, true, left,
-                new DuelStats(), 0L, 0L, 12d, neutral, bare);
+                new DuelStats(), 0L, 0L, 12d, neutral, bare, neutralSpell, bareSpell);
+    }
+
+    @Test
+    void weaponHitsAndSpellsAreLearnedApart() {
+        PvpRateLearner learner = learner();
+        PvpConfig config = new PvpConfig();
+        List<DuelLog.Row> rows = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            rows.add(victim(320, 110, false, 1.5, 1.0));     // a Ranger tough against weapon hits
+            rows.add(spellVictim(320, 110, 1.05, 1.0));      // and barely against spells
+        }
+        PvpToughness.observeAll(learner, rows, config);
+
+        double weapon = learner.multiplier(320, 110, config, "");
+        double spell = learner.multiplier(320, 110, config, PvpToughness.SPELL_SUFFIX);
+        assertTrue(weapon > 1.35, "weapon toughness " + weapon);
+        assertTrue(spell > 1.0 && spell < 1.15, "spell toughness " + spell);
+    }
+
+    @Test
+    void aSpellKindNotYetHeardUsesTheWeaponValueAndStartsFromIt() {
+        PvpRateLearner learner = learner();
+        PvpConfig config = new PvpConfig();
+        List<DuelLog.Row> rows = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            rows.add(victim(420, 90, false, 1.3, 1.0));
+        }
+        PvpToughness.observeAll(learner, rows, config);
+        double weapon = learner.multiplier(420, 90, config, "");
+        assertEquals(weapon, learner.multiplier(420, 90, config, PvpToughness.SPELL_SUFFIX), 1e-12);
+
+        PvpToughness.observeAll(learner, List.of(spellVictim(420, 90, 1.3, 1.0)), config);
+        assertEquals(learner.means().get("c4").logMean(), learner.means().get("c4m").logMean(), 0.05);   // not from 0
     }
 
     @Test

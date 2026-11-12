@@ -21,11 +21,18 @@ import java.util.List;
  * are multiplied by the mean: a class that dodges, defends or carries HP beyond the tables goes down at the reference
  * pace, while a victim geared above its class's typical one still lasts longer. The bare share has the learned value
  * divided out, so what is measured never depends on what was learned (only the per-attack HP cap still binds on it).
+ * Weapon hits and spells are learned apart ({@link #SPELL_SUFFIX}); the sim ({@code !pvp sim}) uses the weapon value.
  */
 public final class PvpToughness {
     public static final Path FILE = Path.of("logs", "pvp", "learned-toughness.txt");
     /** A victim counts once the hits it met would have taken this share of a reference victim's HP. */
     static final double MIN_NEUTRAL_SHARE = 0.5d;
+    /**
+     * Spell hits learn under their own keys ("c1m", "11-8m"): equal-gear run 22 measured bowmen 1.18x tough against
+     * weapon hits and 1.10x against spells, thieves 1.15 / 1.08, pirates 1.14 / 1.03 (MDEF and the magic miss cap
+     * differ from WDEF and the physical one), which one value per class averaged.
+     */
+    static final String SPELL_SUFFIX = "m";
 
     private static volatile PvpRateLearner instance;
 
@@ -48,9 +55,12 @@ public final class PvpToughness {
         return learner;
     }
 
-    /** What hits on a victim of this job and level are multiplied by: its band's mean, else its class's, else 1. */
-    public static double multiplier(int jobId, int level, PvpConfig config) {
-        return learner().multiplier(jobId, level, config);
+    /**
+     * What weapon hits ({@code magic} false) or spells on a victim of this job and level are multiplied by: its band's
+     * mean for that kind, else its class's, else (a spell kind not yet heard) the weapon value, else 1.
+     */
+    public static double multiplier(int jobId, int level, PvpConfig config, boolean magic) {
+        return learner().multiplier(jobId, level, config, magic ? SPELL_SUFFIX : "");
     }
 
     /** True while duels both even the classes and learn toughness. */
@@ -85,12 +95,22 @@ public final class PvpToughness {
         int counted = 0;
         for (DuelLog.Row row : rows) {
             int jobClass = row.jobId() / 100 % 10;
-            double observed = observed(row.neutralShare(), row.bareShare());
-            if (row.left() || jobClass < 1 || jobClass > 5 || Double.isNaN(observed)) {
+            if (row.left() || jobClass < 1 || jobClass > 5) {
                 continue;
             }
-            learner.learn(row.jobId(), row.level(), observed, config);
-            counted++;
+            // weapon hits and spells apart: the row's shares are totals, its spell shares the spell part of them
+            double weapon = observed(row.neutralShare() - row.neutralSpellShare(),
+                    row.bareShare() - row.bareSpellShare());
+            double spell = observed(row.neutralSpellShare(), row.bareSpellShare());
+            if (!Double.isNaN(weapon)) {
+                learner.learn(row.jobId(), row.level(), weapon, config);
+            }
+            if (!Double.isNaN(spell)) {
+                learner.learn(row.jobId(), row.level(), spell, config, SPELL_SUFFIX);
+            }
+            if (!Double.isNaN(weapon) || !Double.isNaN(spell)) {
+                counted++;
+            }
         }
         if (counted > 0) {
             learner.save();
