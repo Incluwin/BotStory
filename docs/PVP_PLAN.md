@@ -753,6 +753,18 @@ The server sees a human only through movement packets. Ties go to the human both
       Switch `PVP_LEARN_TOUGHNESS` (with PVP_EVEN_CLASSES), file `logs/pvp/learned-toughness.txt`, the duel CSV gains
       `neutral` and `bare`. The reference pace replaces each class's own: typical defense and dodges no longer slow a
       duel, so knock-outs should move from 17 s toward the 12 s target times the heal allowance.
+    - **Check run 21 (15d3e9963, 2026-11-11 20:44 - 11-12 00:47, 910 duels, `duels-run21-15d3e9963.csv`).** No
+      errors. Learned toughness by the end: warrior x1.11, magician x1.23, bowman x1.11, thief x1.14, pirate x1.13
+      (bands vary). Last two hours (422 duels, the learner settled): warrior 49%, magician 47%, bowman 62%, thief
+      46%, pirate 79% (14 duels); warrior against magician 13-16 (whole run 57/46/62/45/47). Every pairing with 25+
+      duels now takes 8.6-9.4% of the victim's max HP a second (run 20: 7.0-8.6). Knock-outs median 14 s; level
+      edge 48% at 1-2, 59% at 3-5. Absorbed HP warrior 1.25x, others 1.36-1.41x (a fighter going down faster has
+      less time to heal). Per band, counted one vote per distinct pairing (practice repeats the same two citizens:
+      the Lv 100s warrior-magician cell is 42-17 plain from 14 pairings, 51% by pairing): 5 of 13 cells with 5+
+      pairings inside 40-60%; most cells rest on 5-7 pairings whose own gear and level decide them, so the cell
+      criterion is not testable at equal gear from practice. `!pvp sim matrix` (model only, 0-14 characters a class
+      online at night) disagrees with practice where reach matters (thief over magician 71% at Lv 80) and is not
+      used to judge.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
