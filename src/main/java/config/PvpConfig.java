@@ -72,6 +72,13 @@ public class PvpConfig {
     public double PVP_LEARN_JOB_STEP = 0.1d;
     /** ... and until then the class's learned rate stands in for it. */
     public int PVP_LEARN_JOB_MIN_FIGHTERS = 8;
+    /**
+     * Learned toughness (the user's call 2026-11-11), with PVP_EVEN_CLASSES: after every duel each victim's class and
+     * job path and band learn how much of its HP hits take against a reference victim, with the learned rates' steps,
+     * and hits on it are scaled by that (server.pvp.PvpToughness). Off: the class HP table, avoid and defense evening
+     * stand alone.
+     */
+    public boolean PVP_LEARN_TOUGHNESS = false;
 
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {

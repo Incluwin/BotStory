@@ -1736,6 +1736,14 @@ mods:
 # reset" clears it, "!pvp learned replay <csv>" seeds it from a logs/pvp duel CSV); PvpDamageModel.rate multiplies the
 # reference rate by it for the coefficient and the sim alike. Raw damage is rolled before any PvP scaling, so what the
 # learner measures never depends on what it learned.
+# PVP_LEARN_TOUGHNESS (the user's choice, 2026-11-11), with PVP_EVEN_CLASSES: the learned rates even out what each class
+# deals, this what each class takes. Check run 20: hits took 8.3-8.6% of a warrior's max HP a second and 7.0-7.5% of a
+# magician's (the class HP table had drifted, magicians dodged weapon hits more, warriors' MDEF evening hit its clamp).
+# After every duel each victim reports how much of its HP its hits took against what they would have taken of a
+# reference victim (class HP ratio x H_ref, no defense, never dodging), and hits on its class and band are scaled by
+# the running mean, so a typical victim of any class goes down at the reference pace; gear above its class's typical
+# still helps. Same steps, priors and limits as the learned rates; persisted in logs/pvp/learned-toughness.txt
+# (untracked; "!pvp learned reset" clears both). Technical: server.pvp.PvpToughness.
 pvp:
     PVP_ENABLED: false
     PVP_TTK_SECONDS: 12
@@ -1764,3 +1772,4 @@ pvp:
     PVP_LEARN_CLASS_STEP: 0.05
     PVP_LEARN_JOB_STEP: 0.1
     PVP_LEARN_JOB_MIN_FIGHTERS: 8
+    PVP_LEARN_TOUGHNESS: true

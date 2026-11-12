@@ -82,7 +82,8 @@ public class PvpCommand extends Command {
         switch (what) {
             case "reset" -> {
                 learner.reset();
-                gm.yellowMessage("PvP learned rates cleared; the reference table's rates stand.");
+                server.pvp.PvpToughness.reset();
+                gm.yellowMessage("PvP learned rates and toughness cleared; the reference table stands.");
                 return;
             }
             case "replay" -> {
@@ -112,6 +113,12 @@ public class PvpCommand extends Command {
             gm.yellowMessage("PvP learned rates: none yet.");
         }
         summary.forEach(gm::yellowMessage);
+        if (!server.pvp.PvpToughness.on(YamlConfig.config.pvp)) {
+            gm.yellowMessage("PVP_LEARN_TOUGHNESS (with PVP_EVEN_CLASSES) is off: hits take no learned toughness.");
+        }
+        List<String> toughness = server.pvp.PvpToughness.summary();
+        gm.yellowMessage("PvP learned toughness: " + (toughness.isEmpty() ? "none yet." : toughness.size() + " key(s)"));
+        toughness.forEach(gm::yellowMessage);
     }
 
     private void probe(Character gm, String[] params) {
@@ -550,7 +557,8 @@ public class PvpCommand extends Command {
         double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
         return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
                 rawDps, coefficient, accuracy, avoid, wdef,
-                mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId),
+                mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId)
+                * (server.pvp.PvpToughness.on(config) ? server.pvp.PvpToughness.multiplier(jobId, level, config) : 1d),
                 reference.hRef(level));
     }
 

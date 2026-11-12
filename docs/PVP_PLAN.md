@@ -744,6 +744,15 @@ The server sees a human only through movement packets. Ties go to the human both
          on thieves 0-1.5%: the avoid evening comes out high for magicians at duel time; cause not found.
       3. Warriors' MDEF ratio is 0.17-0.24 of the band's common defense in four bands, past the 4x factor clamp, so
          spells still meet less defense on a warrior than intended (bowmen and thieves too).
+    - **PD18 decided (the user, 2026-11-11): learn toughness** (over fixing the three pieces one by one).
+      `server.pvp.PvpToughness`: each hit adds to its victim what it would have taken of a reference victim (class HP
+      ratio x H_ref, no defense, never dodging; dodged attacks count) and what it took of the victim's own max HP with
+      the learned toughness divided out; after the duel a victim whose hits came to half a reference HP reports
+      log(reference / own), and its class's and job path and band's running means move toward it with the learned
+      rates' steps, priors, Huber cap and 0.4-2.5x limits. Hits on a victim are multiplied by its mean; the sim too.
+      Switch `PVP_LEARN_TOUGHNESS` (with PVP_EVEN_CLASSES), file `logs/pvp/learned-toughness.txt`, the duel CSV gains
+      `neutral` and `bare`. The reference pace replaces each class's own: typical defense and dodges no longer slow a
+      duel, so knock-outs should move from 17 s toward the 12 s target times the heal allowance.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

@@ -54,10 +54,17 @@ public final class PvpRateLearner {
     }
 
     private final Path file;
+    private final String title;
     private final Map<String, Mean> means = new ConcurrentHashMap<>();
 
     PvpRateLearner(Path file) {
+        this(file, "# PvP learned rates (server.pvp.PvpRateLearner): key, mean log efficiency, fighters");
+    }
+
+    /** A store of running means kept in {@code file} under the comment line {@code title} ({@link PvpToughness} too). */
+    PvpRateLearner(Path file, String title) {
         this.file = file;
+        this.title = title;
     }
 
     public static PvpRateLearner get() {
@@ -103,14 +110,19 @@ public final class PvpRateLearner {
         if (!(expected > 0)) {
             return false;
         }
-        double observed = Math.log(Math.max(MIN_EFFICIENCY, Math.min(MAX_EFFICIENCY, rawPerSecond / expected)));
+        learn(jobId, level, Math.log(Math.max(MIN_EFFICIENCY, Math.min(MAX_EFFICIENCY, rawPerSecond / expected))),
+                config);
+        return true;
+    }
+
+    /** Moves the class's and the job path and band's means a step toward one fighter's (clipped) log measurement. */
+    synchronized void learn(int jobId, int level, double observedLog, PvpConfig config) {
         String classKey = classKey(jobId);
-        Mean classMean = step(classKey, means.getOrDefault(classKey, new Mean(0d, 0)), observed,
+        Mean classMean = step(classKey, means.getOrDefault(classKey, new Mean(0d, 0)), observedLog,
                 config.PVP_LEARN_CLASS_STEP, CLASS_PRIOR_WEIGHT);
         String jobKey = PvpReference.key(jobId, level);
-        step(jobKey, means.getOrDefault(jobKey, new Mean(classMean.logMean(), 0)), observed,
+        step(jobKey, means.getOrDefault(jobKey, new Mean(classMean.logMean(), 0)), observedLog,
                 config.PVP_LEARN_JOB_STEP, JOB_PRIOR_WEIGHT);
-        return true;
     }
 
     /**
@@ -218,13 +230,13 @@ public final class PvpRateLearner {
 
     void save() {
         List<String> lines = new ArrayList<>();
-        lines.add("# PvP learned rates (server.pvp.PvpRateLearner): key, mean log efficiency, fighters");
+        lines.add(title);
         means().forEach((key, mean) -> lines.add(String.format(Locale.ROOT, "%s %.6f %d", key, mean.logMean(),
                 mean.fighters())));
         try {
             Path parent = file.toAbsolutePath().getParent();
             Files.createDirectories(parent);
-            Path temp = Files.createTempFile(parent, "learned-rates", ".tmp");
+            Path temp = Files.createTempFile(parent, "learned", ".tmp");
             Files.write(temp, lines, StandardCharsets.UTF_8);
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException failure) {

@@ -61,6 +61,10 @@ public final class DuelField {
         double mpAllowance;
         long dealt;
         long taken;
+        /** As a victim: what the hits it met would have taken of a reference victim's HP (PvpToughness). */
+        double neutralShare;
+        /** As a victim: what they took of its own max HP, the learned toughness divided out. */
+        double bareShare;
         final DuelBrain.Mind mind = new DuelBrain.Mind();
         final DuelStats stats = new DuelStats();
 
@@ -428,7 +432,14 @@ public final class DuelField {
         double chance = PvpDamageModel.hitChance(attack.magic, accuracy, from.getLevel(), to.getLevel(), avoid, config);
         // rolled before the dodge, so the measured rate (V2) is the attack's throughput and avoid stays a modifier
         List<Integer> raw = formulas.rollPvpLines(from, lines, attack.skill, profile);
-        attacker.stats.rawRolled.addAndGet(raw.stream().mapToLong(Integer::longValue).sum());
+        long rawSum = raw.stream().mapToLong(Integer::longValue).sum();
+        attacker.stats.rawRolled.addAndGet(rawSum);
+        PvpReference reference = PvpReference.get();
+        double levelFactor = PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config);
+        double levelHpShare = PvpDamageModel.levelHpShare(from.getLevel(), to.getLevel(), reference);
+        // a dodged attack counts here too, so the toughness a victim learns includes how often it dodges
+        victim.neutralShare += PvpToughness.neutralShare(rawSum, factor, levelFactor, levelHpShare,
+                reference.hRef(to.getLevel()));
         if (to.getBuffedValue(BuffStat.DARKSIGHT) != null || ThreadLocalRandom.current().nextDouble() > chance) {
             attacker.stats.dodged.incrementAndGet();
             map.broadcastMessage(PacketCreator.damagePlayer(-2, 0, to.getId(), 0, 0, direction, false, 0, false,
@@ -445,14 +456,17 @@ public final class DuelField {
                     : balance.wdefFactor(jobId, to.getLevel())));
         }
         boolean even = config.PVP_EVEN_CLASSES;
-        double scale = factor * PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config)
-                * PvpDamageModel.levelHpShare(from.getLevel(), to.getLevel(), PvpReference.get())
+        // learned toughness (the user's call 2026-11-11): what this victim's class and band take over a reference victim
+        double toughness = PvpToughness.on(config)
+                ? PvpToughness.multiplier(to.getJob().getId(), to.getLevel(), config) : 1d;
+        double scale = factor * levelFactor * levelHpShare
                 * PvpDamageModel.defenseFactor(defense, from.getLevel(), config)
-                * (even ? PvpReference.get().classHpRatio(to.getJob().getId()) : 1d);
+                * (even ? reference.classHpRatio(to.getJob().getId()) : 1d) * toughness;
         List<Integer> scaled = PvpDamageModel.scaleLines(raw, scale, to.getCurrentMaxHp(), config);
         long total = scaled.stream().mapToLong(Integer::longValue).sum();
         // even classes: the class defense skills sit out, the class HP ratio above stands in for them
         int damage = even ? (int) total : CharacterHitApplier.reduce(to, (int) total);
+        victim.bareShare += damage / (toughness * Math.max(1, to.getCurrentMaxHp()));
         Integer powerGuard = to.getBuffedValue(BuffStat.POWERGUARD);
         if (!even && powerGuard != null && !attack.ranged && !attack.magic) {
             damage = damage * Math.max(0, 100 - powerGuard) / 100;
@@ -576,7 +590,7 @@ public final class DuelField {
             rows.add(new DuelLog.Row(endMs, id, map.getId(), seconds, why, winnerSide, chr.getName(), chr.getId(),
                     chr.getJob() == null ? 0 : chr.getJob().getId(), chr.getLevel(), fighter.human, fighter.side,
                     gearBase(chr), fighter.knockedOut, fighter.forfeited, fighter.stats, fighter.dealt, fighter.taken,
-                    fighter.stats.engagedSeconds(endMs)));
+                    fighter.stats.engagedSeconds(endMs), fighter.neutralShare, fighter.bareShare));
         }
         rowSink.accept(rows);
         DuelRegistry.release(this);
@@ -585,17 +599,25 @@ public final class DuelField {
     /** Where finished duels' rows go: {@code logs/pvp/duels.csv}, then the learned rates; a test swaps it out. */
     static volatile java.util.function.Consumer<List<DuelLog.Row>> rowSink = DuelField::record;
 
-    /** A finished duel's rows: the CSV, then (PVP_LEARN_RATES, PD16) the learned rates. */
+    /**
+     * A finished duel's rows: the CSV, then the learned rates (PVP_LEARN_RATES, PD16) and the learned toughness
+     * (PVP_LEARN_TOUGHNESS with PVP_EVEN_CLASSES).
+     */
     static void record(List<DuelLog.Row> rows) {
         DuelLog.append(rows);
         var pvp = YamlConfig.config.pvp;
-        if (!pvp.PVP_LEARN_RATES) {
-            return;
-        }
         try {
-            int counted = PvpRateLearner.get().observeAll(rows, PvpReference.get(), pvp);
-            if (counted > 0) {
-                log.info("PvP learned rates: {} fighter(s) of duel {} counted", counted, rows.getFirst().duel());
+            if (pvp.PVP_LEARN_RATES) {
+                int counted = PvpRateLearner.get().observeAll(rows, PvpReference.get(), pvp);
+                if (counted > 0) {
+                    log.info("PvP learned rates: {} fighter(s) of duel {} counted", counted, rows.getFirst().duel());
+                }
+            }
+            if (PvpToughness.on(pvp)) {
+                int counted = PvpToughness.observeAll(rows, pvp);
+                if (counted > 0) {
+                    log.info("PvP learned toughness: {} victim(s) of duel {} counted", counted, rows.getFirst().duel());
+                }
             }
         } catch (RuntimeException failure) {
             log.warn("PvP: learning from a duel failed", failure);

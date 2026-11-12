@@ -23,7 +23,7 @@ public final class DuelLog {
     public static final Path FILE = Path.of("logs", "pvp", "duels.csv");
     static final String HEADER = "endedAt,duel,map,seconds,reason,winner,name,charId,jobId,level,kind,side,gearBase,"
             + "ko,left,thinks,buffs,sent,deferred,refused,noSkill,packets,whiffs,dodged,hits,raw,dealt,taken,engaged,"
-            + "topRefusal";
+            + "topRefusal,neutral,bare";
     /**
      * A row counts toward a rate only with this many engaged seconds and attack packets. Below the 12 s target duel on
      * purpose: at 15 s (the long run, 2026-11-09) 56 of 59 crossbowman rows were skipped because they won fast, so the
@@ -43,10 +43,14 @@ public final class DuelLog {
     private DuelLog() {
     }
 
-    /** One finished fighter, as a CSV row. */
+    /**
+     * One finished fighter, as a CSV row. {@code neutralShare}: what the hits it met would have taken of a reference
+     * victim's HP; {@code bareShare}: what they took of its own, the learned toughness divided out ({@link PvpToughness}).
+     */
     public record Row(long endedAt, long duel, int map, long seconds, String reason, int winner, String name,
                       int charId, int jobId, int level, boolean human, int side, long gearBase, boolean ko,
-                      boolean left, DuelStats stats, long dealt, long taken, double engaged) {
+                      boolean left, DuelStats stats, long dealt, long taken, double engaged, double neutralShare,
+                      double bareShare) {
         String csv() {
             DuelStats s = stats;
             return String.join(",", List.of(Long.toString(endedAt), Long.toString(duel), Integer.toString(map),
@@ -57,7 +61,9 @@ public final class DuelLog {
                     s.swingsDeferred.toString(), s.swingsRefused.toString(), s.noSkillThinks.toString(),
                     s.packets.toString(), s.whiffs.toString(), s.dodged.toString(), s.hits.toString(),
                     s.rawRolled.toString(), Long.toString(dealt), Long.toString(taken),
-                    String.format(java.util.Locale.ROOT, "%.1f", engaged), s.topRefusal().replace(',', ';')));
+                    String.format(java.util.Locale.ROOT, "%.1f", engaged), s.topRefusal().replace(',', ';'),
+                    String.format(java.util.Locale.ROOT, "%.4f", neutralShare),
+                    String.format(java.util.Locale.ROOT, "%.4f", bareShare)));
         }
     }
 
