@@ -765,6 +765,19 @@ The server sees a human only through movement packets. Ties go to the human both
       criterion is not testable at equal gear from practice. `!pvp sim matrix` (model only, 0-14 characters a class
       online at night) disagrees with practice where reach matters (thief over magician 71% at Lv 80) and is not
       used to judge.
+    - **Equal-gear run 22 (user: "Equal-gear run"; 15d3e9963 with `PVP_GEAR_EXPONENT` 0.05 in the live checkout's
+      config.yaml, uncommitted, 2026-11-12 10:06-14:13; put back to 0.7 and restarted 14:22; 765 duels,
+      `duels-run22-equalgear-15d3e9963.csv`).** No errors. Duels where an Assassin's top refusal was `plan:ammo` left
+      out (15; the star supply fix is not merged). Cross-class: warrior 40%, magician 47%, bowman 64%, thief 57%,
+      pirate 50%; warrior against magician 60-62, against bowman 24-66. Level edge 53% at 1-2, 64% at 3-5. Cells
+      with 5+ distinct pairings: 3 of 10 inside 40-60% (Lv 110s warrior-bowman 29% over 10 pairings). So bowmen's
+      lead is not their gear. Damage a second: bowman on warrior 9.2% of max HP, warrior on bowman 7.2%, while
+      warrior and magician trade 8.5 / 8.3. Warriors swing as often at bowmen (0.73 attacks a second against 0.76 at
+      magicians) but roll less raw per attack within one job and band (Lv 110s Crusaders 5,993 against bowmen, 8,529
+      against magicians): the bowman backs off when crowded and the warrior swings at the edge of its reach, likely
+      with its longest-reaching skill rather than its strongest (not yet measured). Second, smaller: measured
+      toughness against weapon hits runs above that against spells for bowmen 1.18 / 1.10, thieves 1.15 / 1.08 and
+      pirates 1.14 / 1.03, which one toughness per class averages.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
