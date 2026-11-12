@@ -29,6 +29,19 @@ public final class DuelStats {
     final AtomicInteger drinkNoGain = new AtomicInteger();
     /** The item of the last try that left HP where it was, and whether the duel refused it. */
     volatile String lastNoGain = "-";
+    /** Swings sent with its strongest attack skill, its second, and any weaker one (the brain's own order). */
+    final AtomicInteger swingsTop = new AtomicInteger();
+    final AtomicInteger swingsSecond = new AtomicInteger();
+    final AtomicInteger swingsWeaker = new AtomicInteger();
+    /** The foe's distance (px across) summed over swings sent; the strongest skill's reach summed over thinks. */
+    final AtomicLong swingDistancePx = new AtomicLong();
+    final AtomicLong topReachPx = new AtomicLong();
+    final AtomicInteger topReachLooks = new AtomicInteger();
+
+    void swung(int rank, int distancePx) {
+        (rank == 0 ? swingsTop : rank == 1 ? swingsSecond : swingsWeaker).incrementAndGet();
+        swingDistancePx.addAndGet(Math.max(0, distancePx));
+    }
     final AtomicInteger packets = new AtomicInteger();
     final AtomicInteger whiffs = new AtomicInteger();
     final AtomicInteger dodged = new AtomicInteger();
@@ -82,10 +95,17 @@ public final class DuelStats {
                 .orElse("-");
     }
 
+    private static long perOne(long sum, int count) {
+        return count <= 0 ? -1L : Math.round(sum / (double) count);
+    }
+
     String summary() {
         return "thinks=" + thinks + " buffs=" + buffsCast + " sent=" + swingsSent + " deferred=" + swingsDeferred
                 + " refused=" + swingsRefused + " noSkill=" + noSkillThinks + " walks=" + walks + " steps=" + steps + " hops=" + hops + " drinks=" + drinks + " drinkTries=" + drinkTries + " noPotion=" + drinkNoPotion + " noGain=" + drinkNoGain
-                + " lastNoGain=" + lastNoGain + " packets=" + packets
+                + " lastNoGain=" + lastNoGain + " top1=" + swingsTop + " top2=" + swingsSecond + " weaker="
+                + swingsWeaker + " swingPx=" + perOne(swingDistancePx.get(), swingsTop.get() + swingsSecond.get()
+                + swingsWeaker.get()) + " topReachPx=" + perOne(topReachPx.get(), topReachLooks.get())
+                + " packets=" + packets
                 + " whiffs=" + whiffs + " dodged=" + dodged + " hits=" + hits + " raw=" + rawRolled
                 + " top=" + topRefusal() + " waited=" + topDeferral();
     }

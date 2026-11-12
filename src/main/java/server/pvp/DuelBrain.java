@@ -284,7 +284,8 @@ final class DuelBrain {
                 && footwork(entry, bot, at, aim, mind, stats, now)) {
             return;
         }
-        for (int skillId : mind.skills) {
+        for (int rank = 0; rank < mind.skills.size(); rank++) {
+            int skillId = mind.skills.get(rank);
             AgentAttackPlan plan = AgentSkillAttackPlanRuntime.planSkillAttackAt(bot, aim, skillId);
             if (plan == null) {
                 stats.refused("plan:" + AgentSkillAttackPlanRuntime.lastRejection());
@@ -299,12 +300,17 @@ final class DuelBrain {
             if (box == null) {
                 continue;
             }
+            if (rank == 0) {
+                stats.topReachPx.addAndGet(reachToward(box, at, aim));
+                stats.topReachLooks.incrementAndGet();
+            }
             if (mayAttack && box.intersects(body)) {
                 gateway.stop(entry);
                 gateway.facePosition(bot, aim);
                 var result = AgentCombatAttackRuntime.attackAtNothing(entry, bot, plan);
                 if (result.committed()) {
                     stats.swingsSent.incrementAndGet();
+                    stats.swung(rank, Math.abs(at.x - aim.x));
                     swingAgainAt(mind, now, plan.cooldownMs);
                     if (!mind.inReach) {
                         mind.nextFootworkMs = now + footworkGapMs();
