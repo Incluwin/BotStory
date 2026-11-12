@@ -404,6 +404,18 @@ class DuelPiecesTest {
     }
 
     @Test
+    void aCrusaderHoldsShoutWhileItsFinishersWaitOnOrbs() {
+        int shout = constants.skills.Crusader.SHOUT;
+        assertTrue(DuelBrain.orbsFirst(true, true, true));
+        assertFalse(DuelBrain.orbsFirst(false, true, true));   // no Combo Attack up: no orb to build
+        assertFalse(DuelBrain.orbsFirst(true, false, true));   // the orbs are full: Shout is fine again
+        assertFalse(DuelBrain.orbsFirst(true, true, false));   // nothing else to swing: Shout beats standing
+        assertTrue(DuelBrain.holdsShout(shout, true));
+        assertFalse(DuelBrain.holdsShout(shout, false));
+        assertFalse(DuelBrain.holdsShout(constants.skills.Warrior.SLASH_BLAST, true));   // only Shout earns nothing
+    }
+
+    @Test
     void aBotEntersADuelOnlyWithPotionsForItsWholeHpPool() {
         assertFalse(DuelField.suppliedForDuel(0, 8_700));          // the dry Crusader of practice 2026-11-11
         assertFalse(DuelField.suppliedForDuel(8_699, 8_700));

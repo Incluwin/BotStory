@@ -778,6 +778,16 @@ The server sees a human only through movement packets. Ties go to the human both
       with its longest-reaching skill rather than its strongest (not yet measured). Second, smaller: measured
       toughness against weapon hits runs above that against spells for bowmen 1.18 / 1.10, thieves 1.15 / 1.08 and
       pirates 1.14 / 1.03, which one toughness per class averages.
+    - **Melee against ranged (user: "Fix melee vs ranged").** Counters (61c63c7d1, LIVE 14:52 11-12; 288 rows):
+      warriors swung their strongest skill on 86% of swings against magicians, 100% against thieves, 33% against
+      bowmen. By job: the Fighter line (11x) 0 of 57 against bowmen, at 120 px with the strongest reaching nothing
+      (plan refused `combo-orbs`), 53% against magicians at 81 px; Pages and Spearmen 88-100%. Cause: the stock orb
+      gain skips Shout (`CloseRangeDamageHandler.gainOnHit`, skill 1111008), and a bowman keeping 160-380 px away
+      left a Crusader only Shout in reach, so it never built an orb for Panic or Coma. Fixes:
+      - **Shout waits for orbs:** while Combo Attack is up and a finisher waits on orbs, a Crusader holds Shout and
+        its walk and footwork follow its orb-building swings (`DuelBrain.holdsShout`).
+      - **Toughness by attack kind:** spell hits learn under their own keys (`c1m`, `11-8m`), starting from the
+        class's plain value (9c8e5695d); CSV gains `neutralSpell`, `bareSpell`.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

@@ -284,8 +284,13 @@ final class DuelBrain {
                 && footwork(entry, bot, at, aim, mind, stats, now)) {
             return;
         }
+        boolean orbsFirst = orbsFirst(bot, mind.skills);
         for (int rank = 0; rank < mind.skills.size(); rank++) {
             int skillId = mind.skills.get(rank);
+            if (holdsShout(skillId, orbsFirst)) {
+                stats.refused("hold:shout-for-orbs");
+                continue;   // its walk and footwork follow the swings that build orbs, so it closes in
+            }
             AgentAttackPlan plan = AgentSkillAttackPlanRuntime.planSkillAttackAt(bot, aim, skillId);
             if (plan == null) {
                 stats.refused("plan:" + AgentSkillAttackPlanRuntime.lastRejection());
@@ -447,6 +452,38 @@ final class DuelBrain {
             }
         }
         return 0;
+    }
+
+    /**
+     * Whether a combo fighter holds Crusader's Shout: Shout earns no combo orb (CloseRangeDamageHandler.gainOnHit
+     * skips 1111008), so while a finisher waits on orbs a Crusader builds them with its other swings, as a player
+     * does. Counters 2026-11-12: against bowmen keeping 160-380 px away, Lv 110s Crusaders swung from 120 px with only
+     * Shout in reach, never built an orb and never used Panic or Coma (0 of 57 swings; 53% against magicians, whom
+     * they reached at 81 px), so equal-gear warriors went 24-66 against bowmen.
+     */
+    static boolean holdsShout(int skillId, boolean orbsFirst) {
+        return skillId == constants.skills.Crusader.SHOUT && orbsFirst;
+    }
+
+    /** Orbs come first while Combo Attack is up, a finisher waits on orbs, and a swing other than Shout builds them. */
+    static boolean orbsFirst(boolean comboUp, boolean finisherWaitsOnOrbs, boolean hasOrbBuilder) {
+        return comboUp && finisherWaitsOnOrbs && hasOrbBuilder;
+    }
+
+    private static boolean orbsFirst(Character bot, List<Integer> skills) {
+        if (!skills.contains(constants.skills.Crusader.SHOUT)) {
+            return false;
+        }
+        boolean finisherWaits = false;
+        boolean builder = false;
+        for (int skillId : skills) {
+            if (constants.game.GameConstants.isFinisherSkill(skillId)) {
+                finisherWaits |= !server.agents.capabilities.combat.AgentComboFinisherPolicy.canPlan(bot, skillId);
+            } else if (skillId != constants.skills.Crusader.SHOUT) {
+                builder = true;
+            }
+        }
+        return orbsFirst(bot.getBuffedValue(client.BuffStat.COMBO) != null, finisherWaits, builder);
     }
 
     /** Whether a fighter in {@code stance} can swing: not while climbing a rope or ladder, as no player can. */
