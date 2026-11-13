@@ -811,6 +811,15 @@ The server sees a human only through movement packets. Ties go to the human both
       about two standard errors from even; per engaged second the magician leads (9.3% of a warrior's real HP against
       8.1%), since a caster starts hitting from range while the warrior is still walking in. Scratchpad heal.py and
       melt_real.py measure on real HP.
+    - **Warrior against magician, dug into (user: "Dig into it"), run 24's 131 duels.** Per duel second the magician
+      takes 8.5% of a warrior's real HP, the warrior 7.1% of a magician's (1.20x). The parts, none large alone:
+      landed hits a second 0.73 against 0.67 (the magician opens at 1.1 s against the warrior's 1.6 s, and weapon
+      swings are dodged 6.2% against 2.2% for spells), and each hit 11.9% of real HP against 10.5%. By the model's own
+      normalization (scratchpad efficiency.py: raw a second over prior x gear ratio x learned rate) magicians run at
+      1.12x their learned rate against warriors but 0.95-0.99x against bowmen and thieves, warriors 0.99x against
+      magicians; warriors' gear above the job median (G^0.7 1.11x) gives some of it back. So the gap is a pairwise
+      effect: per-class learning (rates by attacker, toughness by victim) cannot see what one class does to one
+      other class.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
