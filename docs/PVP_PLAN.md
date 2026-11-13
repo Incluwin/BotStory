@@ -788,6 +788,17 @@ The server sees a human only through movement packets. Ties go to the human both
         its walk and footwork follow its orb-building swings (`DuelBrain.holdsShout`).
       - **Toughness by attack kind:** spell hits learn under their own keys (`c1m`, `11-8m`), starting from the
         class's plain value (9c8e5695d); CSV gains `neutralSpell`, `bareSpell`.
+    - **Check run 24 (a88a49647, LIVE 2026-11-12 ~17:45, run to 21:50, 909 duels, `duels-run24-a88a49647.csv`).** No
+      errors; starless-Assassin duels left out. Whole run cross-class: warrior 45%, magician 45%, bowman 54%, thief
+      58%, pirate 59% (37 duels), every class inside 40-60%. Warrior against bowman 41-35 (equal-gear run 22: 24-66),
+      against magician 54-77, against thief 19-19. Last two hours: 40 / 46 / 60 / 60 / 68 (pirate 22 duels). Level
+      edge 51% at 1-2, 57% at 3-5. Knock-outs median 14 s. Crusaders' strongest-skill share against bowmen 17% (was
+      0%), swinging from 95 px (was 120). Damage a second, last two hours: warrior and magician 9.0 / 8.9% of the
+      other's max HP, warrior on bowman 8.7 against 9.5 the other way (was 7.2 / 9.2); thief on magician 10.3 against
+      8.7. Learned toughness weapon / spell: warrior 1.15 / 1.12, magician 1.19 / 1.13, bowman 1.09 / 1.10, thief 1.11 /
+      1.08, pirate 1.09 / 1.05. Healing still differs a little: absorbed before a knock-out warrior 1.30x, magician
+      1.40x, others 1.33-1.35x. Cells with 5+ distinct pairings: 5 of 10 inside 40-60%; Lv 80s warrior-magician 15%
+      over 6 pairings (run 22: 14%) and Lv 100s warrior-bowman 65% over 12 the outliers.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
