@@ -35,7 +35,7 @@ class PvpToughnessTest {
     private static DuelLog.Row row(int jobId, int level, boolean left, double neutral, double bare,
                                    double neutralSpell, double bareSpell) {
         return new DuelLog.Row(0L, 1L, 100000000, 15L, "knock-out", 1, "v", 7, jobId, level, false, 2, 100L, true, left,
-                new DuelStats(), 0L, 0L, 12d, neutral, bare, neutralSpell, bareSpell);
+                new DuelStats(), 0L, 0L, 12d, neutral, bare, neutralSpell, bareSpell, 0d);
     }
 
     @Test

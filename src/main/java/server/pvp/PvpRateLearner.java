@@ -126,6 +126,16 @@ public final class PvpRateLearner {
         return true;
     }
 
+    /** One key's running mean, or null ({@link PvpMatchups} reads its class pairs this way). */
+    Mean mean(String key) {
+        return means.get(key);
+    }
+
+    /** Moves one key's mean a step toward a (clipped) log measurement, with the same step and Huber cap. */
+    synchronized void learnKey(String key, double observedLog, double stepSize, double priorWeight) {
+        step(key, means.getOrDefault(key, new Mean(0d, 0)), observedLog, stepSize, priorWeight);
+    }
+
     /** Moves the class's and the job path and band's means a step toward one fighter's (clipped) log measurement. */
     synchronized void learn(int jobId, int level, double observedLog, PvpConfig config) {
         learn(jobId, level, observedLog, config, "");

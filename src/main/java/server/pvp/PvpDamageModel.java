@@ -23,13 +23,22 @@ public final class PvpDamageModel {
      */
     public static double coefficient(Attacker attacker, PvpReference reference, PvpConfig config) {
         double hRef = reference.hRef(attacker.level());
+        double rate = rate(attacker, reference, config);
+        return hRef / (config.PVP_TTK_SECONDS * Math.max(1d, rate))
+                * Math.pow(gearRatio(attacker, reference), config.PVP_GEAR_EXPONENT - 1d);
+    }
+
+    /** The attacker's gear base over its job path and band's median ({@code G}; 1 without a median), at least 0.05. */
+    static double gearRatio(Attacker attacker, PvpReference reference) {
         long median = reference.gearMedian(attacker.jobId(), attacker.level());
         long ownBase = Math.max(1L, attacker.gearBase());
         double gearMedian = median > 0 ? median : ownBase;
-        double rate = rate(attacker, reference, config);
-        double gearRatio = Math.max(0.05d, ownBase / gearMedian);
-        return hRef / (config.PVP_TTK_SECONDS * Math.max(1d, rate))
-                * Math.pow(gearRatio, config.PVP_GEAR_EXPONENT - 1d);
+        return Math.max(0.05d, ownBase / gearMedian);
+    }
+
+    /** What the attacker's gear adds over a median-geared one of its job and band: {@code G^gamma}. */
+    public static double gearEdge(Attacker attacker, PvpReference reference, PvpConfig config) {
+        return Math.pow(gearRatio(attacker, reference), config.PVP_GEAR_EXPONENT);
     }
 
     /**

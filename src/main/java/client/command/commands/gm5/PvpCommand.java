@@ -83,7 +83,8 @@ public class PvpCommand extends Command {
             case "reset" -> {
                 learner.reset();
                 server.pvp.PvpToughness.reset();
-                gm.yellowMessage("PvP learned rates and toughness cleared; the reference table stands.");
+                server.pvp.PvpMatchups.reset();
+                gm.yellowMessage("PvP learned rates, toughness and matchups cleared; the reference table stands.");
                 return;
             }
             case "replay" -> {
@@ -119,6 +120,13 @@ public class PvpCommand extends Command {
         List<String> toughness = server.pvp.PvpToughness.summary();
         gm.yellowMessage("PvP learned toughness: " + (toughness.isEmpty() ? "none yet." : toughness.size() + " key(s)"));
         toughness.forEach(gm::yellowMessage);
+        if (!server.pvp.PvpMatchups.on(YamlConfig.config.pvp)) {
+            gm.yellowMessage("PVP_LEARN_MATCHUPS (with PVP_EVEN_CLASSES) is off: hits take no matchup correction.");
+        }
+        List<String> matchups = server.pvp.PvpMatchups.summary();
+        gm.yellowMessage("PvP learned matchups (lower class's hits on the higher; the higher's take the inverse): "
+                + (matchups.isEmpty() ? "none yet." : matchups.size() + " pair(s)"));
+        matchups.forEach(gm::yellowMessage);
     }
 
     private void probe(Character gm, String[] params) {

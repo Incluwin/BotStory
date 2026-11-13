@@ -68,6 +68,8 @@ public final class DuelField {
         /** The spells' part of the two shares above (PvpToughness learns weapon hits and spells apart). */
         double neutralSpellShare;
         double bareSpellShare;
+        /** As an attacker: what its hits took of victims' max HP, matchup, gear edge, level divided out (PvpMatchups). */
+        double paceShare;
         final DuelBrain.Mind mind = new DuelBrain.Mind();
         final DuelStats stats = new DuelStats();
 
@@ -386,13 +388,16 @@ public final class DuelField {
         CombatFormulaProvider.DamageProfile profile =
                 formulas.resolveDamageProfile(attacker, attack.skill, skillLevel, attack.magic);
         PvpCalibration.Sample sample = PvpCalibration.of(attacker);
-        double coefficient = PvpDamageModel.coefficient(new PvpDamageModel.Attacker(attacker.getLevel(),
-                attacker.getJob().getId(), sample.gearBase(), sample.jobClass() == 2), PvpReference.get(), config);
+        PvpDamageModel.Attacker model = new PvpDamageModel.Attacker(attacker.getLevel(), attacker.getJob().getId(),
+                sample.gearBase(), sample.jobClass() == 2);
+        double coefficient = PvpDamageModel.coefficient(model, PvpReference.get(), config);
+        double gearEdge = PvpDamageModel.gearEdge(model, PvpReference.get(), config);
         double share = PvpDamageModel.areaShare(met.size(), config);
         int lines = lineCount(attack, effect);
         int landed = 0;
         for (PvpHitResolver.Candidate candidate : met) {
-            if (hit(self, fighters.get(candidate.character().getId()), attack, profile, lines, coefficient * share)) {
+            if (hit(self, fighters.get(candidate.character().getId()), attack, profile, lines, coefficient * share,
+                    gearEdge)) {
                 landed++;
             }
         }
@@ -419,7 +424,7 @@ public final class DuelField {
 
     /** One victim's share of an attack; true when it landed (not dodged). */
     private boolean hit(Fighter attacker, Fighter victim, AttackInfo attack, CombatFormulaProvider.DamageProfile profile,
-                        int lines, double factor) {
+                        int lines, double factor, double gearEdge) {
         Character from = attacker.chr;
         Character to = victim.chr;
         CombatFormulaProvider formulas = CombatFormulaProvider.getInstance();
@@ -466,14 +471,20 @@ public final class DuelField {
         // learned toughness (the user's call 2026-11-11): what this victim's class and band take over a reference victim
         double toughness = PvpToughness.on(config)
                 ? PvpToughness.multiplier(to.getJob().getId(), to.getLevel(), config, attack.magic) : 1d;
+        // learned matchups (the user's call 2026-11-13): this pair's split of the pace gap the per-class learners miss
+        double matchup = PvpMatchups.on(config)
+                ? PvpMatchups.multiplier(from.getJob().getId(), to.getJob().getId()) : 1d;
         double scale = factor * levelFactor * levelHpShare
                 * PvpDamageModel.defenseFactor(defense, from.getLevel(), config)
-                * (even ? reference.classHpRatio(to.getJob().getId()) : 1d) * toughness;
+                * (even ? reference.classHpRatio(to.getJob().getId()) : 1d) * toughness * matchup;
         List<Integer> scaled = PvpDamageModel.scaleLines(raw, scale, to.getCurrentMaxHp(), config);
         long total = scaled.stream().mapToLong(Integer::longValue).sum();
         // even classes: the class defense skills sit out, the class HP ratio above stands in for them
         int damage = even ? (int) total : CharacterHitApplier.reduce(to, (int) total);
-        double bare = damage / (toughness * Math.max(1, to.getCurrentMaxHp()));
+        int victimMaxHp = Math.max(1, to.getCurrentMaxHp());
+        // each learner measures with its own correction and the other's divided out, so neither feeds on the other
+        double bare = damage / (toughness * matchup * victimMaxHp);
+        attacker.paceShare += damage / (matchup * gearEdge * levelFactor * victimMaxHp);
         victim.bareShare += bare;
         if (attack.magic) {
             victim.bareSpellShare += bare;
@@ -602,7 +613,7 @@ public final class DuelField {
                     chr.getJob() == null ? 0 : chr.getJob().getId(), chr.getLevel(), fighter.human, fighter.side,
                     gearBase(chr), fighter.knockedOut, fighter.forfeited, fighter.stats, fighter.dealt, fighter.taken,
                     fighter.stats.engagedSeconds(endMs), fighter.neutralShare, fighter.bareShare,
-                    fighter.neutralSpellShare, fighter.bareSpellShare));
+                    fighter.neutralSpellShare, fighter.bareSpellShare, fighter.paceShare));
         }
         rowSink.accept(rows);
         DuelRegistry.release(this);
@@ -613,7 +624,7 @@ public final class DuelField {
 
     /**
      * A finished duel's rows: the CSV, then the learned rates (PVP_LEARN_RATES, PD16) and the learned toughness
-     * (PVP_LEARN_TOUGHNESS with PVP_EVEN_CLASSES).
+     * (PVP_LEARN_TOUGHNESS with PVP_EVEN_CLASSES), then the learned matchups (PVP_LEARN_MATCHUPS, likewise).
      */
     static void record(List<DuelLog.Row> rows) {
         DuelLog.append(rows);
@@ -630,6 +641,9 @@ public final class DuelField {
                 if (counted > 0) {
                     log.info("PvP learned toughness: {} victim(s) of duel {} counted", counted, rows.getFirst().duel());
                 }
+            }
+            if (PvpMatchups.on(pvp) && PvpMatchups.observeAll(rows, pvp)) {
+                log.info("PvP learned matchups: duel {} counted", rows.getFirst().duel());
             }
         } catch (RuntimeException failure) {
             log.warn("PvP: learning from a duel failed", failure);

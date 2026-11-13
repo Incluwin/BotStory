@@ -79,6 +79,12 @@ public class PvpConfig {
      * stand alone.
      */
     public boolean PVP_LEARN_TOUGHNESS = false;
+    /**
+     * Learned matchups (the user's call 2026-11-13), with PVP_EVEN_CLASSES: after every one-against-one duel of two
+     * classes, the pair learns how much faster one side wore the other down, gear and levels divided out, and hits
+     * between the two split the difference (server.pvp.PvpMatchups). Off: no per-pair correction.
+     */
+    public boolean PVP_LEARN_MATCHUPS = false;
 
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {

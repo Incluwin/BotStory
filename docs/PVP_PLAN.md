@@ -820,6 +820,20 @@ The server sees a human only through movement packets. Ties go to the human both
       magicians; warriors' gear above the job median (G^0.7 1.11x) gives some of it back. So the gap is a pairwise
       effect: per-class learning (rates by attacker, toughness by victim) cannot see what one class does to one
       other class.
+    - **PD19 decided (the user, 2026-11-13): learn matchups** (over calling V2 done). `server.pvp.PvpMatchups`:
+      each hit adds to its attacker's pace what it took of the victim's max HP with the matchup correction, the
+      attacker's gear edge (`G^gamma`, `PvpDamageModel.gearEdge`) and the level factor divided out, so gear and
+      levels keep helping a fighter and are not taken for the class pair's. After a one-against-one duel of two
+      classes in which both fighters really fought (`DuelLog.measurable`), the pair's running mean of
+      log(lower class's pace / higher class's) moves toward the duel's value, clipped to 1/3-3x, with the class step,
+      prior (5 duels), Huber cap and 0.4-2.5x limits of the other learners; one key per class pair (`p12` = warriors
+      and magicians), not per band. Once a pair has 5 duels, the lower class's hits on the higher are multiplied by
+      `exp(-m/2)` and the higher's on the lower by `exp(m/2)`: the pair's two paces meet, their shared pace stays.
+      Toughness's bare share now divides the matchup out too, so neither learner feeds on the other. Switch
+      `PVP_LEARN_MATCHUPS` (with PVP_EVEN_CLASSES), file `logs/pvp/learned-matchups.txt`, the duel CSV gains `pace`,
+      `!pvp learned` lists the pairs and `reset` clears them; the sim applies them. Not divided out: a victim's own
+      HP, defense and avoid above its class's typical, so a pair whose victims are geared unevenly keeps a little of
+      that in its mean.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

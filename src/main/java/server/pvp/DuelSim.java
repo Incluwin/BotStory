@@ -146,7 +146,8 @@ public final class DuelSim {
         double damage = raw * from.coefficient() * PvpDamageModel.levelFactor(from.level(), to.level(), config)
                 * (from.hRef() > 0 && to.hRef() > 0 ? to.hRef() / from.hRef() : 1d)
                 * PvpDamageModel.defenseFactor(from.magic() ? to.mdef() : to.wdef(), from.level(), config)
-                * (even ? to.classHpRatio() : 1d);
+                * (even ? to.classHpRatio() : 1d)
+                * (PvpMatchups.on(config) ? PvpMatchups.multiplier(from.jobId(), to.jobId()) : 1d);
         damage = Math.min(damage, to.maxHp() * config.PVP_MAX_HIT_PERCENT / 100d) * (even ? 1d : to.reduce());
         double mpLoss = 0;
         if (!even && to.magicGuardPercent() > 0) {

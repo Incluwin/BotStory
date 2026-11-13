@@ -1744,6 +1744,13 @@ mods:
 # the running mean, so a typical victim of any class goes down at the reference pace; gear above its class's typical
 # still helps. Same steps, priors and limits as the learned rates; persisted in logs/pvp/learned-toughness.txt
 # (untracked; "!pvp learned reset" clears both). Technical: server.pvp.PvpToughness.
+# PVP_LEARN_MATCHUPS (the user's choice, 2026-11-13), with PVP_EVEN_CLASSES: rates and toughness are per class, so they
+# miss what one class does to one other. Check run 24: magicians wore warriors down 20% faster than the reverse (a
+# caster opens from range while a warrior walks in, and dodges more weapon swings), and warriors went 54-77 against
+# them. After every one-against-one duel of two classes, the pair learns the log ratio of how fast each side took the
+# other's HP, its own gear edge and the level factor divided out, and hits between the two split the difference, so
+# typical fighters of the pair wear each other down at the same pace. Persisted in logs/pvp/learned-matchups.txt
+# (untracked; "!pvp learned reset" clears it with the rest). Technical: server.pvp.PvpMatchups.
 pvp:
     PVP_ENABLED: false
     PVP_TTK_SECONDS: 12
@@ -1773,3 +1780,4 @@ pvp:
     PVP_LEARN_JOB_STEP: 0.1
     PVP_LEARN_JOB_MIN_FIGHTERS: 8
     PVP_LEARN_TOUGHNESS: true
+    PVP_LEARN_MATCHUPS: true
