@@ -799,6 +799,18 @@ The server sees a human only through movement packets. Ties go to the human both
       1.08, pirate 1.09 / 1.05. Healing still differs a little: absorbed before a knock-out warrior 1.30x, magician
       1.40x, others 1.33-1.35x. Cells with 5+ distinct pairings: 5 of 10 inside 40-60%; Lv 80s warrior-magician 15%
       over 6 pairings (run 22: 14%) and Lv 100s warrior-bowman 65% over 12 the outliers.
+    - **Warrior healing (user: "Even warrior healing"), 2026-11-13: no gap; my measure was wrong.** Absorbed HP had
+      been divided by `characters.maxhp` (base HP), while a duel runs on base plus equipped HP, and gear adds 8% to a
+      magician's HP against 2% to a warrior's. On real HP, run 24's knocked-out fighters absorbed warrior 1.27x,
+      magician 1.29x, bowman 1.27x, thief 1.30x, pirate 1.30x, each using 75-80% of the heal allowance, with no drink
+      try short of a potion. No code change. The damage-a-second tables had the same error; on real HP, warrior and
+      magician knock each other out in the same time when they lose (13.7 s and 13.6 s), raw output against each
+      other is 1.05x their own average both ways, toughness has converged (measured weapon / spell warrior 1.14 /
+      1.13, magician 1.21 / 1.18, matching the learned values) and warriors carry 1.22x their job's median gear to
+      magicians' 1.00x. What stays: warrior against magician 54-77 over 131 duels in run 24 (60-62 at equal gear),
+      about two standard errors from even; per engaged second the magician leads (9.3% of a warrior's real HP against
+      8.1%), since a caster starts hitting from range while the warrior is still walking in. Scratchpad heal.py and
+      melt_real.py measure on real HP.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
