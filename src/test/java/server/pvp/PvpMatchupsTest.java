@@ -139,7 +139,7 @@ class PvpMatchupsTest {
         // a Crusader at Lv 100 whose band's median gear base is 1,000: 1,220 is warriors' 1.22x of check run 24
         PvpReference reference = PvpReference.parse(List.of("gear_base:", "  \"11-10\": 1000"));
         PvpDamageModel.Attacker attacker = new PvpDamageModel.Attacker(100, 111, 1220L, false);
-        assertEquals(1.22d, PvpDamageModel.gearRatio(attacker, reference), 1e-12);
+        assertEquals(1.22d, PvpDamageModel.gearRatio(attacker, reference.gearMedian(111, 100)), 1e-12);
         assertEquals(Math.pow(1.22d, 0.7d), PvpDamageModel.gearEdge(attacker, reference, config), 1e-12);
         PvpDamageModel.Attacker unknown = new PvpDamageModel.Attacker(100, 511, 1220L, false);
         assertEquals(1d, PvpDamageModel.gearEdge(unknown, reference, config), 1e-12, "no median: no edge");

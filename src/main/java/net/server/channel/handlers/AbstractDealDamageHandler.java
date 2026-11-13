@@ -527,8 +527,10 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     }
 
                     if (player.isAran()) {
-                        if (player.getBuffedValue(BuffStat.WK_CHARGE) != null) {
-                            Skill snowCharge = SkillFactory.getSkill(Aran.SNOW_CHARGE);
+                        Skill snowCharge = SkillFactory.getSkill(Aran.SNOW_CHARGE);
+                        // only Snow Charge's own charge slows, as the charges below check: an Aran without the skill
+                        // looked up level 0 and threw on every attack (check run 25, 2026-11-13)
+                        if (player.isBuffFrom(BuffStat.WK_CHARGE, snowCharge) && player.getSkillLevel(snowCharge) > 0) {
                             if (totDamageToOneMonster > 0) {
                                 MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(Collections.singletonMap(MonsterStatus.SPEED, snowCharge.getEffect(player.getSkillLevel(snowCharge)).getX()), snowCharge, null, false);
                                 long duration = SECONDS.toMillis(snowCharge.getEffect(player.getSkillLevel(snowCharge)).getY());

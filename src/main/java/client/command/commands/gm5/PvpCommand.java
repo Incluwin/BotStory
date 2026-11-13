@@ -210,6 +210,9 @@ public class PvpCommand extends Command {
         server.pvp.PvpHitBalance hitBalance = server.pvp.PvpHitBalance.refresh();
         gm.yellowMessage("PvP hit balance (PD17): " + hitBalance.report());
         log.info("PvP hit balance (PD17): {}", hitBalance.report());
+        server.pvp.PvpGearMedians gearMedians = server.pvp.PvpGearMedians.refresh();
+        gm.yellowMessage("PvP live gear medians: " + gearMedians.report());
+        log.info("PvP live gear medians: {}", gearMedians.report());
         try {
             Path file = PvpCalibration.write(Path.of("logs", "pvp"), bands, gear, PvpProbe.meter().report());
             gm.yellowMessage("PvP calibration: " + samples.size() + " characters -> " + file);

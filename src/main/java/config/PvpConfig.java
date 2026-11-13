@@ -85,6 +85,12 @@ public class PvpConfig {
      * between the two split the difference (server.pvp.PvpMatchups). Off: no per-pair correction.
      */
     public boolean PVP_LEARN_MATCHUPS = false;
+    /**
+     * Live gear medians (the user's call 2026-11-13): a fighter's gear edge and the coefficient's median attacker are
+     * measured against the median gear of the characters online per job path and band, refreshed every 10 minutes
+     * (server.pvp.PvpGearMedians), not the 2026-11-08 medians of scripts/config/pvp/reference.yaml. Off: the file's.
+     */
+    public boolean PVP_LIVE_GEAR_MEDIANS = false;
 
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {

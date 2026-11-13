@@ -22,23 +22,47 @@ public final class PvpDamageModel {
      * then knocks out a median-HP victim in TTK seconds of hitting; gear above the median deals {@code G^gamma}.
      */
     public static double coefficient(Attacker attacker, PvpReference reference, PvpConfig config) {
-        double hRef = reference.hRef(attacker.level());
-        double rate = rate(attacker, reference, config);
-        return hRef / (config.PVP_TTK_SECONDS * Math.max(1d, rate))
-                * Math.pow(gearRatio(attacker, reference), config.PVP_GEAR_EXPONENT - 1d);
+        return coefficient(attacker, reference, config, typicalGear(attacker, reference, config));
     }
 
-    /** The attacker's gear base over its job path and band's median ({@code G}; 1 without a median), at least 0.05. */
-    static double gearRatio(Attacker attacker, PvpReference reference) {
-        long median = reference.gearMedian(attacker.jobId(), attacker.level());
+    /** The same against {@code typical}, the median gear base the attacker is measured against (-1: none). */
+    static double coefficient(Attacker attacker, PvpReference reference, PvpConfig config, long typical) {
+        double hRef = reference.hRef(attacker.level());
+        // a median attacker as geared today: the reference rate belongs to the reference median's gear
+        double rate = rate(attacker, reference, config) * typicalShare(attacker, reference, typical);
+        return hRef / (config.PVP_TTK_SECONDS * Math.max(1d, rate))
+                * Math.pow(gearRatio(attacker, typical), config.PVP_GEAR_EXPONENT - 1d);
+    }
+
+    /**
+     * The median gear base of the attacker's job path and band: the live one ({@link PvpGearMedians}) while
+     * PVP_LIVE_GEAR_MEDIANS is on, else the reference table's (-1 when it has none).
+     */
+    public static long typicalGear(Attacker attacker, PvpReference reference, PvpConfig config) {
+        return config.PVP_LIVE_GEAR_MEDIANS
+                ? PvpGearMedians.current().median(attacker.jobId(), attacker.level(), reference)
+                : reference.gearMedian(attacker.jobId(), attacker.level());
+    }
+
+    /** The typical gear over the gear the reference rate was set at (the reference median, else the attacker's own). */
+    static double typicalShare(Attacker attacker, PvpReference reference, long typical) {
+        if (typical <= 0) {
+            return 1d;
+        }
+        long referenceMedian = reference.gearMedian(attacker.jobId(), attacker.level());
+        return typical / (double) (referenceMedian > 0 ? referenceMedian : Math.max(1L, attacker.gearBase()));
+    }
+
+    /** The attacker's gear base over {@code typical} ({@code G}; 1 without a median), at least 0.05. */
+    static double gearRatio(Attacker attacker, long typical) {
         long ownBase = Math.max(1L, attacker.gearBase());
-        double gearMedian = median > 0 ? median : ownBase;
+        double gearMedian = typical > 0 ? typical : ownBase;
         return Math.max(0.05d, ownBase / gearMedian);
     }
 
     /** What the attacker's gear adds over a median-geared one of its job and band: {@code G^gamma}. */
     public static double gearEdge(Attacker attacker, PvpReference reference, PvpConfig config) {
-        return Math.pow(gearRatio(attacker, reference), config.PVP_GEAR_EXPONENT);
+        return Math.pow(gearRatio(attacker, typicalGear(attacker, reference, config)), config.PVP_GEAR_EXPONENT);
     }
 
     /**

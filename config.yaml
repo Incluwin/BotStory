@@ -1751,6 +1751,13 @@ mods:
 # other's HP, its own gear edge and the level factor divided out, and hits between the two split the difference, so
 # typical fighters of the pair wear each other down at the same pace. Persisted in logs/pvp/learned-matchups.txt
 # (untracked; "!pvp learned reset" clears it with the rest). Technical: server.pvp.PvpMatchups.
+# PVP_LIVE_GEAR_MEDIANS (the user's choice, 2026-11-13): gear helps a fighter by its gear over its job path and band's
+# median, and the damage coefficient is set for a median attacker. The medians in scripts/config/pvp/reference.yaml are
+# from 2026-11-08; by check run 25 a typical warrior or thief carried about 1.2x of them and a typical magician or
+# bowman 1.0-1.05x, so warriors and thieves dealt about 12% more than intended. On: the medians come from the
+# characters online (GMs left out) per job path and band, refreshed every 10 minutes (a thin key uses the reference
+# median times its class's live ratio); the reference medians still anchor the measured and learned rates. "!pvp
+# calibrate" prints each class's ratio. Technical: server.pvp.PvpGearMedians.
 pvp:
     PVP_ENABLED: false
     PVP_TTK_SECONDS: 12
@@ -1781,3 +1788,4 @@ pvp:
     PVP_LEARN_JOB_MIN_FIGHTERS: 8
     PVP_LEARN_TOUGHNESS: true
     PVP_LEARN_MATCHUPS: true
+    PVP_LIVE_GEAR_MEDIANS: true

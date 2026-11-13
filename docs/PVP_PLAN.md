@@ -854,6 +854,16 @@ The server sees a human only through movement packets. Ties go to the human both
          which no learner corrects (the rates' efficiency divides gear out, the matchups do too).
       2. **Arans barely fight.** Their rows roll 404 raw a second against 6,422 for other warriors, and the Aran
          combo plan is the top refusal in 32 of 52 rows; they count as class 1, so they pull every warrior number.
+    - **PD20 decided (the user, 2026-11-13): refresh the gear medians** (before the Aran fix).
+      `server.pvp.PvpGearMedians`: the median gear base per job path and band of the characters online (GMs left
+      out), refreshed every 10 minutes like the hit balance; a key with fewer than 3 characters uses the reference
+      median times its class's live median ratio, else the reference median. `PvpDamageModel.typicalGear` feeds it
+      to the coefficient, which now sets the median attacker's rate at today's gear (reference rate x live / reference
+      median) and measures G against the live median, and to the gear edge the matchups divide out; the reference
+      medians still anchor `d_job` and the learned rates' efficiency, so nothing learned changes meaning. A typical
+      fighter of every class then hits at the reference pace, and gear above today's median still helps. Switch
+      `PVP_LIVE_GEAR_MEDIANS`; `!pvp calibrate` prints each class's live ratio. Also: Snow Charge's slow in
+      `AbstractDealDamageHandler` now needs the charge to come from Snow Charge (`isBuffFrom`) and a skill level.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
