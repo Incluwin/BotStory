@@ -864,6 +864,24 @@ The server sees a human only through movement packets. Ties go to the human both
       fighter of every class then hits at the reference pace, and gear above today's median still helps. Switch
       `PVP_LIVE_GEAR_MEDIANS`; `!pvp calibrate` prints each class's live ratio. Also: Snow Charge's slow in
       `AbstractDealDamageHandler` now needs the charge to come from Snow Charge (`isBuffFrom`) and a skill level.
+    - **Check run 26 (67b1b9cb4, 2026-11-13 12:42-16:47, 832 duels, `duels-run26-67b1b9cb4.csv`; 819 after
+      starless Assassins).** No errors, no Snow Charge failures. Live gear over the reference medians (`!pvp
+      calibrate`, 190 characters): warrior x1.05, magician x0.95, bowman x1.04, thief x1.09, pirate x0.93 (the
+      practice fighters ran higher than the population: run 25's warriors sat at 1.22x). Cross-class: warrior 56%,
+      magician 46%, bowman 63%, thief 47%, pirate 16% (56 duels). Warrior against magician 68-60. Level edge 59% at
+      1-2 and 56% at 3-5; 58% at 3-5 with the two sides' gear within 10%. Knock-outs median 14 s. Learned matchups
+      by the end: p12 x1.04 (169 duels), p13 x1.06, p14 x0.96, p23 x1.02 (172), p24 x1.05 (169), the rest under 40.
+      One vote per distinct pairing (the lower class ahead): p12 57% (38 pairings), p13 43% (23), p14 62% (20), p24
+      57% (26), p23 28% (19); the pirate cells have 1-7 pairings. Findings:
+      1. **Practice repeats pairings.** A class pair's duels come from 10-40 distinct pairings, and one pairing can
+         run 6-10 times in four hours (run 26: Keus233 against Soro 10 times, Soro won 9). The matchup learner counts
+         each repeat as a new duel, so it learns individuals: p23 went to x0.94 in run 25 and back to x1.02 here,
+         while magicians against thieves' gear-neutral pace was x1.0 in run 25 and x0.63 two hours into run 26.
+      2. **Magicians against bowmen** (bowmen ahead in 14 of 19 pairings): per duel, bowmen took 1.23x the share of
+         HP magicians took; gear-neutral it is 1.07x, so these bowmen out-gear these magicians by about 12% and the
+         class gap is 7%, which the learner's x1.02 has not caught up with.
+      3. **Pirates and Arans are thin or broken.** Pirates in practice are mostly second job (Brawlers won 1 of 16,
+         1,487 raw a second); Arans rolled 567 raw a second against 5,592 for other warriors.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
