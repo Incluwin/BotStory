@@ -834,6 +834,26 @@ The server sees a human only through movement packets. Ties go to the human both
       `!pvp learned` lists the pairs and `reset` clears them; the sim applies them. Not divided out: a victim's own
       HP, defense and avoid above its class's typical, so a pair whose victims are geared unevenly keeps a little of
       that in its mean.
+    - **Check run 25 (aa0c4c722, 2026-11-13 07:20-11:40, 563 duels, `duels-run25-aa0c4c722.csv`; 546 after dropping
+      duels with a starless Assassin).** Rounds started 5-9 duels (22-35 citizens a round skipped for too few HP
+      potions). Learned by the end: p12 x1.07 (60 duels), p23 x0.94 (94), p24 x1.01 (75), p14 x1.02 (30), p13 x1.03
+      (22), the rest under 20 duels. Cross-class: warrior 56%, magician 41%, bowman 53%, thief 55%, pirate 61%
+      (44 duels); last two hours magician 37%. Warrior against magician 45-25 (run 24: 54-77), but by gear: where the
+      two sides' gear edges sit within 5%, magicians won 10 of 12; where the warrior's is over 5% higher, warriors
+      won 33-10. Among non-Aran pairs the gear-neutral pace ratio's median is about 0.81 (x1.11 each way), so the
+      learned x1.07 is still short. Knock-outs median 14 s. Level edge 52% at 1-2, 70% at 3-5, but 3-5 with the
+      two sides' gear within 10% is 66% (run 24: 63%): the jump is repeated pairings in which the higher level also
+      carries better gear (77 of 80 won). One error burst 10:13:09-10:14:01 (about 80 failures, then none):
+      `AbstractDealDamageHandler` applies Aran Snow Charge's slow whenever the attacker has the weapon-charge buff,
+      and a grinding Aran without Snow Charge hit `getEffect(0)`; it began 3 s after the Aran SilentRanger (no Snow
+      Charge) left duel 410, not proven to be it; fix: `isBuffFrom(WK_CHARGE, snowCharge)` as the charges below do.
+      Two findings:
+      1. **The gear medians are stale.** `reference.yaml`'s gear_base (11-08) puts warriors' typical gear edge at
+         x1.15 (median x1.17) and thieves' at x1.16, magicians' x1.04, bowmen's x1.00: warriors and thieves have
+         geared up since, so a typical warrior or thief deals about 12% more than a typical magician or bowman,
+         which no learner corrects (the rates' efficiency divides gear out, the matchups do too).
+      2. **Arans barely fight.** Their rows roll 404 raw a second against 6,422 for other warriors, and the Aran
+         combo plan is the top refusal in 32 of 52 rows; they count as class 1, so they pull every warrior number.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
