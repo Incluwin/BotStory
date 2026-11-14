@@ -985,6 +985,16 @@ The server sees a human only through movement packets. Ties go to the human both
     stood on, and `DuelField.onEnd` (new) sends them back to that spot after the duel; the leader says `rival.win`,
     `rival.lose` or `rival.draw`.
   - The bookkeeping (gap, daily count, field stint) is memory only: a restart forgets it.
+- **Live check 1 (2026-11-14 15:21, b41a03dfe; Crewfriend on Henesys Hunting Ground I, `!pvp challenge`):** pass.
+  Equinox's Nora404 and xTanx walked in (31 s; Blade520 was not eligible), grinding on arrival; the leader asked
+  "crewfriend, a duel. yes or no?"; map-chat "ya lets go" was taken. 2-on-2 (Crewfriend + companion Dorran, the one
+  standing with it) on the private copy: no monsters, no other citizens, the 3-2-1 count and the 3:00 clock. Equinox won
+  in 14 s (Crewfriend stood idle). Everyone came back to the field at their own spot with HP full; IceCookie (not picked)
+  stayed on the field; Nora404 said "gg Crewfriend :P better luck next time" and the crew kept grinding there. Film:
+  `docs/agents/evidence/pvp-v3-film/challenge1-cut.mp4` (raw recording s 28-96).
+  - Polish noted, not fixed: "yes or no?" reads like a prompt; the system line "... won the duel in 14 s (the other
+    side is down)" reads like a log. Two stray GM-side lines in the take ("PvP: Equinox will walk in ...", the
+    trigger's reply) are filming artifacts.
 - **Not built:** V3.3 rewards and stake (needs the grind-minute table, the Event Trophy trade rule and a stake booking;
   none exists) and V3.4 (`pvp_match`, records, quoting, megaphone, rematch whisper, letters).
 
