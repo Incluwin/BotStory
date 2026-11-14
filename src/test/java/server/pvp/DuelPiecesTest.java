@@ -253,6 +253,36 @@ class DuelPiecesTest {
         assertTrue(written.get(0).get(1).left());
     }
 
+    /** `!pvp duel ko <name>` (V3.3 live check): the duel ends as after a real knockout, a win for the other side. */
+    @Test
+    void aGmKnockoutEndsTheDuelAsAKnockout() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        when(map.getCharacterById(1)).thenReturn(a);
+        when(map.getCharacterById(2)).thenReturn(b);
+        DuelField field = new DuelField(93, map, List.of(a), List.of(b));
+        List<DuelField.Result> results = new java.util.ArrayList<>();
+        field.onEnd(results::add);
+        var sink = DuelField.rowSink;
+        DuelField.rowSink = rows -> { };
+        try {
+            assertFalse(field.knockOutByGm("nobody"));
+            assertTrue(field.knockOutByGm("f2"));
+            assertFalse(field.knockOutByGm("F2"), "a fighter already out is not knocked out again");
+            field.tick(System.currentTimeMillis());
+        } finally {
+            DuelField.rowSink = sink;
+        }
+
+        assertEquals(DuelField.State.ENDED, field.state());
+        assertEquals(1, results.size());
+        assertEquals(0, results.get(0).winnerSide());
+        assertEquals("the other side is down", results.get(0).why());
+        assertTrue(results.get(0).rows().get(1).ko());
+        assertFalse(results.get(0).rows().get(1).left());
+    }
+
     @Test
     void ratesAreTheBotsMedianRawDamagePerEngagedSecondPerJobAndBand() {
         String header = DuelLog.HEADER;

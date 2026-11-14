@@ -529,9 +529,31 @@ public final class DuelField {
     }
 
     private void knockOut(Fighter victim, Character by) {
+        knockOut(victim, "by " + by.getName());
+    }
+
+    private void knockOut(Fighter victim, String how) {
         victim.knockedOut = true;
         map.broadcastMessage(victim.chr, PacketCreator.facialExpression(victim.chr, KNOCKED_OUT_FACE), true);
-        tell(victim.chr.getName() + " is knocked out by " + by.getName() + ".");
+        tell(victim.chr.getName() + " is knocked out " + how + ".");
+    }
+
+    /**
+     * A GM's test knockout ({@code !pvp duel ko <name>}): the named fighter is out as if hit down, so the next tick ends
+     * the duel by sides and its end (rows, learners, a rival challenge's rewards) runs as after a real knockout.
+     * Returns whether a standing fighter of that name was found.
+     */
+    public synchronized boolean knockOutByGm(String name) {
+        if (state == State.ENDED) {
+            return false;
+        }
+        for (Fighter fighter : fighters.values()) {
+            if (!fighter.knockedOut && fighter.chr.getName().equalsIgnoreCase(name)) {
+                knockOut(fighter, "by a GM");
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean decided() {

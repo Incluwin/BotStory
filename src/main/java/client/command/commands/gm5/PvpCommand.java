@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status]");
     }
 
     @Override
@@ -253,6 +253,16 @@ public class PvpCommand extends Command {
                 }
             }
             gm.yellowMessage("PvP: stopped " + stopped + " duel(s).");
+            return;
+        }
+        if (params.length > 2 && params[1].equalsIgnoreCase("ko")) {
+            for (DuelField field : DuelRegistry.fields()) {
+                if (field.knockOutByGm(params[2])) {
+                    gm.yellowMessage("PvP: " + params[2] + " is knocked out in duel " + field.id() + ".");
+                    return;
+                }
+            }
+            gm.yellowMessage("PvP: nobody called " + params[2] + " is standing in a duel.");
             return;
         }
         List<String> left = new ArrayList<>();
