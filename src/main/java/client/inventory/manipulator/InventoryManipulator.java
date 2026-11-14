@@ -769,6 +769,11 @@ public class InventoryManipulator {
             return;
         }
         int itemId = source.getItemId();
+        if (ItemRestrictionPolicy.isServerBound(itemId)) { // refused, not destroyed: the client does not know it is bound
+            c.sendPacket(PacketCreator.serverNotice(1, "That item can't be dropped."));
+            c.sendPacket(PacketCreator.enableActions());
+            return;
+        }
 
         MapleMap map = chr.getMap();
         if ((!ItemConstants.isRechargeable(itemId) && source.getQuantity() < quantity) || quantity < 0) {

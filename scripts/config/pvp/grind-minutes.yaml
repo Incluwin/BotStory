@@ -1,0 +1,35 @@
+# Grind-minutes (GMin), the unit PvP rewards are counted in (docs/PVP_PLAN.md section 2 "Rewards"), read by
+# server.pvp.PvpGrindMinutes at first use. Source: probe V0.6 (docs/PVP_V0_RESULTS.md): companion_yield
+# (BenchYieldModel), about 21,000 measured citizen and companion field hours up to 2026-11-08, weighted by samples.
+#
+# exp_per_minute: the median EXP a citizen of the level band earns per field-minute. Below the lowest band a level gets
+# the lowest band's value scaled by its own EXP to the next level over the band's first level's; above the highest band
+# it gets the highest band's.
+exp_per_minute:     # band (30 = Lv 30-39) -> EXP a minute
+  30: 1000
+  40: 3629
+  50: 4564
+  60: 9457
+  70: 13735
+  80: 19368
+  90: 55460
+  100: 77803
+  110: 118731
+  120: 137564
+# mob_meso_per_hour: picked-up mob mesos per field-hour, as measured. It undercounts what a citizen earns (their NPC
+# sales of loot were 4.4x their mob mesos on 2026-11-07, and it falls to about 0 above Lv 100), so a meso GMin is
+# max(measured_multiplier x this, floor_per_level_hour x level) / 60.
+mob_meso_per_hour:  # band -> mesos an hour
+  30: 8916
+  40: 34125
+  50: 32453
+  60: 55117
+  70: 62879
+  80: 30302
+  90: 13736
+  100: 4739
+  110: 5087
+  120: 0
+meso_rule:
+  measured_multiplier: 5
+  floor_per_level_hour: 1782

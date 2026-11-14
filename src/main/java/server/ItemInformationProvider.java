@@ -1450,6 +1450,9 @@ public class ItemInformationProvider {
     }
 
     public boolean isLootRestricted(int itemId) {
+        if (ItemRestrictionPolicy.isServerBound(itemId)) {
+            return true;
+        }
         if (dropRestrictionCache.containsKey(itemId)) {
             return dropRestrictionCache.get(itemId);
         }

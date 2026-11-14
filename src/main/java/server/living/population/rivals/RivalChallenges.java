@@ -106,6 +106,11 @@ public final class RivalChallenges {
         final Set<Integer> followers = new HashSet<>();
         final Set<Integer> watchers = new HashSet<>();
         volatile DuelField.Result result;
+        // V3.3: the player side's odds when the duel began, both sides' fighters, the crew fighters' max HP then
+        double odds = 0.5d;
+        final List<Integer> playerIds = new ArrayList<>();
+        final List<Integer> crewFighterIds = new ArrayList<>();
+        long crewMaxHp;
 
         Challenge(int accountId, int mainId, String mainName, Crew crew, int mapId, int channel, boolean forced) {
             this.accountId = accountId;
@@ -123,6 +128,7 @@ public final class RivalChallenges {
     private final Population population;
     private final RivalCrews crews;
     private final Random random;
+    private final RivalRewards rewards;
     private final Map<Integer, Challenge> byAccount = new ConcurrentHashMap<>();
     /** Account -> {field map id, since when} of its main's stint on one hunting field. */
     private final Map<Integer, long[]> stints = new ConcurrentHashMap<>();
@@ -138,6 +144,7 @@ public final class RivalChallenges {
         this.population = population;
         this.crews = crews;
         this.random = random;
+        this.rewards = new RivalRewards(random);
     }
 
     private PopulationConfig config() {
@@ -430,6 +437,10 @@ public final class RivalChallenges {
             DuelField field = DuelRegistry.start(ground.map(), players, fighters);
             challenge.field = field;
             field.onEnd(result -> challenge.result = result);
+            challenge.odds = RivalRewards.winChance(fightersOf(players), fightersOf(fighters), YamlConfig.config.pvp);
+            players.forEach(chr -> challenge.playerIds.add(chr.getId()));
+            fighters.forEach(chr -> challenge.crewFighterIds.add(chr.getId()));
+            challenge.crewMaxHp = fighters.stream().mapToLong(Character::getCurrentMaxHp).sum();
         } catch (IllegalStateException refused) {
             log.warn("Rival challenge: the duel for {} would not start: {}", main.getName(), refused.getMessage());
             ground.close(challenge.followers);
@@ -453,7 +464,27 @@ public final class RivalChallenges {
         say(challenge, speaker, trigger, Map.of());
         log.info("Rival challenge: {} against {} ended: winner side {} ({})", challenge.mainName, challenge.crew.name(),
                 result.winnerSide(), result.why());
+        try {
+            List<Character> players = new ArrayList<>();
+            challenge.playerIds.forEach(id -> players.add(online(id)));
+            List<Character> crewFighters = new ArrayList<>();
+            for (int id : challenge.crewFighterIds) {
+                CitizenSession session = crews.loaded(id);
+                crewFighters.add(session == null ? null : session.agent());
+            }
+            Character main = online(challenge.mainId);
+            rewards.pay(result, players, crewFighters, challenge.crew.name(), challenge.odds, challenge.crewMaxHp,
+                    challenge.forced, main == null ? 1 : main.getLevel(), now);
+        } catch (RuntimeException failure) {
+            log.warn("Rival challenge: paying {} against {} failed", challenge.mainName, challenge.crew.name(), failure);
+        }
         linger(challenge, now);
+    }
+
+    private static List<RivalRewards.Fighter> fightersOf(List<Character> side) {
+        List<RivalRewards.Fighter> out = new ArrayList<>();
+        side.forEach(chr -> out.add(new RivalRewards.Fighter(DuelField.gearEdgeOf(chr), chr.getLevel())));
+        return out;
     }
 
     private void heckle(Challenge challenge, long now) {

@@ -64,4 +64,14 @@ class ItemRestrictionPolicyTest {
         assertTrue(ItemRestrictionPolicy.allowsMultipleOneOfAKind(0, 999));
         assertFalse(ItemRestrictionPolicy.allowsUntradeable(-1, 999));
     }
+
+    @Test
+    void theEventTrophyIsBoundWhateverTheWorldAllows() {
+        assertTrue(ItemRestrictionPolicy.isServerBound(constants.id.ItemId.EVENT_TROPHY));
+        assertFalse(ItemRestrictionPolicy.isServerBound(4000000));
+        world.allow_all_untradeable_items = true;
+        world.untradeable_item_allowlist = List.of(constants.id.ItemId.EVENT_TROPHY);
+        assertFalse(ItemRestrictionPolicy.allowsUntradeable(0, constants.id.ItemId.EVENT_TROPHY));
+        assertTrue(ItemRestrictionPolicy.allowsUntradeable(0, 4000000));
+    }
 }

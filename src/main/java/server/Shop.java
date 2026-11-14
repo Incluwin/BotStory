@@ -306,6 +306,9 @@ public class Shop {
         if (item == null) { //Basic check
             return false;
         }
+        if (ItemRestrictionPolicy.isServerBound(item.getItemId())) { // the Event Trophy's 30,000 WZ price is not a faucet
+            return false;
+        }
 
         short iQuant = item.getQuantity();
         if (iQuant == 0xFFFF) {

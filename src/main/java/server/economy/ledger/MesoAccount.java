@@ -44,7 +44,9 @@ public enum MesoAccount {
     FREDRICK(false),
     HAUL(false),
     COMPANION(false),
-    NEEDS(false);
+    NEEDS(false),
+    /** A rival crew's stake, paid from its fighters' purses to the human who beat them (docs/PVP_PLAN.md V3.3). */
+    PVP_STAKE(false);
 
     private final boolean external;
 
