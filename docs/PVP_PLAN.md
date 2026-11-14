@@ -887,6 +887,15 @@ The server sees a human only through movement packets. Ties go to the human both
       level within the span that has not fought the citizen within `PVP_PAIRING_REPEAT_MINUTES` (60), and its report
       counts the citizens "kept from a recent partner". The learned matchups keep their own note and count a pairing
       at most once in that window. In memory only, so a restart forgets it. 0 turns both off.
+    - **Check run 27 (cc1fa2407, 2026-11-13 22:00 - 11-14 02:00, 431 duels, `duels-run27-cc1fa2407.csv`; 428 after
+      starless Assassins).** No errors. 403 distinct pairings, none fought more than 3 times (run 26: 832 duels from
+      about 150 cross-class pairings). Rounds started 1-7 duels: 10-24 citizens a round had only recent partners in
+      reach, 16-19 too few HP potions; a night run. Cross-class: warrior 44%, magician 53%, bowman 47%, thief 54%,
+      pirate 62% (26 duels). Pairs with 30+ duels: warrior-magician 43% (78), warrior-bowman 51% (35), warrior-thief
+      39% (38), magician-bowman 51% (31; run 26: 28% by pairing), magician-thief 50% (56); the pirate pairs have 3-14.
+      Level edge flat at 55-60% for gaps 1 to 5 (gap 5: 47 of 79, 59%). Knock-outs median 16 s. Learned matchups by
+      the end: p12 x1.13 (237), p13 x1.09 (111), p14 x1.01, p23 x1.02, p24 x1.02. Per-band cells (Lv 50s, 80s, 110s)
+      have 1-8 duels each, too few to judge; only Lv 90s and 100s warrior-magician pass 20 (39%, 45%).
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
