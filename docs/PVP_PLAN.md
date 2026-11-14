@@ -1015,7 +1015,7 @@ The server sees a human only through movement packets. Ties go to the human both
     untradeable for trade, player shops and Duey, no world allowlist frees it, NPC shops will not buy it (its WZ price
     is 30,000), and a drop is refused rather than destroyed (the client does not know it is bound).
 - **Live check 2 (2026-11-14 17:01-17:10, 44b5ec062, Crewfriend on Henesys Hunting Ground I, `!pvp challenge` x4):**
-  the loss path and the daily cap pass; the win path is unit-tested only.
+  the loss path and the daily cap pass (the win: live check 3).
   - Duel 1, 1-on-1 against xTanx (odds 0.03), answered in map chat: Crewfriend dealt nothing (the fight script pressed
     Ctrl, which is not bound) and lost in 38 s. Paid 1 Trophy, no EXP. Chat: "You have gained an item in the Etc tab
     (Event Trophy)", "You lost to Equinox, but earned 1 Event Trophy."
@@ -1023,9 +1023,21 @@ The server sees a human only through movement packets. Ties go to the human both
     took 43% of its HP. 1 Trophy, no EXP.
   - Duel 3, the same sides: lost in 12 s, the crew took 63%. 1 Trophy and 277,300 EXP (5 GMin at Lv 96).
   - Duel 4: the account's fourth challenge of the day paid nothing.
-  - **Why no live win:** both crews' mains (Crewfriend Lv 96, MenteeYes Lv 67) sit far below their crews' gear
+  - **Why no win here:** both crews' mains (Crewfriend Lv 96, MenteeYes Lv 67) sit far below their crews' gear
     (odds 0.03-0.15), and `!kill` refuses citizens (`CommandTargetPolicy`), so a GM cannot knock a crew fighter out.
-    The stake transfer has not run live yet.
+    Hence the GM knockout in live check 3.
+- **Live check 3, a win (2026-11-14 18:26, 2faecfdfe; suite 16,361 / 0 / 33):** pass. 2faecfdfe adds the GM test
+  knockout `!pvp duel ko <name>` (`DuelField.knockOutByGm`: out as if hit down, so the duel ends by sides as after a
+  real knockout). The restart cleared the in-memory daily count.
+  - Crewfriend and Dorran against xTanx and Nora404 (odds 0.13, multiplier 1.19); both crew fighters knocked out by
+    the GM; won after 6 s. Paid 2,629,144 EXP (20 GMin at Lv 96, doubled as the day's first win; Crewfriend went to
+    Lv 97), 3 Trophies and a 101,373-meso stake; the 30% scroll roll missed. Chat: "You beat Equinox: 3 Event
+    Trophies and their stake of 101,373 mesos.", then the crew: "congrats!", "ok u got us. this time".
+  - The stake moved: `economy_flow_daily` PVP_STAKE CITIZEN out 101,373, GM in 101,373; Crewfriend's purse 6,548,846
+    (saved at the restart) to 6,650,479 (the stake plus party mob mesos).
+  - The trophy rule: dropping the stack of 6 asked "How many will you drop?", then the server answered "That item
+    can't be dropped." and the stack stayed. Trade, shop and Duey refusals are not checked live.
+  - Evidence: `docs/agents/evidence/pvp-v3-film/win1-raw.mp4`, `win-payout-chat.png`, `trophy-drop-refused.png`.
   - **Seen, not fixed:** in duel 4 Dorran was counted out at once ("KO left": not on the copy or not alive at the
     start). Duels 2 and 3 had Dorran fighting, so it is intermittent; V3.2 follow-up.
 - **Not built:** V3.4 (`pvp_match`, records, quoting, megaphone, rematch whisper, letters).
