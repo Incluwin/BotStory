@@ -882,6 +882,11 @@ The server sees a human only through movement packets. Ties go to the human both
          class gap is 7%, which the learner's x1.02 has not caught up with.
       3. **Pirates and Arans are thin or broken.** Pirates in practice are mostly second job (Brawlers won 1 of 16,
          1,487 raw a second); Arans rolled 567 raw a second against 5,592 for other warriors.
+    - **PD21 decided (the user, 2026-11-13): vary practice pairings** (before the Aran fix).
+      `server.pvp.PvpPairings`: every finished duel notes its opposing fighters; `!pvp practice` takes the nearest
+      level within the span that has not fought the citizen within `PVP_PAIRING_REPEAT_MINUTES` (60), and its report
+      counts the citizens "kept from a recent partner". The learned matchups keep their own note and count a pairing
+      at most once in that window. In memory only, so a restart forgets it. 0 turns both off.
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,12 +15,62 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Learned matchups (2026-11-13): a class pair's pace gap, split between its two sides, bounded and persisted. */
 class PvpMatchupsTest {
     private static final String TITLE = "# matchups";
+    /** Every test fighter is a new character, so no two test duels share a pairing unless a test says so. */
+    private static final AtomicInteger NEXT_ID = new AtomicInteger();
 
     @TempDir
     Path dir;
 
+    private final PvpPairings counted = new PvpPairings();
+    private long now = 1_000_000L;
+
     private PvpRateLearner learner() {
         return new PvpRateLearner(dir.resolve("learned-matchups.txt"), TITLE);
+    }
+
+    /** One duel, a second after the last. */
+    private boolean observe(PvpRateLearner learner, List<DuelLog.Row> rows, PvpConfig config) {
+        now += 1_000L;
+        return PvpMatchups.observeAll(learner, rows, config, counted, now);
+    }
+
+    @Test
+    void aPairingTeachesOnceAnHourHoweverOftenItIsFought() {
+        PvpRateLearner learner = learner();
+        PvpConfig config = new PvpConfig();
+        List<DuelLog.Row> sameTwo = warriorAgainstMagician(0.071, 0.085);
+        assertTrue(observe(learner, sameTwo, config));
+        for (int i = 0; i < 9; i++) {
+            assertFalse(observe(learner, sameTwo, config), "repeat " + (i + 1) + " within the hour");
+        }
+        assertEquals(1, learner.mean("p12").fighters());
+        now += config.PVP_PAIRING_REPEAT_MINUTES * 60_000L;
+        assertTrue(observe(learner, sameTwo, config), "an hour on, it counts again");
+        assertTrue(observe(learner, warriorAgainstMagician(0.071, 0.085), config), "two other citizens count at once");
+        assertEquals(3, learner.mean("p12").fighters());
+    }
+
+    @Test
+    void practiceSkipsAPartnerFoughtWithinTheWindowAndOtherwiseTakesTheNearestLevel() {
+        record Bot(int id, int level) { }
+        PvpPairings played = new PvpPairings();
+        Bot a = new Bot(1, 80);
+        Bot near = new Bot(2, 81);
+        Bot farther = new Bot(3, 83);
+        Bot outOfReach = new Bot(4, 90);
+        List<Bot> free = List.of(near, farther, outOfReach);
+        long hour = 60 * 60_000L;
+        assertEquals(near, played.partner(a, free, Bot::level, Bot::id, 5, 0L, hour));
+        played.noteDuel(List.of(fighterWithId(1, 1), fighterWithId(2, 2)), 0L);
+        assertEquals(farther, played.partner(a, free, Bot::level, Bot::id, 5, 10 * 60_000L, hour), "kept apart");
+        assertEquals(near, played.partner(a, free, Bot::level, Bot::id, 5, hour + 1, hour), "an hour on");
+        assertEquals(near, played.partner(a, free, Bot::level, Bot::id, 5, 10 * 60_000L, 0L), "0: no limit");
+        assertEquals(null, played.partner(a, List.of(near, outOfReach), Bot::level, Bot::id, 5, 10 * 60_000L, hour));
+    }
+
+    private static DuelLog.Row fighterWithId(int charId, int side) {
+        return new DuelLog.Row(0L, 1L, 100000000, 15L, "knock-out", 1, "f" + charId, charId, 111, 80, false, side,
+                100L, false, false, new DuelStats(), 0L, 0L, 12d, 0d, 0d, 0d, 0d, 0d);
     }
 
     /** A fighter who really fought: 12 s engaged, 20 attack packets, every think found a skill. */
@@ -27,7 +78,8 @@ class PvpMatchupsTest {
         DuelStats stats = new DuelStats();
         stats.packets.set(20);
         stats.thinks.set(40);
-        return new DuelLog.Row(0L, 1L, 100000000, 15L, "knock-out", 1, "f" + side, side, jobId, 100, false, side, 100L,
+        return new DuelLog.Row(0L, 1L, 100000000, 15L, "knock-out", 1, "f" + side, NEXT_ID.incrementAndGet(), jobId,
+                100, false, side, 100L,
                 false, left, stats, 0L, 0L, 12d, 0d, 0d, 0d, 0d, pace);
     }
 
@@ -42,7 +94,7 @@ class PvpMatchupsTest {
         PvpConfig config = new PvpConfig();
         // check run 24: magicians took 8.5% of a warrior's HP a second, warriors 7.1% of a magician's
         for (int i = 0; i < 60; i++) {
-            assertTrue(PvpMatchups.observeAll(learner, warriorAgainstMagician(0.071, 0.085), config));
+            assertTrue(observe(learner, warriorAgainstMagician(0.071, 0.085), config));
         }
         double warriorHits = PvpMatchups.multiplier(learner, 1, 2);
         double magicianHits = PvpMatchups.multiplier(learner, 2, 1);
@@ -57,10 +109,10 @@ class PvpMatchupsTest {
         PvpRateLearner learner = learner();
         PvpConfig config = new PvpConfig();
         for (int i = 0; i < PvpMatchups.MIN_DUELS - 1; i++) {
-            PvpMatchups.observeAll(learner, warriorAgainstMagician(0.05, 0.10), config);
+            observe(learner, warriorAgainstMagician(0.05, 0.10), config);
         }
         assertEquals(1d, PvpMatchups.multiplier(learner, 1, 2), 1e-9);
-        PvpMatchups.observeAll(learner, warriorAgainstMagician(0.05, 0.10), config);
+        observe(learner, warriorAgainstMagician(0.05, 0.10), config);
         assertTrue(PvpMatchups.multiplier(learner, 1, 2) > 1d);
         assertEquals(1d, PvpMatchups.multiplier(learner, 1, 3), 1e-9, "warriors against bowmen");
         assertEquals(1d, PvpMatchups.multiplier(learner, 2, 2), 1e-9, "a class against itself");
@@ -72,7 +124,7 @@ class PvpMatchupsTest {
         PvpConfig config = new PvpConfig();
         for (int i = 0; i < 30; i++) {
             // the magician's row first this time
-            PvpMatchups.observeAll(learner, List.of(fighter(211, 2, false, 0.085), fighter(111, 1, false, 0.071)),
+            observe(learner, List.of(fighter(211, 2, false, 0.085), fighter(111, 1, false, 0.071)),
                     config);
         }
         assertTrue(PvpMatchups.multiplier(learner, 1, 2) > 1d, "the slower warrior's hits still go up");
@@ -83,17 +135,17 @@ class PvpMatchupsTest {
     void onlyOneAgainstOneDuelsOfTwoClassesWhereBothFoughtTeach() {
         PvpRateLearner learner = learner();
         PvpConfig config = new PvpConfig();
-        assertFalse(PvpMatchups.observeAll(learner, List.of(fighter(111, 1, false, 0.07),
+        assertFalse(observe(learner, List.of(fighter(111, 1, false, 0.07),
                 fighter(121, 2, false, 0.09)), config), "two warriors");
-        assertFalse(PvpMatchups.observeAll(learner, List.of(fighter(111, 1, false, 0.07),
+        assertFalse(observe(learner, List.of(fighter(111, 1, false, 0.07),
                 fighter(211, 2, true, 0.09)), config), "one side left");
-        assertFalse(PvpMatchups.observeAll(learner, List.of(fighter(111, 1, false, 0.07),
+        assertFalse(observe(learner, List.of(fighter(111, 1, false, 0.07),
                 fighter(211, 2, false, 0.09), fighter(311, 2, false, 0.09)), config), "two against one");
-        assertFalse(PvpMatchups.observeAll(learner, List.of(fighter(0, 1, false, 0.07),
+        assertFalse(observe(learner, List.of(fighter(0, 1, false, 0.07),
                 fighter(211, 2, false, 0.09)), config), "a beginner");
         DuelLog.Row starved = fighter(411, 1, false, 0.0);
         starved.stats().noSkillThinks.set(30);   // an Assassin without stars
-        assertFalse(PvpMatchups.observeAll(learner, List.of(starved, fighter(211, 2, false, 0.09)), config),
+        assertFalse(observe(learner, List.of(starved, fighter(211, 2, false, 0.09)), config),
                 "a side that found no usable attack");
         assertTrue(learner.means().isEmpty());
     }
@@ -102,7 +154,7 @@ class PvpMatchupsTest {
     void aSideThatNeverLandedIsClippedNotInfinite() {
         PvpRateLearner learner = learner();
         PvpConfig config = new PvpConfig();
-        assertTrue(PvpMatchups.observeAll(learner, warriorAgainstMagician(0.0, 0.10), config));
+        assertTrue(observe(learner, warriorAgainstMagician(0.0, 0.10), config));
         double mean = learner.mean("p12").logMean();
         assertTrue(Double.isFinite(mean) && mean < 0d, "mean " + mean);
         assertEquals(Double.NaN, PvpMatchups.observed(0d, 0d));
@@ -113,7 +165,7 @@ class PvpMatchupsTest {
         PvpRateLearner learner = learner();
         PvpConfig config = new PvpConfig();
         for (int i = 0; i < 10; i++) {
-            PvpMatchups.observeAll(learner, warriorAgainstMagician(0.071, 0.085), config);
+            observe(learner, warriorAgainstMagician(0.071, 0.085), config);
         }
         PvpRateLearner reloaded = learner();
         reloaded.load();

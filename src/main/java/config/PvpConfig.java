@@ -91,6 +91,11 @@ public class PvpConfig {
      * (server.pvp.PvpGearMedians), not the 2026-11-08 medians of scripts/config/pvp/reference.yaml. Off: the file's.
      */
     public boolean PVP_LIVE_GEAR_MEDIANS = false;
+    /**
+     * Varied pairings (the user's call 2026-11-13): practice skips a partner a citizen fought this many minutes ago or
+     * less, and the learned matchups count a pairing at most once in that time (server.pvp.PvpPairings). 0: no limit.
+     */
+    public int PVP_PAIRING_REPEAT_MINUTES = 60;
 
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {

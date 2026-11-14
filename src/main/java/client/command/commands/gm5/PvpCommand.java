@@ -121,7 +121,7 @@ public class PvpCommand extends Command {
         gm.yellowMessage("PvP learned toughness: " + (toughness.isEmpty() ? "none yet." : toughness.size() + " key(s)"));
         toughness.forEach(gm::yellowMessage);
         if (!server.pvp.PvpMatchups.on(YamlConfig.config.pvp)) {
-            gm.yellowMessage("PVP_LEARN_MATCHUPS (with PVP_EVEN_CLASSES) is off: hits take no matchup correction.");
+            gm.yellowMessage("PVP_LEARN_MATCHUPS (with PVP_EVEN_CLASSES) is off: no matchup correction.");
         }
         List<String> matchups = server.pvp.PvpMatchups.summary();
         gm.yellowMessage("PvP learned matchups (lower class's hits on the higher; the higher's take the inverse): "
@@ -311,7 +311,7 @@ public class PvpCommand extends Command {
     /**
      * {@code !pvp practice [n] [span]} (V2): bot-against-bot duels between free citizens (not hired, nothing holding
      * them: PresenceScheduler.held, Lv 30+) that share a map with no player on it, each paired with the nearest level within
-     * {@code span}. Their rows feed {@code !pvp rates}.
+     * {@code span} that it has not fought within PVP_PAIRING_REPEAT_MINUTES. Their rows feed {@code !pvp rates}.
      */
     private static void practice(Character gm, String[] params) {
         int wanted = Math.max(1, Math.min(20, number(params, 1, 6)));
@@ -333,21 +333,22 @@ public class PvpCommand extends Command {
             }
         }
         int started = 0;
+        int keptApart = 0;
         List<String> pairs = new ArrayList<>();
+        // varied pairings (the user's call 2026-11-13): never the partner it fought within the repeat window
+        server.pvp.PvpPairings played = server.pvp.PvpPairings.played();
+        long now = System.currentTimeMillis();
+        long window = YamlConfig.config.pvp.PVP_PAIRING_REPEAT_MINUTES * 60_000L;
         for (var entry : byMap.entrySet()) {
             List<Character> free = new ArrayList<>(entry.getValue());
             java.util.Collections.shuffle(free);
             while (free.size() >= 2 && started < wanted) {
                 Character a = free.remove(0);
-                Character b = null;
-                for (Character other : free) {
-                    if (Math.abs(other.getLevel() - a.getLevel()) <= span
-                            && (b == null || Math.abs(other.getLevel() - a.getLevel())
-                            < Math.abs(b.getLevel() - a.getLevel()))) {
-                        b = other;
-                    }
-                }
+                Character b = played.partner(a, free, Character::getLevel, Character::getId, span, now, window);
                 if (b == null) {
+                    if (played.partner(a, free, Character::getLevel, Character::getId, span, now, 0L) != null) {
+                        keptApart++;   // its only partners in reach fought it within the window
+                    }
                     continue;
                 }
                 free.remove(b);
@@ -365,9 +366,10 @@ public class PvpCommand extends Command {
             }
         }
         gm.yellowMessage("PvP practice: " + started + " duel(s) started, " + dry
-                + " free citizen(s) skipped for too few HP potions" + (started == 0
-                ? " (no two free citizens within " + span + " levels on a map with no player)." : ":"));
-        log.info("PvP practice: {} started, {} skipped for too few HP potions", started, dry);
+                + " free citizen(s) skipped for too few HP potions, " + keptApart + " kept from a recent partner"
+                + (started == 0 ? " (no two free citizens within " + span + " levels on a map with no player)." : ":"));
+        log.info("PvP practice: {} started, {} skipped for too few HP potions, {} kept from a recent partner", started,
+                dry, keptApart);
         for (String pair : pairs) {
             gm.yellowMessage(pair);
             log.info("PvP practice {}", pair);

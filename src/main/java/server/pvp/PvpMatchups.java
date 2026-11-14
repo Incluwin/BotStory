@@ -94,12 +94,22 @@ public final class PvpMatchups {
         return Math.log(Math.max(PvpRateLearner.MIN_EFFICIENCY, Math.min(PvpRateLearner.MAX_EFFICIENCY, ratio)));
     }
 
-    /** A finished duel's rows; true when it taught its pair (one fighter a side, two classes, both really fought). */
+    /**
+     * The pairings that have taught a matchup, and when: two fighters count at most once in PVP_PAIRING_REPEAT_MINUTES
+     * (check run 26: one pairing ran 10 times in four hours and its class pair learned those two citizens).
+     */
+    private static final PvpPairings COUNTED = new PvpPairings();
+
+    /**
+     * A finished duel's rows; true when it taught its pair (one fighter a side, two classes, both really fought, and
+     * the two have not taught a matchup within PVP_PAIRING_REPEAT_MINUTES).
+     */
     public static boolean observeAll(List<DuelLog.Row> rows, PvpConfig config) {
-        return observeAll(learner(), rows, config);
+        return observeAll(learner(), rows, config, COUNTED, System.currentTimeMillis());
     }
 
-    static boolean observeAll(PvpRateLearner learner, List<DuelLog.Row> rows, PvpConfig config) {
+    static boolean observeAll(PvpRateLearner learner, List<DuelLog.Row> rows, PvpConfig config, PvpPairings counted,
+                              long now) {
         if (rows.size() != 2) {
             return false;
         }
@@ -108,7 +118,8 @@ public final class PvpMatchups {
         int classA = jobClass(a.jobId());
         int classB = jobClass(b.jobId());
         String key = key(classA, classB);
-        if (key == null || a.side() == b.side() || a.left() || b.left() || !fought(a) || !fought(b)) {
+        if (key == null || a.side() == b.side() || a.left() || b.left() || !fought(a) || !fought(b)
+                || counted.within(a.charId(), b.charId(), now, config.PVP_PAIRING_REPEAT_MINUTES * 60_000L)) {
             return false;
         }
         DuelLog.Row lower = classA < classB ? a : b;
@@ -119,6 +130,7 @@ public final class PvpMatchups {
         }
         learner.learnKey(key, observed, config.PVP_LEARN_CLASS_STEP, PvpRateLearner.CLASS_PRIOR_WEIGHT);
         learner.save();
+        counted.note(a.charId(), b.charId(), now);
         return true;
     }
 

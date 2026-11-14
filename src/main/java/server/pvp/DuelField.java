@@ -615,6 +615,7 @@ public final class DuelField {
                     fighter.stats.engagedSeconds(endMs), fighter.neutralShare, fighter.bareShare,
                     fighter.neutralSpellShare, fighter.bareSpellShare, fighter.paceShare));
         }
+        PvpPairings.played().noteDuel(rows, endMs);   // practice keeps these two apart for a while
         rowSink.accept(rows);
         DuelRegistry.release(this);
     }

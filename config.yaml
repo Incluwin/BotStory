@@ -1758,6 +1758,11 @@ mods:
 # characters online (GMs left out) per job path and band, refreshed every 10 minutes (a thin key uses the reference
 # median times its class's live ratio); the reference medians still anchor the measured and learned rates. "!pvp
 # calibrate" prints each class's ratio. Technical: server.pvp.PvpGearMedians.
+# PVP_PAIRING_REPEAT_MINUTES (the user's choice, 2026-11-13): practice pairs each citizen with the nearest level on its
+# map, and the same citizens stand on the same maps, so in check run 26 one pairing fought 10 times in four hours and a
+# class pair's record came from 10-40 distinct pairings. Practice now skips a partner a citizen fought this many minutes
+# ago or less (its report counts those "kept from a recent partner"), and the learned matchups count a pairing at most
+# once in that time. In memory: a restart forgets it. 0: no limit. Technical: server.pvp.PvpPairings.
 pvp:
     PVP_ENABLED: false
     PVP_TTK_SECONDS: 12
@@ -1789,3 +1794,4 @@ pvp:
     PVP_LEARN_TOUGHNESS: true
     PVP_LEARN_MATCHUPS: true
     PVP_LIVE_GEAR_MEDIANS: true
+    PVP_PAIRING_REPEAT_MINUTES: 60
