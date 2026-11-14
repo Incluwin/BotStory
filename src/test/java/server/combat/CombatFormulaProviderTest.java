@@ -11,6 +11,7 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
+import constants.skills.Aran;
 import constants.skills.Crusader;
 import constants.skills.DawnWarrior;
 import constants.skills.ILMage;
@@ -642,6 +643,32 @@ class CombatFormulaProviderTest {
         when(bot.getAllBuffs()).thenReturn(buffs);
 
         assertEquals(1100, provider.applyCharacterDamageModifiers(1000, bot, 0));
+    }
+
+    @Test
+    void bodyPressureLeavesTheSwingsDamageAlone() {
+        // its damage (55 at level 11) is its own touch hit's; summed in, every third-job Aran swing landed at 55%
+        List<PlayerBuffValueHolder> buffs = List.of(
+                new PlayerBuffValueHolder(0, skillBuff(Aran.BODY_PRESSURE, 55)),
+                new PlayerBuffValueHolder(0, skillBuff(Aran.SNOW_CHARGE, 105)));
+        Character bot = mock(Character.class);
+        when(bot.getAllBuffs()).thenReturn(buffs);
+
+        assertEquals(1050, provider.applyCharacterDamageModifiers(1000, bot, 0));
+    }
+
+    @Test
+    void comboCriticalCritsOnlyFromTheComboAndAddsToTheHit() {
+        // level 3 (x=2 steps, y=1% rate, damage=2%): it was read as a 100% crit at 2% of the hit
+        assertEquals(CombatFormulaProvider.CritProfile.NONE, CombatFormulaProvider.comboCritical(2, 1, 2, 0));
+        assertEquals(CombatFormulaProvider.CritProfile.NONE, CombatFormulaProvider.comboCritical(2, 1, 2, 9));
+        CombatFormulaProvider.CritProfile two = CombatFormulaProvider.comboCritical(2, 1, 2, 57);
+        assertEquals(0.02, two.critChance(), 1e-9);
+        assertEquals(1.04, two.critMultiplier(), 1e-9);
+        // level 20 (x=10, y=6, damage=10) at 100 combo and beyond: 60% for double damage, no further
+        CombatFormulaProvider.CritProfile max = CombatFormulaProvider.comboCritical(10, 6, 10, 150);
+        assertEquals(0.60, max.critChance(), 1e-9);
+        assertEquals(2.0, max.critMultiplier(), 1e-9);
     }
 
     private static StatEffect skillBuff(int skillId, int damage) {
