@@ -442,6 +442,7 @@ public final class DuelField {
         List<Integer> raw = formulas.rollPvpLines(from, lines, attack.skill, profile);
         long rawSum = raw.stream().mapToLong(Integer::longValue).sum();
         attacker.stats.rawRolled.addAndGet(rawSum);
+        attacker.stats.skillRolled(attack.skill, rawSum);
         PvpReference reference = PvpReference.get();
         double levelFactor = PvpDamageModel.levelFactor(from.getLevel(), to.getLevel(), config);
         double levelHpShare = PvpDamageModel.levelHpShare(from.getLevel(), to.getLevel(), reference);

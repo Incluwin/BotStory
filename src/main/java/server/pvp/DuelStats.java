@@ -52,6 +52,26 @@ public final class DuelStats {
     final Map<String, AtomicInteger> refusals = new ConcurrentHashMap<>();
     /** Why swings waited (the attack lock, the skill's cost or cooldown, the ground), counted apart from refusals. */
     final Map<String, AtomicInteger> deferrals = new ConcurrentHashMap<>();
+    /** Per skill id the duel saw in this fighter's attack packets: {packets, raw rolled}. */
+    final Map<Integer, long[]> skillRaw = new ConcurrentHashMap<>();
+
+    void skillRolled(int skillId, long raw) {
+        long[] tally = skillRaw.computeIfAbsent(skillId, s -> new long[2]);
+        synchronized (tally) {
+            tally[0]++;
+            tally[1] += raw;
+        }
+    }
+
+    /** The three skills seen most, as "id x packets @ raw a packet", or "-". */
+    String topSkills() {
+        String line = skillRaw.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))
+                .limit(3)
+                .map(e -> e.getKey() + "x" + e.getValue()[0] + "@" + perOne(e.getValue()[1], (int) e.getValue()[0]))
+                .collect(java.util.stream.Collectors.joining(","));
+        return line.isEmpty() ? "-" : line;
+    }
 
     void refused(String reason) {
         count(refusals, reason);
@@ -107,6 +127,6 @@ public final class DuelStats {
                 + swingsWeaker.get()) + " topReachPx=" + perOne(topReachPx.get(), topReachLooks.get())
                 + " packets=" + packets
                 + " whiffs=" + whiffs + " dodged=" + dodged + " hits=" + hits + " raw=" + rawRolled
-                + " top=" + topRefusal() + " waited=" + topDeferral();
+                + " top=" + topRefusal() + " waited=" + topDeferral() + " skills=" + topSkills();
     }
 }
