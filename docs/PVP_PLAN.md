@@ -896,6 +896,25 @@ The server sees a human only through movement packets. Ties go to the human both
       Level edge flat at 55-60% for gaps 1 to 5 (gap 5: 47 of 79, 59%). Knock-outs median 16 s. Learned matchups by
       the end: p12 x1.13 (237), p13 x1.09 (111), p14 x1.01, p23 x1.02, p24 x1.02. Per-band cells (Lv 50s, 80s, 110s)
       have 1-8 duels each, too few to judge; only Lv 90s and 100s warrior-magician pass 20 (39%, 45%).
+    - **Arans (2026-11-14):** third-job Aran bots rolled about 60 raw a hit against about 2,000 for a second-job one
+      (duel 409: 89 hits for 5,609 raw). Two readings in the bot-only formula (`CombatFormulaProvider`), monsters and
+      duels alike: Combo Critical was read like Critical Shot (no prop in its WZ, so a 100% crit, at its damage field
+      2-10 as the whole multiplier, 0.02-0.10x), and Body Pressure's damage (its own touch hit's, 55 at level 11) sat
+      in the damage-buff sum (x0.55). Fixed in 3dfab14ea: Combo Critical gives y% rate and damage% crit damage per 10
+      combo, up to x; Body Pressure joins the proc buffs. Third-job Arans now roll 5,200-5,800 per Full Swing. The Aran
+      rate keys learned while broken (211-8 at the 0.4x floor from 217 rows, a 2.5x boost once fixed; 211-4/6 at the
+      Body Pressure 0.55) were cut from `logs/pvp/learned-rates.txt` on a restart before any duel
+      (`learned-rates-before-run29.txt` kept); 211-8 relearned to x0.69 within 13 rows, the warrior class's own.
+      Run 28 (330 rows, `duels-run28-aranfix-boosted-3dfab14ea.csv`) ran with the boost and is set aside.
+    - **Check run 29 (3dfab14ea, the Aran rates relearned, varied pairings):** 371 duels, no errors. Cross-class:
+      warrior 49%, magician 54%, bowman 54%, thief 42%, pirate 38% (13 duels). Pairs: warrior-magician 52% (59),
+      warrior-bowman 40% (35), warrior-thief 50% (24), magician-bowman 56% (41), magician-thief 61% (52),
+      bowman-thief 61% (13). Level edge: 56% at a 1-2 gap, 61% at 3-5. Knock-outs median 16 s. Arans 16 rows in 11
+      duels (mostly Aran against Aran, all in Rien), 5 won.
+    - **V2 closed (the user's call, 2026-11-14):** filmed duels passed, the level edge holds (at most 61-64% at 3-5
+      in every run since run 24), every class wins 42-59% across classes over a run (pirates thin); the per-band cells
+      at Lv 50, 80 and 110 cannot be judged from practice (too few distinct pairings a band). Open, not blocking: the
+      thin pirate sample, `fix/assassin-star-supply` and `fix/hp-potion-restock` (both thin out practice).
 - *Done when:*
   - self-play win rates at equal gear sit within 40-60% for every class pair at Lv 50, 80 and 110;
   - a +5-level bot wins at most 65% against equal gear;
@@ -949,6 +968,25 @@ The server sees a human only through movement packets. Ties go to the human both
 - **V3.4** Records, lines, megaphone, letters.
 - *Done when* on the live client a crew walks into the field, challenges you, fights a duel you can win and lose, pays
   out, and quotes the result the next time you meet. Saying no costs nothing.
+
+### Status (2026-11-14, branch `feat/pvp-v0`)
+
+- **V3.1-V3.2 built** (24fc856fe; split suite 16,348 / 0 / 33), off by default (`RIVAL_CHALLENGES_ENABLED` with
+  `pvp.PVP_ENABLED`); a GM's `!pvp challenge [status]` brings its own crew whatever the minute says.
+  - `rivals.RivalChallenges` rides `RivalCrews.tick` (the social minute): the trigger rules above, rolled one minute in
+    120. Up to three loaded members on the main's channel walk in through `PresenceScheduler.travel`, held there by the
+    new `PresenceScheduler.hold` (no re-plan, no crowd trim, not free for practice) until the challenge lets them go.
+  - The leader says `rival.challenge`; the answer is map chat (`PopulationHooks.rivalChallenge`, asked before the
+    casino, companions and Residents), a whisper to any member (`CitizenWhispers.expect` opens the threads), or
+    `@duel yes|no`. The hooks only queue; every change happens on the challenge's own 1 s step.
+  - A yes: the main, its active companions and its human party on the field (up to three), against as many members,
+    those whose gear edge (`DuelField.gearEdgeOf`) is nearest the player side's; the rest watch and heckle. Everyone
+    enters `server.living.story.DuelGround` (a `SceneInstance` copy of the field, monsters cleared) at the spot they
+    stood on, and `DuelField.onEnd` (new) sends them back to that spot after the duel; the leader says `rival.win`,
+    `rival.lose` or `rival.draw`.
+  - The bookkeeping (gap, daily count, field stint) is memory only: a restart forgets it.
+- **Not built:** V3.3 rewards and stake (needs the grind-minute table, the Event Trophy trade rule and a stake booking;
+  none exists) and V3.4 (`pvp_match`, records, quoting, megaphone, rematch whisper, letters).
 
 ---
 
