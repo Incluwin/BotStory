@@ -1016,6 +1016,9 @@ public final class PresenceScheduler {
         if (server.pvp.DuelRegistry.inDuel(session.characterId)) {
             return; // a duel holds it, and gives back its modes when it ends (docs/PVP_PLAN.md V1)
         }
+        if (heldByCaller(session.characterId, now)) {
+            return; // a rival challenge keeps it on its main's field until it lets go (V3)
+        }
         if (inPartyQuest(session)) {
             return; // its party quest moves it, and sends it back to its day after (CitizenPartyQuests)
         }
@@ -1613,7 +1616,36 @@ public final class PresenceScheduler {
         return session.loaded() && activity != Activity.PQ && activity != Activity.JOB && !session.stallOpen
                 && session.partyId == 0 && session.trip == null && session.capRetry == null
                 && session.waitingMove.get() == null && !cap.reserved(session) && !inPartyQuest(session)
-                && !onSupplyTrip(session) && !server.pvp.DuelRegistry.inDuel(session.characterId);
+                && !onSupplyTrip(session) && !server.pvp.DuelRegistry.inDuel(session.characterId)
+                && !heldByCaller(session.characterId, System.currentTimeMillis());
+    }
+
+    /** Citizen id -> until when a caller keeps it where it is ({@link #hold}). */
+    private final Map<Integer, Long> holds = new ConcurrentHashMap<>();
+
+    /**
+     * Keeps a citizen where its caller puts it until {@code untilMs} (a rival challenge walking in and waiting for its
+     * answer, docs/PVP_PLAN.md V3): no re-plan, no move on from a crowded map, and {@link #held} for everyone else (PvP
+     * practice). The caller moves it itself ({@link #travel}) and lets go with {@link #release}.
+     */
+    public void hold(int characterId, long untilMs) {
+        holds.put(characterId, untilMs);
+    }
+
+    public void release(int characterId) {
+        holds.remove(characterId);
+    }
+
+    boolean heldByCaller(int characterId, long now) {
+        Long until = holds.get(characterId);
+        if (until == null) {
+            return false;
+        }
+        if (until <= now) {
+            holds.remove(characterId, until); // a caller that never let go lets go here
+            return false;
+        }
+        return true;
     }
 
     /**

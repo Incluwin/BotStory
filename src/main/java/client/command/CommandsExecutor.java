@@ -26,6 +26,7 @@ package client.command;
 import client.Client;
 import client.command.commands.gm0.ChangeLanguageCommand;
 import client.command.commands.gm0.DisposeCommand;
+import client.command.commands.gm0.DuelCommand;
 import client.command.commands.gm0.LivingQuestsCommand;
 import client.command.commands.gm0.RecordsCommand;
 import client.command.commands.gm0.RequestsCommand;
@@ -430,6 +431,7 @@ public class CommandsExecutor {
         addCommand("quests", LivingQuestsCommand.class);
         addCommand("requests", RequestsCommand.class);
         addCommand("records", RecordsCommand.class);
+        addCommand("duel", DuelCommand.class);
         addCommand(new String[]{"roster", "bond", "companions"}, LivingRosterCommand.class);
         addCommand("language", ChangeLanguageCommand.class);
         addCommand("equiplv", EquipLvCommand.class);

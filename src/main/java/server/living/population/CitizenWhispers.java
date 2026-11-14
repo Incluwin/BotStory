@@ -86,6 +86,14 @@ public final class CitizenWhispers {
         }
     }
 
+    /**
+     * A question the citizen put to {@code humanId} out loud (a rival challenge, V3): a whisper back within
+     * WHISPER_THREAD_MS goes to {@code topic}'s handler as if the citizen had whispered it.
+     */
+    public void expect(int citizenId, int humanId, String topic, long nowMs) {
+        opened(citizenId, humanId, topic, nowMs);
+    }
+
     /** Whether {@code humanId}'s whisper to the citizen now would answer a thread of {@code topic} (tests, ops). */
     boolean openThread(int citizenId, int humanId, String topic, long nowMs) {
         Thread thread = threads.get(key(citizenId, humanId));

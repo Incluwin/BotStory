@@ -31,7 +31,11 @@ class RivalsContentTest {
     private static final Pattern SLOT = Pattern.compile("\\{([a-z]+)}");
     private static final List<String> TRIGGERS = List.of("rival.banter", "rival.beat", "rival.beat.whisper", "rival.congrats",
             "rival.join", "rival.leave.behind", "rival.leave.ahead", "rival.leave.behind.whisper",
-            "rival.leave.ahead.whisper", "rival.help", "rival.reply", "rival.reply.yes", "rival.reply.no");
+            "rival.leave.ahead.whisper", "rival.help", "rival.reply", "rival.reply.yes", "rival.reply.no",
+            "rival.challenge", "rival.accept", "rival.decline", "rival.win", "rival.lose", "rival.draw", "rival.heckle");
+    /** The duel challenge's lines (V3), all said out loud on the field or its private copy. */
+    private static final Set<String> MAP_TRIGGERS = Set.of("rival.banter", "rival.challenge", "rival.accept",
+            "rival.decline", "rival.win", "rival.lose", "rival.draw", "rival.heckle");
 
     private final PopulationContent content = PopulationLoader.load(Path.of("scripts/config/population"),
             ContentLoader.load(Path.of("scripts/config/living-world")));
@@ -74,7 +78,7 @@ class RivalsContentTest {
             for (Intent intent : intents) {
                 String channel = trigger.endsWith(".whisper") || trigger.equals("rival.congrats") || trigger.equals("rival.help")
                         || trigger.startsWith("rival.reply") ? "whisper"
-                        : trigger.equals("rival.beat") ? "smega" : trigger.equals("rival.banter") ? "map" : "guild";
+                        : trigger.equals("rival.beat") ? "smega" : MAP_TRIGGERS.contains(trigger) ? "map" : "guild";
                 assertEquals(channel, intent.channel(), intent.id());
                 List<String> lines = new ArrayList<>(intent.lines());
                 intent.styles().values().forEach(lines::addAll);

@@ -71,6 +71,8 @@ public final class PopulationLoader {
             "rival.banter", "rival.beat", "rival.beat.whisper", "rival.congrats", "rival.join", "rival.leave.behind",
             "rival.leave.ahead", "rival.leave.behind.whisper", "rival.leave.ahead.whisper", "rival.help", "rival.reply",
             "rival.reply.yes", "rival.reply.no",
+            // a rival crew's duel challenge (rivals.RivalChallenges, docs/PVP_PLAN.md V3)
+            "rival.challenge", "rival.accept", "rival.decline", "rival.win", "rival.lose", "rival.draw", "rival.heckle",
             // a beginner citizen asking for a mentor as it posts its request (F4.5, NeedLedger.mentor)
             "need.mentor",
             // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)

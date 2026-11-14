@@ -107,6 +107,7 @@ public final class RivalCrews implements ClearLog.Listener {
     /** Account -> the member whose help request is up (its PARTY need's poster), for the player's answer. */
     private final Map<Integer, Integer> helpBy = new ConcurrentHashMap<>();
     private volatile boolean started;
+    private final RivalChallenges challenges;
 
     public RivalCrews(Population population) {
         this(population, new RivalStore(), null, new Random(population.config().SEED ^ 0x41a7c2eL));
@@ -117,10 +118,21 @@ public final class RivalCrews implements ClearLog.Listener {
         this.store = store;
         this.ports = ports == null ? new CrewGuilds(population) : ports;
         this.random = random;
+        this.challenges = new RivalChallenges(population, this, new Random()); // its own: the crews' draws stay as they were
     }
 
     public boolean on() {
         return population.config().RIVALS_ENABLED;
+    }
+
+    /** The crews' duel challenges (docs/PVP_PLAN.md V3). */
+    public RivalChallenges challenges() {
+        return challenges;
+    }
+
+    /** Whether the member said it is leaving the crew (it walks off LEAVE_AFTER_LINE_MS later). */
+    boolean isLeaving(int citizenId) {
+        return leaving.containsKey(citizenId);
     }
 
     private PopulationConfig config() {
@@ -243,6 +255,7 @@ public final class RivalCrews implements ClearLog.Listener {
                     banter(crew, main, one, now);
                     congratulateOwed(crew, main, now);
                     helpRequest(crew, main, one, now);
+                    challenges.minute(crew, main, now);
                 }
             }
             finishLeaving(now);
@@ -290,7 +303,7 @@ public final class RivalCrews implements ClearLog.Listener {
         return agent != null ? Math.max(level, agent.getLevel()) : level;
     }
 
-    private CitizenSession loaded(int citizenId) {
+    CitizenSession loaded(int citizenId) {
         CitizenSession session = population.presence().session(citizenId);
         return session == null || session.virtual || session.agent() == null ? null : session;
     }
@@ -698,7 +711,7 @@ public final class RivalCrews implements ClearLog.Listener {
     }
 
     /** A quest both have a time on, the crew's best there leading if it can ("kpq"), else the PQ word. */
-    private String bestQuest(Crew crew, Character main) {
+    String bestQuest(Crew crew, Character main) {
         for (Map.Entry<String, Long> best : population.clears().crewBests(crew.id()).entrySet()) {
             if (population.clears().playerBest(main.getId(), best.getKey()) > 0L) {
                 return population.clears().labels().label(best.getKey());
@@ -789,6 +802,9 @@ public final class RivalCrews implements ClearLog.Listener {
         if (crew == null || crew.accountId() != human.getAccountID()) {
             return false;
         }
+        if (challenges.whispered(citizen, human, text)) {
+            return true; // a whispered yes or no to the crew's open duel challenge (V3)
+        }
         String trigger = "rival.reply";
         Integer asker = helpBy.get(crew.accountId());
         if (asker != null && config().RIVAL_HELP_REQUESTS_ENABLED
@@ -811,7 +827,7 @@ public final class RivalCrews implements ClearLog.Listener {
 
     // ---- lines ------------------------------------------------------------------------------------------
 
-    private ChatterEngine.Event event(CitizenSession self, String trigger, String mainName, Crew crew,
+    ChatterEngine.Event event(CitizenSession self, String trigger, String mainName, Crew crew,
                                       Map<String, String> slots) {
         ChatterEngine.Event event = ChatterEngine.Event.of(trigger, self.mapId, self.channel).self(self)
                 .slot("crew", crew.name());

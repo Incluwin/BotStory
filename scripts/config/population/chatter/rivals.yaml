@@ -163,3 +163,85 @@ intents:
       - "hey {name}, {crew} wants to try {quest}. come with us? meet at the door to zakum"
       - "{name} wanna do {quest} with us? cant do it without u lol. door to zakum in el nath"
       - "{name}! we're doing {quest}, need u along. el nath, zakum door"
+  # a duel challenge (docs/PVP_PLAN.md V3, rivals.RivalChallenges): the leader asks out loud on the player's field, the
+  # player says yes or no (map chat, a whisper, @duel yes|no). Fighters say nothing mid-duel; watchers heckle.
+  - id: rival.challenge.map
+    trigger: rival.challenge
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name}! saw ur {quest} time. cute. fight us?"
+      - "yo {name}. {crew} vs u, right here. u in?"
+      - "{name} we been looking for u. duel? or u scared lol"
+      - "hey {name}, think u can take us? yes or no"
+      - "{name}. us, u, a fair fight. whatcha say?"
+    styles:
+      quiet-practical-v1:
+        - "{name}. a duel. yes or no?"
+  - id: rival.accept.map
+    trigger: rival.accept
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "lets gooo"
+      - "ok dont cry after lol"
+      - "finally. {crew}, lets go"
+      - "bet. no potions spam ok? jk"
+  - id: rival.decline.map
+    trigger: rival.decline
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "lol ok. figured"
+      - "{name} is scared, {crew}. lets go"
+      - "aw. next time then"
+      - "ok ok. we'll be around {name}"
+  - id: rival.win.map
+    trigger: rival.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name} :P better luck next time"
+      - "{crew} wins lol"
+      - "ez. jk gg {name}"
+      - "told u. gg"
+  - id: rival.lose.map
+    trigger: rival.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ugh. gg {name}"
+      - "ok u got us. this time"
+      - "lucky lol. gg"
+      - "gg {name}. we'll be back"
+  - id: rival.draw.map
+    trigger: rival.draw
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "huh. a draw? we'll settle it later {name}"
+      - "lol nobody won. again sometime"
+  - id: rival.heckle.map
+    trigger: rival.heckle
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "get em!!"
+      - "lol {name} watch out"
+      - "cmon cmon"
+      - "ooh that hurt"
+      - "dont let {name} heal lol"

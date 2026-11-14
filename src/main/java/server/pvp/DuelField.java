@@ -619,6 +619,54 @@ public final class DuelField {
         PvpPairings.played().noteDuel(rows, endMs);   // practice keeps these two apart for a while
         rowSink.accept(rows);
         DuelRegistry.release(this);
+        Result done = new Result(winnerSide, why, List.copyOf(rows));
+        this.result = done;
+        for (java.util.function.Consumer<Result> listener : endListeners) {
+            tellListener(listener, done);
+        }
+    }
+
+    /** What a finished duel tells whoever started it: the winning side (-1 a draw), why, and every fighter's row. */
+    public record Result(int winnerSide, String why, List<DuelLog.Row> rows) { }
+
+    private final List<java.util.function.Consumer<Result>> endListeners =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile Result result;
+
+    /**
+     * Runs {@code listener} once when the duel ends, on the thread that ended it (at once when it already has): a rival
+     * challenge (V3) books its match and sends everyone back this way. A listener that throws is logged and skipped.
+     */
+    public void onEnd(java.util.function.Consumer<Result> listener) {
+        endListeners.add(listener);
+        Result done = result;
+        if (done != null && endListeners.remove(listener)) {
+            tellListener(listener, done);
+        }
+    }
+
+    /** The finished duel's result, or null while it runs. */
+    public Result result() {
+        return result;
+    }
+
+    private void tellListener(java.util.function.Consumer<Result> listener, Result done) {
+        try {
+            listener.accept(done);
+        } catch (RuntimeException failure) {
+            log.warn("PvP duel {} end listener failed", id, failure);
+        }
+    }
+
+    /**
+     * A character's gear edge (G^gamma against its job path and band's typical gear, PD10/PD20), what a hit of theirs is
+     * multiplied by for gear: a rival challenge sends the crew member whose edge is nearest a lone player's.
+     */
+    public static double gearEdgeOf(Character chr) {
+        PvpCalibration.Sample sample = PvpCalibration.of(chr);
+        PvpDamageModel.Attacker model = new PvpDamageModel.Attacker(chr.getLevel(), chr.getJob().getId(),
+                sample.gearBase(), sample.jobClass() == 2);
+        return PvpDamageModel.gearEdge(model, PvpReference.get(), YamlConfig.config.pvp);
     }
 
     /** Where finished duels' rows go: {@code logs/pvp/duels.csv}, then the learned rates; a test swaps it out. */

@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id], !pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status]");
     }
 
     @Override
@@ -68,8 +68,24 @@ public class PvpCommand extends Command {
             case "practice" -> practice(gm, params);
             case "rates" -> rates(gm);
             case "learned" -> learned(gm, params);
+            case "challenge" -> challenge(gm, params);
             default -> gm.yellowMessage(getDescription());
         }
+    }
+
+    /**
+     * {@code !pvp challenge [status]} (V3): the GM's own rival crew walks in on it now, whatever the minute would say (the
+     * crews need population.RIVALS_ENABLED; the challenge itself runs with its switches off); status lists those running.
+     */
+    private static void challenge(Character gm, String[] params) {
+        server.living.population.Population population = server.living.population.Population.get();
+        if (population == null || population.rivals() == null) {
+            gm.yellowMessage("PvP: no population.");
+            return;
+        }
+        var challenges = population.rivals().challenges();
+        boolean status = params.length > 1 && params[1].equalsIgnoreCase("status");
+        gm.yellowMessage("PvP: " + (status ? challenges.report() : challenges.force(gm)));
     }
 
     /**

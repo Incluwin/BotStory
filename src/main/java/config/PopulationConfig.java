@@ -400,6 +400,17 @@ public class PopulationConfig {
     public int RIVALS_HELP_GAP_HOURS = 12;
     /** Its help request stays on the needs board this long. */
     public int RIVALS_HELP_OPEN_MINUTES = 30;
+    /**
+     * Rival challenges (docs/PVP_PLAN.md V3; needs RIVALS_ENABLED and pvp.PVP_ENABLED): the crew walks in on its main's
+     * hunting field and asks for a duel on a private copy of the field. Off until its live checks.
+     */
+    public boolean RIVAL_CHALLENGES_ENABLED = false;
+    /** A crew challenges its main at most this often. */
+    public int RIVAL_CHALLENGE_GAP_MINUTES = 120;
+    /** At most this many challenges a day (UTC) for one account. */
+    public int RIVAL_CHALLENGE_DAILY_MAX = 3;
+    /** An unanswered challenge counts as a no after this long. */
+    public int RIVAL_CHALLENGE_ANSWER_SECONDS = 90;
 
     // The casino and the other SoloMapling features citizens took over (docs/SOLOMAPLING_PORT.md)
     /** Kill switch: false = no blackjack table in Henesys Game Park; no citizen deals or sits down to play. */
@@ -548,6 +559,11 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.RIVALS_MIN_LEVEL, RIVALS_REFRESH_MINUTES and"
                     + " RIVALS_HELP_OPEN_MINUTES must be >= 1, RIVALS_CREW_MIN..MAX a range within 2..6, RIVALS_JOIN_BAND >= 0"
                     + " with RIVALS_LEAVE_BAND at least it, RIVALS_BANTER_GAP_MINUTES and RIVALS_HELP_GAP_HOURS >= 0");
+        }
+        if (RIVAL_CHALLENGE_GAP_MINUTES < 0 || RIVAL_CHALLENGE_DAILY_MAX < 0 || RIVAL_CHALLENGE_ANSWER_SECONDS < 10
+                || RIVAL_CHALLENGE_ANSWER_SECONDS > 600) {
+            throw new IllegalArgumentException("population.RIVAL_CHALLENGE_GAP_MINUTES and RIVAL_CHALLENGE_DAILY_MAX must be"
+                    + " >= 0, RIVAL_CHALLENGE_ANSWER_SECONDS within 10..600");
         }
         if (CASINO_BLACKJACK_TABLES < 0 || CASINO_BLACKJACK_TABLES > 5 || CASINO_MAX_BET < 10000
                 || CASINO_SHIFT_MIN_MS < 60000 || CASINO_SHIFT_MAX_MS < CASINO_SHIFT_MIN_MS || CASINO_COOLDOWN_MS < 0
