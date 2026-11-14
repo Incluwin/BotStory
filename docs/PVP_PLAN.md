@@ -995,8 +995,40 @@ The server sees a human only through movement packets. Ties go to the human both
   - Polish noted, not fixed: "yes or no?" reads like a prompt; the system line "... won the duel in 14 s (the other
     side is down)" reads like a log. Two stray GM-side lines in the take ("PvP: Equinox will walk in ...", the
     trigger's reply) are filming artifacts.
-- **Not built:** V3.3 rewards and stake (needs the grind-minute table, the Event Trophy trade rule and a stake booking;
-  none exists) and V3.4 (`pvp_match`, records, quoting, megaphone, rematch whisper, letters).
+- **V3.3 built** (44b5ec062; split suite 16,360 / 0 / 33), live on the main checkout from 16:50.
+  - `rivals.RivalRewards` pays each human fighter when the duel ends, by the section 2 table: a win 20 GMin EXP (x2 on
+    the account's first win of the day), 3 Event Trophies, the crew's stake (30 meso GMin at the main's level, taken
+    in even shares from the crew fighters' purses, booked `MesoAccount.PVP_STAKE`, split between the human winners)
+    and a 25% chance of the 60% attack scroll for the winner's weapon (`attackScrollFor`: 2043001-2044901). EXP, stake
+    and scroll chance are scaled by `0.75 + 0.5 x (1 - p)`, and p > 0.85 pays the Trophies alone. A loss or draw: 1
+    Trophy, plus 5 GMin EXP when the crew fighters took at least half their max HP.
+  - **The odds p** come from the sides' mean log gear edge (`DuelField.gearEdgeOf`) and the level factor between their
+    mean levels: p = 1 / (1 + r^-4), where r is the pace ratio. The slope 4 matches practice runs 24-27 (a 3-5 level
+    lead at matched gear won 57-60%). Ratings (V4) can replace it.
+  - **Grind-minutes** (`server.pvp.PvpGrindMinutes`, `scripts/config/pvp/grind-minutes.yaml`): the V0.6 table. EXP is
+    the band's median a minute (below Lv 30 scaled by EXP to the next level); a meso GMin is max(5 x measured mob mesos,
+    1,782 x L) an hour, over 60. A missing file pays nothing.
+  - **Exploits closed:** a fighter who left the duel earns nothing; a GM earns nothing unless a GM's `!pvp challenge`
+    brought the crew (a test; logged "GM test"); an account is paid for at most 3 challenges a day (in memory, like
+    the rest of the challenge bookkeeping).
+  - **The Event Trophy is bound** (`ItemRestrictionPolicy.isServerBound`, PD7; pulled forward from V4.3): it counts as
+    untradeable for trade, player shops and Duey, no world allowlist frees it, NPC shops will not buy it (its WZ price
+    is 30,000), and a drop is refused rather than destroyed (the client does not know it is bound).
+- **Live check 2 (2026-11-14 17:01-17:10, 44b5ec062, Crewfriend on Henesys Hunting Ground I, `!pvp challenge` x4):**
+  the loss path and the daily cap pass; the win path is unit-tested only.
+  - Duel 1, 1-on-1 against xTanx (odds 0.03), answered in map chat: Crewfriend dealt nothing (the fight script pressed
+    Ctrl, which is not bound) and lost in 38 s. Paid 1 Trophy, no EXP. Chat: "You have gained an item in the Etc tab
+    (Event Trophy)", "You lost to Equinox, but earned 1 Event Trophy."
+  - Duel 2, 2-on-2 with Dorran against Nora404 and xTanx (odds 0.15), answered `@duel yes`: lost in 13 s, the crew
+    took 43% of its HP. 1 Trophy, no EXP.
+  - Duel 3, the same sides: lost in 12 s, the crew took 63%. 1 Trophy and 277,300 EXP (5 GMin at Lv 96).
+  - Duel 4: the account's fourth challenge of the day paid nothing.
+  - **Why no live win:** both crews' mains (Crewfriend Lv 96, MenteeYes Lv 67) sit far below their crews' gear
+    (odds 0.03-0.15), and `!kill` refuses citizens (`CommandTargetPolicy`), so a GM cannot knock a crew fighter out.
+    The stake transfer has not run live yet.
+  - **Seen, not fixed:** in duel 4 Dorran was counted out at once ("KO left": not on the copy or not alive at the
+    start). Duels 2 and 3 had Dorran fighting, so it is intermittent; V3.2 follow-up.
+- **Not built:** V3.4 (`pvp_match`, records, quoting, megaphone, rematch whisper, letters).
 
 ---
 
