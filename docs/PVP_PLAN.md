@@ -1040,7 +1040,7 @@ The server sees a human only through movement packets. Ties go to the human both
   - Evidence: `docs/agents/evidence/pvp-v3-film/win1-raw.mp4`, `win-payout-chat.png`, `trophy-drop-refused.png`.
   - **Seen, not fixed:** in duel 4 Dorran was counted out at once ("KO left": not on the copy or not alive at the
     start). Duels 2 and 3 had Dorran fighting, so it is intermittent; V3.2 follow-up.
-- **V3.4 built** (d2cb8058f; split suite 16,367 / 0 / 33; live 19:48 2026-11-14), behind the same switches as V3.1-V3.3.
+- **V3.4 built** (d2cb8058f + 812cae096; split suite 16,368 / 0 / 33; live 20:29 2026-11-14), behind the same switches as V3.1-V3.3.
   - **Booking.** Every finished challenge duel is a `pvp_match` row (kind `RIVAL`, crew, map, seconds, winner side, why,
     the player side's odds) and a `pvp_match_fighter` row per fighter (side, human, knocked out, dealt, taken): changeset
     59, `db/tables/050-pvp-match.sql` (rollback `050-pvp-match-down.sql`). `rivals.RivalMatchStore` is the JDBC;
@@ -1071,6 +1071,14 @@ The server sees a human only through movement packets. Ties go to the human both
     through the new `ChatterEngine.sayNow` (said anyway; it restarts the cooldown); heckles may still drop.
   - **Not seen:** the crew's win megaphone ("no megaphone slot": the shared 4-an-hour, 10-minutes-apart cap of every
     citizen megaphone, or no line; the log now says which). The letters' duel line is covered by unit tests only.
+- **V3.4 live check 2 (2026-11-14 20:32-20:34, 812cae096, the `sayNow` fix; same field):** pass.
+  - `!pvp challenge`: xTanx walked in and, right after its own ambient "is this map taken", asked "1-1, crewfriend. time
+    to settle it" (`rival.challenge.even`, the record quoted).
+  - A map-chat yes; Crewfriend stood idle and lost in 18 s. xTanx said "told u. gg", and its Super Megaphone went out
+    on the channel: "gg crewfriend, equinox takes this one" (log: "Equinox beat Crewfriend (1-2): megaphone"). The
+    loss paid 1 Trophy and no EXP (the crew took under half its HP). Film: `quote-raw.mp4`; the first rematch:
+    `rematch-cut.mp4`.
+
 
 
 
