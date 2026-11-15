@@ -1040,7 +1040,7 @@ The server sees a human only through movement packets. Ties go to the human both
   - Evidence: `docs/agents/evidence/pvp-v3-film/win1-raw.mp4`, `win-payout-chat.png`, `trophy-drop-refused.png`.
   - **Seen, not fixed:** in duel 4 Dorran was counted out at once ("KO left": not on the copy or not alive at the
     start). Duels 2 and 3 had Dorran fighting, so it is intermittent; V3.2 follow-up.
-- **V3.4 built** (branch `feat/pvp-v0`; focused tests pass, split suite pending), behind the same switches as V3.1-V3.3.
+- **V3.4 built** (d2cb8058f; split suite 16,367 / 0 / 33; live 19:48 2026-11-14), behind the same switches as V3.1-V3.3.
   - **Booking.** Every finished challenge duel is a `pvp_match` row (kind `RIVAL`, crew, map, seconds, winner side, why,
     the player side's odds) and a `pvp_match_fighter` row per fighter (side, human, knocked out, dealt, taken): changeset
     59, `db/tables/050-pvp-match.sql` (rollback `050-pvp-match-down.sql`). `rivals.RivalMatchStore` is the JDBC;
@@ -1058,6 +1058,20 @@ The server sees a human only through movement packets. Ties go to the human both
     the record from the crew's side ("duels are 2-0 to us now, that last one was fun :P. come get some").
   - **Records page.** `@records` (the whole page) ends with "Duels vs Equinox: 1-3 (Nora404 1-2, xTanx 0-2)".
   - The two challenge lines that ended "yes or no?" now end "?" and "you in?".
+- **V3.4 live check 1 (2026-11-14 19:52-20:00, d2cb8058f; Crewfriend on Henesys Hunting Ground I):** mostly pass.
+  - `!pvp challenge`: xTanx alone walked in; a map-chat yes, `!pvp duel ko xTanx`, a win. Booked as `pvp_match` 1 (odds
+    0.04, 16 s) with both fighter rows, and the news row `Equinox|duel|0|1|0|0`.
+  - `!pvp challenge rematch`: within a minute Nora404 whispered "rematch crewfriend? still salty about that duel lol". The
+    whispered "ya bring it" (sent through the chat target menu: the client never sends a typed "/w") was taken; she
+    answered "k bet. go train somewhere, we'll find u". Two minutes later, with no further command, Nora404 and xTanx
+    walked back in on their own and asked. A 2-on-2 the crew won in 21 s ("ez. jk gg crewfriend"); booked as match 2;
+    `@records` ended "Duels vs Equinox: 1-1 (xTanx 1-1, Nora404 0-1)".
+  - **Fixed after it:** the rematch's challenge line was never said. `ChatterEngine.say` drops a line inside the
+    speaker's 15 s self cooldown, and Nora404 had just said "need MP pots!! anyone?". Every challenge beat now goes
+    through the new `ChatterEngine.sayNow` (said anyway; it restarts the cooldown); heckles may still drop.
+  - **Not seen:** the crew's win megaphone ("no megaphone slot": the shared 4-an-hour, 10-minutes-apart cap of every
+    citizen megaphone, or no line; the log now says which). The letters' duel line is covered by unit tests only.
+
 
 
 ---

@@ -122,6 +122,19 @@ class ChatterEngineMegaphoneTest {
     }
 
     @Test
+    void aLineTheMomentNeedsIsSaidInsideTheSelfCooldownAndRestartsIt() {
+        lia.lastSpokeAtMs.put("map", now - 5_000L); // "need MP pots!!" five seconds ago (live 2026-11-14)
+
+        assertFalse(chatter.mayReply(lia, now), "an ordinary reply waits out the self cooldown");
+        assertTrue(chatter.takeTurn(lia, now), "a rival's challenge does not");
+        assertEquals(now, lia.lastSpokeAtMs.get("map"));
+        assertFalse(chatter.mayReply(lia, now + 1_000L), "and the cooldown starts again from it");
+
+        config.CHATTER_ENABLED = false;
+        assertFalse(chatter.takeTurn(lia, now + 60_000L), "nothing while chatter is off");
+    }
+
+    @Test
     void aMegaphoneGoesOutAsASuperMegaphoneWithTheEarOnAndUsesOneUp() {
         assertTrue(chatter.megaphone(lia, "LF1M KPQ 21-30 ch2, whisper Lia", true));
 

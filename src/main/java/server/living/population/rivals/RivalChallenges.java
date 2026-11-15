@@ -576,7 +576,7 @@ public final class RivalChallenges {
                     crews.event(session, "rival.win.smega", challenge.mainName, challenge.crew, Map.of()));
             boolean loud = line != null && population.chatter().megaphone(session, line, false);
             log.info("Rival challenge: {} beat {} ({}): {}", challenge.crew.name(), challenge.mainName, tally.yours(),
-                    loud ? "megaphone" : "no megaphone slot");
+                    loud ? "megaphone" : line == null ? "no megaphone line" : "the megaphone cap or gap is full");
         } else if (result.winnerSide() == 0) {
             rematchDue.put(challenge.accountId, now + REMATCH_AFTER_MS + (long) (random.nextDouble() * REMATCH_AFTER_MS));
             if (challenge.forced) {
@@ -653,7 +653,7 @@ public final class RivalChallenges {
         }
         challenge.heckleAtMs = now + HECKLE_GAP_MS + random.nextInt((int) HECKLE_GAP_MS);
         List<Integer> watching = new ArrayList<>(challenge.watchers);
-        say(challenge, watching.get(random.nextInt(watching.size())), "rival.heckle", Map.of());
+        say(challenge, watching.get(random.nextInt(watching.size())), "rival.heckle", Map.of(), false); // may drop
     }
 
     /** Lets every member go and walks it back where it was; the challenge is over. */
@@ -808,14 +808,21 @@ public final class RivalChallenges {
         return new ArrayList<>(sorted.subList(0, Math.min(count, sorted.size())));
     }
 
+    /** A beat of the challenge (ask, accept, decline, the result): said even right after the member's own chatter. */
     private void say(Challenge challenge, int memberId, String trigger, Map<String, String> slots) {
+        say(challenge, memberId, trigger, slots, true);
+    }
+
+    private void say(Challenge challenge, int memberId, String trigger, Map<String, String> slots, boolean beat) {
         CitizenSession session = crews.loaded(memberId);
         if (session == null) {
             return;
         }
         String line = population.chatter().compose(crews.event(session, trigger, challenge.mainName, challenge.crew,
                 slots));
-        if (line != null) {
+        if (line != null && beat) {
+            population.chatter().sayNow(session, line);
+        } else if (line != null) {
             population.chatter().say(session, line);
         }
     }
