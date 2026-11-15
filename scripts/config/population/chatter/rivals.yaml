@@ -175,11 +175,11 @@ intents:
       - "{name}! saw ur {quest} time. cute. fight us?"
       - "yo {name}. {crew} vs u, right here. u in?"
       - "{name} we been looking for u. duel? or u scared lol"
-      - "hey {name}, think u can take us? yes or no"
+      - "hey {name}, think u can take us?"
       - "{name}. us, u, a fair fight. whatcha say?"
     styles:
       quiet-practical-v1:
-        - "{name}. a duel. yes or no?"
+        - "{name}. a duel. you in?"
   - id: rival.accept.map
     trigger: rival.accept
     where: any
@@ -245,3 +245,118 @@ intents:
       - "cmon cmon"
       - "ooh that hurt"
       - "dont let {name} heal lol"
+  # V3.4 (docs/PVP_PLAN.md): the head-to-head record, quoted. {record} is the score with the leader first ("3-1"); the
+  # trigger says who leads: ahead = the crew, behind = the player, even = tied.
+  - id: rival.challenge.ahead.map
+    trigger: rival.challenge.ahead
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name}! {record} to us. wanna make it worse?"
+      - "yo {name}. {record} {crew}. again?"
+      - "{name} back for more? its {record} lol"
+    styles:
+      quiet-practical-v1:
+        - "{name}. {record} to us. again?"
+  - id: rival.challenge.behind.map
+    trigger: rival.challenge.behind
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name}. {record} to u. not for long. fight?"
+      - "{name} we owe u one. {record} wont stay like that"
+      - "ok {name}, {record} to u. we been practicing. u in?"
+    styles:
+      quiet-practical-v1:
+        - "{name}. {record} to you. rematch?"
+  - id: rival.challenge.even.map
+    trigger: rival.challenge.even
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name}! {record}. tiebreaker?"
+      - "{record}, {name}. time to settle it"
+  - id: rival.record.ahead.map
+    trigger: rival.record.ahead
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 600000
+    lines:
+      - "oh its {name}. {record} to us btw :P"
+      - "{name}! still {record}, still ours lol"
+      - "hey {name}, {crew} {record}. just saying"
+  - id: rival.record.behind.map
+    trigger: rival.record.behind
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 600000
+    lines:
+      - "{name}. {record} to u. not for long"
+      - "dont get comfy {name}, {record} wont last"
+      - "{name}! we're coming for that {record}"
+  - id: rival.record.even.map
+    trigger: rival.record.even
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 600000
+    lines:
+      - "{name}! {record}. we should settle that"
+      - "{record}, {name}. next one decides it"
+  # a crew that won a duel tells everyone (one slot of the shared megaphone cap)
+  - id: rival.win.smega
+    trigger: rival.win.smega
+    where: any
+    channel: smega
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{crew} just beat {name} in a duel!! gg :P"
+      - "duel won vs {name}. {crew} on top lol"
+      - "gg {name}, {crew} takes this one"
+  # a crew that lost a duel offers a rematch later; a yes brings them the next time the player is on a field
+  - id: rival.rematch.whisper
+    trigger: rival.rematch
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "rematch {name}? still salty about that duel lol"
+      - "{name} we want a rematch. u in?"
+      - "hey {name}, {crew} wants that duel back. rematch?"
+  - id: rival.rematch.yes.whisper
+    trigger: rival.rematch.yes
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "bet. go train somewhere, we'll find u"
+      - "ok!! next time ur on a field we're coming"
+  - id: rival.rematch.no.whisper
+    trigger: rival.rematch.no
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "lol scared. fine"
+      - "ok ok. another time {name}"
+  - id: rival.rematch.later.whisper
+    trigger: rival.rematch.later
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ok but we're beat for today. tmrw?"
+      - "tmrw then. we're done for the day lol"

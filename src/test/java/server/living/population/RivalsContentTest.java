@@ -27,15 +27,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * and the whispered ones whispered.
  */
 class RivalsContentTest {
-    private static final Set<String> SLOTS = Set.of("name", "crew", "quest", "time", "theirs", "me");
+    private static final Set<String> SLOTS = Set.of("name", "crew", "quest", "time", "theirs", "me", "record");
     private static final Pattern SLOT = Pattern.compile("\\{([a-z]+)}");
     private static final List<String> TRIGGERS = List.of("rival.banter", "rival.beat", "rival.beat.whisper", "rival.congrats",
             "rival.join", "rival.leave.behind", "rival.leave.ahead", "rival.leave.behind.whisper",
             "rival.leave.ahead.whisper", "rival.help", "rival.reply", "rival.reply.yes", "rival.reply.no",
-            "rival.challenge", "rival.accept", "rival.decline", "rival.win", "rival.lose", "rival.draw", "rival.heckle");
+            "rival.challenge", "rival.accept", "rival.decline", "rival.win", "rival.lose", "rival.draw", "rival.heckle",
+            "rival.challenge.ahead", "rival.challenge.behind", "rival.challenge.even", "rival.record.ahead",
+            "rival.record.behind", "rival.record.even", "rival.win.smega", "rival.rematch", "rival.rematch.yes",
+            "rival.rematch.no", "rival.rematch.later");
     /** The duel challenge's lines (V3), all said out loud on the field or its private copy. */
     private static final Set<String> MAP_TRIGGERS = Set.of("rival.banter", "rival.challenge", "rival.accept",
-            "rival.decline", "rival.win", "rival.lose", "rival.draw", "rival.heckle");
+            "rival.decline", "rival.win", "rival.lose", "rival.draw", "rival.heckle", "rival.challenge.ahead",
+            "rival.challenge.behind", "rival.challenge.even", "rival.record.ahead", "rival.record.behind",
+            "rival.record.even");
 
     private final PopulationContent content = PopulationLoader.load(Path.of("scripts/config/population"),
             ContentLoader.load(Path.of("scripts/config/living-world")));
@@ -77,8 +82,9 @@ class RivalsContentTest {
             assertFalse(intents.isEmpty(), trigger);
             for (Intent intent : intents) {
                 String channel = trigger.endsWith(".whisper") || trigger.equals("rival.congrats") || trigger.equals("rival.help")
-                        || trigger.startsWith("rival.reply") ? "whisper"
-                        : trigger.equals("rival.beat") ? "smega" : MAP_TRIGGERS.contains(trigger) ? "map" : "guild";
+                        || trigger.startsWith("rival.reply") || trigger.startsWith("rival.rematch") ? "whisper"
+                        : trigger.equals("rival.beat") || trigger.equals("rival.win.smega") ? "smega"
+                        : MAP_TRIGGERS.contains(trigger) ? "map" : "guild";
                 assertEquals(channel, intent.channel(), intent.id());
                 List<String> lines = new ArrayList<>(intent.lines());
                 intent.styles().values().forEach(lines::addAll);

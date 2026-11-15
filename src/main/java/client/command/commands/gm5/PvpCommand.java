@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch]");
     }
 
     @Override
@@ -74,8 +74,9 @@ public class PvpCommand extends Command {
     }
 
     /**
-     * {@code !pvp challenge [status]} (V3): the GM's own rival crew walks in on it now, whatever the minute would say (the
-     * crews need population.RIVALS_ENABLED; the challenge itself runs with its switches off); status lists those running.
+     * {@code !pvp challenge [status|rematch]} (V3): the GM's own rival crew walks in on it now, whatever the minute would
+     * say (the crews need population.RIVALS_ENABLED; the challenge itself runs with its switches off); status lists those
+     * running; rematch makes a beaten crew's rematch offer due now (V3.4).
      */
     private static void challenge(Character gm, String[] params) {
         server.living.population.Population population = server.living.population.Population.get();
@@ -84,8 +85,12 @@ public class PvpCommand extends Command {
             return;
         }
         var challenges = population.rivals().challenges();
-        boolean status = params.length > 1 && params[1].equalsIgnoreCase("status");
-        gm.yellowMessage("PvP: " + (status ? challenges.report() : challenges.force(gm)));
+        String sub = params.length > 1 ? params[1].toLowerCase(java.util.Locale.ROOT) : "";
+        gm.yellowMessage("PvP: " + switch (sub) {
+            case "status" -> challenges.report();
+            case "rematch" -> challenges.rematchNow(gm);
+            default -> challenges.force(gm);
+        });
     }
 
     /**

@@ -9,7 +9,8 @@ import server.living.population.records.RecordsView;
 /**
  * {@code @records} is the records page in chat (docs/BOT_CONCEPT_PLAN.md F7.1, decision D13): each party quest and boss
  * with a clear, who cleared it first and fastest, and your best; {@code @records <quest>} (kpq, balrog, zakum, ...) for
- * one. Open while population.RIVALS_ENABLED is on.
+ * one. The whole page ends with your head-to-head duel record against your rival crew (PvP V3.4). Open while
+ * population.RIVALS_ENABLED is on.
  */
 public class RecordsCommand extends Command {
     {
@@ -27,6 +28,11 @@ public class RecordsCommand extends Command {
         String typed = params.length == 0 ? null : String.join(" ", params);
         for (String line : new RecordsView(population.clears()).chat(player, typed)) {
             player.dropMessage(5, line);
+        }
+        if (typed == null) { // the whole page ends with the head-to-head against the player's rival crew (PvP V3.4)
+            for (String line : population.rivals().duelRecord(player)) {
+                player.dropMessage(5, line);
+            }
         }
     }
 }

@@ -1040,7 +1040,25 @@ The server sees a human only through movement packets. Ties go to the human both
   - Evidence: `docs/agents/evidence/pvp-v3-film/win1-raw.mp4`, `win-payout-chat.png`, `trophy-drop-refused.png`.
   - **Seen, not fixed:** in duel 4 Dorran was counted out at once ("KO left": not on the copy or not alive at the
     start). Duels 2 and 3 had Dorran fighting, so it is intermittent; V3.2 follow-up.
-- **Not built:** V3.4 (`pvp_match`, records, quoting, megaphone, rematch whisper, letters).
+- **V3.4 built** (branch `feat/pvp-v0`; focused tests pass, split suite pending), behind the same switches as V3.1-V3.3.
+  - **Booking.** Every finished challenge duel is a `pvp_match` row (kind `RIVAL`, crew, map, seconds, winner side, why,
+    the player side's odds) and a `pvp_match_fighter` row per fighter (side, human, knocked out, dealt, taken): changeset
+    59, `db/tables/050-pvp-match.sql` (rollback `050-pvp-match-down.sql`). `rivals.RivalMatchStore` is the JDBC;
+    `rivals.RivalRecord` counts a human's wins, losses and draws against the crew (side 0 is the player side).
+  - **Quoting.** Once a human and its crew have dueled, the challenge line quotes the record
+    (`rival.challenge.ahead|behind|even`, slot `{record}` = the score leader first, "3-1") and every other banter does
+    (`rival.record.ahead|behind|even`). The record is cached per crew and human, read from `pvp_match` once.
+  - **Megaphone.** A crew that won says `rival.win.smega` on one of the shared megaphones (the `CHATTER_SMEGA_PER_HOUR`
+    cap and 10-minute gap still apply; nothing is said when the cap is full).
+  - **Rematch.** A crew that lost whispers `rival.rematch` 10-20 minutes later (a GM's `!pvp challenge rematch` makes it
+    due now). A whispered yes (`rival.rematch.yes`, or `.later` when the day's challenges are used up) brings the crew
+    the next minute the main qualifies on a field, without the gap or the 1-in-120 roll; a no (`rival.rematch.no`) ends
+    it. A rematch of a GM's test duel is a test too (it comes with the switches off). Offers are memory only.
+  - **Letters.** Each duel writes a `rival.news` event (`crew|duel|winner|wins|losses|draws`); the next letters say
+    the record from the crew's side ("duels are 2-0 to us now, that last one was fun :P. come get some").
+  - **Records page.** `@records` (the whole page) ends with "Duels vs Equinox: 1-3 (Nora404 1-2, xTanx 0-2)".
+  - The two challenge lines that ended "yes or no?" now end "?" and "you in?".
+
 
 ---
 

@@ -392,6 +392,49 @@ class RivalCrewsTest {
     }
 
     @Test
+    void theLettersPickUpTheLatestDuelAndItsRecord() {
+        fourInBand();
+        formed();
+
+        RivalCrews.Letter alone = crews.letter(ANN, "Ann", List.of("Ironclads|duel|1|0|1|0", "Ironclads|duel|1|0|2|0"));
+        assertEquals("hey Ann, Ironclads here. duels are 2-0 to us now, that last one was fun :P. come get some",
+                alone.text());
+
+        RivalCrews.Letter both = crews.letter(ANN, "Ann", List.of("Ironclads|BalrogBattle_Easy|840000|0",
+                "Ironclads|duel|0|2|1|0"));
+        assertEquals("hey Ann, Ironclads here. while u were gone we did easy balrog in 14:00. u lead the duels 2-1"
+                + " after that last one. not for long lol", both.text());
+    }
+
+    @Test
+    void onceTheyHaveDueledEveryOtherBanterQuotesTheRecord() {
+        fourInBand();
+        Crew crew = formed();
+        store.matches.booked.add(new MemoryMatches.Booked(crew.id(), new RivalRecord.Match(NOW, 1,
+                List.of(new RivalRecord.Fighter(ANN, 0, true, true, 100, 900),
+                        new RivalRecord.Fighter(5003, 1, false, false, 900, 100)))));
+        MapleMap map = mock(MapleMap.class);
+        Client client = mock(Client.class);
+        when(client.getChannel()).thenReturn(1);
+        when(ann.getMap()).thenReturn(map);
+        when(ann.getClient()).thenReturn(client);
+        load(5003, 35, HENESYS);
+
+        crews.tick(NOW + MINUTE);
+        crews.tick(NOW + 47 * MINUTE);
+
+        ArgumentCaptor<ChatterEngine.Event> said = ArgumentCaptor.forClass(ChatterEngine.Event.class);
+        verify(chatter, atLeastOnce()).speakTo(said.capture());
+        List<ChatterEngine.Event> banter = said.getAllValues().stream()
+                .filter(event -> event.trigger().startsWith("rival.banter") || event.trigger().startsWith("rival.record"))
+                .toList();
+        assertEquals(List.of("rival.record.ahead", "rival.banter"), banter.stream().map(ChatterEngine.Event::trigger)
+                .toList());
+        assertEquals("1-0", banter.get(0).slots().get("record"));
+        assertEquals(List.of("Duels vs Ironclads: 0-1 (" + registry.get(5003).name() + " 0-1)"), crews.duelRecord(ann));
+    }
+
+    @Test
     void theMainBeatingTheCrewsTimeIsCongratulatedNowOrWhenAMemberIsOn() {
         fourInBand();
         Crew crew = formed();
@@ -574,7 +617,33 @@ class RivalCrewsTest {
 
     // ---- fakes ------------------------------------------------------------------------------------------
 
+    /** pvp_match in memory (V3.4). */
+    static final class MemoryMatches extends RivalMatchStore {
+        record Booked(int crewId, RivalRecord.Match match) { }
+
+        final List<Booked> booked = new ArrayList<>();
+
+        @Override
+        long insert(RivalRecord.Match match, int mapId, long seconds, String reason, int crewId, double odds) {
+            booked.add(new Booked(crewId, match));
+            return booked.size();
+        }
+
+        @Override
+        List<RivalRecord.Match> rivalMatches(int crewId, int humanId) {
+            return booked.stream().filter(row -> row.crewId() == crewId && row.match().fighters().stream()
+                    .anyMatch(f -> f.characterId() == humanId && f.side() == 0)).map(Booked::match).toList();
+        }
+    }
+
     static final class MemoryRivals extends RivalStore {
+        final MemoryMatches matches = new MemoryMatches();
+
+        @Override
+        RivalMatchStore matches() {
+            return matches;
+        }
+
         final List<Crew> rows = new ArrayList<>();
         final Map<Integer, int[]> mains = new HashMap<>();
         final Map<Integer, int[]> progress = new HashMap<>();

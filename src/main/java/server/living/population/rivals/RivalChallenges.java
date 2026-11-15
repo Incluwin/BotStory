@@ -79,6 +79,12 @@ public final class RivalChallenges {
     /** The longest a member is held for one challenge; it is let go sooner, when the challenge is over. */
     static final long HOLD_MS = 15 * MINUTE_MS;
     static final String TOPIC = "rival";
+    /** V3.4: a crew that lost whispers its rematch offer this long after the duel, plus up to as long again. */
+    static final long REMATCH_AFTER_MS = 10 * MINUTE_MS;
+    /** And the offer stands this long for a whispered yes or no. */
+    static final long REMATCH_OPEN_MS = 15 * MINUTE_MS;
+    /** {@code living_event_log} detail of a duel for the letters: {@code crew|duel|winnerSide|wins|losses|draws}. */
+    static final String DUEL_NEWS = "duel";
 
     enum Stage { WALKING, ASKING, FIGHTING, LEAVING }
 
@@ -139,12 +145,32 @@ public final class RivalChallenges {
     private final Queue<Character> forced = new ConcurrentLinkedQueue<>();
     private final Object tickerLock = new Object();
     private ScheduledFuture<?> ticker;
+    // V3.4: the head-to-head records and the rematch offers (the offers are memory only, like the daily count)
+    private final RivalMatchStore matches;
+    /** "crewId:humanId" -> that human's record against the crew, read from pvp_match on first use. */
+    private final Map<String, RivalRecord.Tally> tallies = new ConcurrentHashMap<>();
+    /** Account -> when its crew, beaten, whispers the rematch offer. */
+    private final Map<Integer, Long> rematchDue = new ConcurrentHashMap<>();
+    /** Account -> until when the offer it was whispered stands. */
+    private final Map<Integer, Long> rematchOpen = new ConcurrentHashMap<>();
+    /**
+     * Accounts that said yes: their crew comes the next minute the rules allow, without the gap or the roll. True when the
+     * duel it answers was a GM's test, which then comes back as one too.
+     */
+    private final Map<Integer, Boolean> rematchAccepted = new ConcurrentHashMap<>();
+    /** Accounts whose last duel was a GM's test: their rematch offer is one too. */
+    private final Set<Integer> rematchForced = ConcurrentHashMap.newKeySet();
 
     RivalChallenges(Population population, RivalCrews crews, Random random) {
+        this(population, crews, random, new RivalMatchStore());
+    }
+
+    RivalChallenges(Population population, RivalCrews crews, Random random, RivalMatchStore matches) {
         this.population = population;
         this.crews = crews;
         this.random = random;
         this.rewards = new RivalRewards(random);
+        this.matches = matches;
     }
 
     private PopulationConfig config() {
@@ -161,15 +187,41 @@ public final class RivalChallenges {
     /** The crews' social minute for one account whose main is online: may roll a challenge. */
     synchronized void minute(Crew crew, Character main, long now) {
         long onField = onField(crew.accountId(), main, now);
-        if (!on() || byAccount.containsKey(crew.accountId())) {
+        if (byAccount.containsKey(crew.accountId())) {
+            return;
+        }
+        offerRematch(crew, main, now);
+        // a rematch the player said yes to comes without the gap or the roll; one a GM's test duel led to, switches off
+        Boolean rematch = rematchAccepted.get(crew.accountId());
+        if (!on() && !Boolean.TRUE.equals(rematch)) {
             return;
         }
         Facts facts = new Facts(onField, hpShare(main), busy(main), loadedHere(crew, main).size(),
-                now - lastAt.getOrDefault(crew.accountId(), Long.MIN_VALUE / 2), today(crew.accountId(), now));
-        if (blocked(facts, config()) != null || random.nextInt(MINUTES_PER_CHALLENGE) != 0) {
+                rematch != null ? Long.MAX_VALUE / 2 : now - lastAt.getOrDefault(crew.accountId(), Long.MIN_VALUE / 2),
+                today(crew.accountId(), now));
+        if (blocked(facts, config()) != null || rematch == null && random.nextInt(MINUTES_PER_CHALLENGE) != 0) {
             return;
         }
-        begin(crew, main, false, now);
+        rematchAccepted.remove(crew.accountId());
+        begin(crew, main, Boolean.TRUE.equals(rematch), now);
+    }
+
+    /** A beaten crew's rematch offer, whispered by a loaded member once it is due. */
+    private void offerRematch(Crew crew, Character main, long now) {
+        Long due = rematchDue.get(crew.accountId());
+        if (due == null || now < due || main.getId() != crew.mainId()) {
+            return;
+        }
+        for (int memberId : crew.members()) {
+            CitizenSession session = crews.loaded(memberId);
+            if (session != null && !DuelRegistry.inDuel(memberId)
+                    && crews.whisper(session, main, "rival.rematch", crew, Map.of())) {
+                rematchDue.remove(crew.accountId());
+                rematchOpen.put(crew.accountId(), now + REMATCH_OPEN_MS);
+                log.info("Rival challenge: {} offers {} a rematch", crew.name(), main.getName());
+                return;
+            }
+        }
     }
 
     /** Why a main may not be challenged now, or null. */
@@ -379,7 +431,12 @@ public final class RivalChallenges {
         for (int memberId : arrived(challenge)) {
             population.whispers().expect(memberId, main.getId(), TOPIC, now); // a whispered yes to any of them counts
         }
-        say(challenge, challenge.leaderId, "rival.challenge", Map.of("quest", crews.bestQuest(challenge.crew, main)));
+        RivalRecord.Tally tally = tally(challenge.crew, main.getId());
+        if (tally.played() > 0) { // V3.4: they quote the record ("{name}. 3-1 to us. again?")
+            say(challenge, challenge.leaderId, "rival.challenge." + tally.standing(), Map.of("record", tally.score()));
+        } else {
+            say(challenge, challenge.leaderId, "rival.challenge", Map.of("quest", crews.bestQuest(challenge.crew, main)));
+        }
         log.info("Rival challenge: {} asks {} (answer within {} s)", challenge.crew.name(), main.getName(),
                 config().RIVAL_CHALLENGE_ANSWER_SECONDS);
     }
@@ -478,7 +535,110 @@ public final class RivalChallenges {
         } catch (RuntimeException failure) {
             log.warn("Rival challenge: paying {} against {} failed", challenge.mainName, challenge.crew.name(), failure);
         }
+        try {
+            book(challenge, result, now);
+            afterword(challenge, result, speaker, now);
+        } catch (RuntimeException failure) {
+            log.warn("Rival challenge: booking {} against {} failed", challenge.mainName, challenge.crew.name(), failure);
+        }
         linger(challenge, now);
+    }
+
+    // ---- V3.4: the record, the megaphone, the rematch and the letters -------------------------------------------
+
+    /** Books the duel in pvp_match and adds it to each human fighter's tally against the crew. */
+    private void book(Challenge challenge, DuelField.Result result, long now) {
+        List<RivalRecord.Fighter> fighters = new ArrayList<>();
+        long seconds = 0L;
+        for (var row : result.rows()) {
+            fighters.add(new RivalRecord.Fighter(row.charId(), row.side(), row.human(), row.ko(), row.dealt(), row.taken()));
+            seconds = Math.max(seconds, row.seconds());
+        }
+        matches.insert(new RivalRecord.Match(now, result.winnerSide(), fighters), challenge.mapId, seconds, result.why(),
+                challenge.crew.id(), challenge.odds);
+        for (RivalRecord.Fighter fighter : fighters) {
+            if (fighter.human() && fighter.side() == 0) {
+                RivalRecord.Tally before = tally(challenge.crew, fighter.characterId());
+                tallies.put(key(challenge.crew, fighter.characterId()), before.plus(result.winnerSide()));
+            }
+        }
+    }
+
+    /**
+     * What the crew does about the result: a win goes on one of the shared megaphones, a loss earns a rematch offer
+     * whispered later, and either way the main's letters hear the new record.
+     */
+    private void afterword(Challenge challenge, DuelField.Result result, int speaker, long now) {
+        RivalRecord.Tally tally = tally(challenge.crew, challenge.mainId);
+        if (result.winnerSide() == 1) {
+            CitizenSession session = crews.loaded(speaker);
+            String line = session == null ? null : population.chatter().compose(
+                    crews.event(session, "rival.win.smega", challenge.mainName, challenge.crew, Map.of()));
+            boolean loud = line != null && population.chatter().megaphone(session, line, false);
+            log.info("Rival challenge: {} beat {} ({}): {}", challenge.crew.name(), challenge.mainName, tally.yours(),
+                    loud ? "megaphone" : "no megaphone slot");
+        } else if (result.winnerSide() == 0) {
+            rematchDue.put(challenge.accountId, now + REMATCH_AFTER_MS + (long) (random.nextDouble() * REMATCH_AFTER_MS));
+            if (challenge.forced) {
+                rematchForced.add(challenge.accountId);
+            } else {
+                rematchForced.remove(challenge.accountId);
+            }
+        }
+        population.world().store().event(challenge.mainId, null, RivalCrews.NEWS_EVENT, challenge.crew.name() + "|"
+                + DUEL_NEWS + "|" + result.winnerSide() + "|" + tally.wins() + "|" + tally.losses() + "|" + tally.draws());
+    }
+
+    /** A human's record against a crew (cached; read from pvp_match the first time). */
+    RivalRecord.Tally tally(Crew crew, int humanId) {
+        return tallies.computeIfAbsent(key(crew, humanId),
+                key -> RivalRecord.overall(matches.rivalMatches(crew.id(), humanId)));
+    }
+
+    /** A human's record against each member of a crew it has met in a duel, for {@code @records}. */
+    Map<Integer, RivalRecord.Tally> perFoe(Crew crew, int humanId) {
+        return RivalRecord.perFoe(matches.rivalMatches(crew.id(), humanId));
+    }
+
+    private static String key(Crew crew, int humanId) {
+        return crew.id() + ":" + humanId;
+    }
+
+    /** A whispered answer to an open rematch offer; true when it was one. */
+    private boolean rematchAnswer(CitizenSession citizen, Character human, String text, long now) {
+        Long open = rematchOpen.get(human.getAccountID());
+        Crew crew = crews.crewOf(citizen.characterId);
+        if (open == null || now > open || crew == null || human.getId() != crew.mainId()) {
+            return false;
+        }
+        RivalCrews.Answer answer = RivalCrews.answer(text);
+        if (answer == RivalCrews.Answer.OTHER) {
+            return false;
+        }
+        rematchOpen.remove(human.getAccountID());
+        boolean test = rematchForced.remove(human.getAccountID());
+        if (answer == RivalCrews.Answer.NO) {
+            crews.whisper(citizen, human, "rival.rematch.no", crew, Map.of());
+            return true;
+        }
+        rematchAccepted.put(human.getAccountID(), test);
+        boolean later = today(human.getAccountID(), now) >= config().RIVAL_CHALLENGE_DAILY_MAX;
+        crews.whisper(citizen, human, later ? "rival.rematch.later" : "rival.rematch.yes", crew, Map.of());
+        log.info("Rival challenge: {} takes {}'s rematch{}", human.getName(), crew.name(), later ? " (tomorrow)" : "");
+        return true;
+    }
+
+    /** A GM's {@code !pvp challenge rematch}: its beaten crew's rematch offer is due now. */
+    public String rematchNow(Character gm) {
+        Crew crew = gm == null ? null : crews.crewOfAccount(gm.getAccountID());
+        if (crew == null) {
+            return "This account has no rival crew yet.";
+        }
+        if (!rematchDue.containsKey(gm.getAccountID())) {
+            return crew.name() + " owes no rematch (it comes after a duel they lost).";
+        }
+        rematchDue.put(gm.getAccountID(), 0L);
+        return crew.name() + " will whisper its rematch offer within a minute.";
     }
 
     private static List<RivalRewards.Fighter> fightersOf(List<Character> side) {
@@ -527,12 +687,13 @@ public final class RivalChallenges {
         return queue(challenge, human, RivalCrews.answer(text));
     }
 
-    /** A whisper to a crew member; true when it answered that crew's open challenge. */
+    /** A whisper to a crew member; true when it answered that crew's open challenge or its rematch offer. */
     public boolean whispered(CitizenSession citizen, Character human, String text) {
         Challenge challenge = human == null || text == null || citizen == null ? null : byAccount.get(human.getAccountID());
         if (challenge == null || challenge.stage != Stage.ASKING || human.getId() != challenge.mainId
                 || !challenge.members.containsKey(citizen.characterId)) {
-            return false;
+            return human != null && text != null && citizen != null
+                    && rematchAnswer(citizen, human, text, System.currentTimeMillis());
         }
         return queue(challenge, human, RivalCrews.answer(text));
     }
