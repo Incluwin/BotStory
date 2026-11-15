@@ -1515,14 +1515,15 @@ population:
     RIVAL_HELP_REQUESTS_ENABLED: false
     RIVALS_HELP_GAP_HOURS: 12
     RIVALS_HELP_OPEN_MINUTES: 30
-    # Rival challenges (docs/PVP_PLAN.md V3; need RIVALS_ENABLED and pvp.PVP_ENABLED, off until their live checks). A
+    # Rival challenges (docs/PVP_PLAN.md V3; need RIVALS_ENABLED and pvp.PVP_ENABLED; on 2026-11-14 after the V3.4 live
+    # checks, the user's choice). A
     # main who has hunted one field for 5+ minutes at 60%+ HP, with no window open and two crew members loaded on its
     # channel, rolls about once per two such hours: the crew walks in through a portal and its leader asks for a duel.
     # A yes or no in map chat, a whispered one, or @duel yes|no answers; RIVAL_CHALLENGE_ANSWER_SECONDS without one is a
     # no, which costs nothing (a jab, and they leave). A yes moves everyone to a private copy of the field without
     # monsters for one duel (pvp section rules), then back to their own spots. At most one challenge per
     # RIVAL_CHALLENGE_GAP_MINUTES and RIVAL_CHALLENGE_DAILY_MAX a day (UTC) per account. GM: !pvp challenge.
-    RIVAL_CHALLENGES_ENABLED: false
+    RIVAL_CHALLENGES_ENABLED: true
     RIVAL_CHALLENGE_GAP_MINUTES: 120
     RIVAL_CHALLENGE_DAILY_MAX: 3
     RIVAL_CHALLENGE_ANSWER_SECONDS: 90
@@ -1716,8 +1717,9 @@ mods:
 # Fights between characters (docs/PVP_PLAN.md, V1 duel core). A duel is a server-side fight between two sides of
 # characters (players, companions, citizens) on one map: every PvP hit is resolved and rolled by the server, nobody
 # dies (a lethal hit leaves 1 HP and knocks the fighter out) and HP/MP come back to their pre-duel values after it.
-# PVP_ENABLED (off until the V1 live checks) is the switch for player-facing duels; the GM's "!duel <name>" works
-# either way. The balance keys are the plan's section 2 priors: each line of an attack is rolled as on a monster with
+# PVP_ENABLED is the switch for player-facing duels (on 2026-11-14, the user's choice, after the V3.1-V3.4 live
+# checks; today the rival crews' challenges are its only player-facing duels); the GM's "!duel <name>" works either
+# way. The balance keys are the plan's section 2 priors: each line of an attack is rolled as on a monster with
 # no defense, then scaled so a median attacker needs PVP_TTK_SECONDS of non-stop hitting to knock out a median-HP
 # victim of its level; better gear deals (gear / job median)^PVP_GEAR_EXPONENT more; one attack takes at most
 # PVP_MAX_HIT_PERCENT of the victim's max HP. Healing in a duel (potions, Heal, autopot) restores at most
@@ -1775,7 +1777,7 @@ mods:
 # ago or less (its report counts those "kept from a recent partner"), and the learned matchups count a pairing at most
 # once in that time. In memory: a restart forgets it. 0: no limit. Technical: server.pvp.PvpPairings.
 pvp:
-    PVP_ENABLED: false
+    PVP_ENABLED: true
     PVP_TTK_SECONDS: 12
     PVP_GEAR_EXPONENT: 0.7
     PVP_MAX_HIT_PERCENT: 25

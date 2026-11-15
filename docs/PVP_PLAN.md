@@ -1078,6 +1078,9 @@ The server sees a human only through movement packets. Ties go to the human both
     on the channel: "gg crewfriend, equinox takes this one" (log: "Equinox beat Crewfriend (1-2): megaphone"). The
     loss paid 1 Trophy and no EXP (the crew took under half its HP). Film: `quote-raw.mp4`; the first rematch:
     `rematch-cut.mp4`.
+- **Switched on 2026-11-14** (user: "Turn them on"): `population.RIVAL_CHALLENGES_ENABLED` and `pvp.PVP_ENABLED` are
+  true in config.yaml. PVP_ENABLED gates only the challenges today (`RivalChallenges.on`); practice and `!pvp` were GM
+  tools with it off and stay so.
 
 
 
