@@ -1149,6 +1149,29 @@ The server sees a human only through movement packets. Ties go to the human both
     with `COLISEUM_ENABLED` off (it ships false).
   - **Not yet:** the Quartermaster's shop (V4.3), the board page and spectating from the King's Room (V4.4, which also
     holds back the watched-citizen rule).
+- **Live check (2026-11-16, 90d1d83c2 live from 06:35; full suite 16,371 / 0 / 33; `COLISEUM_ENABLED` still off).**
+  Crewfriend (Lv 97 Spearman) through `!pvp coliseum`; recording `docs/agents/evidence/pvp-v4-film/ladder1-raw.mp4`.
+  - **Background matches.** `!pvp coliseum sim 20` on the headless operator: 20 matches among 40 distinct citizens,
+    20-20, ratings 1338-1662 (a first win from 1500/350 lands on 1662, as Glicko-2 should). No errors.
+  - **Matches 1-4, Crewfriend standing still or a test script swinging:** lost 0-2 each to Leaf749 (Lv 98 Crusader),
+    GrumpyDit (twice) and xRyusx. Rounds ended in 6-15 s. Each paid 1 Trophy; the rating fell 1500 -> 1338 -> 1208 ->
+    1155 -> 1119. The match ran on a private copy of Battle Arena 1/2/3 in turn, with the 90 s clock; afterwards
+    Crewfriend stood on its own spot on Henesys Hunting Ground I with HP full.
+  - **Match 5, a win** (knock-outs through the headless operator's `!pvp duel ko`, which acts within the 8 s rounds;
+    typed in the client it came too late): beat LilGius 2-0 at odds 0.21. Paid 381,427 EXP and 3 Trophies; the
+    rating went 1119 -> 1246 and LilGius's 1500 -> 1122 (a new rating, deviation 350, moves far).
+  - **Tonic.** A White Potion double-clicked mid-round: "Arena tonic: 25% HP and MP back (2 left this round).", and
+    Crewfriend absorbed 11,032 of a 8,806 max HP before going down. A second click landed just as the round ended
+    (06:57:09.8) and drank a White Potion normally (90 -> 89): between rounds potions work, and do nothing useful as
+    each round ends with HP and MP full.
+  - **Lines.** "Tigun: you fight Leaf749 (Lv 98 Crusader), rated 1500. To the arena!", then Leaf749 "first ladder
+    match, go easy lol" (`ladder.intro.new`), "again?" between rounds, "gg crewfriend", "gg wp. rematch anytime", and
+    on the win "gg crewfriend, u got me". The result line: "Ladder: You beat LilGius (2-0). Rating 1119 -> 1246
+    (Veteran, 1-4)."
+  - **Notes.** The duel's own opening line ("Duel: ... No deaths: a knock-out ends it ...") repeats every round. A
+    companion that isn't fighting steps out of the party with its "i'll wait out here" line and rejoins after (the
+    existing companion hold, as on any instance). Not seen live: Tigun's window and fee (only spawned with the switch
+    on), and a citizen logging out mid-match.
 
 ---
 
