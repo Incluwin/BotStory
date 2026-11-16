@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|sim [n]|rating [name]]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|shop|sim [n]|rating [name]]");
     }
 
     @Override
@@ -78,7 +78,7 @@ public class PvpCommand extends Command {
      * {@code !pvp coliseum} (V4): with no word, a ladder match for the GM against the nearest-rated free citizen; with a
      * citizen's name, against that one (free, on the GM's channel). Both run even with COLISEUM_ENABLED off and pay as a
      * test. {@code status} lists the matches running, {@code sim [n]} plays n citizen ladder matches now, {@code rating
-     * [name]} prints a rating.
+     * [name]} prints a rating, {@code shop} opens the Quartermaster's window (V4.3).
      */
     private static void coliseum(Character gm, String[] params) {
         server.living.population.Population population = server.living.population.Population.get();
@@ -94,6 +94,7 @@ public class PvpCommand extends Command {
                 gm.yellowMessage("PvP: looking for your ladder opponent.");
             }
             case "status" -> coliseum.status().forEach(gm::yellowMessage);
+            case "shop" -> coliseum.shop(gm);
             case "sim" -> gm.yellowMessage("PvP: " + coliseum.simulateNow(Math.max(1, Math.min(200, number(params, 2, 20))))
                     + " citizen ladder match(es) played.");
             case "rating" -> {

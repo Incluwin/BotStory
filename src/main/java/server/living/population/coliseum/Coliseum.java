@@ -136,6 +136,7 @@ public final class Coliseum {
     private final LadderBook book;
     private final LadderStore store;
     private final ColiseumNpcs npcs;
+    private final Quartermaster quartermaster = new Quartermaster();
     private final Random random = new Random();
     private final Queue<Request> requests = new ConcurrentLinkedQueue<>();
     private final Map<Integer, Match> byHuman = new ConcurrentHashMap<>();
@@ -178,7 +179,7 @@ public final class Coliseum {
                 }
                 return;
             }
-            npcs.ensure(false);
+            npcs.ensure(true);
             int played = simulate(YamlConfig.config.pvp.COLISEUM_SIM_PER_MINUTE, System.currentTimeMillis());
             if (played > 0) {
                 log.debug("Coliseum: {} citizen ladder match(es) simulated", played);
@@ -208,7 +209,16 @@ public final class Coliseum {
             talk(player);
             return true;
         }
+        if (role == ColiseumNpcs.Role.QUARTERMASTER) {
+            quartermaster.talk(player);
+            return true;
+        }
         return false;
+    }
+
+    /** {@code !pvp coliseum shop}: Jano's window, wherever the GM stands and with the coliseum off. */
+    public void shop(Character gm) {
+        quartermaster.talk(gm);
     }
 
     private static final int TIGUN = 2101004;
