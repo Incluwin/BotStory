@@ -32,6 +32,21 @@ class AgentShopAmmoPolicyTest {
         assertFalse(AgentShopAmmoPolicy.needsSeedRechargeAmmo(WeaponType.BOW, 0));
     }
 
+    /** Stars and bullets are refilled at any shop on an ordinary visit; a readiness trip keeps Victoria's top-up only. */
+    @Test
+    void carriedStarsAndBulletsAreRefilledAtAnyShopOnAnOrdinaryVisit() {
+        for (WeaponType wt : new WeaponType[]{WeaponType.CLAW, WeaponType.GUN}) {
+            assertTrue(AgentShopAmmoPolicy.refillsCarriedStacks(wt, true, false), wt + " ordinary, Victoria");
+            assertTrue(AgentShopAmmoPolicy.refillsCarriedStacks(wt, false, false), wt + " ordinary, elsewhere");
+            assertTrue(AgentShopAmmoPolicy.refillsCarriedStacks(wt, true, true), wt + " readiness, Victoria");
+            assertFalse(AgentShopAmmoPolicy.refillsCarriedStacks(wt, false, true),
+                    wt + " readiness, elsewhere: its own ammo step refills after the potions");
+        }
+        for (WeaponType wt : new WeaponType[]{WeaponType.BOW, WeaponType.CROSSBOW, WeaponType.GENERAL1H_SWING, null}) {
+            assertFalse(AgentShopAmmoPolicy.refillsCarriedStacks(wt, true, false), wt + ": nothing to recharge");
+        }
+    }
+
     @Test
     void shouldCalculateLegacyAmmoThresholds() {
         assertEquals(80, AgentShopAmmoPolicy.triggerThreshold(10, 8));

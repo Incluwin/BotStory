@@ -30,6 +30,18 @@ public final class AgentShopAmmoPolicy {
         return weaponType == WeaponType.CLAW || weaponType == WeaponType.GUN;
     }
 
+    /**
+     * Whether a shop visit refills the star or bullet stacks the Agent carries before its potions (the old top-up's
+     * refills): at any shop on an ordinary visit, since every shop recharges (Shop.rechargeDirect); on a readiness trip
+     * only on Victoria, as before, its own ammo step refilling them after the potions at any supplier. The seed set and
+     * arrows stay Victoria's (AgentPotionSupplierCatalog.ammoTopUpAllowedAt): they take a Use slot, a refill none.
+     * Found 2026-11-10 from the PvP practice duels: 21 of the 37 Assassins homed off Victoria carried no throwing star
+     * (2 of the 51 homed on it), each with emptied stacks any shop there would have refilled.
+     */
+    public static boolean refillsCarriedStacks(WeaponType weaponType, boolean victoriaShop, boolean readinessTrip) {
+        return isRechargeWeaponType(weaponType) && (victoriaShop || !readinessTrip);
+    }
+
     public static boolean needsSeedRechargeAmmo(WeaponType weaponType, int currentCount) {
         return isRechargeWeaponType(weaponType) && currentCount <= 0;
     }

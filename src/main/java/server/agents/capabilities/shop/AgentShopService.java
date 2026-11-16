@@ -619,7 +619,9 @@ public final class AgentShopService {
         if (ammoHere && needsFixedAmmoForShop(bot, shop, wt, ammoTriggerThreshold())) {
             return true;
         }
-        if (ammoHere && needsRechargeForShop(bot, wt, ammoTriggerThreshold(), inventory)) {
+        // a visit opened here is an ordinary one (a readiness trip that adopts it refills after its potions)
+        if (AgentShopAmmoPolicy.refillsCarriedStacks(wt, ammoHere, false)
+                && needsRechargeForShop(bot, wt, ammoTriggerThreshold(), inventory)) {
             return true;
         }
         if (ammoHere && needsSeedRechargeAmmoForShop(bot, shop, wt)) {
@@ -776,7 +778,8 @@ public final class AgentShopService {
 
     /**
      * The purchase steps of a visit, in order: a required travel item alone; else on a Victoria shop the old ammo
-     * top-up (a seed set, the best stacks' refills, arrows to the ammo target), the potions, then skill and buff
+     * top-up (a seed set, the best stacks' refills, arrows to the ammo target; an ordinary visit refills the stars or
+     * bullets it carries at any shop, AgentShopAmmoPolicy.refillsCarriedStacks), the potions, then skill and buff
      * consumables. On a readiness trip the potions come in two parts around its ammo step ({@link #buyReadinessAmmo},
      * at any supplier): first the potion standard and the critical reserve ({@link #buyPotionStandard}), then the
      * trip's ammo standard, then the ordinary reserve and the top-up toward the buy target ({@link #buyPotionExtras}),
@@ -810,15 +813,18 @@ public final class AgentShopService {
             });
         }
 
-        // Projectiles only at Victoria shops, as before town shops elsewhere were known (AgentPotionSupplierCatalog).
+        // Seed sets and arrows only at Victoria shops, as before town shops elsewhere were known
+        // (AgentPotionSupplierCatalog); the stars and bullets it carries are refilled at any shop on an ordinary visit
+        // (AgentShopAmmoPolicy.refillsCarriedStacks).
         boolean ammoHere = AgentPotionSupplierCatalog.ammoTopUpAllowedAt(bot.getMapId());
+        AgentSupplyReadiness.Activity trip = AgentSupplyReadiness.tripActivity(entry);
         if (!itemOnlyVisit && ammoHere
                 && shouldBuySeedRechargeAmmoWhileShopping(bot, wt)) {
             actions.add((sequence, shop) -> appendBuyReport(
                     sequence, buySeedRechargeAmmo(bot, shop, wt, minimumMesoReserve),
                     wt == WeaponType.GUN ? "bullet set" : "throwing-star set"));
         }
-        if (!itemOnlyVisit && ammoHere
+        if (!itemOnlyVisit && AgentShopAmmoPolicy.refillsCarriedStacks(wt, ammoHere, trip != null)
                 && shouldRechargeWhileShopping(bot, wt, inventory)) {
             actions.add((sequence, shop) -> {
                 AgentShopBuyReport recharge = doRecharge(
@@ -836,7 +842,6 @@ public final class AgentShopService {
             actions.add((sequence, shop) -> appendBuyReport(
                     sequence, buyAmmo(bot, shop, wt, minimumMesoReserve), "ammo"));
         }
-        AgentSupplyReadiness.Activity trip = AgentSupplyReadiness.tripActivity(entry);
         if (!itemOnlyVisit) {
             if (trip == null) {
                 actions.add((sequence, shop) ->
