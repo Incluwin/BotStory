@@ -1491,6 +1491,18 @@ population:
     RIVAL_HELP_REQUESTS_ENABLED: false
     RIVALS_HELP_GAP_HOURS: 12
     RIVALS_HELP_OPEN_MINUTES: 30
+    # Rival challenges (docs/PVP_PLAN.md V3; need RIVALS_ENABLED and pvp.PVP_ENABLED; on 2026-11-14 after the V3.4 live
+    # checks, the user's choice). A
+    # main who has hunted one field for 5+ minutes at 60%+ HP, with no window open and two crew members loaded on its
+    # channel, rolls about once per two such hours: the crew walks in through a portal and its leader asks for a duel.
+    # A yes or no in map chat, a whispered one, or @duel yes|no answers; RIVAL_CHALLENGE_ANSWER_SECONDS without one is a
+    # no, which costs nothing (a jab, and they leave). A yes moves everyone to a private copy of the field without
+    # monsters for one duel (pvp section rules), then back to their own spots. At most one challenge per
+    # RIVAL_CHALLENGE_GAP_MINUTES and RIVAL_CHALLENGE_DAILY_MAX a day (UTC) per account. GM: !pvp challenge.
+    RIVAL_CHALLENGES_ENABLED: true
+    RIVAL_CHALLENGE_GAP_MINUTES: 120
+    RIVAL_CHALLENGE_DAILY_MAX: 3
+    RIVAL_CHALLENGE_ANSWER_SECONDS: 90
     # The casino and the other SoloMapling features citizens took over (2026-11-01, docs/SOLOMAPLING_PORT.md). Citizens on a
     # CASINO session run them as players would: a citizen deals blackjack at a Henesys Game Park table or hosts cho-han dice,
     # others sit down and bet chips; players join by saying "deal me in" at a table, drop chips as their bet and say hit or
@@ -1679,3 +1691,98 @@ mods:
     DEATH_COUNTS:
         zakum: 10
         chaos_zakum: 5
+
+# Fights between characters (docs/PVP_PLAN.md, V1 duel core). A duel is a server-side fight between two sides of
+# characters (players, companions, citizens) on one map: every PvP hit is resolved and rolled by the server, nobody
+# dies (a lethal hit leaves 1 HP and knocks the fighter out) and HP/MP come back to their pre-duel values after it.
+# PVP_ENABLED is the switch for player-facing duels (on 2026-11-14, the user's choice, after the V3.1-V3.4 live
+# checks; today the rival crews' challenges are its only player-facing duels); the GM's "!duel <name>" works either
+# way. The balance keys are the plan's section 2 priors: each line of an attack is rolled as on a monster with
+# no defense, then scaled so a median attacker needs PVP_TTK_SECONDS of non-stop hitting to knock out a median-HP
+# victim of its level; better gear deals (gear / job median)^PVP_GEAR_EXPONENT more; one attack takes at most
+# PVP_MAX_HIT_PERCENT of the victim's max HP. Healing in a duel (potions, Heal, autopot) restores at most
+# PVP_HEAL_PERCENT of max HP and MP per PVP_HEAL_WINDOW_MS (an allowance that refills at that rate), and a potion is
+# refused while the allowance of what it restores is under half full.
+# PVP_EVEN_CLASSES (the user's choice, 2026-11-08) evens the classes out: a hit is scaled by the victim class's median
+# HP (class_hp_ratio in the reference table: warrior 1.78, magician 0.50), so a median warrior and a median magician
+# both last PVP_TTK_SECONDS, and Achilles, High Defense, Combo Barrier, Power Guard, Magic Guard and Meso Guard do not
+# act in a duel; gear defense, level and gear still do. It evens dodging too (PD17, 2026-11-09): each side's accuracy
+# and avoid count against its own class's median at its level band, taken from the characters online every 10 min
+# (server.pvp.PvpHitBalance; "!pvp calibrate" prints it), so a DEX/LUK class no longer dodges a warrior by build while
+# avoid gear above the class median still helps. Defense the same way (2026-11-11): a median victim of every class
+# meets weapon hits and spells with one common defense, the mean of its band's WDEF and MDEF, since most gear carries far
+# more WDEF than MDEF and spells won 68% cross-class (check run 14). Off, warriors win about nine duels in ten from
+# Lv 70 (!pvp sim matrix, 2026-11-08), raw accuracy, avoid and defense decide, and PVP_MAGIC_GUARD_FACTOR /
+# PVP_MESO_GUARD_HP_SHARE apply.
+# Technical: server.pvp.PvpDamageModel scales lines from CombatFormulaProvider.rollPvpLines with the reference table
+# scripts/config/pvp/reference.yaml (written by "!pvp calibrate"); server.pvp.PvpHitResolver tests attack boxes
+# against hurtboxes with PVP_LAG_WINDOW_MS of position history; server.pvp.DuelField owns sides, rounds, knock-outs
+# and the heal allowance; the hook is AbstractDealDamageHandler.applyAttack, shared by players and Agents.
+# PVP_LEARN_RATES (the user's choice PD16, 2026-11-09): after every duel, each fighter with 15 s of fighting and 5
+# attacks moves its class's rate by PVP_LEARN_CLASS_STEP, and its job path and band's by PVP_LEARN_JOB_STEP, toward
+# its measured raw damage; a band's own rate counts once it has PVP_LEARN_JOB_MIN_FIGHTERS fighters. Players' duels
+# count as much as bots'. The reference table stays the prior; a learned rate stays within 0.4x-2.5x of it.
+# Technical: server.pvp.PvpRateLearner keeps a running mean of log(raw dps / the reference rate for that fighter's job,
+# band and gear) per class and per job path and band, persisted in logs/pvp/learned-rates.txt (untracked; "!pvp learned
+# reset" clears it, "!pvp learned replay <csv>" seeds it from a logs/pvp duel CSV); PvpDamageModel.rate multiplies the
+# reference rate by it for the coefficient and the sim alike. Raw damage is rolled before any PvP scaling, so what the
+# learner measures never depends on what it learned.
+# PVP_LEARN_TOUGHNESS (the user's choice, 2026-11-11), with PVP_EVEN_CLASSES: the learned rates even out what each class
+# deals, this what each class takes. Check run 20: hits took 8.3-8.6% of a warrior's max HP a second and 7.0-7.5% of a
+# magician's (the class HP table had drifted, magicians dodged weapon hits more, warriors' MDEF evening hit its clamp).
+# After every duel each victim reports how much of its HP its hits took against what they would have taken of a
+# reference victim (class HP ratio x H_ref, no defense, never dodging), and hits on its class and band are scaled by
+# the running mean, so a typical victim of any class goes down at the reference pace; gear above its class's typical
+# still helps. Same steps, priors and limits as the learned rates; persisted in logs/pvp/learned-toughness.txt
+# (untracked; "!pvp learned reset" clears both). Technical: server.pvp.PvpToughness.
+# PVP_LEARN_MATCHUPS (the user's choice, 2026-11-13), with PVP_EVEN_CLASSES: rates and toughness are per class, so they
+# miss what one class does to one other. Check run 24: magicians wore warriors down 20% faster than the reverse (a
+# caster opens from range while a warrior walks in, and dodges more weapon swings), and warriors went 54-77 against
+# them. After every one-against-one duel of two classes, the pair learns the log ratio of how fast each side took the
+# other's HP, its own gear edge and the level factor divided out, and hits between the two split the difference, so
+# typical fighters of the pair wear each other down at the same pace. Persisted in logs/pvp/learned-matchups.txt
+# (untracked; "!pvp learned reset" clears it with the rest). Technical: server.pvp.PvpMatchups.
+# PVP_LIVE_GEAR_MEDIANS (the user's choice, 2026-11-13): gear helps a fighter by its gear over its job path and band's
+# median, and the damage coefficient is set for a median attacker. The medians in scripts/config/pvp/reference.yaml are
+# from 2026-11-08; by check run 25 a typical warrior or thief carried about 1.2x of them and a typical magician or
+# bowman 1.0-1.05x, so warriors and thieves dealt about 12% more than intended. On: the medians come from the
+# characters online (GMs left out) per job path and band, refreshed every 10 minutes (a thin key uses the reference
+# median times its class's live ratio); the reference medians still anchor the measured and learned rates. "!pvp
+# calibrate" prints each class's ratio. Technical: server.pvp.PvpGearMedians.
+# PVP_PAIRING_REPEAT_MINUTES (the user's choice, 2026-11-13): practice pairs each citizen with the nearest level on its
+# map, and the same citizens stand on the same maps, so in check run 26 one pairing fought 10 times in four hours and a
+# class pair's record came from 10-40 distinct pairings. Practice now skips a partner a citizen fought this many minutes
+# ago or less (its report counts those "kept from a recent partner"), and the learned matchups count a pairing at most
+# once in that time. In memory: a restart forgets it. 0: no limit. Technical: server.pvp.PvpPairings.
+pvp:
+    PVP_ENABLED: true
+    PVP_TTK_SECONDS: 12
+    PVP_GEAR_EXPONENT: 0.7
+    PVP_MAX_HIT_PERCENT: 25
+    PVP_AOE_FALLOFF: 0.15
+    PVP_AOE_FLOOR: 0.6
+    PVP_MAX_TARGETS: 3
+    PVP_LEVEL_PERCENT: 1
+    PVP_LEVEL_CAP_PERCENT: 5
+    PVP_DEF_K: 40
+    PVP_DEF_CAP_PERCENT: 25
+    PVP_PHYSICAL_MISS_CAP_PERCENT: 25
+    PVP_MAGIC_MISS_CAP_PERCENT: 10
+    PVP_EVEN_CLASSES: true
+    PVP_MAGIC_GUARD_FACTOR: 0.5
+    PVP_MESO_GUARD_HP_SHARE: 0.75
+    PVP_HEAL_PERCENT: 10
+    PVP_HEAL_WINDOW_MS: 5000
+    PVP_LAG_WINDOW_MS: 600
+    PVP_HUMAN_HURTBOX_INSET_PX: 6
+    PVP_MIN_ATTACK_GAP_MS: 250
+    PVP_ROUND_SECONDS: 180
+    PVP_COUNTDOWN_SECONDS: 3
+    PVP_LEARN_RATES: true
+    PVP_LEARN_CLASS_STEP: 0.05
+    PVP_LEARN_JOB_STEP: 0.1
+    PVP_LEARN_JOB_MIN_FIGHTERS: 8
+    PVP_LEARN_TOUGHNESS: true
+    PVP_LEARN_MATCHUPS: true
+    PVP_LIVE_GEAR_MEDIANS: true
+    PVP_PAIRING_REPEAT_MINUTES: 60

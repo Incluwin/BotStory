@@ -174,6 +174,16 @@ public final class AgentPotionService {
                 forHp);
     }
 
+    /** HP (or MP) this bot's carried potions restore all told (AgentAutopotPolicy.recoveryStock). */
+    public static long recoveryStock(Character bot, boolean forHp) {
+        return AgentAutopotPolicy.recoveryStock(
+                bot.getInventory(InventoryType.USE).list(),
+                AgentUseItemClassificationPolicy::itemEffect,
+                bot.getCurrentMaxHp(),
+                bot.getCurrentMaxMp(),
+                forHp);
+    }
+
     public static void setupAutopotForBot(Character bot) {
         AutopotChoice choice = computeAutopotChoice(bot);
 

@@ -286,6 +286,23 @@ public final class PopulationHooks {
     }
 
     /**
+     * Human map chat answering a rival crew's open duel challenge ("yes", "nah"; docs/PVP_PLAN.md V3); true when it did.
+     * Asked before the casino and any companion or Resident, so nobody else takes the player's "yes".
+     */
+    public static boolean rivalChallenge(Character speaker, String text) {
+        Population population = Population.get();
+        if (population == null || speaker == null || population.rivals() == null || AgentPresence.isAgent(speaker)) {
+            return false;
+        }
+        try {
+            return population.rivals().challenges().heard(speaker, text);
+        } catch (RuntimeException failure) {
+            log.debug("population rival challenge hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
      * Human map chat said to a casino table or host near them ("deal me in", "hit", "cho", "drink?",
      * docs/SOLOMAPLING_PORT.md); true when one took it. LivingWorldHooks asks this before a companion or Resident may
      * answer: live 2026-11-08 a companion's reply to "drink?" and "yes" kept the bar host from ever hearing them.

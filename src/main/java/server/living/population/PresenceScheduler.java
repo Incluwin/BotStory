@@ -203,7 +203,8 @@ public final class PresenceScheduler {
                 if (session.citizen.state() != Citizen.State.ACTIVE || now >= session.endsAtMs) {
                     // one in a party quest logs off after it (CitizenPartyQuests), one on a casino shift when the shift
                     // is over (CitizenCasino): live 2026-11-08 bar hosts went offline 12 min into a 20-45 min shift
-                    if (!inPartyQuest(session) && (casino() == null || !casino().holds(session))) {
+                    if (!inPartyQuest(session) && (casino() == null || !casino().holds(session))
+                            && !server.pvp.DuelRegistry.inDuel(session.characterId)) { // a duel ends first (PvP V1)
                         logout(session, "session over");
                     }
                     continue;
@@ -1012,6 +1013,12 @@ public final class PresenceScheduler {
     }
 
     private void maybeReplan(CitizenSession session, long now) {
+        if (server.pvp.DuelRegistry.inDuel(session.characterId)) {
+            return; // a duel holds it, and gives back its modes when it ends (docs/PVP_PLAN.md V1)
+        }
+        if (heldByCaller(session.characterId, now)) {
+            return; // a rival challenge keeps it on its main's field until it lets go (V3)
+        }
         if (inPartyQuest(session)) {
             return; // its party quest moves it, and sends it back to its day after (CitizenPartyQuests)
         }
@@ -1609,7 +1616,52 @@ public final class PresenceScheduler {
         return session.loaded() && activity != Activity.PQ && activity != Activity.JOB && !session.stallOpen
                 && session.partyId == 0 && session.trip == null && session.capRetry == null
                 && session.waitingMove.get() == null && !cap.reserved(session) && !inPartyQuest(session)
-                && !onSupplyTrip(session);
+                && !onSupplyTrip(session) && !server.pvp.DuelRegistry.inDuel(session.characterId)
+                && !heldByCaller(session.characterId, System.currentTimeMillis());
+    }
+
+    /** Citizen id -> until when a caller keeps it where it is ({@link #hold}). */
+    private final Map<Integer, Long> holds = new ConcurrentHashMap<>();
+
+    /**
+     * Keeps a citizen where its caller puts it until {@code untilMs} (a rival challenge walking in and waiting for its
+     * answer, docs/PVP_PLAN.md V3): no re-plan, no move on from a crowded map, and {@link #held} for everyone else (PvP
+     * practice). The caller moves it itself ({@link #travel}) and lets go with {@link #release}.
+     */
+    public void hold(int characterId, long untilMs) {
+        holds.put(characterId, untilMs);
+    }
+
+    public void release(int characterId) {
+        holds.remove(characterId);
+    }
+
+    boolean heldByCaller(int characterId, long now) {
+        Long until = holds.get(characterId);
+        if (until == null) {
+            return false;
+        }
+        if (until <= now) {
+            holds.remove(characterId, until); // a caller that never let go lets go here
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Whether something holds this citizen now, so nothing else should take it over (PvP practice duels, V2): what
+     * {@link #movable} refuses (party quest, party, job errand, stall, trips, a move on its way, a duel), a casino seat
+     * or post, a mini-game, a jump quest, a sell trip, a stall spot, a salon visit or a shopping trip. A dealer pulled
+     * away mid-hand closes its table (the casino session, 2026-11-09).
+     */
+    public boolean held(CitizenSession session) {
+        Market.ShoppingTrip shopping = session.shopping;
+        return !movable(session)
+                || casino() != null && casino().holds(session)
+                || miniGames() != null && miniGames().holds(session)
+                || jumpQuests() != null && jumpQuests().holds(session)
+                || session.sellTrip != null || session.stallSpot != null || session.salonNpc != 0
+                || shopping != null && !shopping.abandoned();
     }
 
     /** It goes on to another place of the kind it is at (another field, town or market room), the way any move goes. */

@@ -564,6 +564,9 @@ public final class ChatterEngine {
                 if ("map".equals(channel) && agent.getMiniGame() != null) {
                     return; // seated in a minigame room, a player can only type in the room
                 }
+                if (server.pvp.DuelRegistry.inDuel(agent.getId())) {
+                    return; // mid-duel a player fights, not chats (filming 2026-11-10: a ranger bragged about a 7/7 weapon)
+                }
                 if (channel.startsWith(ALLIANCE_CHANNEL)) {
                     int allianceId = Integer.parseInt(channel.substring(ALLIANCE_CHANNEL.length()));
                     Server.getInstance().allianceMessage(allianceId, PacketCreator.multiChat(agent.getName(), clean, 3),
@@ -622,12 +625,34 @@ public final class ChatterEngine {
      * self cooldown, so "hi mia" typed every second gets one "hey".
      */
     public void say(CitizenSession session, String text) {
-        long now = System.currentTimeMillis();
-        if (!mayReply(session, now)) {
+        say(session, text, false);
+    }
+
+    /**
+     * A line the moment needs, such as a rival crew's duel challenge (docs/PVP_PLAN.md V3): like {@link #say}, but said
+     * even inside the self cooldown, which it restarts (live 2026-11-14: a leader's ambient "need MP pots!!" a few
+     * seconds earlier ate its challenge). Nothing while chatter is off.
+     */
+    public void sayNow(CitizenSession session, String text) {
+        say(session, text, true);
+    }
+
+    private void say(CitizenSession session, String text, boolean now) {
+        long at = System.currentTimeMillis();
+        if (!(now ? takeTurn(session, at) : mayReply(session, at))) {
             return;
         }
-        String rendered = population.voices().render(session.citizen, text, now);
+        String rendered = population.voices().render(session.citizen, text, at);
         deliver(session, "map", rendered, population.voices().delayMs(session.citizen, rendered));
+    }
+
+    /** {@link #sayNow}'s gate: chatter is on; takes the slot whatever the self cooldown says. */
+    boolean takeTurn(CitizenSession session, long now) {
+        if (!population.config().CHATTER_ENABLED) {
+            return false;
+        }
+        session.lastSpokeAtMs.put("map", now);
+        return true;
     }
 
     /** {@link #say}'s gate: chatter is on and the citizen said nothing on map chat for the self cooldown; takes the slot. */

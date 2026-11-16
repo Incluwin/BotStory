@@ -56,6 +56,10 @@ public final class UseItemHandler extends AbstractPacketHandler {
             c.sendPacket(PacketCreator.enableActions());
             return false;
         }
+        if (server.pvp.PvpHooks.refusesDrink(chr, itemId)) { // a duel's heal window (docs/PVP_PLAN.md V1)
+            c.sendPacket(PacketCreator.enableActions());
+            return false;
+        }
 
         ItemInformationProvider ii = ItemInformationProvider.getInstance();
         Item toUse = chr.getInventory(InventoryType.USE).getItem(slot);

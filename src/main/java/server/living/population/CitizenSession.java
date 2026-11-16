@@ -90,6 +90,11 @@ public final class CitizenSession {
         return !virtual && agent() != null;
     }
 
+    /** Whether it is walking somewhere on foot now (CitizenTravel): arrived once this is false on the target map. */
+    public boolean onTheWay() {
+        return trip != null;
+    }
+
     public String name() {
         return citizen.name();
     }

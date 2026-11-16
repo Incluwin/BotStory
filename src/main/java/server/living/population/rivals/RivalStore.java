@@ -114,4 +114,9 @@ public class RivalStore {
         }
         return out;
     }
+
+    /** The pvp_match records of the crews' duels (V3.4); tests keep them in memory. */
+    RivalMatchStore matches() {
+        return new RivalMatchStore();
+    }
 }

@@ -92,6 +92,8 @@ public final class RivalCrews implements ClearLog.Listener {
         long mainReadAtMs;
         long refreshedAtMs;
         long banterAtMs;
+        /** V3.4: the last banter quoted the duel record; the next one is ordinary banter again. */
+        boolean quotedRecord;
     }
 
     private final Population population;
@@ -107,6 +109,7 @@ public final class RivalCrews implements ClearLog.Listener {
     /** Account -> the member whose help request is up (its PARTY need's poster), for the player's answer. */
     private final Map<Integer, Integer> helpBy = new ConcurrentHashMap<>();
     private volatile boolean started;
+    private final RivalChallenges challenges;
 
     public RivalCrews(Population population) {
         this(population, new RivalStore(), null, new Random(population.config().SEED ^ 0x41a7c2eL));
@@ -117,10 +120,21 @@ public final class RivalCrews implements ClearLog.Listener {
         this.store = store;
         this.ports = ports == null ? new CrewGuilds(population) : ports;
         this.random = random;
+        this.challenges = new RivalChallenges(population, this, new Random(), store.matches()); // own draws: the crews' stay
     }
 
     public boolean on() {
         return population.config().RIVALS_ENABLED;
+    }
+
+    /** The crews' duel challenges (docs/PVP_PLAN.md V3). */
+    public RivalChallenges challenges() {
+        return challenges;
+    }
+
+    /** Whether the member said it is leaving the crew (it walks off LEAVE_AFTER_LINE_MS later). */
+    boolean isLeaving(int citizenId) {
+        return leaving.containsKey(citizenId);
     }
 
     private PopulationConfig config() {
@@ -243,6 +257,7 @@ public final class RivalCrews implements ClearLog.Listener {
                     banter(crew, main, one, now);
                     congratulateOwed(crew, main, now);
                     helpRequest(crew, main, one, now);
+                    challenges.minute(crew, main, now);
                 }
             }
             finishLeaving(now);
@@ -290,7 +305,7 @@ public final class RivalCrews implements ClearLog.Listener {
         return agent != null ? Math.max(level, agent.getLevel()) : level;
     }
 
-    private CitizenSession loaded(int citizenId) {
+    CitizenSession loaded(int citizenId) {
         CitizenSession session = population.presence().session(citizenId);
         return session == null || session.virtual || session.agent() == null ? null : session;
     }
@@ -688,9 +703,18 @@ public final class RivalCrews implements ClearLog.Listener {
             if (session != null && session.mapId == main.getMapId() && session.channel == channel
                     && !leaving.containsKey(memberId)) {
                 Map<String, String> slots = new LinkedHashMap<>();
-                slots.put("quest", bestQuest(crew, main));
-                if (population.chatter().speakTo(event(session, "rival.banter", main.getName(), crew, slots))) {
+                String trigger = "rival.banter";
+                // V3.4: every other time, once they have dueled, they quote the record ("3-1 to us btw :P")
+                RivalRecord.Tally tally = one.quotedRecord ? RivalRecord.Tally.NONE : challenges.tally(crew, main.getId());
+                if (tally.played() > 0) {
+                    trigger = "rival.record." + tally.standing();
+                    slots.put("record", tally.score());
+                } else {
+                    slots.put("quest", bestQuest(crew, main));
+                }
+                if (population.chatter().speakTo(event(session, trigger, main.getName(), crew, slots))) {
                     one.banterAtMs = now;
+                    one.quotedRecord = tally.played() > 0;
                 }
                 return;
             }
@@ -698,7 +722,7 @@ public final class RivalCrews implements ClearLog.Listener {
     }
 
     /** A quest both have a time on, the crew's best there leading if it can ("kpq"), else the PQ word. */
-    private String bestQuest(Crew crew, Character main) {
+    String bestQuest(Crew crew, Character main) {
         for (Map.Entry<String, Long> best : population.clears().crewBests(crew.id()).entrySet()) {
             if (population.clears().playerBest(main.getId(), best.getKey()) > 0L) {
                 return population.clears().labels().label(best.getKey());
@@ -789,6 +813,9 @@ public final class RivalCrews implements ClearLog.Listener {
         if (crew == null || crew.accountId() != human.getAccountID()) {
             return false;
         }
+        if (challenges.whispered(citizen, human, text)) {
+            return true; // a whispered yes or no to the crew's open duel challenge (V3)
+        }
         String trigger = "rival.reply";
         Integer asker = helpBy.get(crew.accountId());
         if (asker != null && config().RIVAL_HELP_REQUESTS_ENABLED
@@ -811,7 +838,7 @@ public final class RivalCrews implements ClearLog.Listener {
 
     // ---- lines ------------------------------------------------------------------------------------------
 
-    private ChatterEngine.Event event(CitizenSession self, String trigger, String mainName, Crew crew,
+    ChatterEngine.Event event(CitizenSession self, String trigger, String mainName, Crew crew,
                                       Map<String, String> slots) {
         ChatterEngine.Event event = ChatterEngine.Event.of(trigger, self.mapId, self.channel).self(self)
                 .slot("crew", crew.name());
@@ -826,7 +853,7 @@ public final class RivalCrews implements ClearLog.Listener {
         population.chatter().speakTo(event(self, trigger, mainName, crew, slots));
     }
 
-    private boolean whisper(CitizenSession self, Character to, String trigger, Crew crew, Map<String, String> slots) {
+    boolean whisper(CitizenSession self, Character to, String trigger, Crew crew, Map<String, String> slots) {
         String line = population.chatter().compose(event(self, trigger, to.getName(), crew, slots));
         if (line == null) {
             return false;
@@ -871,12 +898,20 @@ public final class RivalCrews implements ClearLog.Listener {
             return null;
         }
         Map<String, long[]> best = new LinkedHashMap<>(); // quest -> {time, beaten}
+        long[] duels = null; // V3.4: the latest duel's {winner side, wins, losses, draws}
         for (String detail : details) {
             String[] parts = detail.split("\\|");
             if (parts.length < 4 || !parts[0].equals(crew.name())) {
                 continue;
             }
             try {
+                if (parts[1].equals(RivalChallenges.DUEL_NEWS)) {
+                    if (parts.length >= 6) {
+                        duels = new long[] {Long.parseLong(parts[2]), Long.parseLong(parts[3]), Long.parseLong(parts[4]),
+                                Long.parseLong(parts[5])};
+                    }
+                    continue;
+                }
                 long time = Long.parseLong(parts[2]);
                 long beaten = Long.parseLong(parts[3]);
                 long[] kept = best.get(parts[1]);
@@ -887,7 +922,7 @@ public final class RivalCrews implements ClearLog.Listener {
                 // a hand-edited row
             }
         }
-        if (best.isEmpty()) {
+        if (best.isEmpty() && duels == null) {
             return null;
         }
         List<String> runs = new ArrayList<>();
@@ -896,10 +931,43 @@ public final class RivalCrews implements ClearLog.Listener {
             runs.add(label + " in " + ClearLog.time(run.getValue()[0])
                     + (run.getValue()[1] > 0L ? " (beat ur " + ClearLog.time(run.getValue()[1]) + " :P)" : ""));
         }
-        String text = "hey " + mainName + ", " + crew.name() + " here. while u were gone we did " + String.join(", ", runs)
-                + ". catch up if u can lol";
+        String text = "hey " + mainName + ", " + crew.name() + " here."
+                + (runs.isEmpty() ? "" : " while u were gone we did " + String.join(", ", runs) + ".")
+                + (duels == null ? " catch up if u can lol" : " " + duelNews(duels));
         String sender = leader.name().length() <= 13 ? leader.name() : leader.name().substring(0, 13);
         return new Letter(sender, text.length() <= 200 ? text : text.substring(0, 197) + "...");
+    }
+
+    /**
+     * V3.4: the records page's head-to-head line for a player against its own crew, with each member it has met in a
+     * duel ("Duels vs Equinox: 1-3 (Nora404 1-2, xTanx 0-2)"); empty before their first duel.
+     */
+    public List<String> duelRecord(Character player) {
+        Crew crew = player == null || !on() ? null : crewOfAccount(player.getAccountID());
+        RivalRecord.Tally tally = crew == null ? RivalRecord.Tally.NONE : challenges.tally(crew, player.getId());
+        if (tally.played() == 0) {
+            return List.of();
+        }
+        List<String> foes = new ArrayList<>();
+        challenges.perFoe(crew, player.getId()).forEach((memberId, each) -> {
+            Citizen citizen = population.citizen(memberId);
+            foes.add((citizen == null ? "#" + memberId : citizen.name()) + " " + each.yours());
+        });
+        return List.of("Duels vs " + crew.name() + ": " + tally.yours()
+                + (foes.isEmpty() ? "" : " (" + String.join(", ", foes) + ")"));
+    }
+
+    /** The letter's word on the duels: {winner side of the latest, wins, losses, draws} from the player's side. */
+    static String duelNews(long[] duels) {
+        RivalRecord.Tally tally = new RivalRecord.Tally((int) duels[1], (int) duels[2], (int) duels[3]);
+        String score = tally.score();
+        return switch (tally.standing()) {
+            case "ahead" -> "duels are " + score + " to us now" + (duels[0] == 1 ? ", that last one was fun :P" : "")
+                    + ". come get some";
+            case "behind" -> "u lead the duels " + score + (duels[0] == 0 ? " after that last one" : "")
+                    + ". not for long lol";
+            default -> "duels are " + score + ". next one settles it";
+        };
     }
 
     /** !rivals: a player's crew, its members and levels, its bests. */

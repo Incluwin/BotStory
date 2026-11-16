@@ -144,6 +144,9 @@ public class ItemId {
     public static final int BLUE_SNAIL_SHELL = 4000000;
     public static final int RED_SNAIL_SHELL = 4000016;
 
+    // PvP reward currency (docs/PVP_PLAN.md PD7): untradeable by server rule, see ItemRestrictionPolicy.isServerBound
+    public static final int EVENT_TROPHY = 4000038;
+
     // Special scroll
     public static final int COLD_PROTECTION_SCROLl = 2041058;
     public static final int SPIKES_SCROLL = 2040727;

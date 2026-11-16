@@ -83,6 +83,67 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
     }
 
     /**
+     * What a close-range attack that hit {@code hits} targets earns: a combo orb (none for Shout), or a Marauder's or
+     * Thunder Breaker's energy charge per target. Public so a PvP duel hit (server.pvp.PvpHooks) earns what a
+     * monster hit does: a duel swing lists no monster, so it never gets here through numAttacked.
+     */
+    public static void gainOnHit(Character chr, Client c, int skillId, int hits) {
+        if (hits <= 0) {
+            return;
+        }
+        Integer comboBuff = chr.getBuffedValue(BuffStat.COMBO);
+        if (skillId != 1111008 && comboBuff != null) {
+            int orbcount = chr.getBuffedValue(BuffStat.COMBO);
+            int oid = chr.isCygnus() ? DawnWarrior.COMBO : Crusader.COMBO;
+            int advcomboid = chr.isCygnus() ? DawnWarrior.ADVANCED_COMBO : Hero.ADVANCED_COMBO;
+            Skill combo = SkillFactory.getSkill(oid);
+            Skill advcombo = SkillFactory.getSkill(advcomboid);
+            StatEffect ceffect;
+            int advComboSkillLevel = chr.getSkillLevel(advcombo);
+            if (advComboSkillLevel > 0) {
+                ceffect = advcombo.getEffect(advComboSkillLevel);
+            } else {
+                int comboLv = chr.getSkillLevel(combo);
+                if (comboLv <= 0 || chr.isGM()) {
+                    comboLv = SkillFactory.getSkill(oid).getMaxLevel();
+                }
+
+                if (comboLv > 0) {
+                    ceffect = combo.getEffect(comboLv);
+                } else {
+                    ceffect = null;
+                }
+            }
+            if (ceffect != null) {
+                if (orbcount < ceffect.getX() + 1) {
+                    int neworbcount = orbcount + 1;
+                    if (advComboSkillLevel > 0 && ceffect.makeChanceResult()) {
+                        if (neworbcount <= ceffect.getX()) {
+                            neworbcount++;
+                        }
+                    }
+
+                    int olv = chr.getSkillLevel(oid);
+                    if (olv <= 0) {
+                        olv = SkillFactory.getSkill(oid).getMaxLevel();
+                    }
+
+                    int duration = combo.getEffect(olv).getDuration();
+                    List<Pair<BuffStat, Integer>> stat = Collections.singletonList(new Pair<>(BuffStat.COMBO, neworbcount));
+                    chr.setBuffedValue(BuffStat.COMBO, neworbcount);
+                    duration -= (int) (currentServerTime() - chr.getBuffedStarttime(BuffStat.COMBO));
+                    c.sendPacket(PacketCreator.giveBuff(oid, duration, stat));
+                    chr.getMap().broadcastMessage(chr, PacketCreator.giveForeignBuff(chr.getId(), stat), false);
+                }
+            }
+        } else if (chr.getSkillLevel(chr.isCygnus() ? SkillFactory.getSkill(15100004) : SkillFactory.getSkill(5110001)) > 0 && (chr.getJob().isA(Job.MARAUDER) || chr.getJob().isA(Job.THUNDERBREAKER2))) {
+            for (int i = 0; i < hits; i++) {
+                chr.handleEnergyChargeGain();
+            }
+        }
+    }
+
+    /**
      * Applies close-range attack effects: animation broadcast, combo orbs, skill
      * cooldowns, and damage pipeline. For bots, pass {@link client.BotClient} —
      * its {@code sendPacket} is a no-op so UI feedback is silently skipped while
@@ -103,55 +164,7 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
                 chr.handleOrbconsume();
             }
         } else if (attack.numAttacked > 0) {
-            if (attack.skill != 1111008 && comboBuff != null) {
-                int orbcount = chr.getBuffedValue(BuffStat.COMBO);
-                int oid = chr.isCygnus() ? DawnWarrior.COMBO : Crusader.COMBO;
-                int advcomboid = chr.isCygnus() ? DawnWarrior.ADVANCED_COMBO : Hero.ADVANCED_COMBO;
-                Skill combo = SkillFactory.getSkill(oid);
-                Skill advcombo = SkillFactory.getSkill(advcomboid);
-                StatEffect ceffect;
-                int advComboSkillLevel = chr.getSkillLevel(advcombo);
-                if (advComboSkillLevel > 0) {
-                    ceffect = advcombo.getEffect(advComboSkillLevel);
-                } else {
-                    int comboLv = chr.getSkillLevel(combo);
-                    if (comboLv <= 0 || chr.isGM()) {
-                        comboLv = SkillFactory.getSkill(oid).getMaxLevel();
-                    }
-
-                    if (comboLv > 0) {
-                        ceffect = combo.getEffect(comboLv);
-                    } else {
-                        ceffect = null;
-                    }
-                }
-                if (ceffect != null) {
-                    if (orbcount < ceffect.getX() + 1) {
-                        int neworbcount = orbcount + 1;
-                        if (advComboSkillLevel > 0 && ceffect.makeChanceResult()) {
-                            if (neworbcount <= ceffect.getX()) {
-                                neworbcount++;
-                            }
-                        }
-
-                        int olv = chr.getSkillLevel(oid);
-                        if (olv <= 0) {
-                            olv = SkillFactory.getSkill(oid).getMaxLevel();
-                        }
-
-                        int duration = combo.getEffect(olv).getDuration();
-                        List<Pair<BuffStat, Integer>> stat = Collections.singletonList(new Pair<>(BuffStat.COMBO, neworbcount));
-                        chr.setBuffedValue(BuffStat.COMBO, neworbcount);
-                        duration -= (int) (currentServerTime() - chr.getBuffedStarttime(BuffStat.COMBO));
-                        c.sendPacket(PacketCreator.giveBuff(oid, duration, stat));
-                        chr.getMap().broadcastMessage(chr, PacketCreator.giveForeignBuff(chr.getId(), stat), false);
-                    }
-                }
-            } else if (chr.getSkillLevel(chr.isCygnus() ? SkillFactory.getSkill(15100004) : SkillFactory.getSkill(5110001)) > 0 && (chr.getJob().isA(Job.MARAUDER) || chr.getJob().isA(Job.THUNDERBREAKER2))) {
-                for (int i = 0; i < attack.numAttacked; i++) {
-                    chr.handleEnergyChargeGain();
-                }
-            }
+            gainOnHit(chr, c, attack.skill, attack.numAttacked);
         }
         if (attack.numAttacked > 0 && attack.skill == DragonKnight.SACRIFICE) {
             int totDamageToOneMonster = 0; // sacrifice attacks only 1 mob with 1 attack

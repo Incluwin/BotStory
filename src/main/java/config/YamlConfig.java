@@ -21,6 +21,7 @@ public class YamlConfig {
     public KnowledgeConfig knowledge;
     public ModsConfig mods;
     public EconomyConfig economy;
+    public PvpConfig pvp;
 
     private static YamlConfig loadConfig() {
         try {
@@ -48,6 +49,10 @@ public class YamlConfig {
                 config.economy = new EconomyConfig();
             }
             config.economy.validate();
+            if (config.pvp == null) {
+                config.pvp = new PvpConfig();
+            }
+            config.pvp.validate();
             return config;
         } catch (FileNotFoundException e) {
             throw new RuntimeException("Could not read config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage(), e);

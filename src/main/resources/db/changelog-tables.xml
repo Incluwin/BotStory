@@ -734,4 +734,13 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="59-pvp-match" author="ganre">
+        <!-- Finished PvP duels that count for a record (V3.4 rival challenges first) and their fighters. Written
+             behind population.RIVAL_CHALLENGES_ENABLED and !pvp challenge. See docs/PVP_PLAN.md. -->
+        <sqlFile path="db/tables/050-pvp-match.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/050-pvp-match-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

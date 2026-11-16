@@ -33,7 +33,14 @@ public class AranComboHandler extends AbstractPacketHandler {
 
     @Override
     public void handlePacket(InPacket p, Client c) {
-        final Character player = c.getPlayer();
+        countHit(c.getPlayer());
+    }
+
+    /**
+     * One hit on the Aran's combo counter, as the client reports for each monster its attack hits. Public so a PvP
+     * duel hit (server.pvp.PvpHooks) counts too: the client reports monster hits only, so a duel never builds combo.
+     */
+    public static void countHit(Character player) {
         int skillLevel = player.getSkillLevel(SkillFactory.getSkill(Aran.COMBO_ABILITY));
         if (GameConstants.isAran(player.getJob().getId()) && (skillLevel > 0 || player.getJob().getId() == 2000)) {
             final long currentTime = currentServerTime();

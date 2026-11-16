@@ -329,6 +329,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
         if (map.isOwnershipRestricted(player)) {
             return false;
         }
+        server.pvp.probe.PvpProbe.onAttackApplied(player, attack);
 
         Skill theSkill = null;
         StatEffect attackEffect = null;
@@ -336,6 +337,9 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
         try {
             if (player.isBanned()) {
                 return false;
+            }
+            if (attack.skill == 0) {
+                server.pvp.PvpHooks.onAttack(player, attack); // a duel's PvP hits (docs/PVP_PLAN.md V1)
             }
             if (attack.skill != 0) {
                 theSkill = SkillFactory.getSkill(attack.skill); // thanks Conrad for noticing some Aran skills not consuming MP
@@ -361,6 +365,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                 if (server.living.LivingWorldHooks.watchesHabits(player)) { // a companion owner's skill mix (F2)
                     server.living.LivingWorldHooks.skillUsed(player, attack.skill, landed(attack));
                 }
+                server.pvp.PvpHooks.onAttack(player, attack); // a duel's PvP hits, once the skill is paid for
 
                 int mobCount = attackEffect.getMobCount();
                 if (attack.skill != Cleric.HEAL) {
@@ -522,8 +527,10 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     }
 
                     if (player.isAran()) {
-                        if (player.getBuffedValue(BuffStat.WK_CHARGE) != null) {
-                            Skill snowCharge = SkillFactory.getSkill(Aran.SNOW_CHARGE);
+                        Skill snowCharge = SkillFactory.getSkill(Aran.SNOW_CHARGE);
+                        // only Snow Charge's own charge slows, as the charges below check: an Aran without the skill
+                        // looked up level 0 and threw on every attack (check run 25, 2026-11-13)
+                        if (player.isBuffFrom(BuffStat.WK_CHARGE, snowCharge) && player.getSkillLevel(snowCharge) > 0) {
                             if (totDamageToOneMonster > 0) {
                                 MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(Collections.singletonMap(MonsterStatus.SPEED, snowCharge.getEffect(player.getSkillLevel(snowCharge)).getX()), snowCharge, null, false);
                                 long duration = SECONDS.toMillis(snowCharge.getEffect(player.getSkillLevel(snowCharge)).getY());
@@ -1051,6 +1058,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
             p.skip(4);
             ret.position.setLocation(p.readShort(), p.readShort());
         }
+        server.pvp.probe.PvpProbe.onAttackParsed(chr, ret);
         return ret;
     }
 

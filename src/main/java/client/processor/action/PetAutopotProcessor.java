@@ -192,6 +192,9 @@ public class PetAutopotProcessor {
     }
 
     public static void runAutopotAction(Client c, short slot, int itemid) {
+        if (c != null && server.pvp.PvpHooks.refusesDrink(c.getPlayer(), itemid)) {
+            return; // a duel's heal window (docs/PVP_PLAN.md V1): the pet or Agent drinks when it has passed
+        }
         AutopotAction action = new AutopotAction(c, slot, itemid);
         action.run();
     }

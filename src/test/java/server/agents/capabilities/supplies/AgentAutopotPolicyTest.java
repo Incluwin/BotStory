@@ -70,6 +70,25 @@ class AgentAutopotPolicyTest {
         assertTrue(choice.ranking().percentageBased());
     }
 
+    @Test
+    void recoveryStockCountsWhatSelectWouldDrinkTimesQuantity() {
+        Item white = item(2000002, 10, 1);       // 10 x 300 HP
+        Item rate = item(2020013, 2, 2);         // 2 x 30% of 1,000 HP
+        Item blue = item(2000003, 50, 3);        // MP only
+        Item buff = item(2001002, 5, 4);         // a buff item is never drunk as a potion
+        Item empty = item(2000000, 0, 5);
+        Map<Integer, StatEffect> effects = Map.of(
+                2000002, effect(300, 0, 0, 0, false),
+                2020013, effect(0, 0, 0.3, 0, false),
+                2000003, effect(0, 100, 0, 0, false),
+                2001002, effect(100, 100, 0, 0, true),
+                2000000, effect(50, 0, 0, 0, false));
+        List<Item> items = List.of(white, rate, blue, buff, empty);
+
+        assertEquals(3_600L, AgentAutopotPolicy.recoveryStock(items, effects::get, 1000, 500, true));
+        assertEquals(5_000L, AgentAutopotPolicy.recoveryStock(items, effects::get, 1000, 500, false));
+    }
+
     private static Item item(int itemId, int quantity, int position) {
         Item item = mock(Item.class);
         when(item.getItemId()).thenReturn(itemId);

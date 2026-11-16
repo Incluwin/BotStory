@@ -345,6 +345,31 @@ public final class CombatFormulaProvider {
     }
 
     /**
+     * PvP (docs/PVP_PLAN.md section 2 step 1): one target's lines as {@code attacker} would roll them on a monster
+     * with no defense, no avoid and no element. Character modifiers, crits and Shadow Partner are kept; whether the
+     * attack lands at all is the caller's roll.
+     */
+    public List<Integer> rollPvpLines(Character attacker, int hits, int skillId, DamageProfile profile) {
+        int lineCount = Math.max(1, hits);
+        if (profile.alwaysHit()) {
+            return rollDamageLines(lineCount, profile.minDamage(), profile.maxDamage(), 1.0d);
+        }
+        long rawMax = applyCharacterDamageModifiers(profile.maxDamage(), attacker, skillId);
+        long rawMin = applyCharacterDamageModifiers(profile.minDamage(), attacker, skillId);
+        int max = (int) Math.max(1L, Math.min(Integer.MAX_VALUE, rawMax));
+        int min = (int) Math.min(max, Math.max(1L, rawMin));
+        if (profile.magicAttack()) {
+            return rollDamageLines(lineCount, min, max, 1.0d);
+        }
+        CritProfile crit = profile.noCrit() ? CritProfile.NONE : resolveCritProfile(attacker);
+        if (lineCount > 1 && attacker.getBuffEffect(BuffStat.SHADOWPARTNER) != null) {
+            return rollWithShadowPartnerPhysical(attacker, lineCount, new int[] {min, max}, 1.0d, crit, 0)
+                    .damageLines();
+        }
+        return rollDamageLinesWithCrit(lineCount, min, max, 1.0d, crit.critChance(), crit.critMultiplier()).lines();
+    }
+
+    /**
      * Deterministic counterpart to {@link #makeTarget}: estimates the total damage the bot should
      * deal to one monster after character modifiers, elemental effects, accuracy, crits, Shadow
      * Partner, and monster defense. Used by bot planning so skill choice is based on expected output
@@ -644,7 +669,32 @@ public final class CombatFormulaProvider {
         }
         int sourceId = effect.getSourceId();
         return sourceId == ThunderBreaker.SPARK || sourceId == DawnWarrior.FINAL_ATTACK
-                || sourceId == WindArcher.FINAL_ATTACK;
+                || sourceId == WindArcher.FINAL_ATTACK
+                // Body Pressure's damage is its touch hit's (55 at level 11); counted here it cut every swing to 55%
+                || sourceId == Aran.BODY_PRESSURE;
+    }
+
+    /** A combo older than this has lapsed (AranComboHandler.countHit restarts it after 3 s). */
+    private static final long ARAN_COMBO_DECAY_MS = 3_000L;
+
+    private static int aranCombo(Character bot) {
+        int combo = bot.getCombo();
+        return combo <= 0 || net.server.Server.getInstance().getCurrentTime() - bot.getLastCombo() > ARAN_COMBO_DECAY_MS
+                ? 0 : combo;
+    }
+
+    /**
+     * Combo Critical (Aran 3rd job): each 10 combo, up to x of them, adds y% crit rate and damage% crit damage
+     * (String.wz level 20: "Critical Damage 10%, success rate 6%, max 10 additional combos"); no combo, no crit.
+     * Read like Critical Shot it was a 100% crit at damage% of the hit (its WZ has no prop), so every line a
+     * third-job Aran bot rolled landed at 1-10% of its damage, monsters and PvP alike (found 2026-11-14).
+     */
+    static CritProfile comboCritical(int maxSteps, int ratePerStep, int damagePerStep, int combo) {
+        int steps = Math.min(Math.max(0, maxSteps), Math.max(0, combo) / 10);
+        if (steps == 0) {
+            return CritProfile.NONE;
+        }
+        return new CritProfile(Math.min(1.0, steps * ratePerStep / 100.0), 1.0 + steps * damagePerStep / 100.0);
     }
 
     /**
@@ -667,6 +717,12 @@ public final class CombatFormulaProvider {
             if (skill == null) continue;
             StatEffect effect = skill.getEffect(level);
             if (effect == null) continue;
+            if (skillId == Aran.COMBO_CRITICAL) {
+                CritProfile combo = comboCritical(effect.getX(), effect.getY(), effect.getDamage(), aranCombo(bot));
+                critChance = Math.min(1.0, critChance + combo.critChance());
+                critMultiplier = combo.critMultiplier();
+                break;
+            }
             // prop = crit chance [0,1]; damage = total crit multiplier % (e.g. 200 → 2.0x)
             critChance = Math.min(1.0, critChance + effect.getProp());
             critMultiplier = effect.getDamage() / 100.0;

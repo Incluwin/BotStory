@@ -34,6 +34,14 @@ public final class CosmicAgentPotionCheckRequestBridge {
                 : new AutopotSelection(choice.position(), choice.itemId());
     }
 
+    /** HP the Agent's carried potions restore all told; 0 for a character no Agent controls. */
+    public static long hpPotionStock(Character agent) {
+        if (!AgentCharacterGatewayRuntime.characters().isHeadlessControlled(agent)) {
+            return 0;
+        }
+        return AgentPotionService.recoveryStock(agent, true);
+    }
+
     /** F8.2: true while this Agent's autopot HP drink waits a beat (AgentLateDrinkRuntime); false = drink now. */
     public static boolean holdsHpDrink(Character agent) {
         if (!AgentImperfections.on()) {
