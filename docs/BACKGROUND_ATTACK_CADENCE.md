@@ -1,6 +1,7 @@
 # Background attack cadence: fix and economy impact (2026-11-09)
 
-Branch `fix/background-attack-cadence` (off `feat/companion-manager` 5e4aed6a7). Off by default. Not deployed.
+Branch `fix/background-attack-cadence`, rebased on 2026-11-16 onto `feat/companion-manager` 5d9fcfc58 (which carries PvP
+V0-V3). Off by default. Not deployed.
 
 ## 1. The bug and the fix
 
@@ -52,8 +53,10 @@ Branch `fix/background-attack-cadence` (off `feat/companion-manager` 5e4aed6a7).
     a second, delayed rise in income.
   - `BenchDutyChooser` and `CitizenSpots` rank camps by these rows. A camp measured after the switch looks better than
     one measured before it.
-  - PvP V4 grind-minutes (`docs/PVP_V0_RESULTS.md` V0.6) are built on these rows. After the fix, a GMin reward is worth
-    about half a real grinding minute until the table is measured again.
+  - PvP grind-minutes (`docs/PVP_V0_RESULTS.md` V0.6) are a frozen copy of these rows in
+    `scripts/config/pvp/grind-minutes.yaml`, read by `server.pvp.PvpGrindMinutes`. They size the rival-challenge rewards,
+    which are on in the main line. After the fix, a GMin reward is worth about half a real grinding minute until that file
+    is measured again.
 
 ## 3. Expected economy impact
 
@@ -108,7 +111,8 @@ Branch `fix/background-attack-cadence` (off `feat/companion-manager` 5e4aed6a7).
    - MOB_DROP and NPC_SALE per day;
    - the next daily close's growth.
    - Turn the switch off again if growth goes over about 5 % a day.
-4. **Re-run PvP V0.6** (the grind-minute table) on full-rate numbers before V4 rewards are sized from it.
+4. **Re-run PvP V0.6** on full-rate numbers and rewrite `scripts/config/pvp/grind-minutes.yaml`, so the rival-challenge
+   rewards keep their intended size.
 
 ## 5. Same kind of bug, left alone (follow-ups)
 
