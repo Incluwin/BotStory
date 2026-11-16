@@ -77,6 +77,10 @@ public final class PopulationLoader {
             "rival.challenge.ahead", "rival.challenge.behind", "rival.challenge.even", "rival.record.ahead",
             "rival.record.behind", "rival.record.even", "rival.win.smega", "rival.rematch", "rival.rematch.yes",
             "rival.rematch.no", "rival.rematch.later",
+            // the coliseum ladder's opponent (coliseum.Coliseum, docs/PVP_PLAN.md V4): before the first round, after a
+            // round it took or lost, and after the match
+            "ladder.intro", "ladder.intro.new", "ladder.round.won", "ladder.round.lost", "ladder.win", "ladder.lose",
+            "ladder.draw",
             // a beginner citizen asking for a mentor as it posts its request (F4.5, NeedLedger.mentor)
             "need.mentor",
             // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)

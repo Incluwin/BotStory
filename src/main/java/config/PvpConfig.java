@@ -96,6 +96,22 @@ public class PvpConfig {
      * less, and the learned matchups count a pairing at most once in that time (server.pvp.PvpPairings). 0: no limit.
      */
     public int PVP_PAIRING_REPEAT_MINUTES = 60;
+    /**
+     * The coliseum ladder (docs/PVP_PLAN.md V4): the Arena Master and Quartermaster in Ariant, rated best-of-three
+     * matches against citizens, and citizens' own background ladder matches. Needs PVP_ENABLED. Technical:
+     * server.living.population.coliseum.Coliseum.
+     */
+    public boolean COLISEUM_ENABLED = false;
+    /** A coliseum round's length; a round still open then goes to the side with more of its HP left. */
+    public int COLISEUM_ROUND_SECONDS = 90;
+    /** The ladder's entry fee, in mesos a level of the human (a sink). */
+    public int COLISEUM_FEE_PER_LEVEL = 20;
+    /** Arena tonics a fighter may drink a round, the share of max HP and MP each restores, and the gap between two. */
+    public int COLISEUM_TONICS = 3;
+    public int COLISEUM_TONIC_PERCENT = 25;
+    public int COLISEUM_TONIC_GAP_MS = 8000;
+    /** Background ladder matches between citizens, simulated each social minute (none while a human watches; V4.4). */
+    public int COLISEUM_SIM_PER_MINUTE = 20;
 
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {
@@ -129,6 +145,12 @@ public class PvpConfig {
         }
         if (PVP_ROUND_SECONDS < 10 || PVP_COUNTDOWN_SECONDS < 0) {
             throw new IllegalArgumentException("pvp: PVP_ROUND_SECONDS >= 10 and PVP_COUNTDOWN_SECONDS >= 0");
+        }
+        if (COLISEUM_ROUND_SECONDS < 10 || COLISEUM_FEE_PER_LEVEL < 0 || COLISEUM_TONICS < 0
+                || COLISEUM_TONIC_PERCENT < 0 || COLISEUM_TONIC_PERCENT > 100 || COLISEUM_TONIC_GAP_MS < 0
+                || COLISEUM_SIM_PER_MINUTE < 0) {
+            throw new IllegalArgumentException("pvp: COLISEUM_ROUND_SECONDS >= 10, COLISEUM_TONIC_PERCENT 0..100,"
+                    + " other COLISEUM_* values >= 0");
         }
     }
 }

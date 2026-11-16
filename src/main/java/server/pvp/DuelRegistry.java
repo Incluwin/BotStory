@@ -38,6 +38,11 @@ public final class DuelRegistry {
      * and in no other duel; the reason comes back as an {@link IllegalStateException} message otherwise.
      */
     public static DuelField start(MapleMap map, List<Character> sideA, List<Character> sideB) {
+        return start(map, sideA, sideB, null);
+    }
+
+    /** As {@link #start(MapleMap, List, List)} under {@code rules} (a coliseum round); null is a field duel's. */
+    public static DuelField start(MapleMap map, List<Character> sideA, List<Character> sideB, DuelField.Rules rules) {
         if (map == null || sideA.isEmpty() || sideB.isEmpty()) {
             throw new IllegalStateException("a duel needs two sides on one map");
         }
@@ -56,7 +61,7 @@ public final class DuelRegistry {
                 }
             }
         }
-        DuelField field = new DuelField(IDS.incrementAndGet(), map, sideA, sideB);
+        DuelField field = new DuelField(IDS.incrementAndGet(), map, sideA, sideB, rules);
         for (Character fighter : field.characters()) {
             if (BY_FIGHTER.putIfAbsent(fighter.getId(), field) != null) {
                 field.characters().forEach(other -> BY_FIGHTER.remove(other.getId(), field));

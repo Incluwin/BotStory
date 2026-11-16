@@ -1,6 +1,8 @@
 package server.pvp;
 
+import client.Character;
 import config.PvpConfig;
+import server.pvp.probe.PvpCalibration;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -90,11 +92,16 @@ public final class DuelSim {
 
     /** One round: 0 when {@code a} wins, 1 when {@code b} does, -1 for a draw. */
     public static Outcome round(Fighter a, Fighter b, PvpConfig config, Random random) {
+        return round(a, b, config, random, config.PVP_ROUND_SECONDS);
+    }
+
+    /** As {@link #round(Fighter, Fighter, PvpConfig, Random)} with a round of {@code roundSeconds} (the coliseum's). */
+    public static Outcome round(Fighter a, Fighter b, PvpConfig config, Random random, double roundSeconds) {
         Side[] sides = {
                 new Side(a, random.nextDouble() * ATTACK_INTERVAL_S),
                 new Side(b, random.nextDouble() * ATTACK_INTERVAL_S)};
         double window = config.PVP_HEAL_WINDOW_MS / 1000d;
-        double limit = config.PVP_ROUND_SECONDS;
+        double limit = roundSeconds;
         double now = 0;
         while (true) {
             int next = sides[0].nextAttackS <= sides[1].nextAttackS ? 0 : 1;
@@ -165,4 +172,56 @@ public final class DuelSim {
         int index = (int) Math.min(sorted.size() - 1, Math.max(0, Math.round(q * (sorted.size() - 1))));
         return sorted.get(index);
     }
+
+    /** A real character as the sim's fighter: its loadout under the damage model, the even-class factors and guards. */
+    public static Fighter fighterOf(Character chr, PvpReference reference, PvpConfig config) {
+        PvpCalibration.Sample sample = PvpCalibration.of(chr);
+        boolean magic = sample.jobClass() == 2;
+        int jobId = chr.getJob().getId();
+        int level = chr.getLevel();
+        long ownBase = Math.max(1L, sample.gearBase());
+        long median = reference.gearMedian(jobId, level);
+        double medianBase = median > 0 ? median : ownBase;
+        PvpDamageModel.Attacker attacker = new PvpDamageModel.Attacker(level, jobId, ownBase, magic);
+        // the learned rate too (PD16), so raw and coefficient share one rate as in a duel
+        double rawDps = PvpDamageModel.rate(attacker, reference, config) * ownBase / medianBase;
+        double coefficient = PvpDamageModel.coefficient(attacker, reference, config);
+        server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
+        int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
+        int avoid = formulas.getTotalAvoidability(chr);
+        int wdef = chr.getTotalWdef();
+        int mdef = chr.getTotalMdef();
+        if (config.PVP_EVEN_CLASSES) {
+            // as the duel does (PD17): accuracy, avoid and defense against the class's own median at the band
+            PvpHitBalance balance = PvpHitBalance.current();
+            accuracy = (int) Math.round(accuracy * balance.accuracyFactor(jobId, level));
+            avoid = (int) Math.round(avoid * balance.avoidFactor(jobId, level));
+            wdef = (int) Math.round(wdef * balance.wdefFactor(jobId, level));
+            mdef = (int) Math.round(mdef * balance.mdefFactor(jobId, level));
+        }
+        double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
+        return new Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
+                rawDps, coefficient, accuracy, avoid, wdef,
+                mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId)
+                * (PvpToughness.on(config)   // the sim knows no attacker here: weapon hits' value
+                ? PvpToughness.multiplier(jobId, level, config, false) : 1d),
+                reference.hRef(level));
+    }
+
+    /** Magic Guard's share as the character would have it buffed: the buff if on, else its learned level. */
+    private static int magicGuardPercent(Character chr) {
+        Integer buffed = chr.getBuffedValue(client.BuffStat.MAGIC_GUARD);
+        if (buffed != null) {
+            return buffed;
+        }
+        for (int skillId : new int[] {2001002, 12001001}) {
+            client.Skill skill = client.SkillFactory.getSkill(skillId);
+            int skillLevel = skill == null ? 0 : chr.getSkillLevel(skill);
+            if (skillLevel > 0) {
+                return skill.getEffect(skillLevel).getX();
+            }
+        }
+        return 0;
+    }
+
 }

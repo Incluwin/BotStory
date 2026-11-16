@@ -1754,6 +1754,13 @@ mods:
 # class pair's record came from 10-40 distinct pairings. Practice now skips a partner a citizen fought this many minutes
 # ago or less (its report counts those "kept from a recent partner"), and the learned matchups count a pairing at most
 # once in that time. In memory: a restart forgets it. 0: no limit. Technical: server.pvp.PvpPairings.
+# COLISEUM_* (docs/PVP_PLAN.md V4): the coliseum ladder in Ariant. Tigun, the Arena Master, matches a human Lv 30+ with
+# the citizen in its bracket (Rookie 30-59, Veteran 60-99, Champion 100+) within 5 levels whose Glicko-2 rating is
+# nearest, for COLISEUM_FEE_PER_LEVEL mesos a level; best of three COLISEUM_ROUND_SECONDS rounds on a private copy of a
+# Battle Arena floor, with COLISEUM_TONICS arena tonics a round (each COLISEUM_TONIC_PERCENT of max HP and MP,
+# COLISEUM_TONIC_GAP_MS apart) in place of your own potions. Ratings live in pvp_rating; citizens play
+# COLISEUM_SIM_PER_MINUTE simulated ladder matches among themselves each social minute, so the ladder moves while you
+# are away. Needs PVP_ENABLED. Technical: server.living.population.coliseum.Coliseum.
 pvp:
     PVP_ENABLED: true
     PVP_TTK_SECONDS: 12
@@ -1786,3 +1793,10 @@ pvp:
     PVP_LEARN_MATCHUPS: true
     PVP_LIVE_GEAR_MEDIANS: true
     PVP_PAIRING_REPEAT_MINUTES: 60
+    COLISEUM_ENABLED: false
+    COLISEUM_ROUND_SECONDS: 90
+    COLISEUM_FEE_PER_LEVEL: 20
+    COLISEUM_TONICS: 3
+    COLISEUM_TONIC_PERCENT: 25
+    COLISEUM_TONIC_GAP_MS: 8000
+    COLISEUM_SIM_PER_MINUTE: 20

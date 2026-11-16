@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|sim [n]|rating [name]]");
     }
 
     @Override
@@ -69,7 +69,48 @@ public class PvpCommand extends Command {
             case "rates" -> rates(gm);
             case "learned" -> learned(gm, params);
             case "challenge" -> challenge(gm, params);
+            case "coliseum" -> coliseum(gm, params);
             default -> gm.yellowMessage(getDescription());
+        }
+    }
+
+    /**
+     * {@code !pvp coliseum} (V4): with no word, a ladder match for the GM against the nearest-rated free citizen; with a
+     * citizen's name, against that one (free, on the GM's channel). Both run even with COLISEUM_ENABLED off and pay as a
+     * test. {@code status} lists the matches running, {@code sim [n]} plays n citizen ladder matches now, {@code rating
+     * [name]} prints a rating.
+     */
+    private static void coliseum(Character gm, String[] params) {
+        server.living.population.Population population = server.living.population.Population.get();
+        if (population == null || population.coliseum() == null) {
+            gm.yellowMessage("PvP: no population.");
+            return;
+        }
+        var coliseum = population.coliseum();
+        String sub = params.length > 1 ? params[1] : "";
+        switch (sub.toLowerCase(java.util.Locale.ROOT)) {
+            case "" -> {
+                coliseum.request(gm, 0, true);
+                gm.yellowMessage("PvP: looking for your ladder opponent.");
+            }
+            case "status" -> coliseum.status().forEach(gm::yellowMessage);
+            case "sim" -> gm.yellowMessage("PvP: " + coliseum.simulateNow(Math.max(1, Math.min(200, number(params, 2, 20))))
+                    + " citizen ladder match(es) played.");
+            case "rating" -> {
+                Character who = params.length > 2 ? gm.getClient().getChannelServer().getPlayerStorage()
+                        .getCharacterByName(params[2]) : gm;
+                gm.yellowMessage(who == null ? "PvP: nobody called " + params[2] + " on this channel."
+                        : "PvP: " + coliseum.rating(who));
+            }
+            default -> {
+                Character citizen = gm.getClient().getChannelServer().getPlayerStorage().getCharacterByName(sub);
+                if (citizen == null) {
+                    gm.yellowMessage("PvP: nobody called " + sub + " on this channel.");
+                    return;
+                }
+                coliseum.request(gm, citizen.getId(), true);
+                gm.yellowMessage("PvP: asking " + citizen.getName() + " for a ladder match.");
+            }
         }
     }
 
@@ -574,53 +615,7 @@ public class PvpCommand extends Command {
     }
 
     static DuelSim.Fighter simFighter(Character chr, PvpReference reference, PvpConfig config) {
-        PvpCalibration.Sample sample = PvpCalibration.of(chr);
-        boolean magic = sample.jobClass() == 2;
-        int jobId = chr.getJob().getId();
-        int level = chr.getLevel();
-        long ownBase = Math.max(1L, sample.gearBase());
-        long median = reference.gearMedian(jobId, level);
-        double medianBase = median > 0 ? median : ownBase;
-        PvpDamageModel.Attacker attacker = new PvpDamageModel.Attacker(level, jobId, ownBase, magic);
-        // the learned rate too (PD16), so raw and coefficient share one rate as in a duel
-        double rawDps = PvpDamageModel.rate(attacker, reference, config) * ownBase / medianBase;
-        double coefficient = PvpDamageModel.coefficient(attacker, reference, config);
-        server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
-        int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
-        int avoid = formulas.getTotalAvoidability(chr);
-        int wdef = chr.getTotalWdef();
-        int mdef = chr.getTotalMdef();
-        if (config.PVP_EVEN_CLASSES) {
-            // as the duel does (PD17): accuracy, avoid and defense against the class's own median at the band
-            server.pvp.PvpHitBalance balance = server.pvp.PvpHitBalance.current();
-            accuracy = (int) Math.round(accuracy * balance.accuracyFactor(jobId, level));
-            avoid = (int) Math.round(avoid * balance.avoidFactor(jobId, level));
-            wdef = (int) Math.round(wdef * balance.wdefFactor(jobId, level));
-            mdef = (int) Math.round(mdef * balance.mdefFactor(jobId, level));
-        }
-        double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
-        return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
-                rawDps, coefficient, accuracy, avoid, wdef,
-                mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId)
-                * (server.pvp.PvpToughness.on(config)   // the sim knows no attacker here: weapon hits' value
-                ? server.pvp.PvpToughness.multiplier(jobId, level, config, false) : 1d),
-                reference.hRef(level));
-    }
-
-    /** Magic Guard's share as the character would have it buffed: the buff if on, else its learned level. */
-    private static int magicGuardPercent(Character chr) {
-        Integer buffed = chr.getBuffedValue(client.BuffStat.MAGIC_GUARD);
-        if (buffed != null) {
-            return buffed;
-        }
-        for (int skillId : new int[] {2001002, 12001001}) {
-            client.Skill skill = client.SkillFactory.getSkill(skillId);
-            int skillLevel = skill == null ? 0 : chr.getSkillLevel(skill);
-            if (skillLevel > 0) {
-                return skill.getEffect(skillLevel).getX();
-            }
-        }
-        return 0;
+        return DuelSim.fighterOf(chr, reference, config);
     }
 
     private static int number(String[] params, int index, int fallback) {

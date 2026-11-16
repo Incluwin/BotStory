@@ -37,8 +37,24 @@ public final class DuelGround {
         return open(Stagehand.LIVE, owner);
     }
 
+    /**
+     * A copy of map {@code mapId} on {@code owner}'s channel (a coliseum arena floor, docs/PVP_PLAN.md V4), whose
+     * logouts save {@code exitMapId}; null when none can be made. Fighters enter at a point of the caller's choosing
+     * ({@link #enter(Character, Point)}) and {@link #close} still puts each back where it stood before.
+     */
+    public static DuelGround open(Character owner, int mapId, int exitMapId) {
+        return open(Stagehand.LIVE, owner, mapId, exitMapId);
+    }
+
     static DuelGround open(Stagehand hands, Character owner) {
-        if (owner == null || owner.getMap() == null || owner.getClient() == null) {
+        if (owner == null || owner.getMap() == null) {
+            return null;
+        }
+        return open(hands, owner, owner.getMapId(), owner.getMapId());
+    }
+
+    static DuelGround open(Stagehand hands, Character owner, int mapId, int exitMapId) {
+        if (owner == null || owner.getClient() == null) {
             return null;
         }
         DuelGround[] made = new DuelGround[1];
@@ -55,8 +71,7 @@ public final class DuelGround {
                 left(chr);
             }
         };
-        int mapId = owner.getMapId();
-        Stagehand.Stage stage = hands.open(owner, mapId, mapId, exits);
+        Stagehand.Stage stage = hands.open(owner, mapId, exitMapId, exits);
         if (stage == null) {
             return null;
         }
@@ -70,13 +85,20 @@ public final class DuelGround {
 
     /** {@code chr} steps onto the copy at the spot it stands on now (once). */
     public void enter(Character chr) {
-        if (chr == null || stage.ended() || inside.putIfAbsent(chr.getId(), chr) != null) {
+        if (chr == null) {
             return;
         }
-        Point at = new Point(chr.getPosition());
-        spots.put(chr.getId(), new Spot(chr.getMapId(), at));
+        enter(chr, new Point(chr.getPosition()));
+    }
+
+    /** {@code chr} steps onto the copy at {@code onStage} (once); {@link #close} returns it to where it stands now. */
+    public void enter(Character chr, Point onStage) {
+        if (chr == null || onStage == null || stage.ended() || inside.putIfAbsent(chr.getId(), chr) != null) {
+            return;
+        }
+        spots.put(chr.getId(), new Spot(chr.getMapId(), new Point(chr.getPosition())));
         stage.register(chr);
-        hands.warp(chr, stage.map(), at);
+        hands.warp(chr, stage.map(), new Point(onStage));
     }
 
     /** Whether {@code characterId} left the copy on its own (a portal, a death, a disconnect). */

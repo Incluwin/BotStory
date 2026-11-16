@@ -44,6 +44,22 @@ public final class DuelField {
 
     public enum State { COUNTDOWN, FIGHTING, ENDED }
 
+    /**
+     * A duel's rules: the round's length, and in the coliseum (PD4, docs/PVP_PLAN.md section 2 "Healing rules") arena
+     * tonics in place of the fighters' own potions: {@code tonics} a round, each restoring {@code tonicPercent} of max
+     * HP and MP, {@code tonicGapMs} apart. A potion key or an autopot drinks a tonic instead, and the potion stays.
+     */
+    public record Rules(int roundSeconds, int tonics, int tonicPercent, long tonicGapMs) {
+        /** A field duel: the configured round, own potions under the heal allowance. */
+        public static Rules field(PvpConfig config) {
+            return new Rules(config.PVP_ROUND_SECONDS, 0, 0, 0L);
+        }
+
+        public boolean tonicsOnly() {
+            return tonics > 0;
+        }
+    }
+
     /** A fighter and everything the duel keeps about it. Mutable fields are guarded by the field's lock. */
     public static final class Fighter {
         final Character chr;
@@ -72,6 +88,10 @@ public final class DuelField {
         double paceShare;
         final DuelBrain.Mind mind = new DuelBrain.Mind();
         final DuelStats stats = new DuelStats();
+        /** Coliseum: arena tonics left this round, when the last one was drunk, and when a refusal was last said. */
+        int tonicsLeft;
+        long lastTonicAtMs;
+        long lastTonicNoteAtMs;
 
         Fighter(Character chr, int side, long keepMs) {
             this.chr = chr;
@@ -102,6 +122,7 @@ public final class DuelField {
     private final long id;
     private final MapleMap map;
     private final PvpConfig config;
+    private final Rules rules;
     private final Map<Integer, Fighter> fighters = new LinkedHashMap<>();
     private volatile State state = State.COUNTDOWN;
     private long startedAtMs;
@@ -112,9 +133,14 @@ public final class DuelField {
     private ScheduledFuture<?> ticker;
 
     DuelField(long id, MapleMap map, List<Character> sideA, List<Character> sideB) {
+        this(id, map, sideA, sideB, null);
+    }
+
+    DuelField(long id, MapleMap map, List<Character> sideA, List<Character> sideB, Rules rules) {
         this.id = id;
         this.map = map;
         this.config = YamlConfig.config.pvp;
+        this.rules = rules == null ? Rules.field(config) : rules;
         long keepMs = Math.max(1000L, config.PVP_LAG_WINDOW_MS * 2L);
         sideA.forEach(chr -> fighters.put(chr.getId(), new Fighter(chr, 0, keepMs)));
         sideB.forEach(chr -> fighters.put(chr.getId(), new Fighter(chr, 1, keepMs)));
@@ -132,6 +158,10 @@ public final class DuelField {
         return map;
     }
 
+    public Rules rules() {
+        return rules;
+    }
+
     public List<Character> characters() {
         return fighters.values().stream().map(f -> f.chr).toList();
     }
@@ -145,7 +175,7 @@ public final class DuelField {
         startedAtMs = now;
         lastTickMs = now;
         fightStartsAtMs = now + config.PVP_COUNTDOWN_SECONDS * 1000L;
-        roundEndsAtMs = fightStartsAtMs + config.PVP_ROUND_SECONDS * 1000L;
+        roundEndsAtMs = fightStartsAtMs + rules.roundSeconds() * 1000L;
         tell("Duel: " + names(0) + " against " + names(1) + ". No deaths: a knock-out ends it, and HP and MP come"
                 + " back after.");
         for (Fighter fighter : fighters.values()) {
@@ -205,8 +235,9 @@ public final class DuelField {
                         fighter.lastMp = fighter.chr.getMp();
                         fighter.hpAllowance = healCap(fighter.chr.getCurrentMaxHp());
                         fighter.mpAllowance = healCap(fighter.chr.getCurrentMaxMp());
+                        fighter.tonicsLeft = rules.tonics();
                         if (fighter.human) {
-                            fighter.chr.sendPacket(PacketCreator.getClock(config.PVP_ROUND_SECONDS));
+                            fighter.chr.sendPacket(PacketCreator.getClock(rules.roundSeconds()));
                         }
                     }
                     tell("Fight!");
@@ -327,12 +358,59 @@ public final class DuelField {
         if (fighter == null || state == State.ENDED) {
             return false;
         }
+        if (rules.tonicsOnly()) {
+            drinkTonic(chr, System.currentTimeMillis()); // the coliseum: own potions never, a tonic in their place
+            return true;
+        }
         accountHealing(fighter, 0d);   // a heal since the last look counts first
         boolean hpRoom = restoresHp
                 && fighter.hpAllowance >= DRINK_ROOM_SHARE * healCap(chr.getCurrentMaxHp());
         boolean mpRoom = restoresMp
                 && fighter.mpAllowance >= DRINK_ROOM_SHARE * healCap(chr.getCurrentMaxMp());
         return !hpRoom && !mpRoom;
+    }
+
+    /** Coliseum: whether {@code chr} could drink an arena tonic at {@code now} (one left, the gap since the last run). */
+    public synchronized boolean tonicReady(Character chr, long now) {
+        Fighter fighter = fighters.get(chr.getId());
+        return fighter != null && rules.tonicsOnly() && state == State.FIGHTING && !fighter.knockedOut
+                && fighter.tonicsLeft > 0 && now - fighter.lastTonicAtMs >= rules.tonicGapMs();
+    }
+
+    /**
+     * Coliseum: {@code chr} drinks an arena tonic (PD4): {@link Rules#tonicPercent} of its max HP and MP, which the heal
+     * allowance does not take back. True when one was drunk; a human who has none ready is told why, once a second.
+     */
+    public synchronized boolean drinkTonic(Character chr, long now) {
+        Fighter fighter = fighters.get(chr.getId());
+        if (fighter == null || !rules.tonicsOnly() || state != State.FIGHTING || fighter.knockedOut) {
+            return false;
+        }
+        if (!tonicReady(chr, now)) {
+            if (fighter.human && now - fighter.lastTonicNoteAtMs >= 1000L) {
+                fighter.lastTonicNoteAtMs = now;
+                long waitMs = rules.tonicGapMs() - (now - fighter.lastTonicAtMs);
+                chr.dropMessage(5, fighter.tonicsLeft <= 0 ? "No arena tonics left this round."
+                        : "Your next arena tonic is ready in " + (int) Math.ceil(waitMs / 1000d) + " s.");
+            }
+            return false;
+        }
+        accountHealing(fighter, 0d); // what came in before the tonic still meets the allowance
+        int maxHp = chr.getCurrentMaxHp();
+        int maxMp = chr.getCurrentMaxMp();
+        int hp = Math.min(maxHp, chr.getHp() + (int) Math.round(maxHp * rules.tonicPercent() / 100d));
+        int mp = Math.min(maxMp, chr.getMp() + (int) Math.round(maxMp * rules.tonicPercent() / 100d));
+        chr.updateHpMp(hp, mp);
+        fighter.lastHp = chr.getHp();
+        fighter.lastMp = chr.getMp();
+        fighter.tonicsLeft--;
+        fighter.lastTonicAtMs = now;
+        fighter.stats.drinks.incrementAndGet();
+        if (fighter.human) {
+            chr.dropMessage(5, "Arena tonic: " + rules.tonicPercent() + "% HP and MP back ("
+                    + fighter.tonicsLeft + " left this round).");
+        }
+        return true;
     }
 
     private Fighter nearestFoe(Fighter self) {

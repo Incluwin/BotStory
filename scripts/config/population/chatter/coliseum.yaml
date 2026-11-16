@@ -1,0 +1,86 @@
+# The coliseum ladder's lines (docs/PVP_PLAN.md V4, server.living.population.coliseum.Coliseum): a citizen matched
+# with a player by Tigun, the Arena Master, on a private copy of a Battle Arena floor. Said on map chat between rounds
+# (a fighter mid-round says nothing). {name} is the player; {record} the citizen's own ladder record ("12-7"),
+# {rating} its rating and {bracket} its bracket, all real. ladder.intro.new is a citizen with no ladder match yet.
+intents:
+  - id: ladder.intro.map
+    trigger: ladder.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{record} on the {bracket} ladder. lets see what u got {name}"
+      - "rated {rating}. dont make this easy"
+      - "{record} so far. ur next {name}"
+      - "ok {name}, best of 3. {record} says im winning this"
+      - "{rating} and climbing lol. gl"
+
+  - id: ladder.intro.new.map
+    trigger: ladder.intro.new
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "first ladder match, go easy lol"
+      - "never done this before. gl {name}"
+      - "ok first one. lets go"
+
+  - id: ladder.round.won.map
+    trigger: ladder.round.won
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "one down"
+      - "thats one"
+      - "close one lol"
+      - "again?"
+
+  - id: ladder.round.lost.map
+    trigger: ladder.round.lost
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ok ok. next one"
+      - "lucky lol"
+      - "warming up"
+      - "nice. not again tho"
+
+  - id: ladder.win.map
+    trigger: ladder.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}"
+      - "gg. {record} now"
+      - "gg wp, rematch anytime"
+      - "ggs. that was close"
+
+  - id: ladder.lose.map
+    trigger: ladder.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, u got me"
+      - "gg. ill get u next time"
+      - "ugh gg wp"
+      - "gg. there goes my rating lol"
+
+  - id: ladder.draw.map
+    trigger: ladder.draw
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "a draw?? lol"
+      - "gg i guess. tie"
