@@ -323,8 +323,9 @@ public final class AgentSupplyReadinessRuntime {
                     (int) Math.min(Integer.MAX_VALUE, spend - spendable), potions);
         }
         // 2026-10-14 (P18): the visit sells ammo for a weapon it does not wield for room
-        // (AgentShopService.makeUseRoomForReadiness), so a Use tab full of looted arrows is room too
-        int room = freeUseSlots(agent) + AgentShopService.sellableAmmoStacks(entry, agent);
+        // (AgentShopService.makeUseRoomForReadiness), so a Use tab full of looted arrows is room too; since 2026-11-11
+        // so are the looted scrolls and books its host lets it sell (AgentUseRoomLoot)
+        int room = freeUseSlots(agent) + AgentShopService.sellableUseStacks(entry, agent);
         if (room < useSlotsNeeded(agent, shop, activity, shortfall, spendable - ammo)) {
             return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
         }

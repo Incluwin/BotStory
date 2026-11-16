@@ -1,11 +1,13 @@
 package server.living.population;
 
+import client.Character;
 import config.LivingWorldConfig;
 import config.PopulationConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
+import server.agents.capabilities.inventory.AgentUseRoomLoot;
 import server.living.LivingWorld;
 
 import java.lang.reflect.Constructor;
@@ -66,6 +68,25 @@ class PopulationHiredBitTest {
         population.setHired(MIRA, true);
         assertEquals(0, population.etcRoomFor(MIRA), "a hired hand's owner may want its drops");
         assertEquals(0, population.etcRoomFor(MIRA + 1), "no citizen");
+    }
+
+    @Test
+    void aCitizenSellsLootForPotionRoomUntilAPlayerHiresItAndNobodyElseDoes() {
+        Character mira = mock(Character.class);
+        when(mira.getId()).thenReturn(MIRA);
+        Character stranger = mock(Character.class);
+        when(stranger.getId()).thenReturn(MIRA + 1);
+        AgentUseRoomLoot.Rule rule = population.useRoomLoot();
+
+        assertTrue(rule.sellsLoot(mira));
+        assertFalse(rule.sellsLoot(stranger), "no citizen");
+
+        population.config().USE_ROOM_SELLS_LOOT = false;
+        assertFalse(rule.sellsLoot(mira), "the switch off: only ammo for another weapon is sold");
+        population.config().USE_ROOM_SELLS_LOOT = true;
+
+        population.setHired(MIRA, true);
+        assertFalse(rule.sellsLoot(mira), "a hired hand's owner may want its loot");
     }
 
     @Test

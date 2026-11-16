@@ -255,6 +255,13 @@ public class PopulationConfig {
      * drops of Victoria's quest index, so 611 of 982 citizens had every slot full and picked up no Etc at all (11-04).
      */
     public int ETC_ROOM_FREE_SLOTS = 16;
+    /**
+     * A citizen no player hired whose potions need Use room the shop visit's ammo sale cannot free sells its looted
+     * scroll and book stacks worth least by the price index for it, one per slot (AgentUseRoomLoot; never a book for a
+     * job of its line). False = only ammo for another weapon is sold, as before. Live 2026-11-11: warriors with full
+     * tabs and no looted ammo were refused their HP potions on every visit (454 refusals, 22 citizens, two days).
+     */
+    public boolean USE_ROOM_SELLS_LOOT = true;
 
     /**
      * A citizen that died beside a field boss whose group is on trains elsewhere while that boss stands there, at most

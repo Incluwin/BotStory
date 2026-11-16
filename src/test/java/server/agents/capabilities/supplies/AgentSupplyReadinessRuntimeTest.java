@@ -744,7 +744,7 @@ class AgentSupplyReadinessRuntimeTest {
         // 2026-10-14 (P18): the Crusader Gunnar's full Use tab of looted arrows kept every Horntail restock put
         Character halvard = companion(510, "Halvard", Job.SPEARMAN, 15, 30, 20_000);
         freeSlots.put(510, 0);
-        shopService.when(() -> AgentShopService.sellableAmmoStacks(any(), eq(halvard))).thenReturn(2);
+        shopService.when(() -> AgentShopService.sellableUseStacks(any(), eq(halvard))).thenReturn(2);
         AgentRuntimeEntry entry = following(halvard);
 
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));

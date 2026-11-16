@@ -14,6 +14,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.IntPredicate;
 
 public final class AgentInventorySellTrashService {
     private AgentInventorySellTrashService() {
@@ -60,6 +61,29 @@ public final class AgentInventorySellTrashService {
                         && !AgentOfferService.isReservedForOtherRecipients(entry, agent, item),
                 inventory::isQuestItem,
                 itemId -> ItemRestrictionPolicy.allowsUntradeable(agent, itemId));
+    }
+
+    /**
+     * The looted scroll and book stacks a shop visit may sell for potion room ({@link AgentUseRoomLoot}), worth least
+     * first: none unless its host lets {@code agent} sell loot; never a book {@code keptBook} keeps (one for a job of
+     * its line, which it may read in time), an emptied stack, a quest item, an untradeable one the world keeps, or
+     * anything reserved or held for an offer.
+     */
+    public static List<Item> collectRoomLoot(AgentRuntimeEntry entry, Character agent, InventoryGateway inventory,
+                                             IntPredicate keptBook) {
+        if (!AgentUseRoomLoot.sellsLoot(agent)) {
+            return List.of();
+        }
+        long nowMs = System.currentTimeMillis();
+        List<Item> loot = AgentInventoryItemPolicy.collectSafeItems(agent, InventoryType.USE,
+                item -> AgentUseRoomLoot.isLoot(item.getItemId())
+                        && item.getQuantity() > 0
+                        && !(AgentUseRoomLoot.isBook(item.getItemId()) && keptBook.test(item.getItemId()))
+                        && AgentInventoryReservationRuntime.mayConsume(entry, item, nowMs)
+                        && !AgentOfferService.isReservedForOtherRecipients(entry, agent, item),
+                inventory::isQuestItem,
+                itemId -> ItemRestrictionPolicy.allowsUntradeable(agent, itemId));
+        return AgentUseRoomLoot.worthLeastFirst(loot, AgentUseRoomLoot::worth);
     }
 
     private static List<Item> collectNormalTradeEquips(AgentRuntimeEntry entry, Character agent, InventoryGateway inventory) {

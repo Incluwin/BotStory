@@ -85,6 +85,51 @@ public final class AgentMasteryBooks {
         return read.learned();
     }
 
+    /**
+     * Whether a skill or mastery book teaches a skill of the Agent's job or of a later job of its line, so it may read
+     * it in time and keeps it (a shop visit's room sale, AgentInventorySellTrashService.collectRoomLoot, leaves it).
+     */
+    public static boolean forItsLine(Character bot, int itemId) {
+        return forItsLine(bot, itemId, (book, jobId) -> ItemInformationProvider.getInstance().getSkillStats(book, jobId));
+    }
+
+    static boolean forItsLine(Character bot, int itemId, BookStats stats) {
+        if (bot == null || bot.getJob() == null || !isBook(itemId)) {
+            return false;
+        }
+        for (int jobId : lineJobs(bot.getJob().getId())) {
+            Map<String, Integer> data = stats.forJob(itemId, jobId);
+            if (data != null && data.getOrDefault("skillid", 0) != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Its job and the later jobs of its line: a branch job (111, Crusader) and the ones after it in the branch (112,
+     * Hero); a first job (100) every job of its class (110-112, 120-122, 130-132); a beginner none.
+     */
+    static List<Integer> lineJobs(int jobId) {
+        List<Integer> jobs = new ArrayList<>();
+        if (jobId % 1000 == 0) {
+            return jobs; // Beginner, Noblesse, Legend: no book teaches them
+        }
+        if (jobId % 100 == 0) {
+            jobs.add(jobId);
+            for (int branch = 10; branch <= 30; branch += 10) {
+                for (int advancement = 0; advancement <= 2; advancement++) {
+                    jobs.add(jobId + branch + advancement);
+                }
+            }
+            return jobs;
+        }
+        for (int job = jobId; job <= jobId - jobId % 10 + 2; job++) {
+            jobs.add(job);
+        }
+        return jobs;
+    }
+
     /** True for a skill book or mastery book id. */
     static boolean isBook(int itemId) {
         int kind = itemId / 10_000;

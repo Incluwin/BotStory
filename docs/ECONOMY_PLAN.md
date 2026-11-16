@@ -260,6 +260,17 @@ growth.
   42 stacks on a full tab. Counting every quest in Quest.wz would leave 3.6, and 73 full tabs nothing; citizens hold 32
   started and 3 finished quests between them. Log line: "sold its junk on map M: ... N etc stacks".
 
+**Use room for potions, built (11-11, branch `fix/hp-potion-restock`).** Measured first: 36 of 219 active Lv30+
+warriors, 9 of 45 pirates and 13 of 99 bowmen carried no HP potion, against 6 of 235 magicians. 116 of the warriors
+had 95-96 of 96 Use slots (about 43 scroll stacks and 9 books each). A potion stack drunk to nothing frees its slot and
+the next looted scroll takes it; the shop's room sale (10-13) sold only ammo for another weapon, so the warriors with
+none left were refused their HP potions at every visit (454 refusals for 22 citizens in two days, "HP_POTION 0 -> 0").
+MP potions they barely drink, so their MP stacks never empty and an MP top-up always finds its stack.
+- When the ammo sale cannot free the slots its potions need, an unhired citizen's visit sells the looted scroll or book
+  stack worth least by `Market.quote`, one per slot missing (`AgentUseRoomLoot`; never a book for a job of its line,
+  a quest item or anything reserved). The readiness checks count those stacks as room. One stack a potion visit is a
+  small dent in the hoard (34,368 scrolls, 10-29). Kill switch `population.USE_ROOM_SELLS_LOOT`.
+
 **Scrolling, built (10-29, branch `feat/economy-scrolling`).** Measured first: citizens held 34,368 scrolls in 760
 bags (gloves attack, weapon attack and magic attack ones lead, 500-1,000 of each). Shop visits sell only equips and
 unusable ammo, so looted scrolls were never used or sold; only merchants' stalls listed some.
