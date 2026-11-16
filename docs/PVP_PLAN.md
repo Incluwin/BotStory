@@ -1120,6 +1120,36 @@ The server sees a human only through movement packets. Ties go to the human both
 - *Done when* a human climbs the ladder over a session against citizens near their rating, spends Trophies, and finds
   the top 10 changing while they were away.
 
+### Status
+
+- **V4.1-V4.2 built (2026-11-16, 8a3f2e07c on feat/pvp-v4, off main line 5d9fcfc58).** Not deployed yet.
+  - **Where.** The Battle Arena lobby (980010000) is reachable only through the stock Lv 20-30 transports (9010022,
+    2101018), so the coliseum's people stand on Ariant's main street (260000000) instead: Tigun (2101004, the palace
+    guard) as the Arena Master at x 560, and Jano (2101010) as the Quartermaster at x 440 (V4.3). They are extra spawns
+    of stock templates, reached by object id before any script, the needs board's way; their stock spawns keep their
+    scripts. A match fights on a private copy of a Battle Arena floor (980010101/201/301 in turn): the copy drops the
+    floor's 20 jewel-hunt mobs and never respawns, so AriantPQ is untouched. The stock arena clock still shows on
+    entry; the round's own clock replaces it at the bell.
+  - **Your match.** Tigun's window: fight (fee 20·L, `MesoAccount.PVP_FEE`), the bracket's top 10, the rules. The
+    opponent is the free citizen (loaded, unhired, nothing holding it, no party, no event) on your channel in your
+    bracket within 5 levels whose rating is nearest. It is held, warped onto the copy, quotes its real record
+    (`chatter/coliseum.yaml`, "12-7 on the veteran ladder..."), and you fight best of three 90 s rounds, 5 s apart.
+    Leaving the copy or logging off forfeits; a citizen that logs out voids the match and refunds the fee.
+  - **Coliseum rules on the duel.** `DuelField.Rules(roundSeconds, tonics, tonicPercent, tonicGapMs)`: own potions
+    are refused, and the potion key (or an autopot) drinks an arena tonic instead: 3 a round, 25% of max HP and MP, 8 s
+    apart, outside the heal allowance. A bot drinks one at 60% HP or lower.
+  - **Ratings.** Glicko-2 (`server.pvp.Glicko2`, Glickman's worked example as its test) per character per bracket, in
+    `pvp_rating` (changeset 60 / SQL 051); an idle rating widens by the days since its last match. Each social minute
+    up to `COLISEUM_SIM_PER_MINUTE` (20) pairs of free citizens play a simulated best of three (`DuelSim.fighterOf`,
+    moved out of `!pvp sim`, with the 90 s round), the same pair at most once an hour.
+  - **Pay** (section 2): a win 3 Trophies and 6 odds-scaled grind-minutes of EXP for the day's first 5 wins, a loss 1
+    Trophy, 10 rewarded matches a day; a forfeit, and a GM outside a test, earn nothing. Booked in `pvp_match` as kind
+    LADDER.
+  - **GM.** `!pvp coliseum` (nearest rating), `!pvp coliseum <citizen>`, `status`, `sim [n]`, `rating [name]`; they run
+    with `COLISEUM_ENABLED` off (it ships false).
+  - **Not yet:** the Quartermaster's shop (V4.3), the board page and spectating from the King's Room (V4.4, which also
+    holds back the watched-citizen rule).
+
 ---
 
 ## 8. V5. Weekly tournament
