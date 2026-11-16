@@ -1172,6 +1172,21 @@ The server sees a human only through movement packets. Ties go to the human both
     companion that isn't fighting steps out of the party with its "i'll wait out here" line and rejoins after (the
     existing companion hold, as on any instance). Not seen live: Tigun's window and fee (only spawned with the switch
     on), and a citizen logging out mid-match.
+- **V4.3 built (2026-11-16, 54e9b14d5 on feat/pvp-v4; full suite 16,377 / 0 / 33; live from 12:54).** The Arena
+  Quartermaster: Jano (2101010) beside Tigun, spawned with the coliseum switch. Stock and prices in
+  `scripts/config/pvp/quartermaster.yaml`: Elixir x10 (3), Power Elixir x5 (5), All Cure Potion x5 (2), the 60% (15)
+  and 10% (40) attack scroll for the weapon held (`server.pvp.PvpScrolls`, shared with the rival rewards), Male Desert
+  Rabbit Cushion 3010064 (30), Persevering Challenger Medal 1142084 (60; tradeBlock, one per character). A trade takes
+  the Trophies only once the item fits and gives them back if it does not arrive; each refusal says why (no weapon with
+  a scroll, too few Trophies, no room, already owned). The trade block itself shipped with V3.3. GM: `!pvp coliseum
+  shop` opens the window with the switch off.
+  - **Live check (Crewfriend, 18 Trophies, holding a one-handed axe):** the window listed the stock with icons and
+    "You have 18 Event Trophies"; the scroll line named "Scroll for One-Handed Axe for ATT". Bought it (log: "traded 15
+    Trophies for 2043101 x1 (3 left)", chat: "You have gained an item in the Use tab"), then Elixir x10 ("traded 3
+    Trophies for 2000004 x10 (0 left)"); a further pick was refused: "That's 3 Event Trophies, and you have 0." No
+    server errors. The client draws a dialog's text over about a second, so a capture right after a click can look cut.
+  - **Not seen live:** Jano standing in Ariant (needs `COLISEUM_ENABLED`), and the room and one-per-character refusals
+    (unit-tested).
 
 ---
 
