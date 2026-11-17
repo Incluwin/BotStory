@@ -811,7 +811,8 @@ public final class Tournament {
         run.draw.decide(index, through);
         TournamentRules.Entrant winner = run.seated.get(through == 0 ? pair.a() : pair.b());
         TournamentRules.Entrant loser = run.seated.get(through == 0 ? pair.b() : pair.a());
-        run.results.add(winner.name() + " beat " + loser.name() + (why.equals("best of three") ? "" : " (" + why + ")"));
+        run.results.add(winner.name() + " beat " + loser.name() + (why.equals("best of three") ? ""
+                : why.startsWith("best of three ") ? " " + why.substring("best of three ".length()) : " (" + why + ")"));
         if (!loser.human()) {
             coliseum.population().presence().release(loser.characterId());
         } else {

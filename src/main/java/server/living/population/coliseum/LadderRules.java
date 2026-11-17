@@ -150,6 +150,11 @@ final class LadderRules {
             return humanRounds >= ROUNDS_TO_WIN || citizenRounds >= ROUNDS_TO_WIN || played() >= ROUNDS;
         }
 
+        /** The score as side {@code side} (0 or 1) would say it: its own rounds first. */
+        String from(int side) {
+            return side == 1 ? citizenRounds + "-" + humanRounds : toString();
+        }
+
         @Override
         public String toString() {
             return humanRounds + "-" + citizenRounds;

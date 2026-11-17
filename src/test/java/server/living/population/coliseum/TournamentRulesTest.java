@@ -92,6 +92,15 @@ class TournamentRulesTest {
     }
 
     @Test
+    void aScoreReadsFromEitherSide() {
+        LadderRules.Score score = LadderRules.Score.START.after(1).after(1);
+        assertEquals("0-2", score.toString());
+        assertEquals("2-0", score.from(1));
+        assertEquals("0-2", score.from(0));
+        assertEquals(1, score.winner());
+    }
+
+    @Test
     void anEightSeatDrawCrownsAChampionAndRecordsHowFarEachGot() {
         TournamentDraw draw = new TournamentDraw(8, 8);
         assertEquals(4, draw.open().size());

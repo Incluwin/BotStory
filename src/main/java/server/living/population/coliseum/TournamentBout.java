@@ -206,7 +206,7 @@ final class TournamentBout {
             }
         }
         tellAll(coliseum, "Round " + (score.played() + 1) + " of " + LadderRules.ROUNDS + ": " + names[0] + " against "
-                + names[1] + ". Score " + score + ".");
+                + names[1] + standing() + ".");
     }
 
     private void fighting(Coliseum coliseum, long now) {
@@ -236,11 +236,10 @@ final class TournamentBout {
         }
         score = score.after(ended.winnerSide());
         int played = score.played();
-        tellAll(coliseum, (ended.winnerSide() == 0 ? names[0] + " takes round " + played
-                : ended.winnerSide() == 1 ? names[1] + " takes round " + played
-                : "Round " + played + " is a draw") + ". Score " + score + ".");
+        tellAll(coliseum, (ended.winnerSide() >= 0 ? names[ended.winnerSide()] + " takes round " + played + ", "
+                + score.from(ended.winnerSide()) : "Round " + played + " is a draw, " + score) + ".");
         if (score.over()) {
-            finish(coliseum, score.winner(), "best of three " + score, now);
+            finish(coliseum, score.winner(), "best of three " + score.from(Math.max(0, score.winner())), now);
             return;
         }
         if (ended.winnerSide() >= 0) {
@@ -267,7 +266,7 @@ final class TournamentBout {
         why = reason;
         if (side >= 0) {
             tellAll(coliseum, names[side] + " beats " + names[1 - side] + " (" + (reason.startsWith("forfeit")
-                    ? "a forfeit" : score.toString()) + ") and goes through.");
+                    ? "a forfeit" : score.from(side)) + ") and goes through.");
             CitizenSession winner = citizen(coliseum, side);
             if (winner != null && !reason.startsWith("forfeit")) {
                 coliseum.say(winner, "tournament.win", names[1 - side], Map.of("round", roundName));
@@ -297,6 +296,18 @@ final class TournamentBout {
             ground = null;
         }
         stage = Stage.DONE;
+    }
+
+    /** ", Crewfriend leads 1-0", ", level at 1-1", or nothing before the first round. */
+    private String standing() {
+        if (score.played() == 0) {
+            return "";
+        }
+        if (score.humanRounds() == score.citizenRounds()) {
+            return ", level at " + score;
+        }
+        int leader = score.humanRounds() > score.citizenRounds() ? 0 : 1;
+        return ", " + names[leader] + " leads " + score.from(leader);
     }
 
     private CitizenSession citizen(Coliseum coliseum, int side) {
