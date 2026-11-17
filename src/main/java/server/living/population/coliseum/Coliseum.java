@@ -828,16 +828,9 @@ public final class Coliseum {
         }
     }
 
+    /** The job as the game names it ("White Knight", "Aran"; live check 2026-11-16 showed "Whiteknight"). */
     static String jobName(Character chr) {
-        String name = chr.getJob().name().toLowerCase(Locale.ROOT).replace('_', ' ');
-        StringBuilder out = new StringBuilder();
-        for (String word : name.split(" ")) {
-            if (!word.isEmpty()) {
-                out.append(out.isEmpty() ? "" : " ").append(java.lang.Character.toUpperCase(word.charAt(0)))
-                        .append(word.substring(1));
-            }
-        }
-        return out.toString();
+        return server.living.roster.CompanionView.jobName(chr.getJob().getId());
     }
 
     static Character online(int characterId) {
