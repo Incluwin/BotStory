@@ -59,9 +59,31 @@ class ColiseumContentTest {
         }
         assertTournamentLines(List.of("tournament.intro", "tournament.win"), "map");
         assertTournamentLines(List.of("tournament.champion", "tournament.runner_up"), "smega");
+        // team fights (V6): TeamLadder fills {name}, {team} and {size}; a Crew War also {crew} and {record}
+        assertSlots(List.of("team.intro", "team.win", "team.lose"), Set.of("name", "team", "size"));
+        assertSlots(List.of("crewwar.intro", "crewwar.win", "crewwar.lose"), Set.of("name", "crew", "record", "size"));
         for (Intent intent : content.intents("ladder.intro.new")) {
             for (String line : intent.lines()) {
                 assertFalse(line.contains("{record}") || line.contains("{rating}"), "a first match has no record: " + line);
+            }
+        }
+    }
+
+    /** Every trigger has map lines that say only {@code slots}. */
+    private void assertSlots(List<String> triggers, Set<String> slots) {
+        for (String trigger : triggers) {
+            List<Intent> intents = content.intents(trigger);
+            assertFalse(intents.isEmpty(), trigger);
+            for (Intent intent : intents) {
+                assertEquals("map", intent.channel(), intent.id());
+                assertFalse(intent.lines().isEmpty(), intent.id());
+                for (String line : intent.lines()) {
+                    Matcher slot = SLOT.matcher(line);
+                    while (slot.find()) {
+                        assertTrue(slots.contains(slot.group(1)), intent.id() + ": {" + slot.group(1) + "} in '" + line
+                                + "'");
+                    }
+                }
             }
         }
     }

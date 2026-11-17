@@ -84,6 +84,8 @@ public final class PopulationLoader {
             // the weekly tournament (coliseum.Tournament, V5): before a live bout, after a win, the champion's and the
             // citizen finalist's megaphones
             "tournament.intro", "tournament.win", "tournament.champion", "tournament.runner_up",
+            // team fights (coliseum.TeamLadder, V6): a citizen team's and a rival crew's first line and afterword
+            "team.intro", "team.win", "team.lose", "crewwar.intro", "crewwar.win", "crewwar.lose",
             // a beginner citizen asking for a mentor as it posts its request (F4.5, NeedLedger.mentor)
             "need.mentor",
             // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)

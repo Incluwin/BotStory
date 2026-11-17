@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|team [2|3]|crewwar|teamsim [n]|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
     }
 
     @Override
@@ -80,7 +80,9 @@ public class PvpCommand extends Command {
      * citizen's name, against that one (free, on the GM's channel). Both run even with COLISEUM_ENABLED off and pay as a
      * test. {@code status} lists the matches running, {@code sim [n]} plays n citizen ladder matches now, {@code rating
      * [name]} prints a rating, {@code shop} opens the Quartermaster's window (V4.3), {@code board} the ladder's board
-     * pages and {@code watch [rookie|veteran|champion]} a citizen bout from the gallery (V4.4).
+     * pages and {@code watch [rookie|veteran|champion]} a citizen bout from the gallery (V4.4). V6: {@code team [2|3]}
+     * a team match for the GM and its companions against a citizen team, {@code crewwar} a Crew War against its rival
+     * crew, {@code teamsim [n]} n simulated citizen team matches now.
      */
     private static void coliseum(Character gm, String[] params) {
         server.living.population.Population population = server.living.population.Population.get();
@@ -95,7 +97,20 @@ public class PvpCommand extends Command {
                 coliseum.request(gm, 0, true);
                 gm.yellowMessage("PvP: looking for your ladder opponent.");
             }
-            case "status" -> coliseum.status().forEach(gm::yellowMessage);
+            case "status" -> {
+                coliseum.status().forEach(gm::yellowMessage);
+                coliseum.teamStatus().forEach(gm::yellowMessage);
+            }
+            case "team" -> {
+                coliseum.teamRequest(gm, Math.max(2, Math.min(3, number(params, 2, 2))), false, true);
+                gm.yellowMessage("PvP: looking for a citizen team for you and your companions.");
+            }
+            case "crewwar" -> {
+                coliseum.teamRequest(gm, 3, true, true);
+                gm.yellowMessage("PvP: calling your rival crew to the arena.");
+            }
+            case "teamsim" -> gm.yellowMessage("PvP: " + coliseum.simulateTeams(Math.max(1, Math.min(100,
+                    number(params, 2, 10)))) + " citizen team match(es) played.");
             case "shop" -> coliseum.shop(gm);
             case "board" -> coliseum.board(gm, server.living.population.needs.NeedBoards.BOARD_NPC, null);
             case "watch" -> {

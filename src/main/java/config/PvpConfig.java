@@ -112,6 +112,8 @@ public class PvpConfig {
     public int COLISEUM_TONIC_GAP_MS = 8000;
     /** Background ladder matches between citizens, simulated each social minute (none while a human watches; V4.4). */
     public int COLISEUM_SIM_PER_MINUTE = 20;
+    /** V6: background team matches (2v2 or 3v3) between citizen teams, simulated each social minute. */
+    public int COLISEUM_TEAM_SIM_PER_MINUTE = 6;
     /**
      * The weekly tournament (docs/PVP_PLAN.md V5): an 8-seat knockout a ladder bracket, on TOURNAMENT_DAY at
      * TOURNAMENT_HOUR server time, fought on TOURNAMENT_CHANNEL. Needs COLISEUM_ENABLED. Technical:
@@ -167,7 +169,7 @@ public class PvpConfig {
         }
         if (COLISEUM_ROUND_SECONDS < 10 || COLISEUM_FEE_PER_LEVEL < 0 || COLISEUM_TONICS < 0
                 || COLISEUM_TONIC_PERCENT < 0 || COLISEUM_TONIC_PERCENT > 100 || COLISEUM_TONIC_GAP_MS < 0
-                || COLISEUM_SIM_PER_MINUTE < 0) {
+                || COLISEUM_SIM_PER_MINUTE < 0 || COLISEUM_TEAM_SIM_PER_MINUTE < 0) {
             throw new IllegalArgumentException("pvp: COLISEUM_ROUND_SECONDS >= 10, COLISEUM_TONIC_PERCENT 0..100,"
                     + " other COLISEUM_* values >= 0");
         }

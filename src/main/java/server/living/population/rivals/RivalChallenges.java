@@ -589,6 +589,51 @@ public final class RivalChallenges {
                 + DUEL_NEWS + "|" + result.winnerSide() + "|" + tally.wins() + "|" + tally.losses() + "|" + tally.draws());
     }
 
+    // ---- V6: a Crew War fought at the coliseum ---------------------------------------------------------------------
+
+    /** One fighter of a Crew War as the coliseum saw it (side 0 is the player's). */
+    public record CrewWarFighter(int characterId, int side, boolean human, boolean ko, long dealt, long taken) {
+    }
+
+    /** The main's record against {@code crew} ("2-1", or "2-1-1" with draws), as the crew quotes it. */
+    public String recordOf(Crew crew, int mainId) {
+        return tally(crew, mainId).yours();
+    }
+
+    /**
+     * V6: a Crew War the coliseum fought against {@code crew} (a best of three, {@code winnerSide} 0 for the player
+     * side, 1 for the crew, -1 a draw). It is booked in pvp_match with the crew's id as a challenge is, so the
+     * head-to-head, the crew quoting it, {@code @records} and the letters count it; a crew win goes on one of the
+     * shared megaphones, said by {@code speakerId}. Returns the main's record against the crew after it.
+     */
+    public String crewWarFought(Crew crew, int mainId, String mainName, int winnerSide, List<CrewWarFighter> fighters,
+                                int mapId, long seconds, String why, double odds, int speakerId, long now) {
+        List<RivalRecord.Fighter> rows = new ArrayList<>();
+        for (CrewWarFighter one : fighters) {
+            rows.add(new RivalRecord.Fighter(one.characterId(), one.side(), one.human(), one.ko(), one.dealt(),
+                    one.taken()));
+        }
+        matches.insert(new RivalRecord.Match(now, winnerSide, rows), mapId, seconds, why, crew.id(), odds);
+        for (RivalRecord.Fighter fighter : rows) {
+            if (fighter.human() && fighter.side() == 0) {
+                RivalRecord.Tally before = tally(crew, fighter.characterId());
+                tallies.put(key(crew, fighter.characterId()), before.plus(winnerSide));
+            }
+        }
+        RivalRecord.Tally tally = tally(crew, mainId);
+        if (winnerSide == 1) {
+            CitizenSession session = crews.loaded(speakerId);
+            String line = session == null ? null : population.chatter().compose(
+                    crews.event(session, "rival.win.smega", mainName, crew, Map.of()));
+            boolean loud = line != null && population.chatter().megaphone(session, line, false);
+            log.info("Crew War: {} beat {} ({}): {}", crew.name(), mainName, tally.yours(),
+                    loud ? "megaphone" : line == null ? "no megaphone line" : "the megaphone cap or gap is full");
+        }
+        population.world().store().event(mainId, null, RivalCrews.NEWS_EVENT, crew.name() + "|" + DUEL_NEWS + "|"
+                + winnerSide + "|" + tally.wins() + "|" + tally.losses() + "|" + tally.draws());
+        return tally.yours();
+    }
+
     /** A human's record against a crew (cached; read from pvp_match the first time). */
     RivalRecord.Tally tally(Crew crew, int humanId) {
         return tallies.computeIfAbsent(key(crew, humanId),

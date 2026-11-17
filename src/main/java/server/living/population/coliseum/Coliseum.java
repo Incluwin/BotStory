@@ -140,6 +140,7 @@ public final class Coliseum {
     private final Gallery gallery = new Gallery(this);
     private final ColiseumBoard board;
     private final Tournament tournament;
+    private final TeamLadder teams;
     private final Random random = new Random();
     private final Queue<Request> requests = new ConcurrentLinkedQueue<>();
     private final Map<Integer, Match> byHuman = new ConcurrentHashMap<>();
@@ -162,6 +163,7 @@ public final class Coliseum {
         this.board = new ColiseumBoard(book);
         this.npcs = new ColiseumNpcs(population);
         this.tournament = new Tournament(this, new TournamentStore(), store);
+        this.teams = new TeamLadder(this, store, new LadderStore(LadderStore.TEAM_PREFIX));
         this.board.tournament(tournament::boardText);
     }
 
@@ -172,6 +174,30 @@ public final class Coliseum {
     /** A human in a ladder match of their own. */
     boolean inMatch(int characterId) {
         return byHuman.containsKey(characterId);
+    }
+
+    /** A human already in some match: a ladder or team match, a gallery seat, the tournament or any duel. */
+    boolean busy(int characterId) {
+        return byHuman.containsKey(characterId) || gallery.watching(characterId) || DuelRegistry.inDuel(characterId)
+                || tournament.busy(characterId) || teams.inMatch(characterId);
+    }
+
+    /**
+     * V6: queues a team fight for {@code human}: a team ladder match of {@code size} (2 or 3, {@code crewWar} false)
+     * or a Crew War against its rival crew. {@code forced} lets a GM fight with the coliseum off, for no fee.
+     */
+    public void teamRequest(Character human, int size, boolean crewWar, boolean forced) {
+        teams.request(human, size, crewWar ? TeamLadder.Kind.CREW_WAR : TeamLadder.Kind.TEAM, forced);
+    }
+
+    /** V6: the team matches being fought, for {@code !pvp coliseum status}. */
+    public List<String> teamStatus() {
+        return teams.status();
+    }
+
+    /** V6: {@code !pvp coliseum teamsim [n]}: n simulated citizen team matches now. */
+    public int simulateTeams(int matches) {
+        return teams.simulate(matches, System.currentTimeMillis());
     }
 
     /** A human watching a gallery bout. */
@@ -228,9 +254,11 @@ public final class Coliseum {
                 return;
             }
             npcs.ensure(true);
-            int played = simulate(YamlConfig.config.pvp.COLISEUM_SIM_PER_MINUTE, System.currentTimeMillis());
-            if (played > 0) {
-                log.debug("Coliseum: {} citizen ladder match(es) simulated", played);
+            long now = System.currentTimeMillis();
+            int played = simulate(YamlConfig.config.pvp.COLISEUM_SIM_PER_MINUTE, now);
+            int teamsPlayed = teams.simulate(YamlConfig.config.pvp.COLISEUM_TEAM_SIM_PER_MINUTE, now);
+            if (played > 0 || teamsPlayed > 0) {
+                log.debug("Coliseum: {} citizen ladder match(es), {} team match(es) simulated", played, teamsPlayed);
             }
         } catch (RuntimeException failure) {
             log.warn("Coliseum minute failed", failure);
@@ -240,6 +268,7 @@ public final class Coliseum {
     /** The population stops. */
     public void stop() {
         tournament.stop();
+        teams.stop();
         npcs.removeAll();
         gallery.stopAll("the arena closed");
         for (Match match : new ArrayList<>(byHuman.values())) {
@@ -293,6 +322,7 @@ public final class Coliseum {
         List<LivingTalk.Option> options = new ArrayList<>();
         options.add(new LivingTalk.Option("#bFight a ladder match#k (" + mesos(fee) + " mesos)",
                 () -> request(player, 0, false)));
+        options.add(new LivingTalk.Option("#bFight with my companions#k", () -> teamTalk(player)));
         options.add(watch);
         options.add(weekly);
         options.add(new LivingTalk.Option("#bThe ladder board#k", () -> board.show(player, TIGUN, () -> talk(player))));
@@ -300,6 +330,45 @@ public final class Coliseum {
         LivingTalk.open(player, TIGUN).menu("I'm Tigun. I keep Ariant's ladder.\r\n\r\nYour bracket: #b"
                 + bracket.get().label + "#k (" + bracket.get().range() + "), rated #b" + Math.round(rating.rating())
                 + "#k, " + row.wins() + "-" + row.losses() + ".", options).show();
+    }
+
+    /**
+     * V6, team fights in Tigun's window: a 2v2 or 3v3 on the team ladder (as many of the player's companions as stand
+     * with it), or a Crew War against its rival crew; the player's team rating for its bracket.
+     */
+    private void teamTalk(Character player) {
+        Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
+        if (bracket.isEmpty()) {
+            talk(player);
+            return;
+        }
+        long now = System.currentTimeMillis();
+        List<Character> companions = TeamLadder.companionsHere(player);
+        LadderBook.Row row = teams.book().row(player.getId(), bracket.get());
+        long fee = fee(player.getLevel());
+        List<LivingTalk.Option> options = new ArrayList<>();
+        int fieldable = TeamRules.fieldable(companions.size());
+        for (int size = TeamRules.MIN_SIZE; size <= fieldable; size++) {
+            int chosen = size;
+            options.add(new LivingTalk.Option("#bA " + size + "v" + size + "#k (" + mesos(fee) + " mesos)",
+                    () -> teamRequest(player, chosen, false, false)));
+        }
+        if (population.rivals() != null && population.rivals().crewOfMain(player.getId()) != null
+                && fieldable >= TeamRules.MIN_SIZE) {
+            options.add(new LivingTalk.Option("#bA Crew War#k against "
+                    + population.rivals().crewOfMain(player.getId()).name() + " (no fee)",
+                    () -> teamRequest(player, TeamRules.MAX_SIZE, true, false)));
+        }
+        String head = "Bring your companions and fight as a team, " + TeamRules.MIN_SIZE + " or " + TeamRules.MAX_SIZE
+                + " a side, under ladder rules. Pick one target together and it falls fast.\r\n\r\nYour team rating: #b"
+                + Math.round(teams.book().teamRating(List.of(player.getId()), bracket.get(), now).rating()) + "#k, "
+                + row.wins() + "-" + row.losses() + ".";
+        if (options.isEmpty()) {
+            LivingTalk.open(player, TIGUN).ok(head + "\r\n\r\n#rNone of your companions is standing with you.#k")
+                    .back(() -> talk(player)).show();
+            return;
+        }
+        LivingTalk.open(player, TIGUN).menu(head, options).back(() -> talk(player)).show();
     }
 
     /** The tournament's page in Tigun's window: sign up or take it back, watch, the board, the rules. */
@@ -368,8 +437,7 @@ public final class Coliseum {
         if (human == null || !on() && !request.forced()) {
             return;
         }
-        if (byHuman.containsKey(human.getId()) || gallery.watching(human.getId()) || DuelRegistry.inDuel(human.getId())
-                || tournament.busy(human.getId())) {
+        if (busy(human.getId())) {
             human.dropMessage(5, "You are in a match already.");
             return;
         }
@@ -443,6 +511,7 @@ public final class Coliseum {
                 || agent.getMap() == null || agent.getEventInstance() != null || agent.getParty() != null
                 || DuelRegistry.inDuel(agent.getId()) || population.presence().held(session)
                 || gallery.fighting(session.characterId) || tournament.busy(session.characterId)
+                || teams.fighting(session.characterId)
                 || !(agent.getClient() instanceof BotClient) || agent.getId() == humanId) {
             return false;
         }
@@ -466,7 +535,8 @@ public final class Coliseum {
 
     private void stopTickerIfIdle() {
         synchronized (tickerLock) {
-            if (byHuman.isEmpty() && requests.isEmpty() && gallery.idle() && tournament.idle() && ticker != null) {
+            if (byHuman.isEmpty() && requests.isEmpty() && gallery.idle() && tournament.idle() && teams.idle()
+                    && ticker != null) {
                 ticker.cancel(false);
                 ticker = null;
             }
@@ -499,6 +569,7 @@ public final class Coliseum {
         }
         gallery.step(now);
         tournament.step(now);
+        teams.step(now);
         stopTickerIfIdle();
     }
 
@@ -684,11 +755,21 @@ public final class Coliseum {
 
     /** The human's pay for a finished match (none for a GM's own, a forfeit, or past the day's ten). */
     private void pay(Character human, Match match, int winnerSide, boolean forfeited, long now) {
+        payLadder(human, winnerSide, match.odds, forfeited, match.forced, "ladder", now);
+    }
+
+    /**
+     * A ladder match's pay to {@code human} (a 1v1 or, V6, a team match: one daily count for both): a win by the
+     * {@code odds} it was fought at, a loss or draw the loss's Trophy; none for a forfeit, a GM's own (unless
+     * {@code forced}), or past the day's {@link LadderRules#DAILY_REWARDED}.
+     */
+    void payLadder(Character human, int winnerSide, double odds, boolean forfeited, boolean forced, String what,
+                   long now) {
         if (forfeited) {
             human.dropMessage(5, "A forfeit pays nothing.");
             return;
         }
-        if (human.isGM() && !match.forced) {
+        if (human.isGM() && !forced) {
             return;
         }
         long[] day = day(human.getAccountID(), now);
@@ -698,7 +779,7 @@ public final class Coliseum {
             return;
         }
         LadderRules.Pay pay = winnerSide == 0
-                ? LadderRules.win(match.odds, (int) day[2], PvpGrindMinutes.get().expPerMinute(human.getLevel()))
+                ? LadderRules.win(odds, (int) day[2], PvpGrindMinutes.get().expPerMinute(human.getLevel()))
                 : LadderRules.loss();
         day[1]++;
         if (winnerSide == 0 && pay.exp() > 0) {
@@ -715,9 +796,9 @@ public final class Coliseum {
                 human.dropMessage(5, "Your inventory is full, so the ladder's Trophies were lost.");
             }
         }
-        log.info("Coliseum reward: {} {} (odds {}): {} EXP, {} Trophies{}", human.getName(),
+        log.info("Coliseum reward ({}): {} {} (odds {}): {} EXP, {} Trophies{}", what, human.getName(),
                 winnerSide == 0 ? "won" : winnerSide == 1 ? "lost" : "drew", String.format(Locale.ROOT, "%.2f",
-                        match.odds), pay.exp(), pay.trophies(), human.isGM() ? " (GM test)" : "");
+                        odds), pay.exp(), pay.trophies(), human.isGM() ? " (GM test)" : "");
     }
 
     private long[] day(int accountId, long now) {

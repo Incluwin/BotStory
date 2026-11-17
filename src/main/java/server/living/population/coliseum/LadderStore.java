@@ -23,6 +23,26 @@ class LadderStore implements LadderBook.Store {
     private static final Logger log = LoggerFactory.getLogger(LadderStore.class);
     static final String LADDER = "LADDER";
     static final String TOURNAMENT = "TOURNAMENT";
+    /** V6: team matches (a team ladder match or a Crew War) in pvp_match. */
+    static final String TEAM = "TEAM";
+    /** V6: the team ladder's ratings are kept apart from 1v1 under this prefix to the bracket (TEAM_VETERAN). */
+    static final String TEAM_PREFIX = "TEAM_";
+
+    private final String prefix;
+
+    /** The 1v1 ladder's store. */
+    LadderStore() {
+        this("");
+    }
+
+    /** A store whose brackets are kept under {@code prefix} ({@link #TEAM_PREFIX} for the team ladder). */
+    LadderStore(String prefix) {
+        this.prefix = prefix;
+    }
+
+    private String key(LadderRules.Bracket bracket) {
+        return prefix + bracket.name();
+    }
 
     @Override
     public Optional<LadderBook.Row> load(int characterId, LadderRules.Bracket bracket, int season) {
@@ -33,7 +53,7 @@ class LadderStore implements LadderBook.Store {
                 + " FROM pvp_rating WHERE character_id = ? AND bracket = ? AND season = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
-            ps.setString(2, bracket.name());
+            ps.setString(2, key(bracket));
             ps.setInt(3, season);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -65,7 +85,7 @@ class LadderStore implements LadderBook.Store {
                 + " updated_at = VALUES(updated_at), week_of = VALUES(week_of), week_rating = VALUES(week_rating)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, row.characterId());
-            ps.setString(2, row.bracket().name());
+            ps.setString(2, key(row.bracket()));
             ps.setInt(3, season);
             ps.setDouble(4, row.rating().rating());
             ps.setDouble(5, row.rating().deviation());
@@ -107,7 +127,7 @@ class LadderStore implements LadderBook.Store {
                 + where);
         List<LadderBook.Ranked> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, bracket.name());
+            ps.setString(1, key(bracket));
             ps.setInt(2, season);
             ps.setInt(3, third);
             ps.setInt(4, limit);
@@ -133,7 +153,7 @@ class LadderStore implements LadderBook.Store {
                 + " WHERE r.bracket = ? AND r.season = ? AND r.wins + r.losses >= ? AND c.gm = 0";
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setDouble(1, rating);
-            ps.setString(2, bracket.name());
+            ps.setString(2, key(bracket));
             ps.setInt(3, season);
             ps.setInt(4, minPlayed);
             try (ResultSet rs = ps.executeQuery()) {

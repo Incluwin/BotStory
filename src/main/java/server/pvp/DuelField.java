@@ -131,6 +131,16 @@ public final class DuelField {
     private long lastTickMs;
     private int lastCountdownShown = -1;
     private ScheduledFuture<?> ticker;
+    /** V6: more than one fighter on a side, so each side's bots pick their target together (TeamTactics). */
+    private final boolean teamFight;
+    private final TeamTactics.Call[] calls = {TeamTactics.Call.NONE, TeamTactics.Call.NONE};
+    private final long[] calledAtMs = new long[2];
+    /** The foe a player on each side last landed a hit on, and when: its bot teammates assist it. */
+    private final int[] playerTarget = new int[2];
+    private final long[] playerHitAtMs = new long[2];
+    private final long[] lastCallSaidAtMs = new long[2];
+    /** Party-chat calls queued under the lock, said after it (party chat takes the party's locks). */
+    private final List<TeamCalls.Line> pendingCalls = new ArrayList<>();
 
     DuelField(long id, MapleMap map, List<Character> sideA, List<Character> sideB) {
         this(id, map, sideA, sideB, null);
@@ -144,6 +154,12 @@ public final class DuelField {
         long keepMs = Math.max(1000L, config.PVP_LAG_WINDOW_MS * 2L);
         sideA.forEach(chr -> fighters.put(chr.getId(), new Fighter(chr, 0, keepMs)));
         sideB.forEach(chr -> fighters.put(chr.getId(), new Fighter(chr, 1, keepMs)));
+        this.teamFight = sideA.size() > 1 || sideB.size() > 1;
+    }
+
+    /** Whether more than one fighter stands on a side (V6's team fight). */
+    public boolean teamFight() {
+        return teamFight;
     }
 
     public long id() {
@@ -198,6 +214,12 @@ public final class DuelField {
 
     void tick(long now) {
         List<Fighter[]> thinking = new ArrayList<>();
+        List<TeamCalls.Line> said;
+        synchronized (this) {
+            said = new ArrayList<>(pendingCalls);
+            pendingCalls.clear();
+        }
+        TeamCalls.say(said);
         synchronized (this) {
             if (state == State.ENDED) {
                 return;
@@ -258,9 +280,12 @@ public final class DuelField {
                     endByTime();
                     return;
                 }
+                if (teamFight) {
+                    callTargets(now);
+                }
                 for (Fighter fighter : fighters.values()) {
                     if (!fighter.human && !fighter.knockedOut) {
-                        Fighter foe = nearestFoe(fighter);
+                        Fighter foe = teamFight ? teamFoe(fighter) : nearestFoe(fighter);
                         if (foe != null) {
                             thinking.add(new Fighter[] {fighter, foe});
                         }
@@ -413,6 +438,111 @@ public final class DuelField {
         return true;
     }
 
+    /** The standing, present opponents of {@code side} as TeamTactics sees them. */
+    private List<TeamTactics.Foe> foesOf(int side) {
+        List<TeamTactics.Foe> foes = new ArrayList<>();
+        for (Fighter other : fighters.values()) {
+            Point at = other.chr.getPosition();
+            if (other.side != side && !other.knockedOut && at != null && present(other)) {
+                double share = other.chr.getHp() / (double) Math.max(1, other.chr.getCurrentMaxHp());
+                foes.add(new TeamTactics.Foe(other.chr.getId(), share, at.x, at.y));
+            }
+        }
+        return foes;
+    }
+
+    /** V6: each side's call this tick; a new one is said in party chat when a player on the side would read it. */
+    private void callTargets(long now) {
+        for (int side = 0; side < 2; side++) {
+            List<TeamTactics.Foe> foes = foesOf(side);
+            long cx = 0;
+            long cy = 0;
+            int standing = 0;
+            Fighter player = null;
+            List<Fighter> bots = new ArrayList<>();
+            for (Fighter fighter : fighters.values()) {
+                Point at = fighter.chr.getPosition();
+                if (fighter.side != side || fighter.knockedOut || at == null) {
+                    continue;
+                }
+                cx += at.x;
+                cy += at.y;
+                standing++;
+                if (fighter.human) {
+                    player = fighter;
+                } else {
+                    bots.add(fighter);
+                }
+            }
+            if (standing == 0) {
+                continue;
+            }
+            TeamTactics.Call next = TeamTactics.call(foes, calls[side].targetId(), calledAtMs[side], playerTarget[side],
+                    playerHitAtMs[side], (int) (cx / standing), (int) (cy / standing), now);
+            if (next.targetId() == calls[side].targetId()) {
+                calls[side] = next;
+                continue;
+            }
+            calls[side] = next;
+            calledAtMs[side] = now;
+            if (player == null || bots.isEmpty() || next.targetId() <= 0
+                    || now - lastCallSaidAtMs[side] < TeamCalls.GAP_MS) {
+                continue;
+            }
+            Fighter target = fighters.get(next.targetId());
+            double share = target.chr.getHp() / (double) Math.max(1, target.chr.getCurrentMaxHp());
+            Fighter speaker = bots.get(ThreadLocalRandom.current().nextInt(bots.size()));
+            pendingCalls.add(new TeamCalls.Line(speaker.chr,
+                    TeamCalls.line(TeamCalls.kindOf(next, share), target.chr.getName())));
+            lastCallSaidAtMs[side] = now;
+        }
+    }
+
+    /** V6: the foe a bot goes for in a team fight: its side's call while near enough, else the foe at hand. */
+    private Fighter teamFoe(Fighter self) {
+        Point at = self.chr.getPosition();
+        if (at == null) {
+            return null;
+        }
+        int id = TeamTactics.targetFor(foesOf(self.side), calls[self.side], at.x, at.y);
+        return id <= 0 ? null : fighters.get(id);
+    }
+
+    /** V6: a knock-out in a team fight is called by the side that made it ("1 down") and by a bot that took it. */
+    private void callKnockOut(Fighter victim) {
+        if (!teamFight || decided()) {
+            return; // the last one down ends the duel: its afterword speaks then
+        }
+        int winners = 1 - victim.side;
+        List<Fighter> winnerBots = new ArrayList<>();
+        boolean winnerPlayer = false;
+        boolean victimPlayer = false;
+        for (Fighter fighter : fighters.values()) {
+            if (fighter.knockedOut && fighter != victim) {
+                continue;
+            }
+            if (fighter.side == winners && !fighter.knockedOut) {
+                if (fighter.human) {
+                    winnerPlayer = true;
+                } else {
+                    winnerBots.add(fighter);
+                }
+            } else if (fighter.side == victim.side && fighter.human && fighter != victim) {
+                victimPlayer = true;
+            }
+        }
+        long now = System.currentTimeMillis();
+        if (winnerPlayer && !winnerBots.isEmpty()) {
+            Fighter speaker = winnerBots.get(ThreadLocalRandom.current().nextInt(winnerBots.size()));
+            pendingCalls.add(new TeamCalls.Line(speaker.chr,
+                    TeamCalls.line(TeamCalls.Kind.DOWN, victim.chr.getName())));
+            lastCallSaidAtMs[winners] = now;
+        }
+        if (victimPlayer && !victim.human) {
+            pendingCalls.add(new TeamCalls.Line(victim.chr, TeamCalls.line(TeamCalls.Kind.OUT, null)));
+        }
+    }
+
     private Fighter nearestFoe(Fighter self) {
         Point at = self.chr.getPosition();
         Fighter best = null;
@@ -476,6 +606,10 @@ public final class DuelField {
         for (PvpHitResolver.Candidate candidate : met) {
             if (hit(self, fighters.get(candidate.character().getId()), attack, profile, lines, coefficient * share,
                     gearEdge)) {
+                if (landed == 0 && self.human) {
+                    playerTarget[self.side] = candidate.character().getId(); // V6: its bot teammates assist this one
+                    playerHitAtMs[self.side] = now;
+                }
                 landed++;
             }
         }
@@ -614,6 +748,7 @@ public final class DuelField {
         victim.knockedOut = true;
         map.broadcastMessage(victim.chr, PacketCreator.facialExpression(victim.chr, KNOCKED_OUT_FACE), true);
         tell(victim.chr.getName() + " is knocked out " + how + ".");
+        callKnockOut(victim);
     }
 
     /**

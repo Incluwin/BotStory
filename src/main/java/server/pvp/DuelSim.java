@@ -123,6 +123,69 @@ public final class DuelSim {
         }
     }
 
+    /**
+     * V6: one team round of {@code roundSeconds} between equal or unequal sides. Every fighter attacks in turn and goes
+     * for the standing foe with the lowest HP share (focus fire, as TeamTactics calls it); the side left standing
+     * wins, and at the bell the side keeping more of its HP (summed share) does. 0 (a), 1 (b) or -1 (a draw).
+     */
+    public static Outcome teamRound(List<Fighter> a, List<Fighter> b, PvpConfig config, Random random,
+                                    double roundSeconds) {
+        if (a.isEmpty() || b.isEmpty()) {
+            return new Outcome(a.isEmpty() ? (b.isEmpty() ? -1 : 1) : 0, 0);
+        }
+        List<List<Side>> sides = List.of(new ArrayList<>(), new ArrayList<>());
+        a.forEach(f -> sides.get(0).add(new Side(f, random.nextDouble() * ATTACK_INTERVAL_S)));
+        b.forEach(f -> sides.get(1).add(new Side(f, random.nextDouble() * ATTACK_INTERVAL_S)));
+        double window = config.PVP_HEAL_WINDOW_MS / 1000d;
+        while (true) {
+            int team = -1;
+            Side attacker = null;
+            for (int t = 0; t < 2; t++) {
+                for (Side side : sides.get(t)) {
+                    if (side.hp > 1d && (attacker == null || side.nextAttackS < attacker.nextAttackS)) {
+                        attacker = side;
+                        team = t;
+                    }
+                }
+            }
+            double now = attacker.nextAttackS;
+            if (now >= roundSeconds) {
+                double shareA = standingShare(sides.get(0));
+                double shareB = standingShare(sides.get(1));
+                return new Outcome(Math.abs(shareA - shareB) < 1e-9 ? -1 : shareA > shareB ? 0 : 1, roundSeconds);
+            }
+            for (List<Side> group : sides) {
+                for (Side side : group) {
+                    if (side.hp > 1d) {
+                        drink(side, now, window, config);
+                    }
+                }
+            }
+            attacker.nextAttackS = now + ATTACK_INTERVAL_S * (0.9d + 0.2d * random.nextDouble());
+            Side victim = null;
+            for (Side side : sides.get(1 - team)) {
+                if (side.hp > 1d && (victim == null
+                        || side.hp / side.fighter.maxHp() < victim.hp / victim.fighter.maxHp())) {
+                    victim = side;
+                }
+            }
+            if (hit(attacker.fighter, victim, config, random) && standingShare(sides.get(1 - team)) <= 0d) {
+                return new Outcome(team, now);
+            }
+        }
+    }
+
+    /** A team's standing HP share, summed (0 when every one of it is down). */
+    private static double standingShare(List<Side> team) {
+        double share = 0;
+        for (Side side : team) {
+            if (side.hp > 1d) {
+                share += side.hp / side.fighter.maxHp();
+            }
+        }
+        return share;
+    }
+
     /** The victim drinks when its heal window has passed and it needs to (one potion per window, as in a duel). */
     private static void drink(Side side, double now, double window, PvpConfig config) {
         if (now < side.nextDrinkS) {

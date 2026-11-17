@@ -132,3 +132,76 @@ intents:
       - "gg {name}, u earned that title"
       - "lost the final to {name}. next week tho"
       - "{name} is champ this week. gg, ill be back"
+
+  # team fights (TeamLadder, docs/PVP_PLAN.md V6), said by the first member of the citizen side: {name} is the player,
+  # {team} the citizen team's name (its guild, or a pickup team's), {size} how many a side; a Crew War adds {crew} and
+  # {record}, the player's record against the crew ("2-1"), before the war in the intro and after it at the end
+  - id: team.intro.map
+    trigger: team.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{team} vs {name}'s team. lets go"
+      - "{size} on {size}, ok. gl {name}"
+      - "we've been practicing for this lol"
+      - "stay together guys. focus {name}"
+
+  - id: team.win.map
+    trigger: team.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, {team} takes it"
+      - "gg wp. good teamwork guys"
+      - "ggs! that was fun"
+      - "gg {name}. rematch anytime"
+
+  - id: team.lose.map
+    trigger: team.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, ur team is good"
+      - "gg. we need more practice lol"
+      - "ugh gg wp"
+      - "gg. next time we focus better"
+
+  - id: crewwar.intro.map
+    trigger: crewwar.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{crew} came to play, {name}. {record} so far"
+      - "a whole crew war huh. ok lets settle this"
+      - "{record}, {name}. not for long"
+      - "brought the whole crew lol. gl"
+
+  - id: crewwar.win.map
+    trigger: crewwar.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "told u. {crew} > ur crew. gg"
+      - "gg {name}, that's {record} now"
+      - "gg. come back when ur ready lol"
+
+  - id: crewwar.lose.map
+    trigger: crewwar.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}. this isnt over"
+      - "ok u got us. {record}. we'll be back"
+      - "gg wp. ur crew is legit"

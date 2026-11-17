@@ -126,6 +126,57 @@ final class LadderBook {
         return new Change[] {new Change(rowA, afterA), new Change(rowB, afterB)};
     }
 
+    /**
+     * V6: a team's rating for a match at {@code now}, from its members' own: the mean rating, the root-mean-square
+     * deviation and the mean volatility. Team ratings live in their own book (a {@link LadderStore#TEAM_PREFIX} store).
+     */
+    Glicko2.Rating teamRating(List<Integer> members, LadderRules.Bracket bracket, long now) {
+        if (members.isEmpty()) {
+            return Glicko2.Rating.initial();
+        }
+        double rating = 0;
+        double deviationSquares = 0;
+        double volatility = 0;
+        for (int id : members) {
+            Glicko2.Rating one = rating(id, bracket, now);
+            rating += one.rating();
+            deviationSquares += one.deviation() * one.deviation();
+            volatility += one.volatility();
+        }
+        int n = members.size();
+        return new Glicko2.Rating(rating / n, Math.sqrt(deviationSquares / n), volatility / n);
+    }
+
+    /**
+     * V6: books a team match: every member of {@code sideA} is rated against side B's team rating, and every member of
+     * side B against side A's, with {@code scoreA} as in {@link #record}. Returns the changes, side A's members first.
+     */
+    synchronized List<Change> recordTeams(List<Integer> sideA, List<Integer> sideB, LadderRules.Bracket bracket,
+                                          double scoreA, long now) {
+        Glicko2.Rating teamA = teamRating(sideA, bracket, now);
+        Glicko2.Rating teamB = teamRating(sideB, bracket, now);
+        List<Change> changes = new java.util.ArrayList<>();
+        for (int id : sideA) {
+            changes.add(rateOne(id, bracket, teamB, scoreA, now));
+        }
+        for (int id : sideB) {
+            changes.add(rateOne(id, bracket, teamA, 1d - scoreA, now));
+        }
+        return changes;
+    }
+
+    private Change rateOne(int id, LadderRules.Bracket bracket, Glicko2.Rating opponents, double score, long now) {
+        Row before = row(id, bracket);
+        Glicko2.Rating next = Glicko2.update(rating(id, bracket, now), opponents, score);
+        int week = week(now);
+        Row after = new Row(id, bracket, next, before.wins() + (score > 0.5d ? 1 : 0),
+                before.losses() + (score < 0.5d ? 1 : 0), now, week,
+                before.weekOf() == week ? before.weekRating() : before.rating().rating());
+        cache.put(key(id, bracket), after);
+        store.save(after, SEASON);
+        return new Change(before, after);
+    }
+
     /** A rating needs this many matches to be listed or ranked. */
     static final int LISTED_AFTER = 3;
 

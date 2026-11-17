@@ -1761,6 +1761,10 @@ mods:
 # COLISEUM_TONIC_GAP_MS apart) in place of your own potions. Ratings live in pvp_rating; citizens play
 # COLISEUM_SIM_PER_MINUTE simulated ladder matches among themselves each social minute, so the ladder moves while you
 # are away. Needs PVP_ENABLED. Technical: server.living.population.coliseum.Coliseum.
+# Team fights (docs/PVP_PLAN.md V6), offered by Tigun while the coliseum is on: you and your companions against a
+# citizen team (2v2 or 3v3, one guild when he can find one) on the team ladder, or a Crew War against your rival crew
+# that counts on your record against it. Team ratings are kept apart from 1v1; citizen teams play
+# COLISEUM_TEAM_SIM_PER_MINUTE simulated team matches each social minute. Technical: ...coliseum.TeamLadder.
 # TOURNAMENT_* (docs/PVP_PLAN.md V5): a weekly knockout per ladder bracket, TOURNAMENT_SEATS seats (2, 4 or 8), on
 # TOURNAMENT_DAY at TOURNAMENT_HOUR in the server's own time zone, fought on TOURNAMENT_CHANNEL. Players sign up with
 # Tigun from Monday and take seats first; the top-rated citizens on that channel fill the rest. Every seat pays
@@ -1807,6 +1811,7 @@ pvp:
     COLISEUM_TONIC_PERCENT: 25
     COLISEUM_TONIC_GAP_MS: 8000
     COLISEUM_SIM_PER_MINUTE: 20
+    COLISEUM_TEAM_SIM_PER_MINUTE: 6
     TOURNAMENT_ENABLED: false
     TOURNAMENT_DAY: SATURDAY
     TOURNAMENT_HOUR: 20
