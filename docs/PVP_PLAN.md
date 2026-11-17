@@ -1298,6 +1298,35 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
 - Focus fire is a real tactic, so sides are always equal in size.
 - *Done when* a 3v3 against the rival crew is filmed and the companions read as teammates in the review.
 
+**V6 status (2026-11-17, feat/pvp-v4 254c56205, not deployed):**
+- **Two kinds, both from Tigun's new "Fight with my companions" page:** a team ladder match (2v2 or 3v3, as many of
+  your companions as stand with you, the 1v1 fee) or a Crew War against your rival crew (no fee). Best of three under
+  coliseum rules on a private arena floor; sides stand apart on the bottom floor (TeamRules.spot) and are always equal.
+- **Who you face:** a ladder match takes a citizen team in your bracket within 5 levels, one guild's when a guild has
+  enough free members (the guild team rated nearest yours), else the nearest-rated free citizens as "a pickup team"
+  (TeamRules.pick). A Crew War takes the crew's leader first, then its members, free on your channel; its size is what
+  both sides can field. Hired citizens are never free, so your companions are never on the other side.
+- **Team brain (server.pvp.TeamTactics, in DuelField):** a side's bots pick one target together, the standing foe
+  with the lowest HP share (a far foe counts healthier, 1,200 px = one whole share); a call stands 2.5 s and switches
+  only for a foe 0.25 share weaker; while you landed a hit in the last 4 s your bots assist your target; a called foe
+  more than 650 px from a bot is left for the foe at hand. Your bots make short party-chat calls (TeamCalls: "on
+  Wavaki", "Wavaki low", "with u", "1 down", "im out"), at most one a side every 6 s; a side with no player is silent.
+- **Ratings:** team ratings apart from 1v1, under TEAM_ brackets in pvp_rating. A team rates as its members' mean
+  (rating and volatility mean, deviation root-mean-square); every member is rated against the other team's rating, so
+  your companions climb the team ladder with you. Citizen teams (guild teams first, then pickup teams, 2 or 3 a side)
+  play COLISEUM_TEAM_SIM_PER_MINUTE (6) simulated best-of-three team matches a social minute (DuelSim.teamRound:
+  everyone goes for the weakest standing foe; at the bell the side keeping more summed HP share wins).
+- **Pay and records:** the player only, as a ladder match, sharing the ladder's 10 rewarded matches a day; companions
+  get nothing. A team match is booked in pvp_match as TEAM; a Crew War is booked with the crew's id as a challenge is,
+  so the head-to-head, the crew quoting it, `@records` and the letters count it, and a crew win takes a megaphone slot.
+- **Lines:** team.intro/win/lose and crewwar.intro/win/lose in chatter/coliseum.yaml, said by the citizen side's first
+  member; between rounds the ladder's own round lines.
+- **GM:** `!pvp coliseum team [2|3]`, `!pvp coliseum crewwar`, `!pvp coliseum teamsim [n]`; status lists team
+  matches too. All run with the coliseum switched off.
+- **Tests:** TeamTacticsTest (7), TeamRulesTest (10: team picking, spots, team ratings, a mirror 2v2 even at 0.50 and
+  3v2 won over 80% in the sim, the best of three), ColiseumContentTest's new slots.
+- **Not yet:** the live check and the 3v3 Crew War film for the review.
+
 ## 10. V7. Client polish (V0.1 says it is needed)
 
 - **Own damage number.** V0.1 showed that your own client ignores a `damagePlayer` about itself, for every source and
