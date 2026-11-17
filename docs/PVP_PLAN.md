@@ -1248,6 +1248,45 @@ The server sees a human only through movement packets. Ties go to the human both
 - *Done when* a scheduled tournament runs start to finish with one human seated, and its results appear on the board
   and in the letters.
 
+### Status (2026-11-17)
+
+V5.1 and V5.2 are built on `feat/pvp-v4` (b55e0407e, score wording 26916d19c), switch `pvp.TOURNAMENT_ENABLED` off.
+V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
+
+- **Where it differs from the design above.**
+  - **Schedule:** the social minute checks the clock, not `EventManager.scheduleAtTimestamp`: a reminder 5 minutes
+    before the start, the start itself (up to 3 hours late, after a restart), and a run left RUNNING by a restart is
+    cancelled with fees owed back.
+  - **Watching:** a citizen-only bout is fought live only when a player asked Tigun to watch it; the watchers sit
+    ringside as in the V4 gallery. Every other citizen bout is simulated (`DuelSim`). Tournament bouts are booked in
+    `pvp_match` but do not move ladder ratings.
+  - **Draw:** seeded by ladder rating over everyone seated (1 v 8, 4 v 5, 2 v 7, 3 v 6); empty seats are byes. A drawn
+    bout sends the better seed on. A seat not free on the tournament channel when its bout opens forfeits it, and a
+    player who never fought takes no prize.
+  - **Prizes:** citizens take only their pool shares, no Trophies. Prizes for a player who is offline or has a full
+    Etc tab, and fees from a called-off run, wait with Tigun (`pvp_tournament_seat.paid`) and are paid from his window.
+  - **Medal:** granted with a `TOURNAMENT_MEDAL_DAYS` expiry; last week's champion hands theirs back if online.
+- **Pieces.** `coliseum.Tournament` (controller), `TournamentBout` (a live best of three), `TournamentDraw` and
+  `TournamentRules` (pure), `TournamentStore`; tables `pvp_tournament` / `pvp_tournament_seat` (053); bookings in
+  `pvp_match` with kind TOURNAMENT; ledger accounts `PVP_FEE` / `PVP_PRIZE`; lines `tournament.*` in
+  chatter/coliseum.yaml; the letters' news kind `coliseum.tournament`; the board's tournament page. GM:
+  `!pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]` (start works with the
+  switch off).
+- **Live check (2026-11-17, on b55e0407e).** `!pvp tournament start veteran 4 1 me` seated 1. Wavaki, 2. LilNeka,
+  3. FoxSniper, 4. Crewfriend (pool 50,400 from the three citizens' fees; a GM pays none). Crewfriend's two bouts were
+  fought live (the opponent knocked out with `!pvp duel ko` through the headless operator); LilNeka v FoxSniper was
+  simulated. Seen:
+  - The semi-finals and final notices, Tigun's "the final starts in 1 minute", Crewfriend back on its own spot after
+    each bout.
+  - Crewfriend champion: 40 Event Trophies, 25,200 mesos, the Absolute Victory Carnivalian Medal ("yours for 7 days"),
+    the notice "Crewfriend is this week's Veteran champion, beating FoxSniper in the final!". FoxSniper took 12,600
+    and megaphoned "lost the final to Crewfriend. next week tho". The house kept 12,600.
+  - `pvp_tournament` DONE, every seat's row paid; Tigun's window reads "Veteran: won by Crewfriend, over FoxSniper."
+  - Fixed after it: scores read from the top seed's side ("Crewfriend beats Wavaki (0-2)"); 26916d19c reads them from
+    the winner's.
+  - Not seen live: a scheduled start (only a GM start), the letter to an away player (unit-tested), a forfeit, a
+    watched citizen bout, and a prize waiting with Tigun.
+
 ---
 
 ## 9. V6. Team fights
