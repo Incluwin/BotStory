@@ -1298,7 +1298,7 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
 - Focus fire is a real tactic, so sides are always equal in size.
 - *Done when* a 3v3 against the rival crew is filmed and the companions read as teammates in the review.
 
-**V6 status (2026-11-17, feat/pvp-v4 254c56205, not deployed):**
+**V6 status (2026-11-17, feat/pvp-v4 254c56205, LIVE as d319a27af 08:40, switch off):**
 - **Two kinds, both from Tigun's new "Fight with my companions" page:** a team ladder match (2v2 or 3v3, as many of
   your companions as stand with you, the 1v1 fee) or a Crew War against your rival crew (no fee). Best of three under
   coliseum rules on a private arena floor; sides stand apart on the bottom floor (TeamRules.spot) and are always equal.
@@ -1325,7 +1325,23 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
   matches too. All run with the coliseum switched off.
 - **Tests:** TeamTacticsTest (7), TeamRulesTest (10: team picking, spots, team ratings, a mirror 2v2 even at 0.50 and
   3v2 won over 80% in the sim, the best of three), ColiseumContentTest's new slots.
-- **Not yet:** the live check and the 3v3 Crew War film for the review.
+- **Live check (2026-11-17 08:45-08:57, d319a27af, full suite 16,417 / 0 / 33):** Crewfriend (Lv 97 Spearman) with
+  its companions Dorran and IceCookie on Henesys Hunting Ground I; all by GM command, nobody fought for Crewfriend (it
+  stood still), so this checks the flow and the bots, not balance.
+  - Crew War x2 (`!pvp coliseum crewwar`): both were 2v2, Crewfriend + Dorran against Nora404 + xTanx. Correct: Equinox's
+    third member, Blade520 (Lv 109), was online but grinding Ulu Estate III and not free, and a Crew War sends only free
+    members. Equinox won 2-1 then 2-0; team rating 1500 -> 1338 -> 1280; Nora404 "gg crewfriend, that's 1-4 now" (the V3
+    head-to-head counts Crew Wars); Tigun paid 1 Event Trophy each.
+  - 3v3 ladder x3 (`!pvp coliseum team 3`): Crewfriend + Dorran + IceCookie against pickup teams (SilentRanger, Sora867,
+    Leaf749; xMoelx, Nona, Soa367; GrumpyDit, Gira74, xYuox), lost 1-2, 0-2, 0-2. Six fighters on the bottom floor,
+    round clock, "3v3 round 2 of 3 against a pickup team. Score 0-1." between rounds, knock-out lines ("Dorran is knocked
+    out by GrumpyDit"), and the companions' party calls: "go xYuox", "GrumpyDit first", "got em", "im out", "sry im
+    out". Everyone back on the field after each, no server errors.
+  - Film: docs/agents/evidence/pvp-v6-film/team3v3-cut.mp4 (58 s, the third 3v3); crewwar1-raw.mp4 (both Crew Wars).
+  - Seen, not a bug: a citizen from the other side sent Crewfriend a buddy request after a match (the citizens' own
+    social behaviour).
+- **Not yet:** a filmed 3v3 Crew War needs a crew with three members free on the player's channel; Equinox had two.
+  A team win (every player bout lost because Crewfriend stood still); the guild-team pick (every pickup this run).
 
 ## 10. V7. Client polish (V0.1 says it is needed)
 
