@@ -1350,8 +1350,8 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
   - add server→client **0x189 PVP_HIT** to `docs/CUSTOM_OPCODES.md`;
   - Kaentake draws the number and plays the hit sound on the local user;
   - the HP bar already updates without it.
-  - **Built 2026-11-09, not deployed or shipped** (server `feat/pvp-v7-own-hit`, kaentake `feat/own-hit` on the
-    shipped `ship/2026-10-31-quickslot-relogin`). The client routine is `0x0092EC50`: the one that draws a number
+  - **Built 2026-11-09, LIVE 2026-11-17** (server `feat/pvp-v7-own-hit`, kaentake `feat/own-hit` on the
+    shipped `ship/2026-10-31-quickslot-relogin`; status below). The client routine is `0x0092EC50`: the one that draws a number
     over a CUser, called by `CUserLocal::SetDamaged` and `CUserRemote::OnHit` alike. Sounds come from
     `play_mob_sound` (CharDam1/2/F by attack index) and `play_skill_sound` (type 49, Hit). Addresses and evidence
     are in kaentake `src/v83_offsets.h`, namespace `ownhit`. Number and sound only: no knockback, invincibility or
@@ -1364,8 +1364,28 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
     draws a DAMAGE_PLAYER about one character id. On a private test client as Bossfriend, the live
     `!pvp probe self` with src -4, 0 (mob 8130100), -1 and -3 drew the violet 1234 over your own character
     every time, with no failure logged. Evidence is in `docs/agents/evidence/own-hit/` (clip, contact sheet,
-    frame). Split suite on 452210600: 16,295 / 0 / 33. Still to do: the 0x189 path itself (`!pvp probe
-    ownhit`) after a deploy. The sound cannot be heard in the clip (video only).
+    frame). Split suite on 452210600: 16,295 / 0 / 33. The sound cannot be heard in the clip (video only).
+
+**V7 status (2026-11-17, feat/pvp-v7-own-hit 35bcbbc62 on feat/pvp-v4 4e0c15abb, LIVE 12:49; full suite 16,429 / 0 / 33):**
+- **Server:** rebased onto V4-V6; the one conflict was the `!pvp` usage line. Ladder, tournament, team and Crew War
+  fights all strike through DuelField, so their hits show over you as well.
+- **Client:** Kaentake.dll 2477a754 (kaentake 82c62de) is in the BotStory client's Game Files, replacing ee4fb65b
+  (backup kept). `manifest.txt` was regenerated; the DLL is its only changed line. The patch server hands this DLL to
+  every launcher that syncs, so friends' clients get it on their next launch. `own_hit` is on by default:
+  Crewfriend's login reported 42 features (41 before), `own_hit` active.
+- **Gotcha:** a Game Files change without a regenerated `manifest.txt` stops the launcher with "Patcher failed on
+  Kaentake.dll" (it checks the manifest's hash). Run `patch-server/gen_manifest.py` (or `regen.bat`) after any Game
+  Files change, and diff its output against the old manifest first, so only the intended files ship.
+- **Live check (2026-11-17 12:56-13:01, Crewfriend Lv 97 Spearman in the GM room, by GM command):** pass.
+  - `!pvp probe ownhit` x6, about 6 s apart: 1234; 1234 with mob 8800003 attack 0's CharDam sound; 1234 with
+    Slash Blast's (1001005) Hit sound; miss; 777; miss. Each drew over Crewfriend's own head: the violet 1234 three
+    times, MISS, 777, MISS. The server logged all six as sent.
+  - A real duel (`!pvp duel IceCookie`, its own companion; 20 s, 13 attacks, Crewfriend KO'd at 1 HP): a violet
+    number (241-433) over Crewfriend for each hit, the HP bar falling with them. Before V7 your own client drew none.
+  - Evidence (local, gitignored) in `docs/agents/evidence/own-hit/`: `own-hit-0x189-live.mp4` +
+    `contact-0x189.png` (one row per probe), `own-hit-duel-live.mp4` + `contact-duel.png`, `03-own-hit-0x189-1234.png`.
+  - Not checked live: the sounds (the clips are video only); a server-run boss hit (ServerMobDamageServiceTest covers
+    it); a client without `own_hit` getting nothing (OwnHitTest covers the gate).
 - **WASM:** a matching handler, if V0.7 shows a gap.
 - **Custom.wz, optional:** a proper "Coliseum Mark" and "Coliseum Champion" medal to replace the stock stand-ins, under
   the existing Custom.wz approval.
