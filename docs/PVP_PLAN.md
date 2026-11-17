@@ -1195,8 +1195,9 @@ The server sees a human only through movement packets. Ties go to the human both
     (changeset 61 / SQL 052), the rating a row went into its week's first match with.
   - **The gallery** (`Gallery`), the watched-citizen rule: Tigun's "Watch a match from the gallery" picks the best-rated
     free citizen of your bracket (else the busiest one) with a foe within 5 levels, and its nearest-rated foe. They
-    fight a real best of three under coliseum rules on a closed arena floor while you stand on its lower-left
-    platform (y 95, 180 px above them); you hear each round and the rating change, and the two talk before, between and after. The
+    fight a real best of three under coliseum rules on a closed arena floor while you stand ringside at the floor's
+    right end (a seat on a platform above put the fighters under the chat bar: the client draws you three quarters
+    down the screen); you hear each round and the rating change, and the two talk before, between and after. The
     result counts on the ladder like a simulated one. Leaving the floor or logging out calls the bout off, unrated, and
     everyone goes back where they stood. Unwatched citizen matches stay simulated. Under Lv 30 you can still watch.
   - **The King's Room** stays as AriantPQ left it: the gallery is the arena floor's platform, because a client sees only

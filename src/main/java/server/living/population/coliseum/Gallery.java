@@ -25,8 +25,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Watching from the gallery (docs/PVP_PLAN.md V4.4). Tigun puts two free citizens of a bracket, the best rated one and
- * its nearest-rated foe, in a real best of three on a closed arena floor, and the watcher on a platform above
- * them. That is the watched-citizen rule: a citizen ladder match is fought for real only while a human
+ * its nearest-rated foe, in a real best of three on a closed arena floor, and the watcher ringside at the floor's
+ * right end. That is the watched-citizen rule: a citizen ladder match is fought for real only while a human
  * watches it; the rest stay simulated ({@link Coliseum#simulate}). A watched result counts on the ladder like any
  * other. A watcher who leaves the floor or logs out calls the bout off, unrated, and everyone goes back where they
  * stood.
@@ -34,10 +34,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 final class Gallery {
     private static final Logger log = LoggerFactory.getLogger(Gallery.class);
     /**
-     * The arena floors' lower-left platform (y 95, x -990 to -411 on all three), 180 px above the fighters and between
-     * their start spots. The middle platform (y -85) put the floor below the bottom of the screen.
+     * Ringside: the arena floor's right end (y 275 runs x -990 to 360 on all three), level with the fighters. The client
+     * draws its own character about three quarters down the screen, so a seat on a platform above the fight put the
+     * fighters under the chat bar (live check, 2026-11-16); the floor fits the screen's width, so the whole fight shows.
      */
-    static final Point GALLERY_SPOT = new Point(-440, 80);
+    static final Point GALLERY_SPOT = new Point(250, 260);
 
     enum Stage { ENTERING, INTRO, FIGHTING, BETWEEN, AFTER }
 
