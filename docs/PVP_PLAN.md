@@ -1216,6 +1216,9 @@ The server sees a human only through movement packets. Ties go to the human both
     `CompanionView.jobName` ("White Knight", Cygnus and Aran without the tier digit).
   - **Fixed after:** the watcher saw the stock 10-minute arena clock through the whole bout, since the duel sends its
     round clock to fighters only; the gallery now sends the watcher one at each round (countdown plus round).
+  - **Recheck on 64dae659f (live 20:55):** a fourth bout showed the watcher the round clock (1:28 mid-round); Ormael
+    upset Wavaki 2-1 (2141 -> 2052, 1761 -> 1854). Both were Crusaders, so the job-name fix was not seen live (unit
+    tests only). No errors.
 
 ---
 
