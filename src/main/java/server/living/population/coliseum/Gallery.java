@@ -10,6 +10,7 @@ import server.living.story.DuelGround;
 import server.pvp.DuelField;
 import server.pvp.DuelRegistry;
 import server.pvp.Glicko2;
+import tools.PacketCreator;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -295,6 +296,9 @@ final class Gallery {
         bout.stage = Stage.FIGHTING;
         bout.deadlineMs = now + (pvp.PVP_COUNTDOWN_SECONDS + pvp.COLISEUM_ROUND_SECONDS) * 1000L
                 + Coliseum.ROUND_SLACK_MS;
+        // the duel shows its round clock to its fighters only; the watcher kept the stock 10-minute arena clock
+        // (live check 2026-11-16). This one runs out when the round would: the 3-2-1 count plus the round.
+        watcher.sendPacket(PacketCreator.getClock(pvp.PVP_COUNTDOWN_SECONDS + pvp.COLISEUM_ROUND_SECONDS));
         watcher.dropMessage(5, "Round " + (bout.score.played() + 1) + " of " + LadderRules.ROUNDS + ": " + bout.aName
                 + " against " + bout.bName + ". Score " + bout.score + ".");
     }

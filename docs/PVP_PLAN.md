@@ -1214,8 +1214,8 @@ The server sees a human only through movement packets. Ties go to the human both
     f793c1daf) shows the whole fight. Clip: `docs/agents/evidence/pvp-v4-film/gallery3-cut.mp4`.
   - **Fixed after:** the lines named jobs from the enum ("Lv 80 Whiteknight"); bd5baf43a uses
     `CompanionView.jobName` ("White Knight", Cygnus and Aran without the tier digit).
-  - **Seen, not changed:** the stock 10-minute arena clock shows at the top for the first seconds until the round's own
-    clock replaces it (as noted for V4.1).
+  - **Fixed after:** the watcher saw the stock 10-minute arena clock through the whole bout, since the duel sends its
+    round clock to fighters only; the gallery now sends the watcher one at each round (countdown plus round).
 
 ---
 
