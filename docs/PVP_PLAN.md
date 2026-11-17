@@ -1203,6 +1203,19 @@ The server sees a human only through movement packets. Ties go to the human both
   - **The King's Room** stays as AriantPQ left it: the gallery is the arena floor's platform, because a client sees only
     the map it is on.
   - **GM:** `!pvp coliseum board` and `!pvp coliseum watch [rookie|veteran|champion]`, both with the switch off.
+- **V4.4 live check (2026-11-16, Crewfriend; full suite 16,388 / 0 / 33 on each build).**
+  - **Board** (after 30 simulated rounds filled the brackets): "Your bracket: Veteran (Lv 60-99), rated 1246, 1-4.
+    52nd of 63."; the Veteran top 10 ("1. Wavaki Lv 76 2070 (8-0) +570") and the climbers page each rendered.
+  - **Gallery, three bouts, no errors, the watcher home at its own spot each time:** Wavaki beat LilTax 2-0
+    (2070 -> 2112, 1950 -> 1918), Sky706 2-0 (2112 -> 2126, the smaller gain against a lower-rated foe) and
+    ArrowMage 2-0 (2126 -> 2141). Rounds ran 7-14 s.
+  - **The seat took three tries.** A middle-platform seat (y -85) left the floor below the screen; the lower-left
+    platform (y 95, 1a952b4de) still put the fighters under the chat bar; ringside at the floor's right end (250, 260;
+    f793c1daf) shows the whole fight. Clip: `docs/agents/evidence/pvp-v4-film/gallery3-cut.mp4`.
+  - **Fixed after:** the lines named jobs from the enum ("Lv 80 Whiteknight"); bd5baf43a uses
+    `CompanionView.jobName` ("White Knight", Cygnus and Aran without the tier digit).
+  - **Seen, not changed:** the stock 10-minute arena clock shows at the top for the first seconds until the round's own
+    clock replaces it (as noted for V4.1).
 
 ---
 
