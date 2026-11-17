@@ -137,6 +137,8 @@ public final class Coliseum {
     private final LadderStore store;
     private final ColiseumNpcs npcs;
     private final Quartermaster quartermaster = new Quartermaster();
+    private final Gallery gallery = new Gallery(this);
+    private final ColiseumBoard board;
     private final Random random = new Random();
     private final Queue<Request> requests = new ConcurrentLinkedQueue<>();
     private final Map<Integer, Match> byHuman = new ConcurrentHashMap<>();
@@ -156,7 +158,22 @@ public final class Coliseum {
         this.population = population;
         this.store = store;
         this.book = new LadderBook(store);
+        this.board = new ColiseumBoard(book);
         this.npcs = new ColiseumNpcs(population);
+    }
+
+    Population population() {
+        return population;
+    }
+
+    /** A human in a ladder match of their own. */
+    boolean inMatch(int characterId) {
+        return byHuman.containsKey(characterId);
+    }
+
+    /** The next arena floor in turn (1, 2, 3, 1, ...). */
+    synchronized int nextArenaId() {
+        return ARENAS[Math.floorMod(nextArena++, ARENAS.length)];
     }
 
     public static boolean on() {
@@ -166,6 +183,28 @@ public final class Coliseum {
 
     LadderBook book() {
         return book;
+    }
+
+    /** The ladder's pages (V4.4), as the F1 Bulletin Board's "Coliseum" page shows them; {@code back} may be null. */
+    public void board(Character player, int npc, Runnable back) {
+        board.show(player, npc, back);
+    }
+
+    /**
+     * Watch a citizen bout from the gallery (V4.4): {@code bracketWord} rookie, veteran or champion, or null for the
+     * watcher's own bracket (else the busiest). {@code forced} lets a GM watch with the coliseum off.
+     */
+    public void watch(Character watcher, String bracketWord, boolean forced) {
+        LadderRules.Bracket bracket = null;
+        if (bracketWord != null) {
+            for (LadderRules.Bracket each : LadderRules.Bracket.values()) {
+                if (each.name().equalsIgnoreCase(bracketWord) || each.label.equalsIgnoreCase(bracketWord)) {
+                    bracket = each;
+                }
+            }
+        }
+        gallery.request(watcher, bracket, forced);
+        startTicker();
     }
 
     // ---- the minute -----------------------------------------------------------------------------------------------
@@ -192,6 +231,7 @@ public final class Coliseum {
     /** The population stops. */
     public void stop() {
         npcs.removeAll();
+        gallery.stopAll("the arena closed");
         for (Match match : new ArrayList<>(byHuman.values())) {
             abort(match, "the arena closed", true, System.currentTimeMillis());
         }
@@ -225,9 +265,13 @@ public final class Coliseum {
 
     void talk(Character player) {
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
+        LivingTalk.Option watch = new LivingTalk.Option("#bWatch a match from the gallery#k",
+                () -> watch(player, null, false));
         if (bracket.isEmpty()) {
-            LivingTalk.open(player, TIGUN).ok("The ladder starts at Lv 30. Train up and come back.\r\n\r\n"
-                    + "Out there it is one against one, best of three, and no potions of your own.").show();
+            LivingTalk.open(player, TIGUN).menu("The ladder starts at Lv 30. Train up and come back.\r\n\r\n"
+                    + "Out there it is one against one, best of three, and no potions of your own. You can watch"
+                    + " in the meantime.", List.of(watch, new LivingTalk.Option("#bThe ladder board#k",
+                    () -> board.show(player, TIGUN, () -> talk(player))))).show();
             return;
         }
         long now = System.currentTimeMillis();
@@ -237,7 +281,8 @@ public final class Coliseum {
         List<LivingTalk.Option> options = new ArrayList<>();
         options.add(new LivingTalk.Option("#bFight a ladder match#k (" + mesos(fee) + " mesos)",
                 () -> request(player, 0, false)));
-        options.add(new LivingTalk.Option("#bThe " + bracket.get().label + " top 10#k", () -> top(player, bracket.get())));
+        options.add(watch);
+        options.add(new LivingTalk.Option("#bThe ladder board#k", () -> board.show(player, TIGUN, () -> talk(player))));
         options.add(new LivingTalk.Option("#bHow the ladder works#k", () -> rules(player)));
         LivingTalk.open(player, TIGUN).menu("I'm Tigun. I keep Ariant's ladder.\r\n\r\nYour bracket: #b"
                 + bracket.get().label + "#k (" + bracket.get().range() + "), rated #b" + Math.round(rating.rating())
@@ -256,21 +301,6 @@ public final class Coliseum {
                         + " Event Trophies (and EXP for your first " + LadderRules.EXP_WINS_PER_DAY + " wins a day), a loss "
                         + LadderRules.LOSS_TROPHIES + ". I pay for " + LadderRules.DAILY_REWARDED + " matches a day.")
                 .back(() -> talk(player)).show();
-    }
-
-    private void top(Character player, LadderRules.Bracket bracket) {
-        List<LadderBook.Ranked> top = book.top(bracket, 10);
-        StringBuilder text = new StringBuilder("The " + bracket.label + " ladder (" + bracket.range() + "):\r\n\r\n");
-        if (top.isEmpty()) {
-            text.append("Nobody has three matches in yet.");
-        }
-        for (int i = 0; i < top.size(); i++) {
-            LadderBook.Ranked ranked = top.get(i);
-            text.append(i + 1).append(". #b").append(ranked.name()).append("#k  ")
-                    .append(Math.round(ranked.row().rating().rating())).append("  (").append(ranked.row().wins())
-                    .append('-').append(ranked.row().losses()).append(")\r\n");
-        }
-        LivingTalk.open(player, TIGUN).ok(text.toString()).back(() -> talk(player)).show();
     }
 
     static long fee(int level) {
@@ -297,7 +327,7 @@ public final class Coliseum {
         if (human == null || !on() && !request.forced()) {
             return;
         }
-        if (byHuman.containsKey(human.getId()) || DuelRegistry.inDuel(human.getId())) {
+        if (byHuman.containsKey(human.getId()) || gallery.watching(human.getId()) || DuelRegistry.inDuel(human.getId())) {
             human.dropMessage(5, "You are in a match already.");
             return;
         }
@@ -328,7 +358,7 @@ public final class Coliseum {
         Character foe = opponent.agent();
         Glicko2.Rating theirs = book.rating(opponent.characterId, bracket.get(), now);
         double odds = Glicko2.winChance(mine, theirs);
-        int arena = ARENAS[Math.floorMod(nextArena++, ARENAS.length)];
+        int arena = nextArenaId();
         Match match = new Match(human, opponent, bracket.get(), odds, request.forced(), fee, arena, now);
         population.presence().hold(opponent.characterId, now + HOLD_MS);
         byHuman.put(human.getId(), match);
@@ -361,7 +391,7 @@ public final class Coliseum {
     }
 
     /** A loaded, unhired citizen nothing holds, alive, on {@code channel} (any channel when 0), out of every match. */
-    private boolean free(CitizenSession session, int channel, int humanId) {
+    boolean free(CitizenSession session, int channel, int humanId) {
         if (session == null || session.virtual || !session.loaded() || channel != 0 && session.channel != channel) {
             return false;
         }
@@ -370,6 +400,7 @@ public final class Coliseum {
         if (agent == null || citizen == null || citizen.hired() || agent.isGM() || !agent.isAlive()
                 || agent.getMap() == null || agent.getEventInstance() != null || agent.getParty() != null
                 || DuelRegistry.inDuel(agent.getId()) || population.presence().held(session)
+                || gallery.fighting(session.characterId)
                 || !(agent.getClient() instanceof BotClient) || agent.getId() == humanId) {
             return false;
         }
@@ -393,7 +424,7 @@ public final class Coliseum {
 
     private void stopTickerIfIdle() {
         synchronized (tickerLock) {
-            if (byHuman.isEmpty() && requests.isEmpty() && ticker != null) {
+            if (byHuman.isEmpty() && requests.isEmpty() && gallery.idle() && ticker != null) {
                 ticker.cancel(false);
                 ticker = null;
             }
@@ -424,6 +455,7 @@ public final class Coliseum {
                 abort(match, "something went wrong", true, now);
             }
         }
+        gallery.step(now);
         stopTickerIfIdle();
     }
 
@@ -763,6 +795,7 @@ public final class Coliseum {
             lines.add(match.humanName + " v " + match.citizenName + " (" + match.bracket.label + ", " + match.stage + ", "
                     + match.score + ", odds " + String.format(Locale.ROOT, "%.2f", match.odds) + ")");
         }
+        lines.addAll(gallery.status());
         return lines;
     }
 
@@ -785,7 +818,7 @@ public final class Coliseum {
 
     // ---- small helpers --------------------------------------------------------------------------------------------
 
-    private void say(CitizenSession session, String trigger, String humanName, Map<String, String> slots) {
+    void say(CitizenSession session, String trigger, String humanName, Map<String, String> slots) {
         ChatterEngine.Event event = ChatterEngine.Event.of(trigger, session.mapId, session.channel).self(session)
                 .subject(humanName, 0);
         slots.forEach(event::slot);
@@ -795,7 +828,7 @@ public final class Coliseum {
         }
     }
 
-    private static String jobName(Character chr) {
+    static String jobName(Character chr) {
         String name = chr.getJob().name().toLowerCase(Locale.ROOT).replace('_', ' ');
         StringBuilder out = new StringBuilder();
         for (String word : name.split(" ")) {
@@ -807,7 +840,7 @@ public final class Coliseum {
         return out.toString();
     }
 
-    private static Character online(int characterId) {
+    static Character online(int characterId) {
         for (World world : Server.getInstance().getWorlds()) {
             Character chr = world.getPlayerStorage().getCharacterById(characterId);
             if (chr != null) {

@@ -17,9 +17,18 @@ final class LadderBook {
     static final int SEASON = 1;
     private static final long DAY_MS = 24L * 60 * 60 * 1000;
 
-    /** A rating and its record; {@code updatedAtMs} is its last match (0: never played). */
+    /**
+     * A rating and its record; {@code updatedAtMs} is its last match (0: never played). {@code weekOf} is the week
+     * ({@link #week}) of that match and {@code weekRating} the rating it went into that week's first match with, so
+     * {@link #climbed} is how far it moved this week (V4.4's board).
+     */
     record Row(int characterId, LadderRules.Bracket bracket, Glicko2.Rating rating, int wins, int losses,
-               long updatedAtMs) {
+               long updatedAtMs, int weekOf, double weekRating) {
+        Row(int characterId, LadderRules.Bracket bracket, Glicko2.Rating rating, int wins, int losses,
+            long updatedAtMs) {
+            this(characterId, bracket, rating, wins, losses, updatedAtMs, 0, rating.rating());
+        }
+
         static Row fresh(int characterId, LadderRules.Bracket bracket) {
             return new Row(characterId, bracket, Glicko2.Rating.initial(), 0, 0, 0L);
         }
@@ -27,6 +36,16 @@ final class LadderBook {
         int played() {
             return wins + losses;
         }
+
+        /** How far the rating moved in week {@code week}: 0 when it has not played that week. */
+        int climbed(int week) {
+            return weekOf == week ? (int) Math.round(rating.rating() - weekRating) : 0;
+        }
+    }
+
+    /** The week of {@code ms} (UTC, a week starting Monday), counted from the epoch: the board's "this week". */
+    static int week(long ms) {
+        return (int) Math.floorDiv(Math.floorDiv(ms, DAY_MS) + 3, 7);
     }
 
     /** A row of the top list, with the name and level it is shown under. */
@@ -41,6 +60,12 @@ final class LadderBook {
 
         /** The best rated with at least {@code minPlayed} matches, GMs left out, best first. */
         List<Ranked> top(LadderRules.Bracket bracket, int season, int minPlayed, int limit);
+
+        /** Who climbed most in week {@code week} (played that week, GMs left out), most first; a rise only. */
+        List<Ranked> climbers(LadderRules.Bracket bracket, int season, int week, int limit);
+
+        /** {how many with {@code minPlayed} matches rate above {@code rating}, how many have them}, GMs left out. */
+        int[] standing(LadderRules.Bracket bracket, int season, int minPlayed, double rating);
     }
 
     /** A match's effect on both sides' ratings. */
@@ -89,8 +114,11 @@ final class LadderBook {
         Glicko2.Rating nextB = Glicko2.update(ratingB, ratingA, 1d - scoreA);
         int winA = scoreA > 0.5d ? 1 : 0;
         int winB = scoreA < 0.5d ? 1 : 0;
-        Row afterA = new Row(a, bracket, nextA, rowA.wins() + winA, rowA.losses() + winB, now);
-        Row afterB = new Row(b, bracket, nextB, rowB.wins() + winB, rowB.losses() + winA, now);
+        int week = week(now);
+        Row afterA = new Row(a, bracket, nextA, rowA.wins() + winA, rowA.losses() + winB, now, week,
+                rowA.weekOf() == week ? rowA.weekRating() : rowA.rating().rating());
+        Row afterB = new Row(b, bracket, nextB, rowB.wins() + winB, rowB.losses() + winA, now, week,
+                rowB.weekOf() == week ? rowB.weekRating() : rowB.rating().rating());
         cache.put(key(a, bracket), afterA);
         cache.put(key(b, bracket), afterB);
         store.save(afterA, SEASON);
@@ -98,9 +126,27 @@ final class LadderBook {
         return new Change[] {new Change(rowA, afterA), new Change(rowB, afterB)};
     }
 
-    /** The bracket's top {@code limit} with at least 3 matches (the board's page). */
+    /** A rating needs this many matches to be listed or ranked. */
+    static final int LISTED_AFTER = 3;
+
+    /** The bracket's top {@code limit} with at least {@link #LISTED_AFTER} matches (the board's page). */
     List<Ranked> top(LadderRules.Bracket bracket, int limit) {
-        return store.top(bracket, SEASON, 3, limit);
+        return store.top(bracket, SEASON, LISTED_AFTER, limit);
+    }
+
+    /** The bracket's biggest climbs of the week of {@code now}. */
+    List<Ranked> climbers(LadderRules.Bracket bracket, int limit, long now) {
+        return store.climbers(bracket, SEASON, week(now), limit);
+    }
+
+    /**
+     * Where {@code characterId} stands in the bracket: its place (1 is the top) among the listed, and how many are
+     * listed; its place is 0 while it has fewer than {@link #LISTED_AFTER} matches.
+     */
+    int[] standing(int characterId, LadderRules.Bracket bracket) {
+        Row row = row(characterId, bracket);
+        int[] counts = store.standing(bracket, SEASON, LISTED_AFTER, row.rating().rating());
+        return new int[] {row.played() >= LISTED_AFTER ? counts[0] + 1 : 0, counts[1]};
     }
 
     /** Forgets what was read (a test, or a reset by hand). */

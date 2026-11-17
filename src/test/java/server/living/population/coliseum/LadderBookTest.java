@@ -41,6 +41,28 @@ class LadderBookTest {
                     .limit(limit).forEach(r -> out.add(new LadderBook.Ranked(r, "C" + r.characterId(), 70)));
             return out;
         }
+
+        @Override
+        public List<LadderBook.Ranked> climbers(LadderRules.Bracket bracket, int season, int week, int limit) {
+            List<LadderBook.Ranked> out = new ArrayList<>();
+            rows.values().stream().filter(r -> r.bracket() == bracket && r.climbed(week) > 0)
+                    .sorted(Comparator.comparingInt((LadderBook.Row r) -> r.climbed(week)).reversed())
+                    .limit(limit).forEach(r -> out.add(new LadderBook.Ranked(r, "C" + r.characterId(), 70)));
+            return out;
+        }
+
+        @Override
+        public int[] standing(LadderRules.Bracket bracket, int season, int minPlayed, double rating) {
+            int above = 0;
+            int total = 0;
+            for (LadderBook.Row r : rows.values()) {
+                if (r.bracket() == bracket && r.played() >= minPlayed) {
+                    total++;
+                    above += r.rating().rating() > rating ? 1 : 0;
+                }
+            }
+            return new int[] {above, total};
+        }
     }
 
     @Test
@@ -98,6 +120,59 @@ class LadderBookTest {
     }
 
     /** Citizens' own ladder: a best of three under the coliseum's round, decided by the stronger loadout. */
+    @Test
+    void theWeekStartsOnMondayInUtc() {
+        long sunday = 1_763_251_200_000L; // 2025-11-16 00:00 UTC, a Sunday
+        long monday = sunday + 24L * 60 * 60 * 1000;
+        assertEquals(LadderBook.week(sunday - 1), LadderBook.week(sunday));
+        assertEquals(LadderBook.week(sunday) + 1, LadderBook.week(monday));
+        assertEquals(LadderBook.week(monday), LadderBook.week(monday + 6L * 24 * 60 * 60 * 1000 + 1));
+    }
+
+    @Test
+    void theWeeksClimbCountsFromItsFirstMatchAndStartsOverNextWeek() {
+        MemoryStore store = new MemoryStore();
+        LadderBook book = new LadderBook(store);
+        long monday = 1_763_337_600_000L; // 2025-11-17 00:00 UTC
+        int week = LadderBook.week(monday);
+
+        book.record(1, 2, LadderRules.Bracket.VETERAN, 1d, monday + 60_000L);
+        book.record(1, 3, LadderRules.Bracket.VETERAN, 1d, monday + 120_000L);
+        LadderBook.Row one = book.row(1, LadderRules.Bracket.VETERAN);
+
+        assertEquals(1500d, one.weekRating(), 1e-9, "the week counts from the rating its first match began at");
+        assertEquals((int) Math.round(one.rating().rating() - 1500d), one.climbed(week));
+        assertTrue(one.climbed(week) > 0);
+        assertEquals(0, one.climbed(week + 1), "a week it has not played shows no climb");
+        assertEquals(List.of(1), book.climbers(LadderRules.Bracket.VETERAN, 5, monday + 180_000L).stream()
+                .map(r -> r.row().characterId()).toList(), "only a rise is a climb");
+
+        long nextWeek = monday + 7L * 24 * 60 * 60 * 1000;
+        double before = one.rating().rating();
+        book.record(1, 2, LadderRules.Bracket.VETERAN, 0d, nextWeek);
+        LadderBook.Row next = book.row(1, LadderRules.Bracket.VETERAN);
+        assertEquals(week + 1, next.weekOf());
+        assertEquals(before, next.weekRating(), 1e-9, "the new week starts from last week's last rating");
+        assertTrue(next.climbed(week + 1) < 0);
+    }
+
+    @Test
+    void aStandingIsItsPlaceAmongTheListedAndZeroUntilItIsListed() {
+        MemoryStore store = new MemoryStore();
+        LadderBook book = new LadderBook(store);
+        LadderRules.Bracket vet = LadderRules.Bracket.VETERAN;
+        store.rows.put("1:VETERAN", new LadderBook.Row(1, vet, new Glicko2.Rating(1700, 80, 0.06), 6, 1, 1L));
+        store.rows.put("2:VETERAN", new LadderBook.Row(2, vet, new Glicko2.Rating(1600, 80, 0.06), 4, 3, 1L));
+        store.rows.put("3:VETERAN", new LadderBook.Row(3, vet, new Glicko2.Rating(1550, 80, 0.06), 3, 3, 1L));
+        store.rows.put("4:VETERAN", new LadderBook.Row(4, vet, new Glicko2.Rating(1800, 200, 0.06), 1, 0, 1L));
+
+        assertEquals(List.of(2, 3), List.of(book.standing(2, vet)[0], book.standing(2, vet)[1]),
+                "second of the three with three matches");
+        assertEquals(0, book.standing(4, vet)[0], "one match is not listed yet, however high");
+        assertEquals(3, book.standing(4, vet)[1]);
+        assertEquals(0, book.standing(9, vet)[0], "never played");
+    }
+
     @Test
     void aSimulatedBestOfThreeGoesToTheStrongerLoadout() {
         PvpConfig config = new PvpConfig();

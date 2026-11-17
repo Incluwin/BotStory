@@ -28,8 +28,8 @@ class LadderStore implements LadderBook.Store {
         if (!DatabaseConnection.isInitialized()) {
             return Optional.empty();
         }
-        String sql = SqlTime.utc("SELECT rating, deviation, volatility, wins, losses, updated_at FROM pvp_rating"
-                + " WHERE character_id = ? AND bracket = ? AND season = ?");
+        String sql = SqlTime.utc("SELECT rating, deviation, volatility, wins, losses, updated_at, week_of, week_rating"
+                + " FROM pvp_rating WHERE character_id = ? AND bracket = ? AND season = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             ps.setString(2, bracket.name());
@@ -48,7 +48,8 @@ class LadderStore implements LadderBook.Store {
     private static LadderBook.Row row(ResultSet rs, int characterId, LadderRules.Bracket bracket) throws SQLException {
         return new LadderBook.Row(characterId, bracket,
                 new Glicko2.Rating(rs.getDouble("rating"), rs.getDouble("deviation"), rs.getDouble("volatility")),
-                rs.getInt("wins"), rs.getInt("losses"), SqlTime.get(rs, "updated_at"));
+                rs.getInt("wins"), rs.getInt("losses"), SqlTime.get(rs, "updated_at"), rs.getInt("week_of"),
+                rs.getDouble("week_rating"));
     }
 
     @Override
@@ -57,9 +58,10 @@ class LadderStore implements LadderBook.Store {
             return;
         }
         String sql = SqlTime.utc("INSERT INTO pvp_rating (character_id, bracket, season, rating, deviation, volatility,"
-                + " wins, losses, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE"
-                + " rating = VALUES(rating), deviation = VALUES(deviation), volatility = VALUES(volatility),"
-                + " wins = VALUES(wins), losses = VALUES(losses), updated_at = VALUES(updated_at)");
+                + " wins, losses, updated_at, week_of, week_rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                + " ON DUPLICATE KEY UPDATE rating = VALUES(rating), deviation = VALUES(deviation),"
+                + " volatility = VALUES(volatility), wins = VALUES(wins), losses = VALUES(losses),"
+                + " updated_at = VALUES(updated_at), week_of = VALUES(week_of), week_rating = VALUES(week_rating)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, row.characterId());
             ps.setString(2, row.bracket().name());
@@ -70,6 +72,8 @@ class LadderStore implements LadderBook.Store {
             ps.setInt(7, row.wins());
             ps.setInt(8, row.losses());
             SqlTime.set(ps, 9, row.updatedAtMs() > 0 ? row.updatedAtMs() : System.currentTimeMillis());
+            ps.setInt(10, row.weekOf());
+            ps.setDouble(11, row.weekRating());
             ps.executeUpdate();
         } catch (SQLException failure) {
             log.warn("pvp_rating write failed for {} in {}", row.characterId(), row.bracket(), failure);
@@ -81,15 +85,30 @@ class LadderStore implements LadderBook.Store {
         if (!DatabaseConnection.isInitialized()) {
             return List.of();
         }
+        return ranked(" AND r.wins + r.losses >= ? ORDER BY r.rating DESC LIMIT ?", bracket, season, minPlayed, limit,
+                "top");
+    }
+
+    @Override
+    public List<LadderBook.Ranked> climbers(LadderRules.Bracket bracket, int season, int week, int limit) {
+        return ranked(" AND r.week_of = ? AND r.rating > r.week_rating ORDER BY r.rating - r.week_rating DESC LIMIT ?",
+                bracket, season, week, limit, "climbers");
+    }
+
+    private List<LadderBook.Ranked> ranked(String where, LadderRules.Bracket bracket, int season, int third, int limit,
+                                           String what) {
+        if (!DatabaseConnection.isInitialized()) {
+            return List.of();
+        }
         String sql = SqlTime.utc("SELECT r.character_id, r.rating, r.deviation, r.volatility, r.wins, r.losses,"
-                + " r.updated_at, c.name, c.level FROM pvp_rating r JOIN characters c ON c.id = r.character_id"
-                + " WHERE r.bracket = ? AND r.season = ? AND r.wins + r.losses >= ? AND c.gm = 0"
-                + " ORDER BY r.rating DESC LIMIT ?");
+                + " r.updated_at, r.week_of, r.week_rating, c.name, c.level FROM pvp_rating r"
+                + " JOIN characters c ON c.id = r.character_id WHERE r.bracket = ? AND r.season = ? AND c.gm = 0"
+                + where);
         List<LadderBook.Ranked> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, bracket.name());
             ps.setInt(2, season);
-            ps.setInt(3, minPlayed);
+            ps.setInt(3, third);
             ps.setInt(4, limit);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -98,9 +117,33 @@ class LadderStore implements LadderBook.Store {
                 }
             }
         } catch (SQLException failure) {
-            log.warn("pvp_rating top read failed for {}", bracket, failure);
+            log.warn("pvp_rating {} read failed for {}", what, bracket, failure);
         }
         return out;
+    }
+
+    @Override
+    public int[] standing(LadderRules.Bracket bracket, int season, int minPlayed, double rating) {
+        if (!DatabaseConnection.isInitialized()) {
+            return new int[] {0, 0};
+        }
+        String sql = "SELECT COALESCE(SUM(r.rating > ?), 0), COUNT(*) FROM pvp_rating r"
+                + " JOIN characters c ON c.id = r.character_id"
+                + " WHERE r.bracket = ? AND r.season = ? AND r.wins + r.losses >= ? AND c.gm = 0";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setDouble(1, rating);
+            ps.setString(2, bracket.name());
+            ps.setInt(3, season);
+            ps.setInt(4, minPlayed);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new int[] {rs.getInt(1), rs.getInt(2)};
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("pvp_rating standing read failed for {}", bracket, failure);
+        }
+        return new int[] {0, 0};
     }
 
     /** A finished ladder match a human fought: one pvp_match row (reason holds the round score) and its two fighters. */
