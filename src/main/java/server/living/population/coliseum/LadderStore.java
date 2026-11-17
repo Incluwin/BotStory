@@ -22,6 +22,7 @@ import java.util.Optional;
 class LadderStore implements LadderBook.Store {
     private static final Logger log = LoggerFactory.getLogger(LadderStore.class);
     static final String LADDER = "LADDER";
+    static final String TOURNAMENT = "TOURNAMENT";
 
     @Override
     public Optional<LadderBook.Row> load(int characterId, LadderRules.Bracket bracket, int season) {
@@ -152,6 +153,12 @@ class LadderStore implements LadderBook.Store {
 
     long insertMatch(long endedAtMs, int mapId, long seconds, int winnerSide, String reason, double odds,
                      List<Fighter> fighters) {
+        return insertMatch(LADDER, endedAtMs, mapId, seconds, winnerSide, reason, odds, fighters);
+    }
+
+    /** {@link #insertMatch} with its kind: LADDER, or TOURNAMENT for a weekly tournament's bout (V5). */
+    long insertMatch(String kind, long endedAtMs, int mapId, long seconds, int winnerSide, String reason, double odds,
+                     List<Fighter> fighters) {
         if (!DatabaseConnection.isInitialized()) {
             return 0L;
         }
@@ -163,7 +170,7 @@ class LadderStore implements LadderBook.Store {
             con.setAutoCommit(false);
             try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
                  PreparedStatement each = con.prepareStatement(fighterSql)) {
-                ps.setString(1, LADDER);
+                ps.setString(1, kind);
                 SqlTime.set(ps, 2, endedAtMs);
                 ps.setInt(3, mapId);
                 ps.setInt(4, (int) Math.min(Integer.MAX_VALUE, seconds));
@@ -195,7 +202,7 @@ class LadderStore implements LadderBook.Store {
                 con.setAutoCommit(true);
             }
         } catch (SQLException failure) {
-            log.warn("pvp_match ladder insert failed", failure);
+            log.warn("pvp_match {} insert failed", kind, failure);
             return 0L;
         }
     }

@@ -112,6 +112,25 @@ public class PvpConfig {
     public int COLISEUM_TONIC_GAP_MS = 8000;
     /** Background ladder matches between citizens, simulated each social minute (none while a human watches; V4.4). */
     public int COLISEUM_SIM_PER_MINUTE = 20;
+    /**
+     * The weekly tournament (docs/PVP_PLAN.md V5): an 8-seat knockout a ladder bracket, on TOURNAMENT_DAY at
+     * TOURNAMENT_HOUR server time, fought on TOURNAMENT_CHANNEL. Needs COLISEUM_ENABLED. Technical:
+     * server.living.population.coliseum.Tournament.
+     */
+    public boolean TOURNAMENT_ENABLED = false;
+    /** A day of the week (MONDAY..SUNDAY) and an hour 0-23, in the server's own time zone (PD12). */
+    public String TOURNAMENT_DAY = "SATURDAY";
+    public int TOURNAMENT_HOUR = 20;
+    /** The channel the tournament is fought on: seated citizens come from it, and a seated player fights on it. */
+    public int TOURNAMENT_CHANNEL = 1;
+    /** Seats a bracket (a power of two up to 8); players who signed up take theirs first. */
+    public int TOURNAMENT_SEATS = 8;
+    /** Minutes between the starts of two rounds (a round still running holds the next back). */
+    public int TOURNAMENT_ROUND_MINUTES = 6;
+    /** Every seat's fee, in mesos a level (a sink; the house keeps a quarter of the pool). */
+    public int TOURNAMENT_FEE_PER_LEVEL = 200;
+    /** Days the champion's medal lasts. */
+    public int TOURNAMENT_MEDAL_DAYS = 7;
 
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {
@@ -151,6 +170,17 @@ public class PvpConfig {
                 || COLISEUM_SIM_PER_MINUTE < 0) {
             throw new IllegalArgumentException("pvp: COLISEUM_ROUND_SECONDS >= 10, COLISEUM_TONIC_PERCENT 0..100,"
                     + " other COLISEUM_* values >= 0");
+        }
+        try {
+            java.time.DayOfWeek.valueOf(TOURNAMENT_DAY.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (RuntimeException bad) {
+            throw new IllegalArgumentException("pvp.TOURNAMENT_DAY must be MONDAY..SUNDAY, not " + TOURNAMENT_DAY);
+        }
+        if (TOURNAMENT_HOUR < 0 || TOURNAMENT_HOUR > 23 || TOURNAMENT_CHANNEL < 1 || TOURNAMENT_ROUND_MINUTES < 1
+                || TOURNAMENT_FEE_PER_LEVEL < 0 || TOURNAMENT_MEDAL_DAYS < 1
+                || TOURNAMENT_SEATS != 2 && TOURNAMENT_SEATS != 4 && TOURNAMENT_SEATS != 8) {
+            throw new IllegalArgumentException("pvp: TOURNAMENT_HOUR 0..23, TOURNAMENT_SEATS 2, 4 or 8,"
+                    + " TOURNAMENT_CHANNEL, TOURNAMENT_ROUND_MINUTES and TOURNAMENT_MEDAL_DAYS >= 1, fee >= 0");
         }
     }
 }

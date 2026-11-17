@@ -139,6 +139,7 @@ public final class Coliseum {
     private final Quartermaster quartermaster = new Quartermaster();
     private final Gallery gallery = new Gallery(this);
     private final ColiseumBoard board;
+    private final Tournament tournament;
     private final Random random = new Random();
     private final Queue<Request> requests = new ConcurrentLinkedQueue<>();
     private final Map<Integer, Match> byHuman = new ConcurrentHashMap<>();
@@ -160,6 +161,8 @@ public final class Coliseum {
         this.book = new LadderBook(store);
         this.board = new ColiseumBoard(book);
         this.npcs = new ColiseumNpcs(population);
+        this.tournament = new Tournament(this, new TournamentStore(), store);
+        this.board.tournament(tournament::boardText);
     }
 
     Population population() {
@@ -169,6 +172,11 @@ public final class Coliseum {
     /** A human in a ladder match of their own. */
     boolean inMatch(int characterId) {
         return byHuman.containsKey(characterId);
+    }
+
+    /** A human watching a gallery bout. */
+    boolean watchingGallery(int characterId) {
+        return gallery.watching(characterId);
     }
 
     /** The next arena floor in turn (1, 2, 3, 1, ...). */
@@ -212,6 +220,7 @@ public final class Coliseum {
     /** The social minute: Tigun stands (or goes when switched off), and citizens play their own ladder matches. */
     public void minute() {
         try {
+            tournament.minute(System.currentTimeMillis()); // cancels a restart's leftover run even when off
             if (!on()) {
                 if (npcs.any()) {
                     npcs.removeAll();
@@ -230,6 +239,7 @@ public final class Coliseum {
 
     /** The population stops. */
     public void stop() {
+        tournament.stop();
         npcs.removeAll();
         gallery.stopAll("the arena closed");
         for (Match match : new ArrayList<>(byHuman.values())) {
@@ -265,12 +275,14 @@ public final class Coliseum {
 
     void talk(Character player) {
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
+        tournament.payOwed(player);
         LivingTalk.Option watch = new LivingTalk.Option("#bWatch a match from the gallery#k",
                 () -> watch(player, null, false));
+        LivingTalk.Option weekly = new LivingTalk.Option("#bThe weekly tournament#k", () -> tournamentTalk(player));
         if (bracket.isEmpty()) {
             LivingTalk.open(player, TIGUN).menu("The ladder starts at Lv 30. Train up and come back.\r\n\r\n"
                     + "Out there it is one against one, best of three, and no potions of your own. You can watch"
-                    + " in the meantime.", List.of(watch, new LivingTalk.Option("#bThe ladder board#k",
+                    + " in the meantime.", List.of(watch, weekly, new LivingTalk.Option("#bThe ladder board#k",
                     () -> board.show(player, TIGUN, () -> talk(player))))).show();
             return;
         }
@@ -282,11 +294,40 @@ public final class Coliseum {
         options.add(new LivingTalk.Option("#bFight a ladder match#k (" + mesos(fee) + " mesos)",
                 () -> request(player, 0, false)));
         options.add(watch);
+        options.add(weekly);
         options.add(new LivingTalk.Option("#bThe ladder board#k", () -> board.show(player, TIGUN, () -> talk(player))));
         options.add(new LivingTalk.Option("#bHow the ladder works#k", () -> rules(player)));
         LivingTalk.open(player, TIGUN).menu("I'm Tigun. I keep Ariant's ladder.\r\n\r\nYour bracket: #b"
                 + bracket.get().label + "#k (" + bracket.get().range() + "), rated #b" + Math.round(rating.rating())
                 + "#k, " + row.wins() + "-" + row.losses() + ".", options).show();
+    }
+
+    /** The tournament's page in Tigun's window: sign up or take it back, watch, the board, the rules. */
+    private void tournamentTalk(Character player) {
+        PvpConfig pvp = YamlConfig.config.pvp;
+        List<LivingTalk.Option> options = new ArrayList<>();
+        Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
+        if (Tournament.on() && bracket.isPresent()) {
+            if (tournament.signedUp(player)) {
+                options.add(new LivingTalk.Option("#bTake back my sign-up#k", () -> tournament.withdraw(player)));
+            } else {
+                options.add(new LivingTalk.Option("#bSign up#k (" + mesos(TournamentRules.fee(player.getLevel(),
+                        pvp.TOURNAMENT_FEE_PER_LEVEL)) + " mesos)", () -> tournament.signUp(player, false)));
+            }
+        }
+        options.add(new LivingTalk.Option("#bWatch the tournament#k", () -> tournament.watch(player, null)));
+        options.add(new LivingTalk.Option("#bHow it works#k", () -> LivingTalk.open(player, TIGUN)
+                .ok("Every Lv bracket has its own knockout, " + pvp.TOURNAMENT_SEATS + " seats. Players who sign up take"
+                        + " theirs first; my best-rated fighters fill the rest, and the better your rating the easier"
+                        + " your first bout. Each bout is a best of three under ladder rules, and a new round starts"
+                        + " every " + pvp.TOURNAMENT_ROUND_MINUTES + " minutes.\r\n\r\nThe champion wins "
+                        + TournamentRules.TROPHIES[3] + " Event Trophies, half the pool and my medal for "
+                        + pvp.TOURNAMENT_MEDAL_DAYS + " days; the finalist " + TournamentRules.TROPHIES[2]
+                        + " and a quarter; the semi-finalists " + TournamentRules.TROPHIES[1] + "; everyone else who"
+                        + " fought " + TournamentRules.TROPHIES[0] + ".")
+                .back(() -> tournamentTalk(player)).show()));
+        LivingTalk.open(player, TIGUN).menu((Tournament.on() ? "" : "#r(The tournament is closed for now.)#k\r\n\r\n")
+                + tournament.boardText(System.currentTimeMillis()), options).back(() -> talk(player)).show();
     }
 
     private void rules(Character player) {
@@ -327,7 +368,8 @@ public final class Coliseum {
         if (human == null || !on() && !request.forced()) {
             return;
         }
-        if (byHuman.containsKey(human.getId()) || gallery.watching(human.getId()) || DuelRegistry.inDuel(human.getId())) {
+        if (byHuman.containsKey(human.getId()) || gallery.watching(human.getId()) || DuelRegistry.inDuel(human.getId())
+                || tournament.busy(human.getId())) {
             human.dropMessage(5, "You are in a match already.");
             return;
         }
@@ -400,7 +442,7 @@ public final class Coliseum {
         if (agent == null || citizen == null || citizen.hired() || agent.isGM() || !agent.isAlive()
                 || agent.getMap() == null || agent.getEventInstance() != null || agent.getParty() != null
                 || DuelRegistry.inDuel(agent.getId()) || population.presence().held(session)
-                || gallery.fighting(session.characterId)
+                || gallery.fighting(session.characterId) || tournament.busy(session.characterId)
                 || !(agent.getClient() instanceof BotClient) || agent.getId() == humanId) {
             return false;
         }
@@ -414,7 +456,7 @@ public final class Coliseum {
 
     // ---- the step -------------------------------------------------------------------------------------------------
 
-    private void startTicker() {
+    void startTicker() {
         synchronized (tickerLock) {
             if (ticker == null) {
                 ticker = TimerManager.getInstance().register(this::stepSafely, STEP_MS, STEP_MS);
@@ -424,7 +466,7 @@ public final class Coliseum {
 
     private void stopTickerIfIdle() {
         synchronized (tickerLock) {
-            if (byHuman.isEmpty() && requests.isEmpty() && gallery.idle() && ticker != null) {
+            if (byHuman.isEmpty() && requests.isEmpty() && gallery.idle() && tournament.idle() && ticker != null) {
                 ticker.cancel(false);
                 ticker = null;
             }
@@ -456,6 +498,7 @@ public final class Coliseum {
             }
         }
         gallery.step(now);
+        tournament.step(now);
         stopTickerIfIdle();
     }
 
@@ -796,7 +839,56 @@ public final class Coliseum {
                     + match.score + ", odds " + String.format(Locale.ROOT, "%.2f", match.odds) + ")");
         }
         lines.addAll(gallery.status());
+        lines.addAll(tournament.status());
         return lines;
+    }
+
+    /**
+     * {@code !pvp tournament start <bracket> [seats] [minutes] [me]}: a bracket's tournament now, with the switch off
+     * too; with {@code me} the GM takes a seat. Returns what was queued, or why not.
+     */
+    public String tournamentStart(Character gm, String bracketWord, int seats, int minutes, boolean me) {
+        LadderRules.Bracket bracket = bracket(bracketWord);
+        if (bracket == null) {
+            return "Which bracket: rookie, veteran or champion?";
+        }
+        if (seats != 0 && seats != 2 && seats != 4 && seats != 8) {
+            return "Seats must be 2, 4 or 8.";
+        }
+        tournament.startNow(bracket, seats, minutes, me ? gm.getId() : 0);
+        return "The " + bracket.label + " tournament starts on the next step" + (me ? ", with you seated." : ".");
+    }
+
+    /** {@code !pvp tournament signup}: the GM signs up for their bracket's tournament this week (no fee). */
+    public void tournamentSignUp(Character gm) {
+        tournament.signUp(gm, true);
+    }
+
+    /** {@code !pvp tournament watch [bracket]}. */
+    public void tournamentWatch(Character gm, String bracketWord) {
+        tournament.watch(gm, bracketWord == null ? null : bracket(bracketWord));
+    }
+
+    /** {@code !pvp tournament} with nothing else: Tigun's tournament page, wherever the GM stands. */
+    public void tournamentTalk(Character gm, boolean asGm) {
+        tournamentTalk(gm);
+    }
+
+    /** The tournament's status lines (also part of {@link #status}). */
+    public List<String> tournamentStatus() {
+        return tournament.status();
+    }
+
+    private static LadderRules.Bracket bracket(String word) {
+        if (word == null) {
+            return null;
+        }
+        for (LadderRules.Bracket each : LadderRules.Bracket.values()) {
+            if (each.name().equalsIgnoreCase(word) || each.label.equalsIgnoreCase(word)) {
+                return each;
+            }
+        }
+        return null;
     }
 
     /** {@code !pvp coliseum rating <id>}: a character's row in its bracket. */

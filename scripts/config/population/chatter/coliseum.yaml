@@ -84,3 +84,51 @@ intents:
     lines:
       - "a draw?? lol"
       - "gg i guess. tie"
+
+  # the weekly tournament (Tournament, docs/PVP_PLAN.md V5): before a live bout, after winning one, and the
+  # champion's (or, when a player won, the citizen finalist's) megaphone; {name} is the foe, {round} the round's name
+  - id: tournament.intro.map
+    trigger: tournament.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{round}. lets go {name}"
+      - "been waiting all week for this"
+      - "{round} vs {name}, no pressure lol"
+      - "gl {name}. u'll need it"
+
+  - id: tournament.win.map
+    trigger: tournament.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}. on to the next"
+      - "through! gg"
+      - "gg wp {name}, that was close"
+      - "one step closer"
+
+  - id: tournament.champion.smega
+    trigger: tournament.champion
+    where: any
+    channel: smega
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "TOURNAMENT CHAMPION!! gg {name} in the final"
+      - "won the ariant tournament this week. gg everyone :D"
+      - "champion lol. gg {name}, see u next week"
+
+  - id: tournament.runner_up.smega
+    trigger: tournament.runner_up
+    where: any
+    channel: smega
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, u earned that title"
+      - "lost the final to {name}. next week tho"
+      - "{name} is champ this week. gg, ill be back"

@@ -17,9 +17,15 @@ final class ColiseumBoard {
     static final int CLIMBERS = 3;
 
     private final LadderBook book;
+    /** The weekly tournament's page (V5), given the time; null until the coliseum sets it. */
+    private java.util.function.LongFunction<String> tournament;
 
     ColiseumBoard(LadderBook book) {
         this.book = book;
+    }
+
+    void tournament(java.util.function.LongFunction<String> page) {
+        this.tournament = page;
     }
 
     /** The first page: the reader's standing, then a page a bracket and the week's climbs. */
@@ -32,6 +38,10 @@ final class ColiseumBoard {
         }
         options.add(new LivingTalk.Option("#bThis week's climbers#k", () -> week(player, npc, () -> show(player, npc,
                 back))));
+        if (tournament != null) {
+            options.add(new LivingTalk.Option("#bThe weekly tournament#k", () -> LivingTalk.open(player, npc)
+                    .ok(tournament.apply(System.currentTimeMillis())).back(() -> show(player, npc, back)).show()));
+        }
         LivingTalk talk = LivingTalk.open(player, npc).menu("The Coliseum ladder in Ariant.\r\n\r\n"
                 + standing(player, now), options);
         if (back != null) {

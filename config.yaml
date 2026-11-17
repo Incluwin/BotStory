@@ -1761,6 +1761,13 @@ mods:
 # COLISEUM_TONIC_GAP_MS apart) in place of your own potions. Ratings live in pvp_rating; citizens play
 # COLISEUM_SIM_PER_MINUTE simulated ladder matches among themselves each social minute, so the ladder moves while you
 # are away. Needs PVP_ENABLED. Technical: server.living.population.coliseum.Coliseum.
+# TOURNAMENT_* (docs/PVP_PLAN.md V5): a weekly knockout per ladder bracket, TOURNAMENT_SEATS seats (2, 4 or 8), on
+# TOURNAMENT_DAY at TOURNAMENT_HOUR in the server's own time zone, fought on TOURNAMENT_CHANNEL. Players sign up with
+# Tigun from Monday and take seats first; the top-rated citizens on that channel fill the rest. Every seat pays
+# TOURNAMENT_FEE_PER_LEVEL mesos a level; rounds start TOURNAMENT_ROUND_MINUTES apart. The champion wins 40 Event
+# Trophies, half the pool and medal 1142077 for TOURNAMENT_MEDAL_DAYS days; the finalist 20 and a quarter; semi-finalists
+# 10; first-round losers 5; the house keeps a quarter. Needs COLISEUM_ENABLED. Technical:
+# server.living.population.coliseum.Tournament.
 pvp:
     PVP_ENABLED: true
     PVP_TTK_SECONDS: 12
@@ -1800,3 +1807,11 @@ pvp:
     COLISEUM_TONIC_PERCENT: 25
     COLISEUM_TONIC_GAP_MS: 8000
     COLISEUM_SIM_PER_MINUTE: 20
+    TOURNAMENT_ENABLED: false
+    TOURNAMENT_DAY: SATURDAY
+    TOURNAMENT_HOUR: 20
+    TOURNAMENT_CHANNEL: 1
+    TOURNAMENT_SEATS: 8
+    TOURNAMENT_ROUND_MINUTES: 6
+    TOURNAMENT_FEE_PER_LEVEL: 200
+    TOURNAMENT_MEDAL_DAYS: 7

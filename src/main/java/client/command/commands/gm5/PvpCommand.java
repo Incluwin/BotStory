@@ -48,7 +48,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|shop|board|watch [bracket]|sim [n]|rating [name]]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
     }
 
     @Override
@@ -70,6 +70,7 @@ public class PvpCommand extends Command {
             case "learned" -> learned(gm, params);
             case "challenge" -> challenge(gm, params);
             case "coliseum" -> coliseum(gm, params);
+            case "tournament" -> tournament(gm, params);
             default -> gm.yellowMessage(getDescription());
         }
     }
@@ -118,6 +119,38 @@ public class PvpCommand extends Command {
                 coliseum.request(gm, citizen.getId(), true);
                 gm.yellowMessage("PvP: asking " + citizen.getName() + " for a ladder match.");
             }
+        }
+    }
+
+    /**
+     * {@code !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]} (V5): with nothing
+     * else, Tigun's tournament page wherever the GM stands; status lists the runs; signup puts the GM's name down for
+     * this week (no fee); start runs a bracket's tournament now, even with the switch off, with 2, 4 or 8 seats and
+     * rounds that many minutes apart, and "me" seats the GM without signing up.
+     */
+    private static void tournament(Character gm, String[] params) {
+        server.living.population.Population population = server.living.population.Population.get();
+        if (population == null || population.coliseum() == null) {
+            gm.yellowMessage("PvP: no population.");
+            return;
+        }
+        var coliseum = population.coliseum();
+        String sub = params.length > 1 ? params[1].toLowerCase(java.util.Locale.ROOT) : "";
+        switch (sub) {
+            case "" -> coliseum.tournamentTalk(gm, true);
+            case "status" -> coliseum.tournamentStatus().forEach(gm::yellowMessage);
+            case "signup" -> coliseum.tournamentSignUp(gm);
+            case "watch" -> coliseum.tournamentWatch(gm, params.length > 2 ? params[2] : null);
+            case "start" -> {
+                boolean me = params.length > 2 && "me".equalsIgnoreCase(params[params.length - 1]);
+                int last = me ? params.length - 1 : params.length;
+                int seats = last > 3 ? number(params, 3, 0) : 0;
+                int minutes = last > 4 ? number(params, 4, 0) : 0;
+                gm.yellowMessage("PvP: " + coliseum.tournamentStart(gm, params.length > 2 ? params[2] : null, seats,
+                        minutes, me));
+            }
+            default -> gm.yellowMessage("PvP: !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats]"
+                    + " [minutes] [me]]");
         }
     }
 

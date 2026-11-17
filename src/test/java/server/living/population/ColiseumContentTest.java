@@ -57,9 +57,30 @@ class ColiseumContentTest {
                 }
             }
         }
+        assertTournamentLines(List.of("tournament.intro", "tournament.win"), "map");
+        assertTournamentLines(List.of("tournament.champion", "tournament.runner_up"), "smega");
         for (Intent intent : content.intents("ladder.intro.new")) {
             for (String line : intent.lines()) {
                 assertFalse(line.contains("{record}") || line.contains("{rating}"), "a first match has no record: " + line);
+            }
+        }
+    }
+
+    /** The tournament's lines (V5): Tournament and TournamentBout fill only {name} (the foe) and {round}. */
+    private void assertTournamentLines(List<String> triggers, String channel) {
+        for (String trigger : triggers) {
+            List<Intent> intents = content.intents(trigger);
+            assertFalse(intents.isEmpty(), trigger);
+            for (Intent intent : intents) {
+                assertEquals(channel, intent.channel(), intent.id());
+                assertFalse(intent.lines().isEmpty(), intent.id());
+                for (String line : intent.lines()) {
+                    Matcher slot = SLOT.matcher(line);
+                    while (slot.find()) {
+                        assertTrue(Set.of("name", "round").contains(slot.group(1)),
+                                intent.id() + ": {" + slot.group(1) + "} in '" + line + "'");
+                    }
+                }
             }
         }
     }

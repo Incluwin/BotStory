@@ -81,6 +81,9 @@ public final class PopulationLoader {
             // round it took or lost, and after the match
             "ladder.intro", "ladder.intro.new", "ladder.round.won", "ladder.round.lost", "ladder.win", "ladder.lose",
             "ladder.draw",
+            // the weekly tournament (coliseum.Tournament, V5): before a live bout, after a win, the champion's and the
+            // citizen finalist's megaphones
+            "tournament.intro", "tournament.win", "tournament.champion", "tournament.runner_up",
             // a beginner citizen asking for a mentor as it posts its request (F4.5, NeedLedger.mentor)
             "need.mentor",
             // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)
