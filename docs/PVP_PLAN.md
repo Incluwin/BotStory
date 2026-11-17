@@ -1389,6 +1389,11 @@ V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
 - **WASM:** a matching handler, if V0.7 shows a gap.
 - **Custom.wz, optional:** a proper "Coliseum Mark" and "Coliseum Champion" medal to replace the stock stand-ins, under
   the existing Custom.wz approval.
+- **Merged and switched on 2026-11-17.** V4-V7 merged into the main line `feat/companion-manager` as 171740af9
+  (user: "Merge V4-V7 into the main line"). Then (user: "turn on all switches before pushing")
+  `pvp.COLISEUM_ENABLED` (V4 ladder, V6 team fights, citizens' background ladder and team matches, Jano in Ariant)
+  and `pvp.TOURNAMENT_ENABLED` (V5, Saturdays 20:00 server time on channel 1) are true in config.yaml (2d9cb479b); PvP
+  and the client's `own_hit` were already on. Full split suite with both on: 16,429 / 0 / 33.
 
 ---
 
