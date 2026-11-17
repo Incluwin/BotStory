@@ -507,4 +507,60 @@ class DuelPiecesTest {
         assertThrows(IllegalStateException.class, () -> DuelRegistry.start(map, List.of(a), List.of()));
         assertFalse(DuelRegistry.active());
     }
+
+    /**
+     * The coliseum (PD4, V4): no own potions, three arena tonics a round instead, 25% of max HP and MP each, 8 s apart,
+     * which the heal allowance does not take back. A potion key drinks one and the potion stays.
+     */
+    @Test
+    void theColiseumTradesOwnPotionsForThreeTonicsARound() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        when(map.getCharacterById(1)).thenReturn(a);
+        when(map.getCharacterById(2)).thenReturn(b);
+        when(a.getCurrentMaxHp()).thenReturn(8000);
+        when(a.getCurrentMaxMp()).thenReturn(1000);
+        when(b.getCurrentMaxHp()).thenReturn(5000);
+        when(b.getCurrentMaxMp()).thenReturn(500);
+        DuelField field = new DuelField(92, map, List.of(a), List.of(b), new DuelField.Rules(90, 3, 25, 8000L));
+        assertEquals(90, field.rules().roundSeconds());
+
+        long t = 1_000_000L;
+        field.tick(t);   // never begun: the bell has rung
+        assertEquals(DuelField.State.FIGHTING, field.state());
+        when(a.getHp()).thenReturn(2000);
+        when(a.getMp()).thenReturn(400);
+
+        assertTrue(field.refusesDrink(a, true, false), "own potions never go through");
+        verify(a).updateHpMp(4000, 650);   // the tonic it drank instead: +2000 HP, +250 MP
+        assertFalse(field.drinkTonic(a, System.currentTimeMillis() + 1000), "8 s apart");
+        long later = System.currentTimeMillis() + 9_000;
+        assertTrue(field.drinkTonic(a, later));
+        assertTrue(field.drinkTonic(a, later + 8_000));
+        assertFalse(field.tonicReady(a, later + 20_000), "three a round");
+        assertFalse(field.drinkTonic(a, later + 20_000));
+
+        DuelField.Fighter drinker = field.fighters().stream().filter(f -> f.chr == a).findFirst().orElseThrow();
+        assertEquals(2000, drinker.lastHp, "the tonic's HP is the new baseline: the allowance takes none back");
+        assertEquals(0, drinker.tonicsLeft);
+    }
+
+    @Test
+    void aFieldDuelHasNoTonicsAndItsOwnRoundLength() {
+        MapleMap map = mock(MapleMap.class);
+        Character a = fighter(1, map, true);
+        Character b = fighter(2, map, true);
+        DuelField field = new DuelField(91, map, List.of(a), List.of(b));
+        assertFalse(field.rules().tonicsOnly());
+        assertEquals(new config.PvpConfig().PVP_ROUND_SECONDS, field.rules().roundSeconds());
+        assertFalse(field.drinkTonic(a, System.currentTimeMillis()));
+    }
+
+    @Test
+    void aColiseumBotSavesItsTonicsUntilItIsDown() {
+        assertFalse(DuelBrain.wantsTonic(7000, 10000));
+        assertTrue(DuelBrain.wantsTonic(6000, 10000));
+        assertFalse(DuelBrain.wantsTonic(0, 10000), "a knocked-out fighter drinks nothing");
+    }
 }

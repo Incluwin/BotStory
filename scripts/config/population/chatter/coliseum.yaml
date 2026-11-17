@@ -1,0 +1,207 @@
+# The coliseum ladder's lines (docs/PVP_PLAN.md V4, server.living.population.coliseum.Coliseum): a citizen matched
+# with a player by Tigun, the Arena Master, on a private copy of a Battle Arena floor. Said on map chat between rounds
+# (a fighter mid-round says nothing). {name} is the player; {record} the citizen's own ladder record ("12-7"),
+# {rating} its rating and {bracket} its bracket, all real. ladder.intro.new is a citizen with no ladder match yet.
+intents:
+  - id: ladder.intro.map
+    trigger: ladder.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{record} on the {bracket} ladder. lets see what u got {name}"
+      - "rated {rating}. dont make this easy"
+      - "{record} so far. ur next {name}"
+      - "ok {name}, best of 3. {record} says im winning this"
+      - "{rating} and climbing lol. gl"
+
+  - id: ladder.intro.new.map
+    trigger: ladder.intro.new
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "first ladder match, go easy lol"
+      - "never done this before. gl {name}"
+      - "ok first one. lets go"
+
+  - id: ladder.round.won.map
+    trigger: ladder.round.won
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "one down"
+      - "thats one"
+      - "close one lol"
+      - "again?"
+
+  - id: ladder.round.lost.map
+    trigger: ladder.round.lost
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ok ok. next one"
+      - "lucky lol"
+      - "warming up"
+      - "nice. not again tho"
+
+  - id: ladder.win.map
+    trigger: ladder.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}"
+      - "gg. {record} now"
+      - "gg wp, rematch anytime"
+      - "ggs. that was close"
+
+  - id: ladder.lose.map
+    trigger: ladder.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, u got me"
+      - "gg. ill get u next time"
+      - "ugh gg wp"
+      - "gg. there goes my rating lol"
+
+  - id: ladder.draw.map
+    trigger: ladder.draw
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "a draw?? lol"
+      - "gg i guess. tie"
+
+  # the weekly tournament (Tournament, docs/PVP_PLAN.md V5): before a live bout, after winning one, and the
+  # champion's (or, when a player won, the citizen finalist's) megaphone; {name} is the foe, {round} the round's name
+  - id: tournament.intro.map
+    trigger: tournament.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{round}. lets go {name}"
+      - "been waiting all week for this"
+      - "{round} vs {name}, no pressure lol"
+      - "gl {name}. u'll need it"
+
+  - id: tournament.win.map
+    trigger: tournament.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}. on to the next"
+      - "through! gg"
+      - "gg wp {name}, that was close"
+      - "one step closer"
+
+  - id: tournament.champion.smega
+    trigger: tournament.champion
+    where: any
+    channel: smega
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "TOURNAMENT CHAMPION!! gg {name} in the final"
+      - "won the ariant tournament this week. gg everyone :D"
+      - "champion lol. gg {name}, see u next week"
+
+  - id: tournament.runner_up.smega
+    trigger: tournament.runner_up
+    where: any
+    channel: smega
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, u earned that title"
+      - "lost the final to {name}. next week tho"
+      - "{name} is champ this week. gg, ill be back"
+
+  # team fights (TeamLadder, docs/PVP_PLAN.md V6), said by the first member of the citizen side: {name} is the player,
+  # {team} the citizen team's name (its guild, or a pickup team's), {size} how many a side; a Crew War adds {crew} and
+  # {record}, the player's record against the crew ("2-1"), before the war in the intro and after it at the end
+  - id: team.intro.map
+    trigger: team.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{team} vs {name}'s team. lets go"
+      - "{size} on {size}, ok. gl {name}"
+      - "we've been practicing for this lol"
+      - "stay together guys. focus {name}"
+
+  - id: team.win.map
+    trigger: team.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, {team} takes it"
+      - "gg wp. good teamwork guys"
+      - "ggs! that was fun"
+      - "gg {name}. rematch anytime"
+
+  - id: team.lose.map
+    trigger: team.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}, ur team is good"
+      - "gg. we need more practice lol"
+      - "ugh gg wp"
+      - "gg. next time we focus better"
+
+  - id: crewwar.intro.map
+    trigger: crewwar.intro
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{crew} came to play, {name}. {record} so far"
+      - "a whole crew war huh. ok lets settle this"
+      - "{record}, {name}. not for long"
+      - "brought the whole crew lol. gl"
+
+  - id: crewwar.win.map
+    trigger: crewwar.win
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "told u. {crew} > ur crew. gg"
+      - "gg {name}, that's {record} now"
+      - "gg. come back when ur ready lol"
+
+  - id: crewwar.lose.map
+    trigger: crewwar.lose
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gg {name}. this isnt over"
+      - "ok u got us. {record}. we'll be back"
+      - "gg wp. ur crew is legit"

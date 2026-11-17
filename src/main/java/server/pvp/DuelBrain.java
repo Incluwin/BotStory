@@ -355,7 +355,26 @@ final class DuelBrain {
         return maxHp > 0 && hp > 0 && hp <= maxHp * DRINK_AT_HP_SHARE && sinceTryMs >= DRINK_RETRY_MS;
     }
 
+    /**
+     * Coliseum: a bot drinks an arena tonic at or under this share of its HP. Three tonics of 25% a round, 8 s apart,
+     * spent at 90% would waste most of each one; a player saves them for when they are down.
+     */
+    static final double TONIC_AT_HP_SHARE = 0.6d;
+
+    /** Whether a coliseum fighter at {@code hp} of {@code maxHp} drinks a tonic now (one being ready). */
+    static boolean wantsTonic(int hp, int maxHp) {
+        return maxHp > 0 && hp > 0 && hp <= maxHp * TONIC_AT_HP_SHARE;
+    }
+
     private static void drinkIfDue(Character bot, Mind mind, DuelStats stats, long now) {
+        DuelField field = DuelRegistry.of(bot.getId());
+        if (field != null && field.rules().tonicsOnly()) {
+            if (wantsTonic(bot.getHp(), bot.getCurrentMaxHp()) && field.tonicReady(bot, now)) {
+                stats.drinkTries.incrementAndGet();
+                field.drinkTonic(bot, now); // counts the drink itself
+            }
+            return;
+        }
         if (!wantsDrink(bot.getHp(), bot.getCurrentMaxHp(), now - mind.lastDrinkTryMs)) {
             return;
         }

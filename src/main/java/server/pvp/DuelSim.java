@@ -1,6 +1,8 @@
 package server.pvp;
 
+import client.Character;
 import config.PvpConfig;
+import server.pvp.probe.PvpCalibration;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -90,11 +92,16 @@ public final class DuelSim {
 
     /** One round: 0 when {@code a} wins, 1 when {@code b} does, -1 for a draw. */
     public static Outcome round(Fighter a, Fighter b, PvpConfig config, Random random) {
+        return round(a, b, config, random, config.PVP_ROUND_SECONDS);
+    }
+
+    /** As {@link #round(Fighter, Fighter, PvpConfig, Random)} with a round of {@code roundSeconds} (the coliseum's). */
+    public static Outcome round(Fighter a, Fighter b, PvpConfig config, Random random, double roundSeconds) {
         Side[] sides = {
                 new Side(a, random.nextDouble() * ATTACK_INTERVAL_S),
                 new Side(b, random.nextDouble() * ATTACK_INTERVAL_S)};
         double window = config.PVP_HEAL_WINDOW_MS / 1000d;
-        double limit = config.PVP_ROUND_SECONDS;
+        double limit = roundSeconds;
         double now = 0;
         while (true) {
             int next = sides[0].nextAttackS <= sides[1].nextAttackS ? 0 : 1;
@@ -114,6 +121,69 @@ public final class DuelSim {
                 return new Outcome(next, now);
             }
         }
+    }
+
+    /**
+     * V6: one team round of {@code roundSeconds} between equal or unequal sides. Every fighter attacks in turn and goes
+     * for the standing foe with the lowest HP share (focus fire, as TeamTactics calls it); the side left standing
+     * wins, and at the bell the side keeping more of its HP (summed share) does. 0 (a), 1 (b) or -1 (a draw).
+     */
+    public static Outcome teamRound(List<Fighter> a, List<Fighter> b, PvpConfig config, Random random,
+                                    double roundSeconds) {
+        if (a.isEmpty() || b.isEmpty()) {
+            return new Outcome(a.isEmpty() ? (b.isEmpty() ? -1 : 1) : 0, 0);
+        }
+        List<List<Side>> sides = List.of(new ArrayList<>(), new ArrayList<>());
+        a.forEach(f -> sides.get(0).add(new Side(f, random.nextDouble() * ATTACK_INTERVAL_S)));
+        b.forEach(f -> sides.get(1).add(new Side(f, random.nextDouble() * ATTACK_INTERVAL_S)));
+        double window = config.PVP_HEAL_WINDOW_MS / 1000d;
+        while (true) {
+            int team = -1;
+            Side attacker = null;
+            for (int t = 0; t < 2; t++) {
+                for (Side side : sides.get(t)) {
+                    if (side.hp > 1d && (attacker == null || side.nextAttackS < attacker.nextAttackS)) {
+                        attacker = side;
+                        team = t;
+                    }
+                }
+            }
+            double now = attacker.nextAttackS;
+            if (now >= roundSeconds) {
+                double shareA = standingShare(sides.get(0));
+                double shareB = standingShare(sides.get(1));
+                return new Outcome(Math.abs(shareA - shareB) < 1e-9 ? -1 : shareA > shareB ? 0 : 1, roundSeconds);
+            }
+            for (List<Side> group : sides) {
+                for (Side side : group) {
+                    if (side.hp > 1d) {
+                        drink(side, now, window, config);
+                    }
+                }
+            }
+            attacker.nextAttackS = now + ATTACK_INTERVAL_S * (0.9d + 0.2d * random.nextDouble());
+            Side victim = null;
+            for (Side side : sides.get(1 - team)) {
+                if (side.hp > 1d && (victim == null
+                        || side.hp / side.fighter.maxHp() < victim.hp / victim.fighter.maxHp())) {
+                    victim = side;
+                }
+            }
+            if (hit(attacker.fighter, victim, config, random) && standingShare(sides.get(1 - team)) <= 0d) {
+                return new Outcome(team, now);
+            }
+        }
+    }
+
+    /** A team's standing HP share, summed (0 when every one of it is down). */
+    private static double standingShare(List<Side> team) {
+        double share = 0;
+        for (Side side : team) {
+            if (side.hp > 1d) {
+                share += side.hp / side.fighter.maxHp();
+            }
+        }
+        return share;
     }
 
     /** The victim drinks when its heal window has passed and it needs to (one potion per window, as in a duel). */
@@ -165,4 +235,56 @@ public final class DuelSim {
         int index = (int) Math.min(sorted.size() - 1, Math.max(0, Math.round(q * (sorted.size() - 1))));
         return sorted.get(index);
     }
+
+    /** A real character as the sim's fighter: its loadout under the damage model, the even-class factors and guards. */
+    public static Fighter fighterOf(Character chr, PvpReference reference, PvpConfig config) {
+        PvpCalibration.Sample sample = PvpCalibration.of(chr);
+        boolean magic = sample.jobClass() == 2;
+        int jobId = chr.getJob().getId();
+        int level = chr.getLevel();
+        long ownBase = Math.max(1L, sample.gearBase());
+        long median = reference.gearMedian(jobId, level);
+        double medianBase = median > 0 ? median : ownBase;
+        PvpDamageModel.Attacker attacker = new PvpDamageModel.Attacker(level, jobId, ownBase, magic);
+        // the learned rate too (PD16), so raw and coefficient share one rate as in a duel
+        double rawDps = PvpDamageModel.rate(attacker, reference, config) * ownBase / medianBase;
+        double coefficient = PvpDamageModel.coefficient(attacker, reference, config);
+        server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
+        int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
+        int avoid = formulas.getTotalAvoidability(chr);
+        int wdef = chr.getTotalWdef();
+        int mdef = chr.getTotalMdef();
+        if (config.PVP_EVEN_CLASSES) {
+            // as the duel does (PD17): accuracy, avoid and defense against the class's own median at the band
+            PvpHitBalance balance = PvpHitBalance.current();
+            accuracy = (int) Math.round(accuracy * balance.accuracyFactor(jobId, level));
+            avoid = (int) Math.round(avoid * balance.avoidFactor(jobId, level));
+            wdef = (int) Math.round(wdef * balance.wdefFactor(jobId, level));
+            mdef = (int) Math.round(mdef * balance.mdefFactor(jobId, level));
+        }
+        double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
+        return new Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
+                rawDps, coefficient, accuracy, avoid, wdef,
+                mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId)
+                * (PvpToughness.on(config)   // the sim knows no attacker here: weapon hits' value
+                ? PvpToughness.multiplier(jobId, level, config, false) : 1d),
+                reference.hRef(level));
+    }
+
+    /** Magic Guard's share as the character would have it buffed: the buff if on, else its learned level. */
+    private static int magicGuardPercent(Character chr) {
+        Integer buffed = chr.getBuffedValue(client.BuffStat.MAGIC_GUARD);
+        if (buffed != null) {
+            return buffed;
+        }
+        for (int skillId : new int[] {2001002, 12001001}) {
+            client.Skill skill = client.SkillFactory.getSkill(skillId);
+            int skillLevel = skill == null ? 0 : chr.getSkillLevel(skill);
+            if (skillLevel > 0) {
+                return skill.getEffect(skillLevel).getX();
+            }
+        }
+        return 0;
+    }
+
 }

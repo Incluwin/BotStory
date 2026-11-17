@@ -46,7 +46,11 @@ public enum MesoAccount {
     COMPANION(false),
     NEEDS(false),
     /** A rival crew's stake, paid from its fighters' purses to the human who beat them (docs/PVP_PLAN.md V3.3). */
-    PVP_STAKE(false);
+    PVP_STAKE(false),
+    // a sink booked after the transfers so ordinal-keyed tallies keep their old slots: the coliseum ladder's entry fee
+    PVP_FEE(true),
+    /** The weekly tournament's prize money, paid out of its entry pool (a faucet; the house keeps a quarter, V5). */
+    PVP_PRIZE(true);
 
     private final boolean external;
 

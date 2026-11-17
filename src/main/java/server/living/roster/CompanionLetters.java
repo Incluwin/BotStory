@@ -58,7 +58,7 @@ public final class CompanionLetters {
     /** A rival crew's clear while its player was away (RivalCrews, docs/BOT_CONCEPT_PLAN.md F7.3). */
     static final String RIVAL_NEWS_EVENT = "rival.news";
     private static final List<String> NEWS = List.of(BenchLedger.REPORT_EVENT, JOB_ADVANCED_EVENT, GIFT_EVENT, ASKED_EVENT,
-            RIVAL_NEWS_EVENT);
+            RIVAL_NEWS_EVENT, server.living.population.coliseum.Tournament.NEWS_EVENT);
     private static final List<String> MARKERS = List.of(AWAY_EVENT, TOLD_EVENT);
     /**
      * The news only the letters write, so only while they are on: an owner with no marker yet (the letters were off at
@@ -296,6 +296,12 @@ public final class CompanionLetters {
                     : summary.substring(0, summary.length() - 1) + "; " + rival + " wrote to you.";
             sent++;
         }
+        String coliseum = tournamentNote(owner, window, sent);
+        if (coliseum != null) {
+            summary = summary == null ? "While you were away, " + coliseum + " wrote to you."
+                    : summary.substring(0, summary.length() - 1) + "; " + coliseum + " wrote to you.";
+            sent++;
+        }
         if (summary != null) {
             owner.dropMessage(5, summary);
         }
@@ -324,6 +330,27 @@ public final class CompanionLetters {
         Population population = details.isEmpty() ? null : Population.get();
         var letter = population == null || population.rivals() == null ? null
                 : population.rivals().letter(owner.getId(), owner.getName(), details);
+        if (letter == null || sent >= world.config().LETTERS_MAX_NOTES || notes.room(owner.getName()) <= 0
+                || !notes.send(letter.text(), letter.sender(), owner.getName())) {
+            return null;
+        }
+        notes.show(owner);
+        return letter.sender();
+    }
+
+    /**
+     * The weekly tournament's results the player was away for (docs/PVP_PLAN.md V5): one note from Tigun, inside
+     * LETTERS_MAX_NOTES and the inbox's room. Who signed it, or null when there was none or no room.
+     */
+    private String tournamentNote(Character owner, List<CharacterEvent> window, int sent) {
+        List<String> details = new ArrayList<>();
+        for (CharacterEvent event : window) {
+            if (server.living.population.coliseum.Tournament.NEWS_EVENT.equals(event.kind()) && event.detail() != null) {
+                details.add(event.detail());
+            }
+        }
+        var letter = details.isEmpty() ? null
+                : server.living.population.coliseum.Tournament.letter(owner.getName(), details);
         if (letter == null || sent >= world.config().LETTERS_MAX_NOTES || notes.room(owner.getName()) <= 0
                 || !notes.send(letter.text(), letter.sender(), owner.getName())) {
             return null;

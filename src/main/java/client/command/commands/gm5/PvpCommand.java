@@ -9,6 +9,7 @@ import net.server.Server;
 import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.combat.OwnHit;
 import server.pvp.DuelField;
 import server.pvp.DuelRegistry;
 import server.pvp.DuelSim;
@@ -31,6 +32,8 @@ import java.util.Map;
  *   <li>{@code probe remote <name> [src] [mobId]}: the same about a character on your map, to you alone (V0.2)</li>
  *   <li>{@code probe move [seconds]}: gaps between your movement packets (V0.3)</li>
  *   <li>{@code probe attacks [seconds]}: your attack packets as parsed, targets or not (V0.4)</li>
+ *   <li>{@code probe ownhit [damage|miss] [mob <id> [index]|skill <id>]}: a PVP_HIT to your client alone, through the
+ *   own_hit gate (V7): the number over you, with the mob's CharDam or the skill's Hit sound</li>
  *   <li>{@code meter start|stop|status}: sustained single-target damage per job path and band (V0.5)</li>
  *   <li>{@code calibrate}: H_ref, gear base and the meter into {@code logs/pvp/reference-*.yaml} (V0.5)</li>
  *   <li>{@code duel <foe>}, {@code duel <a> <b>}, {@code duel <a> <b> vs <c> <d>}: a V1 duel on your map ({@code me}
@@ -47,8 +50,8 @@ public class PvpCommand extends Command {
     private static final int PROBE_DAMAGE = 1234;
 
     {
-        setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch]");
+        setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks|ownhit ..., !pvp meter start|stop|status,"
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|team [2|3]|crewwar|teamsim [n]|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
     }
 
     @Override
@@ -69,7 +72,103 @@ public class PvpCommand extends Command {
             case "rates" -> rates(gm);
             case "learned" -> learned(gm, params);
             case "challenge" -> challenge(gm, params);
+            case "coliseum" -> coliseum(gm, params);
+            case "tournament" -> tournament(gm, params);
             default -> gm.yellowMessage(getDescription());
+        }
+    }
+
+    /**
+     * {@code !pvp coliseum} (V4): with no word, a ladder match for the GM against the nearest-rated free citizen; with a
+     * citizen's name, against that one (free, on the GM's channel). Both run even with COLISEUM_ENABLED off and pay as a
+     * test. {@code status} lists the matches running, {@code sim [n]} plays n citizen ladder matches now, {@code rating
+     * [name]} prints a rating, {@code shop} opens the Quartermaster's window (V4.3), {@code board} the ladder's board
+     * pages and {@code watch [rookie|veteran|champion]} a citizen bout from the gallery (V4.4). V6: {@code team [2|3]}
+     * a team match for the GM and its companions against a citizen team, {@code crewwar} a Crew War against its rival
+     * crew, {@code teamsim [n]} n simulated citizen team matches now.
+     */
+    private static void coliseum(Character gm, String[] params) {
+        server.living.population.Population population = server.living.population.Population.get();
+        if (population == null || population.coliseum() == null) {
+            gm.yellowMessage("PvP: no population.");
+            return;
+        }
+        var coliseum = population.coliseum();
+        String sub = params.length > 1 ? params[1] : "";
+        switch (sub.toLowerCase(java.util.Locale.ROOT)) {
+            case "" -> {
+                coliseum.request(gm, 0, true);
+                gm.yellowMessage("PvP: looking for your ladder opponent.");
+            }
+            case "status" -> {
+                coliseum.status().forEach(gm::yellowMessage);
+                coliseum.teamStatus().forEach(gm::yellowMessage);
+            }
+            case "team" -> {
+                coliseum.teamRequest(gm, Math.max(2, Math.min(3, number(params, 2, 2))), false, true);
+                gm.yellowMessage("PvP: looking for a citizen team for you and your companions.");
+            }
+            case "crewwar" -> {
+                coliseum.teamRequest(gm, 3, true, true);
+                gm.yellowMessage("PvP: calling your rival crew to the arena.");
+            }
+            case "teamsim" -> gm.yellowMessage("PvP: " + coliseum.simulateTeams(Math.max(1, Math.min(100,
+                    number(params, 2, 10)))) + " citizen team match(es) played.");
+            case "shop" -> coliseum.shop(gm);
+            case "board" -> coliseum.board(gm, server.living.population.needs.NeedBoards.BOARD_NPC, null);
+            case "watch" -> {
+                coliseum.watch(gm, params.length > 2 ? params[2] : null, true);
+                gm.yellowMessage("PvP: finding a bout to watch.");
+            }
+            case "sim" -> gm.yellowMessage("PvP: " + coliseum.simulateNow(Math.max(1, Math.min(200, number(params, 2, 20))))
+                    + " citizen ladder match(es) played.");
+            case "rating" -> {
+                Character who = params.length > 2 ? gm.getClient().getChannelServer().getPlayerStorage()
+                        .getCharacterByName(params[2]) : gm;
+                gm.yellowMessage(who == null ? "PvP: nobody called " + params[2] + " on this channel."
+                        : "PvP: " + coliseum.rating(who));
+            }
+            default -> {
+                Character citizen = gm.getClient().getChannelServer().getPlayerStorage().getCharacterByName(sub);
+                if (citizen == null) {
+                    gm.yellowMessage("PvP: nobody called " + sub + " on this channel.");
+                    return;
+                }
+                coliseum.request(gm, citizen.getId(), true);
+                gm.yellowMessage("PvP: asking " + citizen.getName() + " for a ladder match.");
+            }
+        }
+    }
+
+    /**
+     * {@code !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]} (V5): with nothing
+     * else, Tigun's tournament page wherever the GM stands; status lists the runs; signup puts the GM's name down for
+     * this week (no fee); start runs a bracket's tournament now, even with the switch off, with 2, 4 or 8 seats and
+     * rounds that many minutes apart, and "me" seats the GM without signing up.
+     */
+    private static void tournament(Character gm, String[] params) {
+        server.living.population.Population population = server.living.population.Population.get();
+        if (population == null || population.coliseum() == null) {
+            gm.yellowMessage("PvP: no population.");
+            return;
+        }
+        var coliseum = population.coliseum();
+        String sub = params.length > 1 ? params[1].toLowerCase(java.util.Locale.ROOT) : "";
+        switch (sub) {
+            case "" -> coliseum.tournamentTalk(gm, true);
+            case "status" -> coliseum.tournamentStatus().forEach(gm::yellowMessage);
+            case "signup" -> coliseum.tournamentSignUp(gm);
+            case "watch" -> coliseum.tournamentWatch(gm, params.length > 2 ? params[2] : null);
+            case "start" -> {
+                boolean me = params.length > 2 && "me".equalsIgnoreCase(params[params.length - 1]);
+                int last = me ? params.length - 1 : params.length;
+                int seats = last > 3 ? number(params, 3, 0) : 0;
+                int minutes = last > 4 ? number(params, 4, 0) : 0;
+                gm.yellowMessage("PvP: " + coliseum.tournamentStart(gm, params.length > 2 ? params[2] : null, seats,
+                        minutes, me));
+            }
+            default -> gm.yellowMessage("PvP: !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats]"
+                    + " [minutes] [me]]");
         }
     }
 
@@ -172,6 +271,7 @@ public class PvpCommand extends Command {
                 PvpProbe.watchAttacks(gm, seconds);
                 gm.yellowMessage("PvP probe attacks: attack empty air for " + seconds + " s.");
             }
+            case "ownhit" -> ownHitProbe(gm, params);
             default -> gm.yellowMessage(getDescription());
         }
     }
@@ -188,6 +288,27 @@ public class PvpCommand extends Command {
                 false, 0, 0, 0));
         String line = "PvP probe damage about " + about.getName() + (about == gm ? " (self)" : "") + " src=" + src
                 + " mob=" + mobId + " dmg=" + PROBE_DAMAGE + ": look for the number and the hit pose.";
+        log.info(line);
+        gm.yellowMessage(line);
+    }
+
+    private static void ownHitProbe(Character gm, String[] params) {
+        boolean miss = params.length > 2 && params[2].equalsIgnoreCase("miss");
+        int damage = miss ? 0 : number(params, 2, PROBE_DAMAGE);
+        int mobId = 0;
+        int attackIndex = -1;
+        int skillId = 0;
+        String sound = params.length > 3 ? params[3].toLowerCase() : "";
+        if (sound.equals("mob")) {
+            mobId = number(params, 4, 0);
+            attackIndex = number(params, 5, 0);
+        } else if (sound.equals("skill")) {
+            skillId = number(params, 4, 0);
+        }
+        boolean sent = OwnHit.probe(gm, PacketCreator.pvpHit(damage, miss, 1, mobId, attackIndex, skillId));
+        String line = "PvP probe own hit dmg=" + damage + (miss ? " (miss)" : "") + " mob=" + mobId + "/" + attackIndex
+                + " skill=" + skillId + (sent ? ": look for the number over you."
+                : ": not sent, your client has no own_hit active or the own_hit mod is off.");
         log.info(line);
         gm.yellowMessage(line);
     }
@@ -574,53 +695,7 @@ public class PvpCommand extends Command {
     }
 
     static DuelSim.Fighter simFighter(Character chr, PvpReference reference, PvpConfig config) {
-        PvpCalibration.Sample sample = PvpCalibration.of(chr);
-        boolean magic = sample.jobClass() == 2;
-        int jobId = chr.getJob().getId();
-        int level = chr.getLevel();
-        long ownBase = Math.max(1L, sample.gearBase());
-        long median = reference.gearMedian(jobId, level);
-        double medianBase = median > 0 ? median : ownBase;
-        PvpDamageModel.Attacker attacker = new PvpDamageModel.Attacker(level, jobId, ownBase, magic);
-        // the learned rate too (PD16), so raw and coefficient share one rate as in a duel
-        double rawDps = PvpDamageModel.rate(attacker, reference, config) * ownBase / medianBase;
-        double coefficient = PvpDamageModel.coefficient(attacker, reference, config);
-        server.combat.CombatFormulaProvider formulas = server.combat.CombatFormulaProvider.getInstance();
-        int accuracy = magic ? formulas.getTotalMagicAccuracy(chr) : formulas.getTotalAccuracy(chr);
-        int avoid = formulas.getTotalAvoidability(chr);
-        int wdef = chr.getTotalWdef();
-        int mdef = chr.getTotalMdef();
-        if (config.PVP_EVEN_CLASSES) {
-            // as the duel does (PD17): accuracy, avoid and defense against the class's own median at the band
-            server.pvp.PvpHitBalance balance = server.pvp.PvpHitBalance.current();
-            accuracy = (int) Math.round(accuracy * balance.accuracyFactor(jobId, level));
-            avoid = (int) Math.round(avoid * balance.avoidFactor(jobId, level));
-            wdef = (int) Math.round(wdef * balance.wdefFactor(jobId, level));
-            mdef = (int) Math.round(mdef * balance.mdefFactor(jobId, level));
-        }
-        double reduce = server.combat.CharacterHitApplier.reduce(chr, 100_000) / 100_000d;
-        return new DuelSim.Fighter(chr.getName(), level, jobId, magic, chr.getCurrentMaxHp(), chr.getCurrentMaxMp(),
-                rawDps, coefficient, accuracy, avoid, wdef,
-                mdef, reduce, magicGuardPercent(chr), reference.classHpRatio(jobId)
-                * (server.pvp.PvpToughness.on(config)   // the sim knows no attacker here: weapon hits' value
-                ? server.pvp.PvpToughness.multiplier(jobId, level, config, false) : 1d),
-                reference.hRef(level));
-    }
-
-    /** Magic Guard's share as the character would have it buffed: the buff if on, else its learned level. */
-    private static int magicGuardPercent(Character chr) {
-        Integer buffed = chr.getBuffedValue(client.BuffStat.MAGIC_GUARD);
-        if (buffed != null) {
-            return buffed;
-        }
-        for (int skillId : new int[] {2001002, 12001001}) {
-            client.Skill skill = client.SkillFactory.getSkill(skillId);
-            int skillLevel = skill == null ? 0 : chr.getSkillLevel(skill);
-            if (skillLevel > 0) {
-                return skill.getEffect(skillLevel).getX();
-            }
-        }
-        return 0;
+        return DuelSim.fighterOf(chr, reference, config);
     }
 
     private static int number(String[] params, int index, int fallback) {

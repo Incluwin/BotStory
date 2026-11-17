@@ -1646,6 +1646,9 @@ mods:
     #   cryssea                Cryssea (iTCG card swap) stands in New Leaf City's Town Center. Every client needs her
     #                          Custom.wz look from the Masteria client patch first (docs/ITCG_MASTERIA_PLAN.md); a
     #                          client without it closes on entering New Leaf City. Boot only
+    #   own_hit                a hit the server applies to a player (a PvP duel, a server-run boss) is also sent to
+    #                          that player's own client with own_hit active, which draws the number over the player
+    #                          (S->C 0x189 PVP_HIT); display only; off: the victim sees only the HP bar drop
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1662,6 +1665,7 @@ mods:
         cash_shop_window: on
         repack_maps: on
         cryssea: off
+        own_hit: on
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays
@@ -1754,6 +1758,24 @@ mods:
 # class pair's record came from 10-40 distinct pairings. Practice now skips a partner a citizen fought this many minutes
 # ago or less (its report counts those "kept from a recent partner"), and the learned matchups count a pairing at most
 # once in that time. In memory: a restart forgets it. 0: no limit. Technical: server.pvp.PvpPairings.
+# COLISEUM_* (docs/PVP_PLAN.md V4): the coliseum ladder in Ariant. Tigun, the Arena Master, matches a human Lv 30+ with
+# the citizen in its bracket (Rookie 30-59, Veteran 60-99, Champion 100+) within 5 levels whose Glicko-2 rating is
+# nearest, for COLISEUM_FEE_PER_LEVEL mesos a level; best of three COLISEUM_ROUND_SECONDS rounds on a private copy of a
+# Battle Arena floor, with COLISEUM_TONICS arena tonics a round (each COLISEUM_TONIC_PERCENT of max HP and MP,
+# COLISEUM_TONIC_GAP_MS apart) in place of your own potions. Ratings live in pvp_rating; citizens play
+# COLISEUM_SIM_PER_MINUTE simulated ladder matches among themselves each social minute, so the ladder moves while you
+# are away. Needs PVP_ENABLED. Technical: server.living.population.coliseum.Coliseum.
+# Team fights (docs/PVP_PLAN.md V6), offered by Tigun while the coliseum is on: you and your companions against a
+# citizen team (2v2 or 3v3, one guild when he can find one) on the team ladder, or a Crew War against your rival crew
+# that counts on your record against it. Team ratings are kept apart from 1v1; citizen teams play
+# COLISEUM_TEAM_SIM_PER_MINUTE simulated team matches each social minute. Technical: ...coliseum.TeamLadder.
+# TOURNAMENT_* (docs/PVP_PLAN.md V5): a weekly knockout per ladder bracket, TOURNAMENT_SEATS seats (2, 4 or 8), on
+# TOURNAMENT_DAY at TOURNAMENT_HOUR in the server's own time zone, fought on TOURNAMENT_CHANNEL. Players sign up with
+# Tigun from Monday and take seats first; the top-rated citizens on that channel fill the rest. Every seat pays
+# TOURNAMENT_FEE_PER_LEVEL mesos a level; rounds start TOURNAMENT_ROUND_MINUTES apart. The champion wins 40 Event
+# Trophies, half the pool and medal 1142077 for TOURNAMENT_MEDAL_DAYS days; the finalist 20 and a quarter; semi-finalists
+# 10; first-round losers 5; the house keeps a quarter. Needs COLISEUM_ENABLED. Technical:
+# server.living.population.coliseum.Tournament.
 pvp:
     PVP_ENABLED: true
     PVP_TTK_SECONDS: 12
@@ -1786,3 +1808,19 @@ pvp:
     PVP_LEARN_MATCHUPS: true
     PVP_LIVE_GEAR_MEDIANS: true
     PVP_PAIRING_REPEAT_MINUTES: 60
+    COLISEUM_ENABLED: false
+    COLISEUM_ROUND_SECONDS: 90
+    COLISEUM_FEE_PER_LEVEL: 20
+    COLISEUM_TONICS: 3
+    COLISEUM_TONIC_PERCENT: 25
+    COLISEUM_TONIC_GAP_MS: 8000
+    COLISEUM_SIM_PER_MINUTE: 20
+    COLISEUM_TEAM_SIM_PER_MINUTE: 6
+    TOURNAMENT_ENABLED: false
+    TOURNAMENT_DAY: SATURDAY
+    TOURNAMENT_HOUR: 20
+    TOURNAMENT_CHANNEL: 1
+    TOURNAMENT_SEATS: 8
+    TOURNAMENT_ROUND_MINUTES: 6
+    TOURNAMENT_FEE_PER_LEVEL: 200
+    TOURNAMENT_MEDAL_DAYS: 7

@@ -1,0 +1,13 @@
+# The Arena Quartermaster (Jano in Ariant, docs/PVP_PLAN.md V4.3): what Event Trophies (4000038) buy.
+# Each line under "stock": an item id, or weapon60 / weapon10 for the 60% / 10% attack scroll for the weapon you
+# hold; then the bundle size and its price in Trophies. The window lists them in this order.
+# Prices follow section 2's priors: consumables 2-5, a 60% scroll 15, a 10% scroll 40, a chair 30, the medal 60.
+# A day's ceiling is about 30 Trophies (ladder and rival wins).
+stock:
+  2000004: 10, 3     # Elixir
+  2000005: 5, 5      # Power Elixir
+  2050004: 5, 2      # All Cure Potion
+  weapon60: 1, 15    # 60% attack scroll for your weapon
+  weapon10: 1, 40    # 10% attack scroll for your weapon
+  3010064: 1, 30     # Male Desert Rabbit Cushion (a chair)
+  1142084: 1, 60     # Persevering Challenger Medal (untradeable, one per character)

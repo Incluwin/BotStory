@@ -120,12 +120,7 @@ final class RivalRewards {
 
     /** The 60% weapon (or magic) attack scroll for a weapon, or 0 for none. */
     static int attackScrollFor(int weaponId) {
-        int type = weaponId / 10000;
-        return switch (type) {
-            case 130, 131, 132, 133, 137, 138, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149 ->
-                    2040000 + (type - 100) * 100 + 1;
-            default -> 0;
-        };
+        return server.pvp.PvpScrolls.attack(weaponId, 60);
     }
 
     /**

@@ -1120,6 +1120,106 @@ The server sees a human only through movement packets. Ties go to the human both
 - *Done when* a human climbs the ladder over a session against citizens near their rating, spends Trophies, and finds
   the top 10 changing while they were away.
 
+### Status
+
+- **V4.1-V4.2 built (2026-11-16, 8a3f2e07c on feat/pvp-v4, off main line 5d9fcfc58).** Not deployed yet.
+  - **Where.** The Battle Arena lobby (980010000) is reachable only through the stock Lv 20-30 transports (9010022,
+    2101018), so the coliseum's people stand on Ariant's main street (260000000) instead: Tigun (2101004, the palace
+    guard) as the Arena Master at x 560, and Jano (2101010) as the Quartermaster at x 440 (V4.3). They are extra spawns
+    of stock templates, reached by object id before any script, the needs board's way; their stock spawns keep their
+    scripts. A match fights on a private copy of a Battle Arena floor (980010101/201/301 in turn): the copy drops the
+    floor's 20 jewel-hunt mobs and never respawns, so AriantPQ is untouched. The stock arena clock still shows on
+    entry; the round's own clock replaces it at the bell.
+  - **Your match.** Tigun's window: fight (fee 20·L, `MesoAccount.PVP_FEE`), the bracket's top 10, the rules. The
+    opponent is the free citizen (loaded, unhired, nothing holding it, no party, no event) on your channel in your
+    bracket within 5 levels whose rating is nearest. It is held, warped onto the copy, quotes its real record
+    (`chatter/coliseum.yaml`, "12-7 on the veteran ladder..."), and you fight best of three 90 s rounds, 5 s apart.
+    Leaving the copy or logging off forfeits; a citizen that logs out voids the match and refunds the fee.
+  - **Coliseum rules on the duel.** `DuelField.Rules(roundSeconds, tonics, tonicPercent, tonicGapMs)`: own potions
+    are refused, and the potion key (or an autopot) drinks an arena tonic instead: 3 a round, 25% of max HP and MP, 8 s
+    apart, outside the heal allowance. A bot drinks one at 60% HP or lower.
+  - **Ratings.** Glicko-2 (`server.pvp.Glicko2`, Glickman's worked example as its test) per character per bracket, in
+    `pvp_rating` (changeset 60 / SQL 051); an idle rating widens by the days since its last match. Each social minute
+    up to `COLISEUM_SIM_PER_MINUTE` (20) pairs of free citizens play a simulated best of three (`DuelSim.fighterOf`,
+    moved out of `!pvp sim`, with the 90 s round), the same pair at most once an hour.
+  - **Pay** (section 2): a win 3 Trophies and 6 odds-scaled grind-minutes of EXP for the day's first 5 wins, a loss 1
+    Trophy, 10 rewarded matches a day; a forfeit, and a GM outside a test, earn nothing. Booked in `pvp_match` as kind
+    LADDER.
+  - **GM.** `!pvp coliseum` (nearest rating), `!pvp coliseum <citizen>`, `status`, `sim [n]`, `rating [name]`; they run
+    with `COLISEUM_ENABLED` off (it ships false).
+  - **Not yet:** the Quartermaster's shop (V4.3), the board page and spectating from the King's Room (V4.4, which also
+    holds back the watched-citizen rule).
+- **Live check (2026-11-16, 90d1d83c2 live from 06:35; full suite 16,371 / 0 / 33; `COLISEUM_ENABLED` still off).**
+  Crewfriend (Lv 97 Spearman) through `!pvp coliseum`; recording `docs/agents/evidence/pvp-v4-film/ladder1-raw.mp4`.
+  - **Background matches.** `!pvp coliseum sim 20` on the headless operator: 20 matches among 40 distinct citizens,
+    20-20, ratings 1338-1662 (a first win from 1500/350 lands on 1662, as Glicko-2 should). No errors.
+  - **Matches 1-4, Crewfriend standing still or a test script swinging:** lost 0-2 each to Leaf749 (Lv 98 Crusader),
+    GrumpyDit (twice) and xRyusx. Rounds ended in 6-15 s. Each paid 1 Trophy; the rating fell 1500 -> 1338 -> 1208 ->
+    1155 -> 1119. The match ran on a private copy of Battle Arena 1/2/3 in turn, with the 90 s clock; afterwards
+    Crewfriend stood on its own spot on Henesys Hunting Ground I with HP full.
+  - **Match 5, a win** (knock-outs through the headless operator's `!pvp duel ko`, which acts within the 8 s rounds;
+    typed in the client it came too late): beat LilGius 2-0 at odds 0.21. Paid 381,427 EXP and 3 Trophies; the
+    rating went 1119 -> 1246 and LilGius's 1500 -> 1122 (a new rating, deviation 350, moves far).
+  - **Tonic.** A White Potion double-clicked mid-round: "Arena tonic: 25% HP and MP back (2 left this round).", and
+    Crewfriend absorbed 11,032 of a 8,806 max HP before going down. A second click landed just as the round ended
+    (06:57:09.8) and drank a White Potion normally (90 -> 89): between rounds potions work, and do nothing useful as
+    each round ends with HP and MP full.
+  - **Lines.** "Tigun: you fight Leaf749 (Lv 98 Crusader), rated 1500. To the arena!", then Leaf749 "first ladder
+    match, go easy lol" (`ladder.intro.new`), "again?" between rounds, "gg crewfriend", "gg wp. rematch anytime", and
+    on the win "gg crewfriend, u got me". The result line: "Ladder: You beat LilGius (2-0). Rating 1119 -> 1246
+    (Veteran, 1-4)."
+  - **Notes.** The duel's own opening line ("Duel: ... No deaths: a knock-out ends it ...") repeats every round. A
+    companion that isn't fighting steps out of the party with its "i'll wait out here" line and rejoins after (the
+    existing companion hold, as on any instance). Not seen live: Tigun's window and fee (only spawned with the switch
+    on), and a citizen logging out mid-match.
+- **V4.3 built (2026-11-16, 54e9b14d5 on feat/pvp-v4; full suite 16,377 / 0 / 33; live from 12:54).** The Arena
+  Quartermaster: Jano (2101010) beside Tigun, spawned with the coliseum switch. Stock and prices in
+  `scripts/config/pvp/quartermaster.yaml`: Elixir x10 (3), Power Elixir x5 (5), All Cure Potion x5 (2), the 60% (15)
+  and 10% (40) attack scroll for the weapon held (`server.pvp.PvpScrolls`, shared with the rival rewards), Male Desert
+  Rabbit Cushion 3010064 (30), Persevering Challenger Medal 1142084 (60; tradeBlock, one per character). A trade takes
+  the Trophies only once the item fits and gives them back if it does not arrive; each refusal says why (no weapon with
+  a scroll, too few Trophies, no room, already owned). The trade block itself shipped with V3.3. GM: `!pvp coliseum
+  shop` opens the window with the switch off.
+  - **Live check (Crewfriend, 18 Trophies, holding a one-handed axe):** the window listed the stock with icons and
+    "You have 18 Event Trophies"; the scroll line named "Scroll for One-Handed Axe for ATT". Bought it (log: "traded 15
+    Trophies for 2043101 x1 (3 left)", chat: "You have gained an item in the Use tab"), then Elixir x10 ("traded 3
+    Trophies for 2000004 x10 (0 left)"); a further pick was refused: "That's 3 Event Trophies, and you have 0." No
+    server errors. The client draws a dialog's text over about a second, so a capture right after a click can look cut.
+  - **Not seen live:** Jano standing in Ariant (needs `COLISEUM_ENABLED`), and the room and one-per-character refusals
+    (unit-tested).
+- **V4.4 built (2026-11-16, b7e5f4559 on feat/pvp-v4).** The board page and the gallery.
+  - **The board** (`ColiseumBoard`): your bracket, rating, W-L, place among the listed (3 matches to be listed) and
+    this week's move; each bracket's top 10 with each one's move this week; and the week's three biggest climbs a
+    bracket. Tigun's "The ladder board" opens it, and the F1 Bulletin Board gets a "Coliseum" page beside Records while
+    `COLISEUM_ENABLED` is on. "This week" is UTC, from Monday: `pvp_rating` gains `week_of` and `week_rating`
+    (changeset 61 / SQL 052), the rating a row went into its week's first match with.
+  - **The gallery** (`Gallery`), the watched-citizen rule: Tigun's "Watch a match from the gallery" picks the best-rated
+    free citizen of your bracket (else the busiest one) with a foe within 5 levels, and its nearest-rated foe. They
+    fight a real best of three under coliseum rules on a closed arena floor while you stand ringside at the floor's
+    right end (a seat on a platform above put the fighters under the chat bar: the client draws you three quarters
+    down the screen); you hear each round and the rating change, and the two talk before, between and after. The
+    result counts on the ladder like a simulated one. Leaving the floor or logging out calls the bout off, unrated, and
+    everyone goes back where they stood. Unwatched citizen matches stay simulated. Under Lv 30 you can still watch.
+  - **The King's Room** stays as AriantPQ left it: the gallery is the arena floor's platform, because a client sees only
+    the map it is on.
+  - **GM:** `!pvp coliseum board` and `!pvp coliseum watch [rookie|veteran|champion]`, both with the switch off.
+- **V4.4 live check (2026-11-16, Crewfriend; full suite 16,388 / 0 / 33 on each build).**
+  - **Board** (after 30 simulated rounds filled the brackets): "Your bracket: Veteran (Lv 60-99), rated 1246, 1-4.
+    52nd of 63."; the Veteran top 10 ("1. Wavaki Lv 76 2070 (8-0) +570") and the climbers page each rendered.
+  - **Gallery, three bouts, no errors, the watcher home at its own spot each time:** Wavaki beat LilTax 2-0
+    (2070 -> 2112, 1950 -> 1918), Sky706 2-0 (2112 -> 2126, the smaller gain against a lower-rated foe) and
+    ArrowMage 2-0 (2126 -> 2141). Rounds ran 7-14 s.
+  - **The seat took three tries.** A middle-platform seat (y -85) left the floor below the screen; the lower-left
+    platform (y 95, 1a952b4de) still put the fighters under the chat bar; ringside at the floor's right end (250, 260;
+    f793c1daf) shows the whole fight. Clip: `docs/agents/evidence/pvp-v4-film/gallery3-cut.mp4`.
+  - **Fixed after:** the lines named jobs from the enum ("Lv 80 Whiteknight"); bd5baf43a uses
+    `CompanionView.jobName` ("White Knight", Cygnus and Aran without the tier digit).
+  - **Fixed after:** the watcher saw the stock 10-minute arena clock through the whole bout, since the duel sends its
+    round clock to fighters only; the gallery now sends the watcher one at each round (countdown plus round).
+  - **Recheck on 64dae659f (live 20:55):** a fourth bout showed the watcher the round clock (1:28 mid-round); Ormael
+    upset Wavaki 2-1 (2141 -> 2052, 1761 -> 1854). Both were Crusaders, so the job-name fix was not seen live (unit
+    tests only). No errors.
+
 ---
 
 ## 8. V5. Weekly tournament
@@ -1148,6 +1248,45 @@ The server sees a human only through movement packets. Ties go to the human both
 - *Done when* a scheduled tournament runs start to finish with one human seated, and its results appear on the board
   and in the letters.
 
+### Status (2026-11-17)
+
+V5.1 and V5.2 are built on `feat/pvp-v4` (b55e0407e, score wording 26916d19c), switch `pvp.TOURNAMENT_ENABLED` off.
+V5.3 (betting) is not built. Full suite on b55e0407e: 16,399 / 0 / 33.
+
+- **Where it differs from the design above.**
+  - **Schedule:** the social minute checks the clock, not `EventManager.scheduleAtTimestamp`: a reminder 5 minutes
+    before the start, the start itself (up to 3 hours late, after a restart), and a run left RUNNING by a restart is
+    cancelled with fees owed back.
+  - **Watching:** a citizen-only bout is fought live only when a player asked Tigun to watch it; the watchers sit
+    ringside as in the V4 gallery. Every other citizen bout is simulated (`DuelSim`). Tournament bouts are booked in
+    `pvp_match` but do not move ladder ratings.
+  - **Draw:** seeded by ladder rating over everyone seated (1 v 8, 4 v 5, 2 v 7, 3 v 6); empty seats are byes. A drawn
+    bout sends the better seed on. A seat not free on the tournament channel when its bout opens forfeits it, and a
+    player who never fought takes no prize.
+  - **Prizes:** citizens take only their pool shares, no Trophies. Prizes for a player who is offline or has a full
+    Etc tab, and fees from a called-off run, wait with Tigun (`pvp_tournament_seat.paid`) and are paid from his window.
+  - **Medal:** granted with a `TOURNAMENT_MEDAL_DAYS` expiry; last week's champion hands theirs back if online.
+- **Pieces.** `coliseum.Tournament` (controller), `TournamentBout` (a live best of three), `TournamentDraw` and
+  `TournamentRules` (pure), `TournamentStore`; tables `pvp_tournament` / `pvp_tournament_seat` (053); bookings in
+  `pvp_match` with kind TOURNAMENT; ledger accounts `PVP_FEE` / `PVP_PRIZE`; lines `tournament.*` in
+  chatter/coliseum.yaml; the letters' news kind `coliseum.tournament`; the board's tournament page. GM:
+  `!pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]` (start works with the
+  switch off).
+- **Live check (2026-11-17, on b55e0407e).** `!pvp tournament start veteran 4 1 me` seated 1. Wavaki, 2. LilNeka,
+  3. FoxSniper, 4. Crewfriend (pool 50,400 from the three citizens' fees; a GM pays none). Crewfriend's two bouts were
+  fought live (the opponent knocked out with `!pvp duel ko` through the headless operator); LilNeka v FoxSniper was
+  simulated. Seen:
+  - The semi-finals and final notices, Tigun's "the final starts in 1 minute", Crewfriend back on its own spot after
+    each bout.
+  - Crewfriend champion: 40 Event Trophies, 25,200 mesos, the Absolute Victory Carnivalian Medal ("yours for 7 days"),
+    the notice "Crewfriend is this week's Veteran champion, beating FoxSniper in the final!". FoxSniper took 12,600
+    and megaphoned "lost the final to Crewfriend. next week tho". The house kept 12,600.
+  - `pvp_tournament` DONE, every seat's row paid; Tigun's window reads "Veteran: won by Crewfriend, over FoxSniper."
+  - Fixed after it: scores read from the top seed's side ("Crewfriend beats Wavaki (0-2)"); 26916d19c reads them from
+    the winner's.
+  - Not seen live: a scheduled start (only a GM start), the letter to an away player (unit-tested), a forfeit, a
+    watched citizen bout, and a prize waiting with Tigun.
+
 ---
 
 ## 9. V6. Team fights
@@ -1159,6 +1298,51 @@ The server sees a human only through movement packets. Ties go to the human both
 - Focus fire is a real tactic, so sides are always equal in size.
 - *Done when* a 3v3 against the rival crew is filmed and the companions read as teammates in the review.
 
+**V6 status (2026-11-17, feat/pvp-v4 254c56205, LIVE as d319a27af 08:40, switch off):**
+- **Two kinds, both from Tigun's new "Fight with my companions" page:** a team ladder match (2v2 or 3v3, as many of
+  your companions as stand with you, the 1v1 fee) or a Crew War against your rival crew (no fee). Best of three under
+  coliseum rules on a private arena floor; sides stand apart on the bottom floor (TeamRules.spot) and are always equal.
+- **Who you face:** a ladder match takes a citizen team in your bracket within 5 levels, one guild's when a guild has
+  enough free members (the guild team rated nearest yours), else the nearest-rated free citizens as "a pickup team"
+  (TeamRules.pick). A Crew War takes the crew's leader first, then its members, free on your channel; its size is what
+  both sides can field. Hired citizens are never free, so your companions are never on the other side.
+- **Team brain (server.pvp.TeamTactics, in DuelField):** a side's bots pick one target together, the standing foe
+  with the lowest HP share (a far foe counts healthier, 1,200 px = one whole share); a call stands 2.5 s and switches
+  only for a foe 0.25 share weaker; while you landed a hit in the last 4 s your bots assist your target; a called foe
+  more than 650 px from a bot is left for the foe at hand. Your bots make short party-chat calls (TeamCalls: "on
+  Wavaki", "Wavaki low", "with u", "1 down", "im out"), at most one a side every 6 s; a side with no player is silent.
+- **Ratings:** team ratings apart from 1v1, under TEAM_ brackets in pvp_rating. A team rates as its members' mean
+  (rating and volatility mean, deviation root-mean-square); every member is rated against the other team's rating, so
+  your companions climb the team ladder with you. Citizen teams (guild teams first, then pickup teams, 2 or 3 a side)
+  play COLISEUM_TEAM_SIM_PER_MINUTE (6) simulated best-of-three team matches a social minute (DuelSim.teamRound:
+  everyone goes for the weakest standing foe; at the bell the side keeping more summed HP share wins).
+- **Pay and records:** the player only, as a ladder match, sharing the ladder's 10 rewarded matches a day; companions
+  get nothing. A team match is booked in pvp_match as TEAM; a Crew War is booked with the crew's id as a challenge is,
+  so the head-to-head, the crew quoting it, `@records` and the letters count it, and a crew win takes a megaphone slot.
+- **Lines:** team.intro/win/lose and crewwar.intro/win/lose in chatter/coliseum.yaml, said by the citizen side's first
+  member; between rounds the ladder's own round lines.
+- **GM:** `!pvp coliseum team [2|3]`, `!pvp coliseum crewwar`, `!pvp coliseum teamsim [n]`; status lists team
+  matches too. All run with the coliseum switched off.
+- **Tests:** TeamTacticsTest (7), TeamRulesTest (10: team picking, spots, team ratings, a mirror 2v2 even at 0.50 and
+  3v2 won over 80% in the sim, the best of three), ColiseumContentTest's new slots.
+- **Live check (2026-11-17 08:45-08:57, d319a27af, full suite 16,417 / 0 / 33):** Crewfriend (Lv 97 Spearman) with
+  its companions Dorran and IceCookie on Henesys Hunting Ground I; all by GM command, nobody fought for Crewfriend (it
+  stood still), so this checks the flow and the bots, not balance.
+  - Crew War x2 (`!pvp coliseum crewwar`): both were 2v2, Crewfriend + Dorran against Nora404 + xTanx. Correct: Equinox's
+    third member, Blade520 (Lv 109), was online but grinding Ulu Estate III and not free, and a Crew War sends only free
+    members. Equinox won 2-1 then 2-0; team rating 1500 -> 1338 -> 1280; Nora404 "gg crewfriend, that's 1-4 now" (the V3
+    head-to-head counts Crew Wars); Tigun paid 1 Event Trophy each.
+  - 3v3 ladder x3 (`!pvp coliseum team 3`): Crewfriend + Dorran + IceCookie against pickup teams (SilentRanger, Sora867,
+    Leaf749; xMoelx, Nona, Soa367; GrumpyDit, Gira74, xYuox), lost 1-2, 0-2, 0-2. Six fighters on the bottom floor,
+    round clock, "3v3 round 2 of 3 against a pickup team. Score 0-1." between rounds, knock-out lines ("Dorran is knocked
+    out by GrumpyDit"), and the companions' party calls: "go xYuox", "GrumpyDit first", "got em", "im out", "sry im
+    out". Everyone back on the field after each, no server errors.
+  - Film: docs/agents/evidence/pvp-v6-film/team3v3-cut.mp4 (58 s, the third 3v3); crewwar1-raw.mp4 (both Crew Wars).
+  - Seen, not a bug: a citizen from the other side sent Crewfriend a buddy request after a match (the citizens' own
+    social behaviour).
+- **Not yet:** a filmed 3v3 Crew War needs a crew with three members free on the player's channel; Equinox had two.
+  A team win (every player bout lost because Crewfriend stood still); the guild-team pick (every pickup this run).
+
 ## 10. V7. Client polish (V0.1 says it is needed)
 
 - **Own damage number.** V0.1 showed that your own client ignores a `damagePlayer` about itself, for every source and
@@ -1166,7 +1350,42 @@ The server sees a human only through movement packets. Ties go to the human both
   - add server→client **0x189 PVP_HIT** to `docs/CUSTOM_OPCODES.md`;
   - Kaentake draws the number and plays the hit sound on the local user;
   - the HP bar already updates without it.
-  - The client function to call is not reverse-engineered yet; it is a separate session.
+  - **Built 2026-11-09, LIVE 2026-11-17** (server `feat/pvp-v7-own-hit`, kaentake `feat/own-hit` on the
+    shipped `ship/2026-10-31-quickslot-relogin`; status below). The client routine is `0x0092EC50`: the one that draws a number
+    over a CUser, called by `CUserLocal::SetDamaged` and `CUserRemote::OnHit` alike. Sounds come from
+    `play_mob_sound` (CharDam1/2/F by attack index) and `play_skill_sound` (type 49, Hit). Addresses and evidence
+    are in kaentake `src/v83_offsets.h`, namespace `ownhit`. Number and sound only: no knockback, invincibility or
+    TAKE_DAMAGE.
+  - Server: `server.combat.OwnHit` sends PVP_HIT only to the victim, only with the `own_hit` mod on and `own_hit`
+    active in its feature report. DuelField sends each shown line (the skill's Hit sound) and each dodge (MISS).
+    ServerMobDamageService sends each broadcast hit (the mob's CharDam sound for its attack index), so a
+    server-run boss's hits on you now show too. `!pvp probe ownhit` checks it on your own client.
+  - **Client drawing checked live 2026-11-09** before any restart. A test-only build (KAENTAKE_OWN_HIT_PROBE) also
+    draws a DAMAGE_PLAYER about one character id. On a private test client as Bossfriend, the live
+    `!pvp probe self` with src -4, 0 (mob 8130100), -1 and -3 drew the violet 1234 over your own character
+    every time, with no failure logged. Evidence is in `docs/agents/evidence/own-hit/` (clip, contact sheet,
+    frame). Split suite on 452210600: 16,295 / 0 / 33. The sound cannot be heard in the clip (video only).
+
+**V7 status (2026-11-17, feat/pvp-v7-own-hit 35bcbbc62 on feat/pvp-v4 4e0c15abb, LIVE 12:49; full suite 16,429 / 0 / 33):**
+- **Server:** rebased onto V4-V6; the one conflict was the `!pvp` usage line. Ladder, tournament, team and Crew War
+  fights all strike through DuelField, so their hits show over you as well.
+- **Client:** Kaentake.dll 2477a754 (kaentake 82c62de) is in the BotStory client's Game Files, replacing ee4fb65b
+  (backup kept). `manifest.txt` was regenerated; the DLL is its only changed line. The patch server hands this DLL to
+  every launcher that syncs, so friends' clients get it on their next launch. `own_hit` is on by default:
+  Crewfriend's login reported 42 features (41 before), `own_hit` active.
+- **Gotcha:** a Game Files change without a regenerated `manifest.txt` stops the launcher with "Patcher failed on
+  Kaentake.dll" (it checks the manifest's hash). Run `patch-server/gen_manifest.py` (or `regen.bat`) after any Game
+  Files change, and diff its output against the old manifest first, so only the intended files ship.
+- **Live check (2026-11-17 12:56-13:01, Crewfriend Lv 97 Spearman in the GM room, by GM command):** pass.
+  - `!pvp probe ownhit` x6, about 6 s apart: 1234; 1234 with mob 8800003 attack 0's CharDam sound; 1234 with
+    Slash Blast's (1001005) Hit sound; miss; 777; miss. Each drew over Crewfriend's own head: the violet 1234 three
+    times, MISS, 777, MISS. The server logged all six as sent.
+  - A real duel (`!pvp duel IceCookie`, its own companion; 20 s, 13 attacks, Crewfriend KO'd at 1 HP): a violet
+    number (241-433) over Crewfriend for each hit, the HP bar falling with them. Before V7 your own client drew none.
+  - Evidence (local, gitignored) in `docs/agents/evidence/own-hit/`: `own-hit-0x189-live.mp4` +
+    `contact-0x189.png` (one row per probe), `own-hit-duel-live.mp4` + `contact-duel.png`, `03-own-hit-0x189-1234.png`.
+  - Not checked live: the sounds (the clips are video only); a server-run boss hit (ServerMobDamageServiceTest covers
+    it); a client without `own_hit` getting nothing (OwnHitTest covers the gate).
 - **WASM:** a matching handler, if V0.7 shows a gap.
 - **Custom.wz, optional:** a proper "Coliseum Mark" and "Coliseum Champion" medal to replace the stock stand-ins, under
   the existing Custom.wz approval.

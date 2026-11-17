@@ -23,6 +23,7 @@ import server.living.LivingWorld;
 import server.living.config.ContentException;
 import server.living.population.needs.NeedLedger;
 import server.living.population.records.ClearLog;
+import server.living.population.coliseum.Coliseum;
 import server.living.population.rivals.RivalCrews;
 import server.maps.MapleMap;
 
@@ -73,6 +74,7 @@ public final class Population {
     private final NeedLedger needs;
     private final ClearLog clears;
     private final RivalCrews rivals;
+    private final Coliseum coliseum;
     private final CitizenWhispers whispers;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
@@ -114,6 +116,7 @@ public final class Population {
         this.clears = new ClearLog(this);
         this.rivals = new RivalCrews(this);
         this.clears.listen(rivals); // a booked clear may be a crew's, or beat one (F7)
+        this.coliseum = new Coliseum(this); // the coliseum ladder in Ariant (docs/PVP_PLAN.md V4)
         this.whispers = new CitizenWhispers(this);
         this.whispers.onReply("rival", rivals::replied); // a player answering a crew's whisper (F7)
         this.presence = new PresenceScheduler(this);
@@ -201,6 +204,7 @@ public final class Population {
             server.living.audit.TellAudit.tick(System.currentTimeMillis());
             population.needs.tick(); // the needs board's minute (docs/BOT_CONCEPT_PLAN.md F1)
             population.rivals.tick(); // the rival crews' minute (F7)
+            population.coliseum.minute(); // Tigun stands, and citizens play their own ladder (docs/PVP_PLAN.md V4)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -243,6 +247,7 @@ public final class Population {
         population.market.closeAll("server shutdown");
         population.needs.boards().removeAll(); // a later start spawns them again
         population.casino.stopAll(); // the cashier NPC and the tables' chips and cards
+        population.coliseum.stop(); // Tigun goes, a match running is called off
         population.memories.flushAll(); // before the citizens unload: what happened up to the last event is kept
         population.presence.logoutAll("server shutdown");
         log.info("Population stopped.");
@@ -389,6 +394,10 @@ public final class Population {
     /** Each player's rival crew (docs/BOT_CONCEPT_PLAN.md F7.2-F7.4). */
     public RivalCrews rivals() {
         return rivals;
+    }
+
+    public Coliseum coliseum() {
+        return coliseum;
     }
 
     /** Players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). */

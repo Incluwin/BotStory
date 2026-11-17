@@ -163,6 +163,7 @@ public final class ServerMobDamageService {
             map.broadcastMessage(target, PacketCreator.damagePlayer(
                     attackIndex, attacker.getId(), target.getId(), damage, 0, direction,
                     false, 0, true, attacker.getObjectId(), 0, 0), true);
+            OwnHit.mobHit(target, damage, direction, attacker.getId(), attackIndex); // the target's client draws none
         }
         if (damage > 0 && target.getClient() instanceof BotClient) {
             AgentCombatDamageRuntime.reactToServerAttack(

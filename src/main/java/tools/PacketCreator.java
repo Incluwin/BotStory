@@ -4145,6 +4145,33 @@ public class PacketCreator {
         return p;
     }
 
+    /**
+     * PVP_HIT (0x189, Kaentake client own_hit, {@link server.combat.OwnHit}, which decides who is sent it): a hit the
+     * server applied to the receiving client's own character, drawn over it. {@code int damage} (0 when a miss),
+     * {@code byte flags} (OwnHit.MISS, MOB_SOUND, SKILL_SOUND), {@code byte direction} (as DAMAGE_PLAYER's; the client
+     * does not knock back), then with MOB_SOUND {@code int mobTemplateId} + {@code byte attackIndex} (the mob's CharDam
+     * sound) and with SKILL_SOUND {@code int skillId} (the skill's Hit sound). A miss plays no sound, so it carries none.
+     */
+    public static Packet pvpHit(int damage, boolean miss, int direction, int mobTemplateId, int mobAttackIndex,
+                                int skillId) {
+        boolean mobSound = !miss && mobTemplateId > 0 && mobAttackIndex >= 0;
+        boolean skillSound = !miss && skillId > 0;
+        int flags = (miss ? server.combat.OwnHit.MISS : 0) | (mobSound ? server.combat.OwnHit.MOB_SOUND : 0)
+                | (skillSound ? server.combat.OwnHit.SKILL_SOUND : 0);
+        OutPacket p = OutPacket.create(SendOpcode.PVP_HIT);
+        p.writeInt(miss ? 0 : Math.max(0, damage));
+        p.writeByte(flags);
+        p.writeByte(direction);
+        if (mobSound) {
+            p.writeInt(mobTemplateId);
+            p.writeByte(mobAttackIndex);
+        }
+        if (skillSound) {
+            p.writeInt(skillId);
+        }
+        return p;
+    }
+
     public static Packet getClock(int time) { // time in seconds
         OutPacket p = OutPacket.create(SendOpcode.CLOCK);
         p.writeByte(2); // clock type. if you send 3 here you have to send another byte (which does not matter at all) before the timestamp

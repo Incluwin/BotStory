@@ -1,6 +1,6 @@
 # Server Boss Combat Runtime Architecture
 
-Status: implemented reference architecture. Easy Balrog is the first complete composite encounter wired to it; regular-client visual and full live-expedition validation remain release gates.
+Status: implemented reference architecture. Easy Balrog is the first complete composite encounter wired to it; regular-client visual and full live-expedition validation remain release gates. The victim's own hit number under server authority is built for Kaentake clients with `own_hit` (PVP_HIT 0x189, `server.combat.OwnHit`, 2026-11-09), not yet checked in a live expedition.
 
 This document is the implementation authority for native-client boss simulation with sticky server failover. It defines the reusable runtime, the boundary between a boss and the event that hosts it, the Easy Balrog reference behavior, and the extension process for other bosses such as Alishar.
 
@@ -335,6 +335,10 @@ In `SERVER_STICKY`, the server owns action selection, skills, summons, target hi
 - Do not propose a next skill for a sticky-server monster.
 - Allow only explicitly supported visual movement reporting, or reject movement entirely when the boss is stationary.
 - Continue broadcasting server-generated standard packets so native clients can render animations.
+- The victim's own client draws no DAMAGE_PLAYER about itself (`docs/PVP_V0_RESULTS.md`, V0.1), so
+  `ServerMobDamageService` also sends each broadcast hit to the victim alone as PVP_HIT 0x189 (`server.combat.OwnHit`).
+  A client with the Kaentake `own_hit` feature draws the number and the mob's CharDam sound over itself. A stock
+  client without it still sees only its HP bar drop.
 
 At sticky takeover, remove native controller ownership for every current encounter actor, invalidate outstanding controller leases, attach server runtimes, and mark all future encounter actors/adds server-owned before they become actionable. Easy Balrog components remain stationary under server authority.
 

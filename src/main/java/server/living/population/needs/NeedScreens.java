@@ -52,6 +52,10 @@ public final class NeedScreens {
                     () -> new RecordsView(population.clears()).board(player, NeedBoards.BOARD_NPC,
                             () -> board(player, boardMapId))));
         }
+        if (population.coliseum() != null && server.living.population.coliseum.Coliseum.on()) { // the ladder (V4.4)
+            options.add(new LivingTalk.Option("#bColiseum#k",
+                    () -> population.coliseum().board(player, NeedBoards.BOARD_NPC, () -> board(player, boardMapId))));
+        }
         LivingTalk.open(player, NeedBoards.BOARD_NPC)
                 .menu("Townsfolk pin what they need here.\r\nBring it to them, or leave it here if they are away."
                         + " They pay on the spot.", options)
