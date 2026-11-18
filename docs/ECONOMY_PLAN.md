@@ -491,4 +491,28 @@ Decisions for the user:
     in 1.5 s on; foreground stays 1.5 s either way.
   - Not deployed: the switch is off, so the live server (4db9b2916) behaves the same.
   - A trial merge with `fix/background-attack-cadence` is clean. R4 should drive both switches from one step setting.
-- **Open:** RD5 (R4, the ramp, now also turning R3 on at the same steps), then R5.
+- **R4 built 2026-11-18; step 2 LIVE 14:23** (user: "Build R4", then "deploy step 2 when the baseline finishes").
+  - `feat/economy-room-r4` 121ec77d3 merges `fix/background-attack-cadence`. `AgentBackgroundCombatClock.STEPS` (1-5)
+    replaces both on/off switches and drives the attack lock and the touch-hit cooldown together.
+    `AgentBackgroundCombatClockTest` checks hits a swing stay at the watched level at every step. Merged as c37039efc;
+    full split suite at STEPS 1: 16,446 / 0 / 33.
+  - Ramp step 2: `feat/economy-room-r4-step2` b11596ac0, merged as af27457b4; full split suite at STEPS 2:
+    16,446 / 0 / 33. Live checkout detached at af27457b4, restarted 14:23 with nobody online, 0 errors.
+  - Ramp steps are main-line commits, each with a full suite run: there is no live-only override of agent-engine.yaml.
+  - **Measured** by citizens' MOB_DROP pickups (a fixed share of kills), about 248 citizens loaded in both:
+
+    | Window (11-18, local) | Clock | Pickups | Per hour |
+    |---|---|---|---|
+    | 12:36-14:21 (two of three half-hours beside a suite run) | 1 | 10,524 | about 6,000 (5,490-6,780) |
+    | 14:30-16:00, from 7 min after the restart | 2 | 21,013 | about 13,900 (11,570-15,200) |
+
+  - So k is **about 2.3 at step 2**, more than the doubled clock alone. That is an upper bound: maps refill on a restart,
+    so the first hours after one run hot, and the baseline was mid-session. At full speed k may be above the planned 2.
+  - Today's CASINO shows cash-outs above purchases (563 M in, 522 M out): chips bought before 21:52 on 11-17 booked
+    NPC_PURCHASE and were cashed afterwards as CASINO. It evens out from 11-19.
+  - Next:
+    - the 11-18 close (19:01 local) has about 4.6 h of step 2; the 11-19 close is the first full day;
+    - step 3 only after the 11-19 close shows organic growth at or under 2 %;
+    - back to 1 above 5 %;
+    - the controller moves pickup 0.3 -> 0.15 -> 0.10 and luxury up a step a close on its own.
+- **Open:** the ramp (steps 3 and 5, gated on the closes above), then R5 (companion_yield, PvP grind-minutes).
