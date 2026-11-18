@@ -1,10 +1,16 @@
 package server.agents.capabilities.combat;
 
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+import server.agents.capabilities.movement.AgentMovementSubstepPolicy;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.scheduler.AgentSchedulerConfig;
+import server.agents.runtime.simulation.AgentSimulationMode;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AgentCombatActionLockRuntimeTest {
     @Test
@@ -27,5 +33,136 @@ class AgentCombatActionLockRuntimeTest {
         AgentCombatActionLockRuntime.tickActionLock(entry);
 
         assertEquals(40, AgentCombatCooldownStateRuntime.moveWindowMs(entry));
+    }
+
+    @Test
+    void scheduledTickFollowsTheConfiguredSwitchInTheBackground() {
+        boolean on = config.AgentTuning.booleanValue(
+                "server.agents.capabilities.combat.AgentCombatActionLockRuntime.BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED");
+        AgentRuntimeEntry entry = background();
+        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, 700);
+
+        AgentCombatActionLockRuntime.tickActionLock(entry, AgentMovementSubstepPolicy.substeps(entry));
+
+        int steps = on ? backgroundSubsteps() : 1;
+        assertEquals(700 - steps * movementTickMs(), AgentCombatCooldownStateRuntime.attackCooldownMs(entry));
+    }
+
+    @Test
+    void switchOnRunsMovementSubstepsOnlyInBackgroundActive() {
+        assertEquals(1, steps(background(), false));
+        assertEquals(1, steps(new AgentRuntimeEntry(null, null, null), true));
+        AgentRuntimeEntry abstractEntry = new AgentRuntimeEntry(null, null, null);
+        abstractEntry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ABSTRACT, 0L);
+        assertEquals(1, steps(abstractEntry, true));
+        assertEquals(backgroundSubsteps(), steps(background(), true));
+        assertEquals(1, AgentCombatActionLockRuntime.countdownSteps(0, true));
+    }
+
+    @Test
+    void backgroundLockClearsInAboutItsAnimationTime() {
+        int tickMs = backgroundTickMs();
+        for (int animationMs : new int[] {300, 540, 600, 700, 810, 900, 1_200, 2_000}) {
+            AgentRuntimeEntry entry = background();
+            AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, animationMs);
+
+            int heldMs = heldMs(entry, steps(entry, true), tickMs);
+
+            // The swing that set the lock is followed by one on the first scheduled tick at or after its animation.
+            assertTrue(heldMs >= animationMs, animationMs + " ms swing released early, after " + heldMs + " ms");
+            assertTrue(heldMs < animationMs + tickMs, animationMs + " ms swing held " + heldMs + " ms");
+        }
+    }
+
+    @Test
+    void backgroundLockWithoutTheFixHoldsFiveTimesItsAnimation() {
+        AgentRuntimeEntry entry = background();
+        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, 700);
+
+        int heldMs = heldMs(entry, steps(entry, false), backgroundTickMs());
+
+        assertEquals(700 / movementTickMs() * backgroundTickMs(), heldMs);
+    }
+
+    @Test
+    void foregroundLockTimingIsUnchangedWithTheSwitchOn() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, 700);
+
+        int heldMs = heldMs(entry, steps(entry, true), movementTickMs());
+
+        assertEquals(700, heldMs);
+    }
+
+    @Test
+    void timeLeftAfterTheLockClearsGoesOnToTheMoveWindow() {
+        AgentRuntimeEntry entry = background();
+        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, 100);
+        AgentCombatCooldownStateRuntime.maxMoveWindow(entry, 200);
+
+        AgentCombatActionLockRuntime.countDown(entry, 5);
+
+        assertFalse(AgentCombatCooldownStateRuntime.hasAttackCooldown(entry));
+        assertEquals(200 - 3 * movementTickMs(), AgentCombatCooldownStateRuntime.moveWindowMs(entry));
+    }
+
+    @Test
+    void backgroundMoveWindowAloneClearsInItsOwnTime() {
+        AgentRuntimeEntry entry = background();
+        AgentCombatCooldownStateRuntime.setMoveWindowMs(entry, 1_000);
+
+        int ticks = 0;
+        while (AgentCombatCooldownStateRuntime.hasMoveWindow(entry)) {
+            AgentCombatActionLockRuntime.countDown(entry, steps(entry, true));
+            ticks++;
+        }
+
+        assertEquals(1_000, ticks * backgroundTickMs());
+    }
+
+    @Test
+    void anIdleLockRunsNoSteps() {
+        AgentRuntimeEntry entry = background();
+
+        AgentCombatActionLockRuntime.countDown(entry, 5);
+
+        assertEquals(0, AgentCombatCooldownStateRuntime.attackCooldownMs(entry));
+        assertEquals(0, AgentCombatCooldownStateRuntime.moveWindowMs(entry));
+    }
+
+    /** The steps the scheduled tick counts down for {@code entry}, given the substeps its movement runs. */
+    private static int steps(AgentRuntimeEntry entry, boolean switchOn) {
+        return AgentCombatActionLockRuntime.countdownSteps(AgentMovementSubstepPolicy.substeps(entry), switchOn);
+    }
+
+    /** Scheduled ticks until the attack lock clears, in milliseconds of {@code tickMs} each. */
+    private static int heldMs(AgentRuntimeEntry entry, int stepsPerTick, int tickMs) {
+        int ticks = 0;
+        while (AgentCombatCooldownStateRuntime.hasAttackCooldown(entry)) {
+            AgentCombatActionLockRuntime.countDown(entry, stepsPerTick);
+            ticks++;
+            if (ticks > 10_000) {
+                throw new AssertionError("the lock never cleared");
+            }
+        }
+        return ticks * tickMs;
+    }
+
+    private static AgentRuntimeEntry background() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 0L);
+        return entry;
+    }
+
+    private static int movementTickMs() {
+        return AgentMovementPhysicsConfig.configuredMovementTickMs();
+    }
+
+    private static int backgroundTickMs() {
+        return (int) AgentSchedulerConfig.fromSystemProperties().backgroundActiveTickMs();
+    }
+
+    private static int backgroundSubsteps() {
+        return backgroundTickMs() / movementTickMs();
     }
 }

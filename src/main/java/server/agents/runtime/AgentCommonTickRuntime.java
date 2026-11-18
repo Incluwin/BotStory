@@ -66,7 +66,7 @@ public final class AgentCommonTickRuntime {
                         server.agents.integration.AgentInventoryGatewayRuntime.inventory()),
                 tickScriptTasks,
                 AgentPartyQuestHooks::isNpcLocked,
-                AgentCombatActionLockRuntime::tickActionLock,
+                entry -> AgentCombatActionLockRuntime.tickActionLock(entry, AgentMovementSubstepPolicy.substeps(entry)),
                 AgentCombatSkillCacheRuntime::rebuildSkillCacheIfNeeded,
                 (entry, agent) -> {
                     if (!AgentCombatDispelRuntime.tickDispel(entry, agent, AgentCombatConfig.cfg)) {
