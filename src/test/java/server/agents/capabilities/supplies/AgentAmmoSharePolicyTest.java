@@ -21,6 +21,18 @@ class AgentAmmoSharePolicyTest {
     }
 
     @Test
+    void bowsCrossbowsAndClawsWatchTheirOwnProjectilesWhileOnlyBowsAndCrossbowsAskForAShare() {
+        assertTrue(AgentAmmoSharePolicy.observesOwnSupply(WeaponType.BOW));
+        assertTrue(AgentAmmoSharePolicy.observesOwnSupply(WeaponType.CROSSBOW));
+        assertTrue(AgentAmmoSharePolicy.observesOwnSupply(WeaponType.CLAW));
+
+        assertFalse(AgentAmmoSharePolicy.observesOwnSupply(WeaponType.GUN));
+        assertFalse(AgentAmmoSharePolicy.observesOwnSupply(WeaponType.SWORD1H));
+        assertFalse(AgentAmmoSharePolicy.observesOwnSupply(WeaponType.NOT_A_WEAPON));
+        assertFalse(AgentAmmoSharePolicy.observesOwnSupply(null));
+    }
+
+    @Test
     void shouldDonateHalfExcessWhenDonorNeedsSameAmmoOtherwiseAllMatchingAmmo() {
         assertEquals(100, AgentAmmoSharePolicy.donationQuantity(700, 500, true));
         assertEquals(0, AgentAmmoSharePolicy.donationQuantity(501, 500, true));

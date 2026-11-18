@@ -437,8 +437,7 @@ public final class AgentSupplyProcurementRuntime {
             if (bundle == null) {
                 return false;
             }
-            AgentCareerShopCatalog.ShopStop stop = AgentCareerShopCatalog.forSupply(
-                    bundle, request.category(), agent.getMapId(), routeHops(entry, nowMs));
+            AgentCareerShopCatalog.ShopStop stop = supplier(entry, agent, bundle, request.category(), nowMs);
             if (stop == null) {
                 // Off every portal graph (a party quest's stages, Ereve), behind a one-way portal
                 // outside Victoria, or cut off by blocked portals: a trip toward a shop the router
@@ -615,8 +614,7 @@ public final class AgentSupplyProcurementRuntime {
         AgentCareerBuildBundle bundle = entry.capabilityStates().require(
                 AgentCareerProgressionState.STATE_KEY).bundle();
         AgentCareerShopCatalog.ShopStop nearer = bundle == null ? null
-                : AgentCareerShopCatalog.forSupply(
-                bundle, execution.category(), agent.getMapId(), routeHops(entry, nowMs));
+                : supplier(entry, agent, bundle, execution.category(), nowMs);
         int nearerHops = nearer == null ? -1
                 : AgentVictoriaRouteRuntime.routeHops(entry, agent.getMapId(), nearer.mapId(), nowMs);
         String change = hops < 0 ? "no longer has a route"
@@ -842,6 +840,22 @@ public final class AgentSupplyProcurementRuntime {
         }
         int walk = AgentVictoriaRouteRuntime.routeHops(entry, agent.getMapId(), ride.fromMapId(), nowMs);
         return walk < 0 ? -1 : walk + 1;
+    }
+
+    /**
+     * The shop a trip of {@code category} walks to from where the Agent stands: the nearest town shop for potions, and for
+     * a claw's throwing stars when it carries a stack any shop refills (AgentShopService.refillsCarriedStarsAtAnyShop);
+     * else the career shop. Null when the router reaches none.
+     */
+    private static AgentCareerShopCatalog.ShopStop supplier(AgentRuntimeEntry entry,
+                                                            Character agent,
+                                                            AgentCareerBuildBundle bundle,
+                                                            AgentResourceCategory category,
+                                                            long nowMs) {
+        boolean refillsCarriedStacks = category == AgentResourceCategory.THROWING_STAR
+                && AgentShopService.refillsCarriedStarsAtAnyShop(agent);
+        return AgentCareerShopCatalog.forSupply(bundle, category, agent.getMapId(), routeHops(entry, nowMs),
+                refillsCarriedStacks);
     }
 
     private static boolean monsterFree(MapleMap map) {

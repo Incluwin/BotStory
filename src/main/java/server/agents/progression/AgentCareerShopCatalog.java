@@ -49,6 +49,28 @@ public final class AgentCareerShopCatalog {
             ShopStop careerShop = forBundle(bundle);
             return routeHops.applyAsInt(currentMapId, careerShop.mapId()) >= 0 ? careerShop : null;
         }
+        return nearestTownShop(currentMapId, routeHops);
+    }
+
+    /**
+     * As {@link #forSupply(AgentCareerBuildBundle, AgentResourceCategory, int, IntBinaryOperator)}, but a throwing-star
+     * trip that only needs the stacks it carries refilled ({@code refillsCarriedStacks}: any shop recharges them,
+     * AgentShopAmmoPolicy.refillsCarriedStacks) goes to the nearest town shop, as a potion trip does, instead of the
+     * career shop on Victoria, which no route reaches from the other continents. A claw with no stack to refill still
+     * goes to its career shop for a seed set (Victoria only, AgentPotionSupplierCatalog.ammoTopUpAllowedAt).
+     */
+    public static ShopStop forSupply(AgentCareerBuildBundle bundle,
+                                     AgentResourceCategory category,
+                                     int currentMapId,
+                                     IntBinaryOperator routeHops,
+                                     boolean refillsCarriedStacks) {
+        return refillsCarriedStacks && category == AgentResourceCategory.THROWING_STAR
+                ? nearestTownShop(currentMapId, routeHops)
+                : forSupply(bundle, category, currentMapId, routeHops);
+    }
+
+    /** The nearest potion shop (AgentPotionSupplierCatalog) the router reaches and, off Victoria, walks back from. */
+    private static ShopStop nearestTownShop(int currentMapId, IntBinaryOperator routeHops) {
         AgentPotionSupplierCatalog.Supplier nearest = null;
         int nearestDistance = Integer.MAX_VALUE;
         for (AgentPotionSupplierCatalog.Supplier candidate : AgentPotionSupplierCatalog.suppliers()) {
