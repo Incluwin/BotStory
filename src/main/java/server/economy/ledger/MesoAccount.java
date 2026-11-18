@@ -50,7 +50,12 @@ public enum MesoAccount {
     // a sink booked after the transfers so ordinal-keyed tallies keep their old slots: the coliseum ladder's entry fee
     PVP_FEE(true),
     /** The weekly tournament's prize money, paid out of its entry pool (a faucet; the house keeps a quarter, V5). */
-    PVP_PRIZE(true);
+    PVP_PRIZE(true),
+    /**
+     * Casino chips bought from and cashed at the counter (ChipCashier). Apart from NPC_SALE and NPC_PURCHASE so the
+     * controller sizes its pickup lever by vendoring alone; across a day it nets to the house edge (ECONOMY_PLAN 9 R1).
+     */
+    CASINO(true);
 
     private final boolean external;
 

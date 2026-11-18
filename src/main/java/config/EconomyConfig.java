@@ -52,14 +52,14 @@ public class EconomyConfig {
     /** The organic daily supply growth it steers to: the day's external net without the purse reset, over the supply. */
     public double CONTROLLER_TARGET_GROWTH = 0.01d;
     /** Pickup selectivity: the least share of monster equip drops a citizen still picks up, and the most a day moves it. */
-    public double CONTROLLER_PICKUP_MIN = 0.3d;
+    public double CONTROLLER_PICKUP_MIN = 0.1d; // 0.3 until 2026-11-17 (ECONOMY_PLAN 9 R2)
     public double CONTROLLER_PICKUP_STEP = 0.15d;
     /**
      * Luxury spending: the most a day's chance can be that a citizen holding over LUXURY_OVER x the meso its level
      * should carry spends on a luxury (a salon restyle), and the most a day moves it. It rises only once pickup is at
      * its least, and eases off before pickup rises again.
      */
-    public double CONTROLLER_LUXURY_MAX = 0.5d;
+    public double CONTROLLER_LUXURY_MAX = 0.8d; // 0.5 until 2026-11-17 (ECONOMY_PLAN 9 R2)
     public double CONTROLLER_LUXURY_STEP = 0.1d;
     public double CONTROLLER_LUXURY_OVER = 3.0d;
     /**
