@@ -4,6 +4,7 @@ import server.agents.capabilities.combat.AgentDeathStateRuntime;
 import server.agents.capabilities.movement.AgentActionLockPhysicsService;
 import server.agents.capabilities.combat.AgentMonsterControlService;
 
+import server.agents.capabilities.movement.AgentMovementSubstepPolicy;
 import server.agents.capabilities.movement.AgentMovementTimers;
 
 import client.Character;
@@ -44,7 +45,8 @@ public final class AgentCommonTickRuntime {
     private static AgentCommonTickService.CommonTickHooks hooks(Consumer<AgentRuntimeEntry> tickScriptTasks) {
         return new AgentCommonTickService.CommonTickHooks(
                 (entry, agent) -> AgentCombatDamageRuntime.tickMobDamage(
-                        entry, agent, AgentCombatConfig.cfg, AgentMovementTimers::tickDown),
+                        entry, agent, AgentCombatConfig.cfg, AgentCombatDamageRuntime.touchCooldownCountdown(
+                                AgentMovementSubstepPolicy.substeps(entry), AgentMovementTimers::tickDown)),
                 (entry, agent) -> AgentDeathStateRuntime.isDead(entry),
                 (entry, agent) -> AgentCombatDeathRuntime.enterDeadState(
                         entry, agent, false),
