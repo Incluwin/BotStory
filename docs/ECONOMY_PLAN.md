@@ -467,3 +467,13 @@ Decisions for the user:
 | RD3 | Book the casino apart (R1)? | Yes: without it the controller's pickup sizing stays wrong |
 | RD4 | Use the touch-hit fix as the fight-scaled potion sink (R3)? | Yes |
 | RD5 | Ramp in steps (R4), or turn the cadence fix fully on at once? | Ramp |
+
+### 9.5 Status
+- **R1 + R2 LIVE 2026-11-17 21:52** (user: "Yes, build R1 + R2"; RD1-RD3 as recommended): branch `feat/economy-room-r1r2`
+  7ee57dab3, merged into the main line as 4db9b2916; full split suite 16,430 / 0 / 33.
+  - R1: `MesoAccount.CASINO`; `ChipCashier` books chip purchases and cash-outs to it (`ChipCashierBuyTest`). Live: the
+    first chips (2 purchases, 16 M) booked CASINO two minutes after the boot. Before 21:52, the 11-18 (UTC) day's
+    NPC_SALE and NPC_PURCHASE still hold casino volume.
+  - R2: `CONTROLLER_PICKUP_MIN` 0.10 and `CONTROLLER_LUXURY_MAX` 0.8 in config.yaml and `EconomyConfig`. The controller
+    first uses them at the 11-18 close; with growth near target it is not expected to move far.
+- **Open:** RD4 (R3, the touch-hit sink) and RD5 (R4, the ramp), then R5.
