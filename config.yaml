@@ -1602,9 +1602,9 @@ economy:
     CONTROLLER_ENABLED: true
     CONTROLLER_SHADOW: false                # true: work the levers out and log them, apply nothing
     CONTROLLER_TARGET_GROWTH: 0.01          # organic supply growth a day (external net without the purse reset / supply)
-    CONTROLLER_PICKUP_MIN: 0.3              # least share of monster equip drops a citizen still picks up
+    CONTROLLER_PICKUP_MIN: 0.1              # least share of monster equip drops a citizen still picks up
     CONTROLLER_PICKUP_STEP: 0.15
-    CONTROLLER_LUXURY_MAX: 0.5              # most daily chance a citizen over LUXURY_OVER x its level's meso buys a luxury
+    CONTROLLER_LUXURY_MAX: 0.8              # most daily chance a citizen over LUXURY_OVER x its level's meso buys a luxury
     CONTROLLER_LUXURY_STEP: 0.1
     CONTROLLER_LUXURY_OVER: 3.0
     CONTROLLER_BUDGET_MIN: 0.5              # scale on population.MARKET_BUY_BUDGET_PER_DAY, moved against the basket index

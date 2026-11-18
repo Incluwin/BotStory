@@ -5,7 +5,11 @@ import client.Client;
 import client.inventory.manipulator.InventoryManipulator;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.economy.ledger.MesoAccount;
+import server.economy.ledger.MesoFlows;
+import server.economy.ledger.MesoHolder;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -19,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -62,6 +67,38 @@ class ChipCashierBuyTest {
 
             verify(agent, never()).gainMeso(anyInt(), anyBoolean());
             inventory.verify(() -> InventoryManipulator.addById(any(), anyInt(), anyShort()), never());
+        }
+    }
+
+    /** ECONOMY_PLAN 9 R1: chips book to CASINO, so NPC_SALE and NPC_PURCHASE (and the pickup lever) count shops only. */
+    @Test
+    void chipsBoughtAndCashedBookToTheCasinoNotTheShopAccounts() {
+        Client client = mock(Client.class);
+        Character agent = citizen(client);
+        doAnswer(call -> {
+            MesoFlows.purse(agent, call.<Integer>getArgument(0));
+            return null;
+        }).when(agent).gainMeso(anyInt(), anyBoolean());
+        int chip = Chips.ids().get(0);
+        when(agent.getItemQuantity(anyInt(), anyBoolean())).thenAnswer(call -> call.<Integer>getArgument(0) == chip ? 2 : 0);
+        when(agent.canHoldMeso(anyInt())).thenReturn(true);
+        MesoFlows.installClassifier(who -> MesoHolder.CITIZEN);
+        MesoFlows.drain();
+        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
+            inventory.when(() -> InventoryManipulator.checkSpace(any(), anyInt(), anyInt(), anyString())).thenReturn(true);
+
+            assertTrue(ChipCashier.buy(agent, 300_000, (who, chipKinds) -> { }));
+            long cashed = ChipCashier.cashOut(agent);
+
+            Map<MesoAccount, Map<MesoHolder, MesoFlows.Sum>> booked = MesoFlows.drain();
+            MesoFlows.Sum casino = booked.get(MesoAccount.CASINO).get(MesoHolder.CITIZEN);
+            assertEquals(300_000, casino.out());
+            assertEquals(2L * Chips.value(chip), cashed);
+            assertEquals(cashed, casino.in());
+            assertFalse(booked.containsKey(MesoAccount.NPC_SALE));
+            assertFalse(booked.containsKey(MesoAccount.NPC_PURCHASE));
+        } finally {
+            MesoFlows.installClassifier(null);
         }
     }
 

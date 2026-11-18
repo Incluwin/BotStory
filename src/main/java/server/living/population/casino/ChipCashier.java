@@ -163,7 +163,7 @@ public final class ChipCashier {
                 return false;
             }
         }
-        try (var ignored = MesoFlows.as(MesoAccount.NPC_PURCHASE)) {
+        try (var ignored = MesoFlows.as(MesoAccount.CASINO)) {
             agent.gainMeso((int) -cost, false);
         }
         for (Map.Entry<Integer, Integer> chip : chips.entrySet()) {
@@ -215,7 +215,7 @@ public final class ChipCashier {
                 continue;
             }
             InventoryManipulator.removeById(agent.getClient(), InventoryType.ETC, chip, held, false, false);
-            try (var ignored = MesoFlows.as(MesoAccount.NPC_SALE)) {
+            try (var ignored = MesoFlows.as(MesoAccount.CASINO)) {
                 agent.gainMeso((int) value, false);
             }
             total += value;

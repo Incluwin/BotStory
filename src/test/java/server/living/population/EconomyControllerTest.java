@@ -70,10 +70,19 @@ class EconomyControllerTest {
 
     @Test
     void pickupNeverGoesUnderItsLeastAndLuxuryStopsAtItsMost() {
+        config.CONTROLLER_PICKUP_MIN = 0.3d;
+        config.CONTROLLER_LUXURY_MAX = 0.5d;
         Levers next = EconomyController.decide(close(5_800_000_000L, 1_000_000_000L, 850_000_000L, null, null),
                 new Levers(0.35d, 0.45d, 1.0d), config).levers();
         assertEquals(0.3d, next.pickupShare(), EPS);
         assertEquals(0.5d, next.luxuryRate(), EPS);
+
+        // the bounds since 2026-11-17 (ECONOMY_PLAN 9 R2): pickup down to 0.10, luxury up to 0.8
+        EconomyConfig widened = new EconomyConfig();
+        Levers wide = EconomyController.decide(close(5_800_000_000L, 1_000_000_000L, 850_000_000L, null, null),
+                new Levers(0.2d, 0.75d, 1.0d), widened).levers();
+        assertEquals(0.1d, wide.pickupShare(), EPS);
+        assertEquals(0.8d, wide.luxuryRate(), EPS);
     }
 
     @Test
