@@ -28,29 +28,22 @@ import java.util.function.BooleanSupplier;
 import java.util.function.IntUnaryOperator;
 
 public final class AgentCombatDamageRuntime {
-    /**
-     * On, a BACKGROUND_ACTIVE Agent's touch-hit cooldown counts down as many movement steps a scheduled tick as its
-     * movement runs substeps, so a hit protects it for about MOB_HIT_COOLDOWN_MS as on a watched map instead of five
-     * times that (docs/ECONOMY_PLAN.md 9 R3). Read once at class load.
-     */
-    private static final boolean BACKGROUND_TOUCH_COOLDOWN_COUNTDOWN_ENABLED = config.AgentTuning.booleanValue(
-            "server.agents.capabilities.combat.AgentCombatDamageRuntime.BACKGROUND_TOUCH_COOLDOWN_COUNTDOWN_ENABLED");
-
     private AgentCombatDamageRuntime() {
     }
 
     /**
      * The touch-cooldown countdown for one scheduled tick of an Agent whose movement runs {@code movementSubsteps}
-     * physics steps this tick (AgentMovementSubstepPolicy.substeps): {@code step} that many times while the switch is on,
-     * else once.
+     * physics steps this tick (AgentMovementSubstepPolicy.substeps): {@code step} {@link AgentBackgroundCombatClock#steps}
+     * times, so at full speed a hit protects a BACKGROUND_ACTIVE Agent for about MOB_HIT_COOLDOWN_MS, as on a watched
+     * map, instead of five times that (docs/ECONOMY_PLAN.md 9 R3, R4).
      */
     public static IntUnaryOperator touchCooldownCountdown(int movementSubsteps, IntUnaryOperator step) {
-        return touchCooldownCountdown(movementSubsteps, BACKGROUND_TOUCH_COOLDOWN_COUNTDOWN_ENABLED, step);
+        return repeated(AgentBackgroundCombatClock.steps(movementSubsteps), step);
     }
 
-    static IntUnaryOperator touchCooldownCountdown(int movementSubsteps, boolean enabled, IntUnaryOperator step) {
-        int steps = enabled ? Math.max(1, movementSubsteps) : 1;
-        if (steps == 1) {
+    /** {@code step} applied {@code steps} times (at least once), stopping at zero. */
+    static IntUnaryOperator repeated(int steps, IntUnaryOperator step) {
+        if (steps <= 1) {
             return step;
         }
         return remainingMs -> {
