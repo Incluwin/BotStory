@@ -444,6 +444,13 @@ uses (rule 3).
   (`BACKGROUND_ATTACK_CADENCE.md` 5.2). So unwatched citizens take fewer hits and drink fewer potions than watched ones.
   Fixing it makes potion buying (142 M a day) grow with kills, as a player's does: about +0.1-0.2 B a day at k = 2. It
   also adds deaths, which slow grinding.
+  - **Found while building (2026-11-18): R3 is R4's counterpart, not a sink of its own.** Today both clocks run about 5x
+    slow in the background: a 700 ms swing holds 3.5 s and a 1.5 s touch cooldown 7.5 s. So an unwatched citizen takes
+    about 0.5 hits a swing, as a watched one does (0.75 s / 1.5 s).
+    - R3 alone would make that about 2.3 hits a swing, roughly 5x harder a kill.
+    - R4 alone would make it about 0.1, 5x easier: fewer potions, fewer deaths, so even more income.
+    - So R3's switch goes on with the cadence switch, at the same steps.
+    - The +0.1-0.2 B above is measured against R4 alone. Against today it is about what potion buying already is a kill.
 - **R4. Ramp, don't flip (small code change).** `BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED` becomes `BACKGROUND_COUNTDOWN_STEPS`
   (1 = today, up to the 5 movement substeps; read at start, so a restart a step).
   - Steps 2 -> 3 -> 5, each held for at least one daily close.
@@ -476,4 +483,12 @@ Decisions for the user:
     NPC_SALE and NPC_PURCHASE still hold casino volume.
   - R2: `CONTROLLER_PICKUP_MIN` 0.10 and `CONTROLLER_LUXURY_MAX` 0.8 in config.yaml and `EconomyConfig`. The controller
     first uses them at the 11-18 close; with growth near target it is not expected to move far.
-- **Open:** RD4 (R3, the touch-hit sink) and RD5 (R4, the ramp), then R5.
+- **R3 built 2026-11-18, switch off** (user: "Build R3"): branch `feat/economy-room-r3` 92261c93d, merged into the main
+  line as da449dbd1; full split suite 16,435 / 0 / 33.
+  - `AgentCombatDamageRuntime.touchCooldownCountdown`; `AgentCommonTickRuntime` passes the movement substeps in.
+  - The switch is `AgentCombatDamageRuntime.BACKGROUND_TOUCH_COOLDOWN_COUNTDOWN_ENABLED` in agent-engine.yaml, `'false'`.
+  - Tests: `AgentCombatDamageRuntimeTouchCooldownTest` (5). A 1.5 s cooldown clears in 7.5 s in the background off and
+    in 1.5 s on; foreground stays 1.5 s either way.
+  - Not deployed: the switch is off, so the live server (4db9b2916) behaves the same.
+  - A trial merge with `fix/background-attack-cadence` is clean. R4 should drive both switches from one step setting.
+- **Open:** RD5 (R4, the ramp, now also turning R3 on at the same steps), then R5.
