@@ -36,27 +36,26 @@ class AgentCombatActionLockRuntimeTest {
     }
 
     @Test
-    void scheduledTickFollowsTheConfiguredSwitchInTheBackground() {
-        boolean on = config.AgentTuning.booleanValue(
-                "server.agents.capabilities.combat.AgentCombatActionLockRuntime.BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED");
+    void scheduledTickFollowsTheConfiguredClockInTheBackground() {
+        int configured = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentBackgroundCombatClock.STEPS");
         AgentRuntimeEntry entry = background();
         AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, 700);
 
         AgentCombatActionLockRuntime.tickActionLock(entry, AgentMovementSubstepPolicy.substeps(entry));
 
-        int steps = on ? backgroundSubsteps() : 1;
+        int steps = Math.max(1, Math.min(backgroundSubsteps(), configured));
         assertEquals(700 - steps * movementTickMs(), AgentCombatCooldownStateRuntime.attackCooldownMs(entry));
     }
 
     @Test
-    void switchOnRunsMovementSubstepsOnlyInBackgroundActive() {
+    void fullSpeedRunsMovementSubstepsOnlyInBackgroundActive() {
         assertEquals(1, steps(background(), false));
         assertEquals(1, steps(new AgentRuntimeEntry(null, null, null), true));
         AgentRuntimeEntry abstractEntry = new AgentRuntimeEntry(null, null, null);
         abstractEntry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ABSTRACT, 0L);
         assertEquals(1, steps(abstractEntry, true));
         assertEquals(backgroundSubsteps(), steps(background(), true));
-        assertEquals(1, AgentCombatActionLockRuntime.countdownSteps(0, true));
+        assertEquals(1, AgentBackgroundCombatClock.steps(0, 5));
     }
 
     @Test
@@ -131,8 +130,8 @@ class AgentCombatActionLockRuntimeTest {
     }
 
     /** The steps the scheduled tick counts down for {@code entry}, given the substeps its movement runs. */
-    private static int steps(AgentRuntimeEntry entry, boolean switchOn) {
-        return AgentCombatActionLockRuntime.countdownSteps(AgentMovementSubstepPolicy.substeps(entry), switchOn);
+    private static int steps(AgentRuntimeEntry entry, boolean fullSpeed) {
+        return AgentBackgroundCombatClock.steps(AgentMovementSubstepPolicy.substeps(entry), fullSpeed ? 5 : 1);
     }
 
     /** Scheduled ticks until the attack lock clears, in milliseconds of {@code tickMs} each. */

@@ -770,10 +770,10 @@ tuning:
     # Purpose: Decides whether a new Agent session uses buff potions before an owner or companion setting says otherwise; owners can still switch it per Agent with the 'buff on/off' chat command.
     # Technical: AgentBuffState seeds consumablesEnabled from this value, CompanionSettings uses it as the buffPotions default (an unchanged companion follows it), and AgentShopService only buys buff potions while the flag is on.
     server.agents.capabilities.combat.AgentBuffState.CONSUMABLES_ENABLED_BY_DEFAULT: 'true'
-    # Values: true or false. Recommended: false until the economy has room for it (docs/BACKGROUND_ATTACK_CADENCE.md); true once it does.
-    # Purpose: Lets Agents on a map no player sees swing at their real attack speed. Off, the next swing waits about five times its animation (a 700 ms swing holds the next for 3.5 s), so unwatched citizens level and earn slower.
-    # Technical: AgentCombatActionLockRuntime.tickActionLock counts the attack lock (and, once clear, the move window) down by one MOVEMENT_TICK_MS step per scheduled tick when off. When on it runs AgentMovementSubstepPolicy.substeps steps, the count movement already runs: 5 for BACKGROUND_ACTIVE at its 250 ms tick, 1 in every other mode, so foreground timing and all movement stay as they are. Read once at class load.
-    server.agents.capabilities.combat.AgentCombatActionLockRuntime.BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED: 'false'
+    # Values: an integer 1-5; 1 = the old slow clock, 5 = full speed. Recommended: raise a step at a time (2, 3, 5), each held for at least one daily economy close; stay while growth is at or under 2 % a day, step back above 5 % (docs/ECONOMY_PLAN.md 9 R4).
+    # Purpose: How fast fights run on maps no player sees. At 1 an unwatched Agent's next swing waits about five times its animation (a 700 ms swing holds the next for 3.5 s) and a touch hit protects it about five times as long (7.5 s), so it levels and earns slower; at 5 both run as on a watched map. Both clocks move together, so hits a swing stay as on a watched map at every step.
+    # Technical: AgentBackgroundCombatClock.steps = max(1, min(AgentMovementSubstepPolicy.substeps, this)): AgentCombatActionLockRuntime.tickActionLock and AgentCombatDamageRuntime.touchCooldownCountdown count that many MOVEMENT_TICK_MS steps a scheduled tick. BACKGROUND_ACTIVE runs 5 substeps at its 250 ms tick, every other mode 1, so foreground timing, movement and PvP duels (full-rate) are unchanged. Read once at class load.
+    server.agents.capabilities.combat.AgentBackgroundCombatClock.STEPS: '1'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 2500-10000 around the tested baseline 5000; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents remain in or wait for alert duration. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "combat alert runtime" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
@@ -2153,10 +2153,6 @@ tuning:
     # Purpose: Controls how long Agents must wait before repeating monster hit. Higher values make repeats less frequent; lower values let them repeat sooner.
     # Technical: the "combat config" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
     server.agents.capabilities.combat.AgentCombatConfig.MOB_HIT_COOLDOWN_MS: '1500'
-    # Values: true or false. Recommended: false until the background attack cadence switch (fix/background-attack-cadence) goes on, then true with it (docs/ECONOMY_PLAN.md 9 R3).
-    # Purpose: Lets Agents on a map no player sees take touch hits as often as on a watched map. Off, a hit protects them about five times MOB_HIT_COOLDOWN_MS (7.5 s for 1500), which only matches today's slowed swings; with full-speed swings they would take about 5x fewer hits a kill, drink fewer potions and die less.
-    # Technical: AgentCommonTickRuntime passes AgentCombatDamageRuntime.touchCooldownCountdown(AgentMovementSubstepPolicy.substeps, AgentMovementTimers::tickDown) to tickMobDamage. On, it counts the cooldown down that many MOVEMENT_TICK_MS steps a scheduled tick (5 in BACKGROUND_ACTIVE at 250 ms, 1 in every other mode); off, one. Foreground timing, the boss stun path and server-driven mob attacks are unchanged. Read once at class load.
-    server.agents.capabilities.combat.AgentCombatDamageRuntime.BACKGROUND_TOUCH_COOLDOWN_COUNTDOWN_ENABLED: 'false'
     # Values: comma-separated monster ids. Recommended: keep limited to scripted tutorial actors that must not deal touch damage.
     # Purpose: Declares data-driven exceptions to normal monster touch damage.
     # Technical: Parsed once at startup by AgentMobTouchPolicy into an immutable monster-id set consulted by server-authoritative touch collision handling.

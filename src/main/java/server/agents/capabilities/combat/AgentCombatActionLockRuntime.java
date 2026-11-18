@@ -9,14 +9,12 @@ import server.agents.runtime.AgentRuntimeEntry;
  *
  * <p>Each step takes off one movement tick (AgentMovementTimers.tickDown, MOVEMENT_TICK_MS). A foreground Agent runs
  * one step a tick. A BACKGROUND_ACTIVE Agent is ticked every DEFAULT_BACKGROUND_ACTIVE_TICK_MS (250 ms) and its
- * movement runs AgentMovementSubstepPolicy's substeps (5) to cover that time; with BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED
- * its lock runs the same number of steps, so a 700 ms swing holds the next one about 750 ms, not 3.5 s. The runtime
- * tick (AgentCommonTickRuntime) passes that substep count in, so combat takes no new dependency on movement policy.</p>
+ * movement runs AgentMovementSubstepPolicy's substeps (5) to cover that time; its lock runs
+ * {@link AgentBackgroundCombatClock#steps} of them, so at full speed (5) a 700 ms swing holds the next one about 750 ms,
+ * not 3.5 s. The runtime tick (AgentCommonTickRuntime) passes that substep count in, so combat takes no new dependency on
+ * movement policy.</p>
  */
 public final class AgentCombatActionLockRuntime {
-    private static final boolean BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED = config.AgentTuning.booleanValue(
-            "server.agents.capabilities.combat.AgentCombatActionLockRuntime.BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED");
-
     private AgentCombatActionLockRuntime() {
     }
 
@@ -27,15 +25,10 @@ public final class AgentCombatActionLockRuntime {
 
     /**
      * One scheduled tick of an Agent whose movement runs {@code movementSubsteps} physics steps this tick
-     * (AgentMovementSubstepPolicy.substeps): that many steps of countdown when the switch is on, else one.
+     * (AgentMovementSubstepPolicy.substeps): {@link AgentBackgroundCombatClock#steps} steps of countdown.
      */
     public static void tickActionLock(AgentRuntimeEntry entry, int movementSubsteps) {
-        countDown(entry, countdownSteps(movementSubsteps, BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED));
-    }
-
-    /** Steps a tick counts down: the movement substeps (at least 1) when the switch is on, else 1. */
-    static int countdownSteps(int movementSubsteps, boolean backgroundSubstepCountdown) {
-        return backgroundSubstepCountdown ? Math.max(1, movementSubsteps) : 1;
+        countDown(entry, AgentBackgroundCombatClock.steps(movementSubsteps));
     }
 
     /**
