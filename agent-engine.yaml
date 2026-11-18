@@ -2149,6 +2149,10 @@ tuning:
     # Purpose: Controls how long Agents must wait before repeating monster hit. Higher values make repeats less frequent; lower values let them repeat sooner.
     # Technical: the "combat config" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
     server.agents.capabilities.combat.AgentCombatConfig.MOB_HIT_COOLDOWN_MS: '1500'
+    # Values: true or false. Recommended: false until the background attack cadence switch (fix/background-attack-cadence) goes on, then true with it (docs/ECONOMY_PLAN.md 9 R3).
+    # Purpose: Lets Agents on a map no player sees take touch hits as often as on a watched map. Off, a hit protects them about five times MOB_HIT_COOLDOWN_MS (7.5 s for 1500), which only matches today's slowed swings; with full-speed swings they would take about 5x fewer hits a kill, drink fewer potions and die less.
+    # Technical: AgentCommonTickRuntime passes AgentCombatDamageRuntime.touchCooldownCountdown(AgentMovementSubstepPolicy.substeps, AgentMovementTimers::tickDown) to tickMobDamage. On, it counts the cooldown down that many MOVEMENT_TICK_MS steps a scheduled tick (5 in BACKGROUND_ACTIVE at 250 ms, 1 in every other mode); off, one. Foreground timing, the boss stun path and server-driven mob attacks are unchanged. Read once at class load.
+    server.agents.capabilities.combat.AgentCombatDamageRuntime.BACKGROUND_TOUCH_COOLDOWN_COUNTDOWN_ENABLED: 'false'
     # Values: comma-separated monster ids. Recommended: keep limited to scripted tutorial actors that must not deal touch damage.
     # Purpose: Declares data-driven exceptions to normal monster touch damage.
     # Technical: Parsed once at startup by AgentMobTouchPolicy into an immutable monster-id set consulted by server-authoritative touch collision handling.
