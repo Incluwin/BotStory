@@ -390,3 +390,80 @@ Kept on purpose:
 
 Still open (E3/E2, not part of this): reprice sold-out lines and round asks the way players do, citizens talking about
 real listings, and moving the citizen stall onto `AgentFreeMarketStallCapability`.
+
+## 9. Room for full-speed unwatched fights (2026-11-17, plan; nothing built)
+
+`fix/background-attack-cadence` (a1e7002a9, switch off, not merged) lets unwatched citizens swing at full speed instead of
+about a third of it. `docs/BACKGROUND_ATTACK_CADENCE.md` (on that branch) estimates k, the rise in kills, EXP and loot an
+hour, at about 2 (1.5-3), on about 90 % of kill income (s = 0.9). This section plans the room the economy needs first.
+User: "Plan the room".
+
+### 9.1 Where the economy stands (closes 11-08 to 11-17)
+- Supply 12.84 B -> 13.95 B: about 0.98 % a day against the 1 % target (`CONTROLLER_TARGET_GROWTH`; 11-17 was +0.24 %).
+- Pickup sat at its 0.30 floor all ten days; luxury switches between 0.4 and its 0.5 maximum; the buy-budget scale rose
+  1.46 -> 1.58 (maximum 2.0) because the basket index fell 65.5 -> 58.1 (-11 %).
+- So the controller holds growth at target only with two of its three levers at their bounds. The third only moves meso
+  between holders.
+
+### 9.2 What actually scales with kills
+The raw accounts overstate it. Since the SoloMapling casino switched on (11-08), chip purchases are booked NPC_PURCHASE and
+chip cash-outs NPC_SALE (`ChipCashier`), so both accounts carry casino volume:
+
+| 11-17 (UTC day) | Account total | NPC shop part (journal) | Casino part |
+|---|---|---|---|
+| NPC_SALE | 1,153 M | 558 M vendoring (`SHOP_SELL`: equips 531 M, Etc 25 M) | ~595 M chip cash-outs |
+| NPC_PURCHASE | 768 M | 142 M (`SHOP_BUY`, nearly all potions and food) | ~626 M chips, gacha, bar |
+
+- The casino nets about -30 M a day (the house edge). Real vendoring ran 640-930 M a day from 11-07 to 11-14 (about
+  0.7 B); MOB_DROP 0.11-0.23 B (11-08 to 11-17).
+- Kill-scaling faucets F are therefore about **0.87 B a day**, not the 1.13 B of 11-07 or the 1.33 B the accounts show.
+- Added income F x s x (k - 1): **+0.39 / +0.78 / +1.57 B a day** at k = 1.5 / 2 / 3, that is 2.8 / 5.6 / 11 % of the
+  supply a day on top of today's ~1 %.
+- Vendoring follows the pickup share almost proportionally: pickup 0.7 -> 0.3 took it from 1.47 B to about 0.7 B
+  (10-30 to 11-03).
+- **Found while planning:** `EconomyController.decide` sizes the pickup lever by `citizenNpcSale`, which now includes the
+  chip cash-outs. It thinks the lever moves ~1.15 B when it moves ~0.56 B, so it under-corrects about twofold.
+
+### 9.3 Steps
+The plan keeps section 4's rules: no citizen-only meso or drop scale (rule 2); new spending goes through doors a player
+uses (rule 3).
+
+- **R1. Book the casino apart (small code change).** A new `MesoAccount.CASINO`, appended so ordinal-keyed tallies keep
+  their slots, for chip purchases and cash-outs in `ChipCashier`. Gacha and bar spending stay NPC_PURCHASE: that is real
+  spending. `citizenNpcSale` then counts only vendoring, and the meso-flows route and charts show the casino on its own.
+  Test: an `EconomyController` case with casino flows.
+- **R2. Widen the bounds (config).** `CONTROLLER_PICKUP_MIN` 0.30 -> 0.10 and `CONTROLLER_LUXURY_MAX` 0.5 -> 0.8. While
+  growth is on target the controller does not move; it only uses the room when growth rises.
+  - Cost: at pickup 0.15 a citizen walks past about 85 % of monster equip drops. It's the same answer per drop, and never
+    in events or for quest or cash equips.
+  - Rich citizens (over 3x their level's meso) visit a salon up to 4 days in 5.
+  - Size at k = 2: pickup 0.15 holds vendoring near today's 0.56-0.7 B, absorbing about 0.5-0.6 B of the +0.78 B.
+    Luxury 0.8 adds salon spending, today 0.24-0.85 B a day of SERVICE at 0.4-0.5. How much is unmeasured: it depends on
+    how many citizens qualify.
+- **R3. A sink that grows with fights (code, its own switch).** Unwatched touch hits run on the same slowed cooldown
+  (`BACKGROUND_ATTACK_CADENCE.md` 5.2). So unwatched citizens take fewer hits and drink fewer potions than watched ones.
+  Fixing it makes potion buying (142 M a day) grow with kills, as a player's does: about +0.1-0.2 B a day at k = 2. It
+  also adds deaths, which slow grinding.
+- **R4. Ramp, don't flip (small code change).** `BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED` becomes `BACKGROUND_COUNTDOWN_STEPS`
+  (1 = today, up to the 5 movement substeps; read at start, so a restart a step).
+  - Steps 2 -> 3 -> 5, each held for at least one daily close.
+  - Go on while growth stays at or under 2 % a day; step back above 5 % (the cadence doc's stop line).
+  - Measure each step's k from TRAIN stints' EXP an hour.
+- **R5. Re-key what learned the slow rate** (cadence doc section 4): scale `companion_yield` rows by the measured k, or
+  reset them. After the last step, re-run PvP V0.6 and rewrite `scripts/config/pvp/grind-minutes.yaml`.
+
+### 9.4 Projection and decisions
+- At k = 2 after R1-R4: +0.78 B, less about 0.55 B (pickup 0.15) and about 0.15 B (potions), with up to ~0.3 B of luxury
+  headroom left. That is about 1-1.7 % a day, inside the controller's reach.
+- At k = 3 the floor (0.10) and luxury both end at their bounds. The ramp stops at the step where growth holds.
+- Order: R1 + R2 together (one deploy), then R3, then R4 (merge the cadence fix with the step count and ramp), then R5.
+
+Decisions for the user:
+
+| | Question | Recommended |
+|---|---|---|
+| RD1 | Pickup floor 0.10 (citizens may walk past up to 90 % of equip drops), or 0.15? | 0.10, so the ramp has room |
+| RD2 | Luxury maximum 0.8 now, or first add more luxuries (face and skin at the same stylists) so rich citizens don't restyle nearly every day? | 0.8 now; more luxuries later |
+| RD3 | Book the casino apart (R1)? | Yes: without it the controller's pickup sizing stays wrong |
+| RD4 | Use the touch-hit fix as the fight-scaled potion sink (R3)? | Yes |
+| RD5 | Ramp in steps (R4), or turn the cadence fix fully on at once? | Ramp |
