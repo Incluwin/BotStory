@@ -5,7 +5,7 @@ V0-V3). Off by default. Not deployed.
 
 > **Since 2026-11-18 (docs/ECONOMY_PLAN.md 9 R4):** merged into the main line with the touch-cooldown fix (R3). The
 > on/off switch `AgentCombatActionLockRuntime.BACKGROUND_SUBSTEP_COUNTDOWN_ENABLED` below is gone. One setting,
-> `server.agents.capabilities.combat.AgentBackgroundCombatClock.STEPS` (1-5, ships 1), now drives the attack lock and
+> `server.agents.capabilities.combat.AgentBackgroundCombatClock.STEPS` (1-5; the ramp step is in ECONOMY_PLAN 9.5), drives the attack lock and
 > the touch-hit cooldown together; "on" below means 5. The economy room this file asks for is ECONOMY_PLAN section 9.
 
 ## 1. The bug and the fix

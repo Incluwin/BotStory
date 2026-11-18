@@ -26,10 +26,13 @@ class AgentBackgroundCombatClockTest {
         assertEquals(1, AgentBackgroundCombatClock.steps(5, 0), "never under one");
     }
 
+    /** The ramp raises the configured value a step at a time (ECONOMY_PLAN 9 R4); any step is a valid setting. */
     @Test
-    void itShipsTheOldClock() {
-        assertEquals(1, config.AgentTuning.intValue("server.agents.capabilities.combat.AgentBackgroundCombatClock.STEPS"));
-        assertEquals(1, AgentBackgroundCombatClock.steps(5));
+    void theConfiguredStepIsOneToFiveAndForegroundStaysOne() {
+        int configured = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentBackgroundCombatClock.STEPS");
+        assertTrue(configured >= 1 && configured <= 5, "configured " + configured);
+        assertEquals(configured, AgentBackgroundCombatClock.steps(5));
+        assertEquals(1, AgentBackgroundCombatClock.steps(1));
     }
 
     @Test

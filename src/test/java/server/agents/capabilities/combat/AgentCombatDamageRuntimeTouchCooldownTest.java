@@ -44,8 +44,11 @@ class AgentCombatDamageRuntimeTouchCooldownTest {
     }
 
     @Test
-    void itShipsTheOldClock() {
-        assertEquals(1450, AgentCombatDamageRuntime.touchCooldownCountdown(5, STEP).applyAsInt(1500));
+    void theRuntimeCountdownFollowsTheConfiguredClock() {
+        int configured = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentBackgroundCombatClock.STEPS");
+        int steps = Math.max(1, Math.min(5, configured));
+        assertEquals(1500 - steps * STEP_MS, AgentCombatDamageRuntime.touchCooldownCountdown(5, STEP).applyAsInt(1500));
+        assertEquals(1450, AgentCombatDamageRuntime.touchCooldownCountdown(1, STEP).applyAsInt(1500), "foreground");
     }
 
     private static IntUnaryOperator countdown(int substeps, int configured) {
