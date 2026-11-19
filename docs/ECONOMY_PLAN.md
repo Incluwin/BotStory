@@ -515,4 +515,26 @@ Decisions for the user:
     - step 3 only after the 11-19 close shows organic growth at or under 2 %;
     - back to 1 above 5 %;
     - the controller moves pickup 0.3 -> 0.15 -> 0.10 and luxury up a step a close on its own.
+- **11-18 close (19:00:46; about 4.6 h at step 2): organic growth 2.91 %** (+418 M on 14.37 B), against 0.24 % on 11-17
+  and about 1 % before. Between the gates, so **hold step 2**; the 11-19 close decides step 3.
+  - Controller: pickup 0.30 -> 0.19 (the share it wanted, inside one step); luxury stays 0.4, since pickup alone can
+    cover it. Budget x1.58 (basket -0.65 %, inside its band).
+  - Citizens, 11-18 against 11-17:
+
+    | Account | 11-17 | 11-18 |
+    |---|---|---|
+    | MOB_DROP | +179 M | +209 M |
+    | real vendoring (journal) | +558 M | +646 M |
+    | shop buying (journal) | -142 M | -154 M |
+    | SERVICE (salons, 1 M each) | -531 M (531) | -313 M (313) |
+    | casino, net | about -30 M | about +32 M |
+
+  - The +385 M jump splits as:
+    - salon spending down 218 M (luxury 0.5 -> 0.4 on 11-17's decision, and a restart at 14:23);
+    - step 2 about +118 M (vendoring +88 M, MOB_DROP +30 M);
+    - the casino about +62 M;
+    - shops -12 M.
+  - The casino line is transitional: chips bought before R1 (21:52 on 11-17) booked NPC_PURCHASE and were cashed as CASINO.
+  - Step 2's +118 M in 4.6 h scales to about +0.6 B a full day before the levers (about +4 %). The cut to pickup 0.19
+    takes about 0.25 B off vendoring. 0 ERROR lines since 14:22.
 - **Open:** the ramp (steps 3 and 5, gated on the closes above), then R5 (companion_yield, PvP grind-minutes).
