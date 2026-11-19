@@ -19,6 +19,9 @@ anywhere Java 21 or Docker runs; the game client (GMS v83) runs on Windows.
    choose **Code > Download ZIP** and unzip it. Put it in a folder you can write to, such as
    `C:\Games\BotStory`.
 2. **Double-click `setup.bat`.** It walks through these steps and is safe to run again:
+   - **Preflight.** Before changing anything it checks Java 21, that the server's ports (8484 and
+     the channel ports from `config.yaml`) are free, that `wz\` has the WZ data, and that the
+     drive has about 3 GB free. It lists every problem at once, each with its fix.
    - **Java 21.** If Java 21 or newer is missing, it offers to install Amazon Corretto 21 with
      `winget`. After an install, run `setup.bat` again so the new Java is on PATH.
    - **MySQL 8.** It looks for a MySQL server on port 3306.
@@ -134,6 +137,18 @@ installer client (Docker passes it on; by hand, set it in the environment). `bot
 only for the BotStory host's own client, whose WZ files have those items: any other client closes
 when a character wearing one enters the game. A server serves one kind of client at a time. The
 line `Server mods: ...` at server start shows both switches.
+
+**Checklist for the client by hand** (details in the numbered steps below; the steps give no
+download sizes or times, so none are listed here):
+
+1) Install v83 (`MapleGlobal-v83-setup.exe`), delete `HShield`, `ASPLnchr.exe`, `Patcher.exe`,
+   copy the 12 `cosmic-wz` files over the installed ones.
+2) Copy kaentake into the client folder (or use `HeavenMS-localhost-WINDOW.exe` for this PC only).
+3) kaentake only: set the large-address-aware flag with `botstory_wz.py exe`. Needs Python 3.8+.
+4) Start the server once and stop it, then run `tools\living-world-client.bat` on the client
+   (with Docker: the two `docker compose run` exports, then `botstory_wz.py residents`). Needs
+   Python 3.8+.
+5) Optional: set the three `QUEST_MARKER_*` lines in `config.yaml` to show quest markers.
 
 1. **Install v83 with the Cosmic WZ files.** From [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client):
    1. Download `MapleGlobal-v83-setup.exe` and the 12 files in `cosmic-wz`. Open each file on
@@ -297,6 +312,20 @@ The server runs without any of these.
   - Wait for `Cosmic is now online`.
   - Check that nothing else is using port 8484.
 - **MySQL login errors at start.** Fix `DB_USER`/`DB_PASS` in `.env`, or run `setup.bat` again.
+- **`setup.bat` lists problems and stops.** It checks Java, the server's ports, the WZ data and
+  free disk space before changing anything, and prints a fix under each problem. A port already
+  in use by `java` usually means a BotStory server is still running: stop it, then run
+  `setup.bat` again.
+- **"Windows protected your PC" (SmartScreen), or antivirus warnings about the client.** The
+  BotStory client installer, `Kaentake.exe` and the DLL it loads into `MapleStory.exe` are not
+  code-signed, and loading a DLL into another program is what game cheats and some malware do, so
+  SmartScreen and antivirus programs often warn about them or delete them.
+  - SmartScreen: click **More info**, then **Run anyway**. Only do this for files you built
+    yourself or downloaded from the repositories linked above.
+  - Antivirus: add the client folder (for example `C:\Nexon\MapleStory`) as an exclusion. In
+    Windows Security: **Virus & threat protection > Manage settings > Exclusions > Add or remove
+    exclusions > Add an exclusion > Folder**. Then restore any removed file from **Protection
+    history**, or copy it in again.
 - **The build fails.** `java -version` must report 21 or newer. When several JDKs are installed,
   `JAVA_HOME` must point at a JDK 21.
 - **`Could not read config file config.yaml`.** The server must start from the repository folder;

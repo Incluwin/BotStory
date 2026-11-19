@@ -1,5 +1,7 @@
 # One-time BotStory server setup for Windows; setup.bat in the repo root runs it. Safe to run again:
 # an existing .env is kept and only its blank database login is filled in.
+#   0. read-only preflight that lists every problem at once with its fix: Java 21, the server's ports
+#      (8484 and the channel ports from config.yaml) free, WZ data in wz\, ~3 GB free on the drive
 #   1. Java 21 or newer (offers winget install of Amazon Corretto 21)
 #   2. MySQL 8 on port 3306: an installed server, or one this script starts in Docker
 #   3. .env with the database login (DB_USER, DB_PASS), checked against MySQL, and MOD_FUSION_ANVIL=on
@@ -91,7 +93,93 @@ function Show-MysqlHelp {
     Say '    MySQL in a container for you.'
 }
 
+# The ports the server listens on, read from config.yaml: login 8484 (fixed in Server.java), one
+# port per channel at 7575 + (channel - 1) + 100 * world (Channel.java) for the first WORLDS
+# worlds, and the loopback admin control port when it is enabled.
+function Get-ServerPorts {
+    $ports = New-Object 'Collections.Generic.SortedDictionary[int,string]'
+    $ports[8484] = 'login server'
+    $yaml = Join-Path $Root 'config.yaml'
+    if (-not (Test-Path $yaml)) { return $ports }
+    $worlds = 1; $channels = @(); $adminOn = $false; $adminPort = 0
+    foreach ($line in [IO.File]::ReadAllLines($yaml)) {
+        if ($line -match '^\s+channels:\s*(\d+)') { $channels += [int]$Matches[1] }
+        elseif ($line -match '^\s+WORLDS:\s*(\d+)') { $worlds = [int]$Matches[1] }
+        elseif ($line -match '^\s+ENABLE_ADMIN_CONTROL_PORT:\s*(\w+)') { $adminOn = $Matches[1] -eq 'true' }
+        elseif ($line -match '^\s+ADMIN_CONTROL_PORT_BIND:\s*(\d+)') { $adminPort = [int]$Matches[1] }
+    }
+    for ($w = 0; $w -lt [Math]::Min($worlds, $channels.Count); $w++) {
+        for ($c = 1; $c -le $channels[$w]; $c++) { $ports[7575 + ($c - 1) + 100 * $w] = "world $w channel $c" }
+    }
+    if ($adminOn -and $adminPort) { $ports[$adminPort] = 'admin control port (ADMIN_CONTROL_PORT_BIND)' }
+    return $ports
+}
+
+# Name of the program listening on $port, '' when the port is free.
+function Get-PortOwner([int]$port) {
+    if (Test-Command 'Get-NetTCPConnection') {
+        $listener = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $listener) { return '' }
+        $process = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
+        if ($process) { return "$($process.ProcessName) (PID $($process.Id))" }
+        return "PID $($listener.OwningProcess)"
+    }
+    if (Test-LocalPort $port) { return 'another program' }
+    return ''
+}
+
 Say "BotStory setup in $Root"
+
+# --- 0. Preflight: read-only checks, every problem reported at once ------------------------------
+# MySQL (port 3306) is handled in step 3 below, which can start it in Docker. No step of this
+# script needs Python, so it is not checked (docs\SETUP.md names the client steps that do).
+$problems = @()
+$javaOnly = $true
+$java = Get-JavaMajor
+if ($java -lt 21) {
+    $found = if ($java -eq 0) { 'Java was not found' } else { "Java $java was found" }
+    $problems += "$found; BotStory needs Java 21 or newer.`n      Fix: install Amazon Corretto 21 (https://aws.amazon.com/corretto) or run:" +
+        "`n        winget install -e --id Amazon.Corretto.21.JDK`n      then open a new window and run setup.bat again."
+}
+$serverPorts = Get-ServerPorts
+$busy = @()
+foreach ($port in $serverPorts.Keys) {
+    $owner = Get-PortOwner $port
+    if ($owner) { $busy += "`n        $port ($($serverPorts[$port])): used by $owner" }
+}
+if ($busy) {
+    $javaOnly = $false
+    $problems += "Ports the server needs are already in use:$(-join $busy)`n      Fix: if that is a BotStory server" +
+        " already running, stop it (!shutdown in game, or Ctrl+C in its window); otherwise close that program," +
+        "`n      or change channels/WORLDS in config.yaml. Then run setup.bat again."
+}
+$wzDir = Join-Path $Root 'wz'
+$missingWz = @('Character', 'Etc', 'Item', 'Map', 'Mob', 'Npc', 'Quest', 'Reactor', 'Skill', 'String') | Where-Object {
+    -not (Get-ChildItem (Join-Path $wzDir "$_.wz") -Recurse -Filter '*.img.xml' -ErrorAction SilentlyContinue | Select-Object -First 1)
+}
+if ($missingWz) {
+    $javaOnly = $false
+    $problems += "The server's WZ data is missing from wz\: $(($missingWz | ForEach-Object { "$_.wz" }) -join ', ').`n" +
+        "      Fix: the wz folder comes with the repository. Restore it with  git checkout -- wz  (or clone again)," +
+        "`n      then run setup.bat again."
+}
+$needGB = 3
+$drive = [IO.Path]::GetPathRoot($Root)
+try { $freeGB = [Math]::Round(([IO.DriveInfo]::new($drive)).AvailableFreeSpace / 1GB, 1) } catch { $freeGB = $needGB }
+if ($freeGB -lt $needGB) {
+    $javaOnly = $false
+    $problems += "Drive $drive has $freeGB GB free; setup needs about $needGB GB (build, libraries, MySQL in Docker, logs).`n" +
+        "      Fix: free up space on $drive, or move the BotStory Server folder to a drive with more room."
+}
+if ($problems) {
+    Write-Host "[setup] Found $($problems.Count) problem(s) before changing anything:" -ForegroundColor Red
+    $n = 0
+    foreach ($problem in $problems) { $n++; Write-Host "  $n. $problem" }
+    # A missing Java on its own is handled by step 1, which can install it with winget.
+    if (-not $javaOnly) { Stop-Setup 'Fix the problems above, then run setup.bat again. Nothing was changed.' }
+} else {
+    Say "Preflight OK: Java $java, ports $(@($serverPorts.Keys) -join ', ') free, WZ data present, $freeGB GB free on $drive."
+}
 
 # --- 1. Java 21 ---------------------------------------------------------------------------------
 $java = Get-JavaMajor
