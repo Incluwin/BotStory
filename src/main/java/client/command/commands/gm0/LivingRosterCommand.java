@@ -4,8 +4,11 @@ import client.Character;
 import client.Client;
 import client.command.Command;
 import server.living.LivingWorld;
+import server.living.config.Content.BondStage;
 import server.living.config.Content.Persona;
+import server.living.roster.ui.CompanionCardScreens;
 import server.living.store.LivingStore.Bond;
+import server.living.store.LivingStore.ContractState;
 
 /** {@code @roster} lists companions; {@code @bond <name>} shows the relationship with a resident. */
 public class LivingRosterCommand extends Command {
@@ -18,7 +21,7 @@ public class LivingRosterCommand extends Command {
         Character player = c.getPlayer();
         LivingWorld world = LivingWorld.get();
         if (world == null) {
-            player.dropMessage(5, "The living world is not enabled on this server.");
+            player.dropMessage(5, "There are no residents on this server.");
             return;
         }
         if (params.length == 0) {
@@ -37,13 +40,24 @@ public class LivingRosterCommand extends Command {
             player.dropMessage(6, persona.name() + " does not know you yet.");
             return;
         }
-        player.dropMessage(6, persona.name() + ": " + bond.stage().name().toLowerCase() + " (" + bond.points() + " points), contract "
-                + bond.contractState().name().toLowerCase() + (bond.flags().isEmpty() || !player.isGM() ? "" : ", knows: " + String.join(", ", bond.flags())));
+        player.dropMessage(6, bondLine(persona.name(), bond.stage(), bond.points(), bond.contractState())
+                + (bond.flags().isEmpty() || !player.isGM() ? "" : ", knows: " + String.join(", ", bond.flags())));
         player.dropMessage(6, "Friendship " + world.friendship().describe(bond.points()));
         for (String line : world.roster().haulSummary(player, persona)) {
             if (!line.endsWith("is not in your roster.")) {
                 player.dropMessage(6, line);
             }
         }
+    }
+
+    /** "Lia: Trusted (35 points), hired": the bond in the companion card's words. */
+    static String bondLine(String name, BondStage stage, int points, ContractState contract) {
+        String terms = switch (contract == null ? ContractState.NONE : contract) {
+            case NONE -> "no contract";
+            case OFFERED -> "contract offered";
+            case ACTIVE -> "hired";
+            case ENDED -> "contract ended";
+        };
+        return name + ": " + CompanionCardScreens.bondName(stage) + " (" + points + " points), " + terms;
     }
 }

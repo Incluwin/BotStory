@@ -103,7 +103,7 @@ public final class PopulationLoader {
             "casino.bj.welcome", "casino.bj.bye", "casino.bj.overmax", "casino.bj.hit", "casino.bj.stand",
             "casino.bj.react.win", "casino.bj.react.blackjack", "casino.bj.react.push", "casino.bj.react.bust",
             "casino.bj.react.lose",
-            "casino.dice.call", "casino.dice.closing", "casino.dice.lose", "casino.dice.nobet", "casino.dice.overmax",
+            "casino.dice.call", "casino.dice.closing", "casino.dice.hint", "casino.dice.lose", "casino.dice.nobet", "casino.dice.overmax",
             "casino.dice.result", "casino.dice.taken", "casino.dice.wait", "casino.dice.win",
             "casino.bar.greet", "casino.bar.greet.all", "casino.bar.flavor", "casino.bar.offer", "casino.bar.menu",
             "casino.bar.decline", "casino.bar.unknown", "casino.bar.serve", "casino.bar.again",

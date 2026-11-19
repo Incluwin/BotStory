@@ -120,7 +120,8 @@ public final class NeedScreens {
         if (holder == player.getId()) {
             options.add(new LivingTalk.Option("Let it go", () -> {
                 ledger.drop(player.getId(), needId, System.currentTimeMillis());
-                details(player, needId, boardMapId);
+                LivingTalk.open(player, NeedBoards.BOARD_NPC).back(() -> details(player, needId, boardMapId))
+                        .ok("You let it go. Someone else can bring it now.").show();
             }));
         }
         String text = describe(player, need, nowMs) + (holder != 0 && holder != player.getId()

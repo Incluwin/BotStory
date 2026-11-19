@@ -94,7 +94,7 @@ import static server.living.roster.ui.CompanionMenus.portrait;
  * {@link CompanionMenus#card}, which has checked that a window may open; every action runs on companion-ops through
  * {@link CompanionMenus#command}, and its line comes back on top of the card.
  */
-final class CompanionCardScreens {
+public final class CompanionCardScreens {
     /** How many fields the camp picker offers besides "Right here" (plan flow 2, "the FieldCatalog top 5"). */
     private static final int CAMP_CHOICES = 5;
     /** How many of the camp's drops the FARM_ITEM picker lists, the likeliest first. */
@@ -1359,7 +1359,7 @@ final class CompanionCardScreens {
     }
 
     /** "Trusted"; "none yet" with no bond kept. */
-    static String bondName(BondStage stage) {
+    public static String bondName(BondStage stage) {
         if (stage == null || stage == BondStage.NONE) {
             return "none yet";
         }

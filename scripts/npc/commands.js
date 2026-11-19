@@ -8,25 +8,25 @@
 
 var status;
 
-var common_heading = "@";
-var staff_heading = "!";
-
 var levels = ["Common", "Donator", "JrGM", "GM", "SuperGM", "Developer", "Admin"];
-var commands;
-
-function writeHeavenMSCommands() {
-    const CommandsExecutor = Java.type('client.command.CommandsExecutor');
-    commands = CommandsExecutor.getInstance().getGmCommands();
-}
+var executor;
+var maxTier;
 
 function start() {
     status = -1;
-    writeHeavenMSCommands();
+    const CommandsExecutor = Java.type('client.command.CommandsExecutor');
+    executor = CommandsExecutor.getInstance();
+    maxTier = Math.min(cm.getPlayer().gmLevel(), levels.length - 1);
+    if (maxTier <= 0) {
+        // Only one tier: show its list straight away.
+        cm.sendOk("These are the commands available to you:\r\n\r\n" + executor.commandListText(0));
+        return;
+    }
     action(1, 0, 0);
 }
 
 function action(mode, type, selection) {
-    if (mode == -1) {
+    if (mode == -1 || maxTier <= 0) {
         cm.dispose();
     } else {
         if (mode == 0 && type > 0) {
@@ -41,29 +41,20 @@ function action(mode, type, selection) {
 
         if (status == 0) {
             var sendStr = "There are all available commands for you:\r\n\r\n#b";
-            var maxTier = Math.min(cm.getPlayer().gmLevel(), levels.length - 1);
             for (var i = 0; i <= maxTier; i++) {
                 sendStr += "#L" + i + "#" + levels[i] + "#l\r\n";
             }
 
             cm.sendSimple(sendStr);
         } else if (status == 1) {
-            var lvComm, lvDesc, lvHead = (selection < 2) ? common_heading : staff_heading;
-
-            if (selection > 6) {
-                selection = 6;
+            if (selection > maxTier) {
+                selection = maxTier;
             } else if (selection < 0) {
                 selection = 0;
             }
 
-            lvComm = commands.get(selection).getLeft();
-            lvDesc = commands.get(selection).getRight();
-
             var sendStr = "The following commands are available for #b" + levels[selection] + "#k:\r\n\r\n";
-            for (var i = 0; i < lvComm.size(); i++) {
-                sendStr += "  #L" + i + "# " + lvHead + lvComm.get(i) + " - " + lvDesc.get(i);
-                sendStr += "#l\r\n";
-            }
+            sendStr += executor.commandListText(selection);
 
             cm.sendPrev(sendStr);
         } else {

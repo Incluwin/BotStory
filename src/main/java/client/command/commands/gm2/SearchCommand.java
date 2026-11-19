@@ -42,7 +42,7 @@ public class SearchCommand extends Command {
     private static Data skillStringData;
 
     {
-        setDescription("Search String.wz.");
+        setDescription("Look up the names of maps, quests, NPCs, items, mobs and skills.");
 
         DataProvider dataProvider = DataProviderFactory.getDataProvider(WZFiles.STRING);
         npcStringData = dataProvider.getData("Npc.img");
@@ -54,7 +54,7 @@ public class SearchCommand extends Command {
     public void execute(Client c, String[] params) {
         Character player = c.getPlayer();
         if (params.length < 2) {
-            player.yellowMessage("Syntax: !search <type> <name>");
+            player.yellowMessage("Syntax: @search <type> <name>");
             return;
         }
         StringBuilder sb = new StringBuilder();
@@ -76,7 +76,7 @@ public class SearchCommand extends Command {
             } else if (params[0].equalsIgnoreCase("QUEST")) {
                 searchType = 2;
             } else {
-                sb.append("#bInvalid search.\r\nSyntax: '!search [type] [name]', where [type] is MAP, QUEST, NPC, ITEM, MOB, or SKILL.");
+                sb.append("#bInvalid search.\r\nSyntax: '@search [type] [name]', where [type] is MAP, QUEST, NPC, ITEM, MOB, or SKILL.");
             }
             if (searchType == 1) {
                 for (MapSearchHelper.MapMatch match : MapSearchHelper.findMaps(search)) {
