@@ -263,13 +263,13 @@ commands:
     tails: [please, now, "for me", "ok"]
   - canonical: kite
     status: PLANNED
-    reply: "kiting isn't in my repertoire yet."
+    reply: "i can't kite yet. i'll keep fighting my usual way."
     aliases: [kite, "kite them", "hit and run", "keep your distance", "fight from range", "dont let them touch you",
               "stay out of reach", "ranged only", "melee only", "stay back and shoot"]
     tails: [please, now, "ok"]
   - canonical: retreat at hp
     status: PLANNED
-    reply: "i already pot when i'm low; a retreat threshold is coming."
+    reply: "i already pot when i'm low. i can't fall back at a set hp."
     aliases: ["retreat", "retreat under", "retreat at", "run away when", "back off when", "fall back at", "flee at",
               "run when low", "escape when low", "dont die", "be careful", "play safe", "stay safe", "be safe",
               "careful", "watch your hp", "pot earlier", "pot sooner", "heal earlier"]
@@ -285,14 +285,14 @@ commands:
             "nautilus", "the fm", "fm", "the free market", "the shop", "a shop"]
   - canonical: formation
     status: PLANNED
-    reply: "formations aren't wired for me yet. i'll just stay near you."
+    reply: "i can't take formation orders in chat. i'll stay near you."
     aliases: ["spread out", "line up", "get in line", "form up", "stand left of me", "stand right of me", "on my left",
               "on my right", "behind me", "get behind me", "in front of me", "flank", "surround them", "circle up",
               "keep distance", "give me space", "back up a bit", "too close", "not so close", "stay back"]
     tails: [please, now, "ok", "a bit", "a little", "more"]
   - canonical: loot mode
     status: PLANNED
-    reply: "i loot what's near me; loot rules are coming."
+    reply: "i loot what's near me. i can't follow loot rules yet."
     aliases: ["loot all", "loot everything", "pick everything up", "loot none", "dont loot", "stop looting",
               "leave the drops", "loot equips", "only equips", "only loot equips", "loot rares", "only rares",
               "loot meso", "only meso", "leave the meso", "leave the mesos", "grab the drops", "pick up the drops",

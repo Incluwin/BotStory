@@ -1167,6 +1167,8 @@ class CompanionCardScreensTest {
         assertTrue(lastTalk().text().startsWith("how many hours? 930 meso an hour, you have 10,000."), lastTalk().text());
         assertEquals(List.of(2, 1, 10), numberBounds(lastTalkPacket()), "no more hours than Ann can pay for");
         answer(NUMBER, 1, 3);
+        assertEquals("3 hours, 2,790 meso? you'd have 7,210 left.", lastTalk().text());
+        answer(YES_NO, 1, null);
 
         verify(roster).payWages(owner, hadrik, 2_790L);
         assertTrue(lastTalk().text().startsWith("Hadrik is paid up for ~3 h.\r\n#eHadrik#n"), lastTalk().text());

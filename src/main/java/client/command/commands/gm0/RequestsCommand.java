@@ -26,8 +26,12 @@ public class RequestsCommand extends Command {
             return;
         }
         long nowMs = System.currentTimeMillis();
-        if (params.length >= 2 && (params[0].equalsIgnoreCase("claim") || params[0].equalsIgnoreCase("drop"))) {
-            int id = number(params[1]);
+        if (params.length >= 1 && (params[0].equalsIgnoreCase("claim") || params[0].equalsIgnoreCase("drop"))) {
+            int id = params.length >= 2 ? number(params[1]) : 0;
+            if (id <= 0) {
+                player.dropMessage(5, "Usage: @requests claim <n> | @requests drop <n> (the number in the @requests list)");
+                return;
+            }
             if (params[0].equalsIgnoreCase("drop")) {
                 player.dropMessage(5, needs.drop(player.getId(), id, nowMs) ? "You let request #" + id + " go."
                         : "You don't hold request #" + id + ".");

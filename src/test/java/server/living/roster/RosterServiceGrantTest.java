@@ -141,7 +141,7 @@ class RosterServiceGrantTest {
     void grantBenchesThePersonaAtItsHomeCampWithoutSpawningOrTouchingItsCharacter() {
         RosterService roster = new RosterService(world);
 
-        assertEquals("Olwen joins Alice's roster, benched at map " + LITH_HARBOR + ".", roster.grant(alice, OLWEN));
+        assertEquals("Olwen joins Alice's roster, benched at Lith Harbor.", roster.grant(alice, OLWEN));
 
         RosterEntry row = rows.get(key(ALICE, "olwen"));
         assertEquals(RosterState.BENCHED, row.state());
@@ -169,7 +169,7 @@ class RosterServiceGrantTest {
 
         try (MockedStatic<Population> populations = mockStatic(Population.class)) {
             populations.when(Population::get).thenReturn(population);
-            assertEquals("Olwen joins Alice's roster, benched at map " + portRoad + ".", roster.grant(alice, OLWEN));
+            assertEquals("Olwen joins Alice's roster, benched at 3-Way Road-Split.", roster.grant(alice, OLWEN));
         }
 
         // it trains in a field from the start: the card never shows "train @" a town it cannot train in
@@ -272,7 +272,7 @@ class RosterServiceGrantTest {
         assertFalse(worldFlags.containsKey("persona.olwen.employed"));
         assertEquals(ALICE + " olwen roster.release", events.get(events.size() - 1));
         // and the persona is free for someone else
-        assertEquals("Olwen joins Bob's roster, benched at map " + LITH_HARBOR + ".", roster.grant(bob, OLWEN));
+        assertEquals("Olwen joins Bob's roster, benched at Lith Harbor.", roster.grant(bob, OLWEN));
     }
 
     // ---- the Adventurer's Roster ---------------------------------------------------------------

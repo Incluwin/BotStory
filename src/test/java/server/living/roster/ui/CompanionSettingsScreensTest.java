@@ -475,9 +475,25 @@ class CompanionSettingsScreensTest {
         assertEquals("how much? you have 12,000 meso. (0: never mind)", box.text());
         assertEquals(List.of(0, 0, 12_000), numberBounds(lastTalkPacket()), "from nothing, never more than Ann has");
         answer(NUMBER, 1, 2_500);
+        assertEquals("give me 2,500 meso? you'd have 9,500 left.", lastTalk().text());
+        answer((byte) 1, 1, null); // yes
 
         verify(manager).giveCoin(owner, hadrik, 2_500L);
         assertTrue(lastTalk().text().startsWith("You give Hadrik 2,500 meso.\r\ni carry"), lastTalk().text());
+    }
+
+    @Test
+    void sayingNoToTheCoinGivesNothingAndShowsThePageAgain() {
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+        pick("Supplies & loot...");
+        pick("Here's some coin for supplies...");
+        answer(NUMBER, 1, 2_500);
+
+        answer((byte) 1, 0, null); // no
+
+        verify(manager, never()).giveCoin(any(), any(), anyLong());
+        assertTrue(lastTalk().text().startsWith("i carry"), lastTalk().text());
     }
 
     @Test

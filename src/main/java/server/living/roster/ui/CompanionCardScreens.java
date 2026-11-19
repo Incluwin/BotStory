@@ -1153,9 +1153,15 @@ final class CompanionCardScreens {
                                 supplies(owner, persona, "");
                                 return;
                             }
-                            menus.command(owner, "menu.supplies.coin",
-                                    () -> RosterVoice.line(persona, menus.manager().giveCoin(owner, persona, meso)),
-                                    line -> supplies(owner, persona, line));
+                            LivingTalk.open(owner, portrait(persona))
+                                    .yesNo(String.format(Locale.ROOT, "give me %,d meso? you'd have %,d left.", meso,
+                                            Math.max(0, owner.getMeso() - meso)),
+                                            () -> menus.command(owner, "menu.supplies.coin",
+                                                    () -> RosterVoice.line(persona,
+                                                            menus.manager().giveCoin(owner, persona, meso)),
+                                                    line -> supplies(owner, persona, line)),
+                                            () -> supplies(owner, persona, ""))
+                                    .show();
                         })
                 .show();
     }
@@ -1298,8 +1304,14 @@ final class CompanionCardScreens {
             options.add(stamp.option("Pay your wages...", () -> LivingTalk.open(owner, portrait(persona))
                     .number(String.format(Locale.ROOT, "how many hours? %,d meso an hour, you have %,d.", upkeep, owner.getMeso()),
                             (int) Math.min(WAGE_HOURS_DEFAULT, affordable), 1, (int) affordable,
-                            hours -> menus.command(owner, persona, "menu.wages",
-                                    () -> world.roster().payWages(owner, persona, hours * upkeep)))
+                            hours -> LivingTalk.open(owner, portrait(persona))
+                                    .yesNo(String.format(Locale.ROOT, "%d hour%s, %,d meso? you'd have %,d left.", hours,
+                                            hours == 1 ? "" : "s", hours * upkeep,
+                                            Math.max(0L, owner.getMeso() - hours * upkeep)),
+                                            () -> menus.command(owner, persona, "menu.wages",
+                                                    () -> world.roster().payWages(owner, persona, hours * upkeep)),
+                                            () -> wages(owner, persona))
+                                    .show())
                     .show()));
         } else {
             options.add(Option.heading(String.format(Locale.ROOT, "(you need %,d meso to pay an hour)", upkeep)));
