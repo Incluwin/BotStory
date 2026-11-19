@@ -49,8 +49,13 @@ public class StatIntCommand extends Command {
         } else {
             amount = Math.min(remainingAp, YamlConfig.config.server.MAX_AP - player.getInt());
         }
+        if (remainingAp <= 0) {
+            player.dropMessage("You have no AP to distribute.");
+            return;
+        }
         if (!player.assignInt(Math.max(amount, 0))) {
-            player.dropMessage("Please make sure your AP is not over " + YamlConfig.config.server.MAX_AP + " and you have enough to distribute.");
+            player.dropMessage("INT can't go above " + YamlConfig.config.server.MAX_AP + ". It is " + player.getInt()
+                    + " now, and you have " + remainingAp + " AP.");
         }
     }
 }

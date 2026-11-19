@@ -49,7 +49,7 @@ public class DressingRoomCommand extends Command {
         Character player = c.getPlayer();
         if (!YamlConfig.config.server.DRESSING_ROOM_ENABLED
                 || player.gmLevel() < YamlConfig.config.server.DRESSING_ROOM_MIN_GM_LEVEL) {
-            player.dropMessage(5, "The dressing room is disabled for this deployment.");
+            player.dropMessage(5, "The dressing room is closed on this server.");
             return;
         }
         if (params.length < 1) {

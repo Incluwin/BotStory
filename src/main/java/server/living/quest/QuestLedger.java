@@ -196,7 +196,7 @@ public final class QuestLedger {
                     world.residents().reply(persona, chr, declined.isEmpty() ? "suit yourself." : pick(declined, chr));
                 })
                 .show();
-        chr.dropMessage(5, "[" + persona.name() + "] offers: " + quest.title() + ". Say 'accept' to take it.");
+        chr.dropMessage(5, "[" + persona.name() + "] offers: " + quest.title() + ".");
     }
 
     /** The reward block in the client's own quest-window style (Quest scripts use the same icons). */

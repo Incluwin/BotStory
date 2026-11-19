@@ -16,7 +16,7 @@ public class LivingQuestsCommand extends Command {
         Character player = c.getPlayer();
         LivingWorld world = LivingWorld.get();
         if (world == null) {
-            player.dropMessage(5, "The living world is not enabled on this server.");
+            player.dropMessage(5, "There are no residents on this server.");
             return;
         }
         world.quests().showLog(player);

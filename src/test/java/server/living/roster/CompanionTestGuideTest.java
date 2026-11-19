@@ -191,7 +191,7 @@ class CompanionTestGuideTest {
         assertEquals(Assignment.TRAIN, benched.assignment());
         verify(alice).dropMessage(5, "Brannock heads back to camp to train.");
         say("roster");
-        verify(alice).dropMessage(6, "  Brannock lv5 benched - train at map " + LITH_HARBOR);
+        verify(alice).dropMessage(6, "  Brannock lv5 benched - train at " + CompanionView.placeName(LITH_HARBOR));
     }
 
     @Test
@@ -229,7 +229,7 @@ class CompanionTestGuideTest {
         RosterEntry benched = rows.row(ALICE, "brannock");
         assertEquals(PIG_BEACH, benched.campMapId());
         assertEquals(RosterState.BENCHED, benched.state());
-        verify(alice).dropMessage(5, "Brannock will camp at map " + PIG_BEACH + ".");
+        verify(alice).dropMessage(5, "Brannock will camp at " + CompanionView.placeName(PIG_BEACH) + ".");
     }
 
     @Test

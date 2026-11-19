@@ -565,7 +565,8 @@ class CompanionManagerTest {
 
             trade.verifyNoInteractions();
         }
-        verify(h.ann, Mockito.times(4)).dropMessage(5, askAgain);
+        verify(h.ann, Mockito.times(2)).dropMessage(5, askAgain); // late, and the client lock
+        verify(h.ann, Mockito.times(2)).dropMessage(5, "Hadrik: close your other window first, then ask me again.");
         verify(client, never()).releaseClient();
     }
 

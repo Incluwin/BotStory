@@ -128,6 +128,9 @@ public final class CompanionMenus {
             return;
         }
         if (!LivingTalk.mayShow(owner)) {
+            if (LivingTalk.awaitsReply(owner)) { // not the click throttle: say why the book stays shut
+                owner.dropMessage(5, "Close the window you have open, then open the Roster again.");
+            }
             owner.sendPacket(PacketCreator.enableActions());
             return;
         }

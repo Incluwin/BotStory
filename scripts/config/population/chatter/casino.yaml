@@ -364,6 +364,15 @@ intents:
       - "cho-han here, drop chips and call cho or han"
       - "who wants to roll? chips down, cho or han"
       - "dice game open, even=cho odd=han"
+  - id: casino.dice.hint
+    trigger: casino.dice.hint
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey {name}, wanna roll? drop chips by me and say cho for even or han for odd"
+      - "{name} first time at the dice? chips down, then say cho (even) or han (odd), pays 1:1"
   - id: casino.dice.closing
     trigger: casino.dice.closing
     where: any

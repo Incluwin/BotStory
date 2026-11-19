@@ -321,7 +321,8 @@ public final class Coliseum {
         long fee = fee(player.getLevel());
         List<LivingTalk.Option> options = new ArrayList<>();
         options.add(new LivingTalk.Option("#bFight a ladder match#k (" + mesos(fee) + " mesos)",
-                () -> request(player, 0, false)));
+                () -> LivingTalk.open(player, TIGUN).yesNo("A ladder match costs #b" + mesos(fee) + " mesos#k, win or"
+                        + " lose. Fight now?", () -> request(player, 0, false), () -> talk(player)).show()));
         options.add(new LivingTalk.Option("#bFight with my companions#k", () -> teamTalk(player)));
         options.add(watch);
         options.add(weekly);
@@ -351,7 +352,9 @@ public final class Coliseum {
         for (int size = TeamRules.MIN_SIZE; size <= fieldable; size++) {
             int chosen = size;
             options.add(new LivingTalk.Option("#bA " + size + "v" + size + "#k (" + mesos(fee) + " mesos)",
-                    () -> teamRequest(player, chosen, false, false)));
+                    () -> LivingTalk.open(player, TIGUN).yesNo("A " + chosen + "v" + chosen + " costs #b" + mesos(fee)
+                            + " mesos#k, win or lose. Fight now?", () -> teamRequest(player, chosen, false, false),
+                            () -> teamTalk(player)).show()));
         }
         if (population.rivals() != null && population.rivals().crewOfMain(player.getId()) != null
                 && fieldable >= TeamRules.MIN_SIZE) {
@@ -380,8 +383,11 @@ public final class Coliseum {
             if (tournament.signedUp(player)) {
                 options.add(new LivingTalk.Option("#bTake back my sign-up#k", () -> tournament.withdraw(player)));
             } else {
-                options.add(new LivingTalk.Option("#bSign up#k (" + mesos(TournamentRules.fee(player.getLevel(),
-                        pvp.TOURNAMENT_FEE_PER_LEVEL)) + " mesos)", () -> tournament.signUp(player, false)));
+                String fee = mesos(TournamentRules.fee(player.getLevel(), pvp.TOURNAMENT_FEE_PER_LEVEL));
+                options.add(new LivingTalk.Option("#bSign up#k (" + fee + " mesos)",
+                        () -> LivingTalk.open(player, TIGUN).yesNo("Signing up costs #b" + fee + " mesos#k. You get it"
+                                + " back if you take your sign-up back before the tournament starts. Sign up?",
+                                () -> tournament.signUp(player, false), () -> tournamentTalk(player)).show()));
             }
         }
         options.add(new LivingTalk.Option("#bWatch the tournament#k", () -> tournament.watch(player, null)));

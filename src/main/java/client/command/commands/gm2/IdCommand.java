@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 public class IdCommand extends Command {
     {
-        setDescription("Search in handbook.");
+        setDescription("Look up the id of a map, item or NPC.");
     }
     private final static int MAX_SEARCH_HITS = 100;
     private final Map<String, String> handbookDirectory = typeFilePaths();
@@ -89,7 +89,7 @@ public class IdCommand extends Command {
     public void execute(Client client, final String[] params) {
         final Character chr = client.getPlayer();
         if (params.length < 2) {
-            chr.yellowMessage("Syntax: !id <type> <query>");
+            chr.yellowMessage("Syntax: @id <type> <query>");
             return;
         }
         final String type = params[0].toLowerCase();

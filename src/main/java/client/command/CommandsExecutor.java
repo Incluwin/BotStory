@@ -287,7 +287,9 @@ import tools.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CommandsExecutor {
     private static final Logger log = LoggerFactory.getLogger(CommandsExecutor.class);
@@ -297,16 +299,32 @@ public class CommandsExecutor {
 
     private final HashMap<String, Command> registeredCommands = new HashMap<>();
     private final List<Pair<List<String>, List<String>>> commandsNameDesc = new ArrayList<>();
+    private final Map<String, List<String>> aliasesByName = new HashMap<>();
     private Pair<List<String>, List<String>> levelCommandsCursor;
 
     public static CommandsExecutor getInstance() {
         return instance;
     }
 
+    // Headings for the common command list in @help, in display order.
+    private static final Map<String, List<String>> COMMON_GROUPS = new LinkedHashMap<>();
+
+    static {
+        COMMON_GROUPS.put("Companions", List.of("roster", "duel"));
+        COMMON_GROUPS.put("Requests and quests", List.of("quests", "requests", "records"));
+        COMMON_GROUPS.put("Info", List.of("time", "uptime", "rates", "online", "ranks", "points", "droplimit",
+                "mapowner", "equiplv", "gacha", "bosshp", "mobhp", "mobdrops", "whodrops", "search", "id"));
+    }
+
     public static boolean isCommand(Client client, String content) {
         char heading = content.charAt(0);
         if (client.getPlayer().isGM()) {
             return heading == USER_HEADING || heading == GM_HEADING;
+        }
+        if (heading == GM_HEADING) {
+            // A "!word" naming a real command is a command attempt; any other "!" chat stays chat.
+            String word = content.substring(1).split("[ ]", 2)[0].toLowerCase();
+            return !word.isEmpty() && instance.registeredCommands.containsKey(word);
         }
         return heading == USER_HEADING;
     }
@@ -325,6 +343,47 @@ public class CommandsExecutor {
         return commandsNameDesc;
     }
 
+    /** Text of the @help window for one tier: each command once, aliases in brackets, common ones grouped. */
+    public String commandListText(int tier) {
+        List<String> names = commandsNameDesc.get(tier).getLeft();
+        List<String> descs = commandsNameDesc.get(tier).getRight();
+        char heading = tier < 2 ? USER_HEADING : GM_HEADING;
+        Map<String, String> lines = new LinkedHashMap<>();
+        for (int i = 0; i < names.size(); i++) {
+            String name = names.get(i);
+            StringBuilder line = new StringBuilder("  #b").append(heading).append(name).append("#k");
+            List<String> aliases = aliasesByName.get(name);
+            if (aliases != null && !aliases.isEmpty()) {
+                line.append(" [");
+                for (int j = 0; j < aliases.size(); j++) {
+                    line.append(j > 0 ? ", " : "").append(heading).append(aliases.get(j));
+                }
+                line.append("]");
+            }
+            line.append(" - ").append(descs.get(i)).append("\r\n");
+            lines.put(name, line.toString());
+        }
+        if (tier != 0) {
+            return String.join("", lines.values());
+        }
+        StringBuilder text = new StringBuilder();
+        for (Map.Entry<String, List<String>> group : COMMON_GROUPS.entrySet()) {
+            text.append("#e").append(group.getKey()).append("#n\r\n");
+            for (String name : group.getValue()) {
+                String line = lines.remove(name);
+                if (line != null) {
+                    text.append(line);
+                }
+            }
+            text.append("\r\n");
+        }
+        if (!lines.isEmpty()) {
+            text.append("#eOther#n\r\n");
+            lines.values().forEach(text::append);
+        }
+        return text.toString();
+    }
+
     public void handle(Client client, String message) {
         if (client.tryacquireClient()) {
             try {
@@ -339,7 +398,7 @@ public class CommandsExecutor {
 
     private void handleInternal(Client client, String message) {
         if (client.getPlayer().getMapId() == MapId.JAIL) {
-            client.getPlayer().yellowMessage("You do not have permission to use commands while in jail.");
+            client.getPlayer().dropMessage(5, "You do not have permission to use commands while in jail.");
             return;
         }
         final String splitRegex = "[ ]";
@@ -352,13 +411,22 @@ public class CommandsExecutor {
         final String commandName = splitedMessage[0].toLowerCase();
         final String[] lowercaseParams = splitedMessage[1].toLowerCase().split(splitRegex);
 
+        final char heading = message.charAt(0);
         final Command command = registeredCommands.get(commandName);
         if (command == null) {
-            client.getPlayer().yellowMessage("Command '" + commandName + "' is not available. See @commands for a list of available commands.");
+            client.getPlayer().dropMessage(5, "Command '" + heading + commandName + "' is not available. See @commands for a list of available commands.");
+            return;
+        }
+        if (heading == GM_HEADING && !client.getPlayer().isGM()) {
+            if (command.getRank() == 0) {
+                client.getPlayer().dropMessage(5, "Commands start with @. Try @" + commandName + ".");
+            } else {
+                client.getPlayer().dropMessage(5, "Command '" + heading + commandName + "' is not available. See @commands for a list of available commands.");
+            }
             return;
         }
         if (client.getPlayer().gmLevel() < command.getRank()) {
-            client.getPlayer().yellowMessage("You do not have permission to use this command.");
+            client.getPlayer().dropMessage(5, "You do not have permission to use this command.");
             return;
         }
         String[] params;
@@ -382,9 +450,7 @@ public class CommandsExecutor {
     }
 
     private void addCommand(String[] syntaxs, Class<? extends Command> commandClass) {
-        for (String syntax : syntaxs) {
-            addCommand(syntax, 0, commandClass);
-        }
+        addCommand(syntaxs, 0, commandClass);
     }
 
     private void addCommand(String syntax, Class<? extends Command> commandClass) {
@@ -394,27 +460,40 @@ public class CommandsExecutor {
     }
 
     private void addCommand(String[] surtaxes, int rank, Class<? extends Command> commandClass) {
-        for (String syntax : surtaxes) {
-            addCommand(syntax, rank, commandClass);
+        // The help list shows the first name once, with the other names as its aliases.
+        addCommand(surtaxes[0], rank, commandClass);
+        List<String> aliases = new ArrayList<>();
+        for (int i = 1; i < surtaxes.length; i++) {
+            if (registerCommand(surtaxes[i], rank, commandClass)) {
+                aliases.add(surtaxes[i].toLowerCase());
+            }
         }
+        aliasesByName.put(surtaxes[0].toLowerCase(), aliases);
     }
 
     private void addCommand(String syntax, int rank, Class<? extends Command> commandClass) {
+        if (registerCommand(syntax, rank, commandClass)) {
+            addCommandInfo(syntax.toLowerCase(), commandClass);
+        }
+    }
+
+    private boolean registerCommand(String syntax, int rank, Class<? extends Command> commandClass) {
         if (registeredCommands.containsKey(syntax.toLowerCase())) {
             log.warn("Error on register command with name: {}. Already exists.", syntax);
-            return;
+            return false;
         }
 
         String commandName = syntax.toLowerCase();
-        addCommandInfo(commandName, commandClass);
 
         try {
             Command commandInstance = commandClass.getDeclaredConstructor().newInstance();     // thanks Halcyon for noticing commands getting reinstanced every call
             commandInstance.setRank(rank);
 
             registeredCommands.put(commandName, commandInstance);
+            return true;
         } catch (Exception e) {
             log.warn("Failed to create command instance", e);
+            return false;
         }
     }
 

@@ -49,8 +49,13 @@ public class StatDexCommand extends Command {
         } else {
             amount = Math.min(remainingAp, YamlConfig.config.server.MAX_AP - player.getDex());
         }
+        if (remainingAp <= 0) {
+            player.dropMessage("You have no AP to distribute.");
+            return;
+        }
         if (!player.assignDex(Math.max(amount, 0))) {
-            player.dropMessage("Please make sure your AP is not over " + YamlConfig.config.server.MAX_AP + " and you have enough to distribute.");
+            player.dropMessage("DEX can't go above " + YamlConfig.config.server.MAX_AP + ". It is " + player.getDex()
+                    + " now, and you have " + remainingAp + " AP.");
         }
     }
 }

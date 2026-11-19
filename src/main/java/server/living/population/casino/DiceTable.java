@@ -1,14 +1,18 @@
 package server.living.population.casino;
 
 import client.Character;
+import server.integration.AgentPresence;
 import server.living.population.CitizenSession;
 import server.maps.MapItem;
 
 import java.awt.Point;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Cho-han dice in Henesys Game Park (SoloMapling's DiceBot), hosted by a citizen with a float of 3 x CASINO_MAX_BET in
@@ -20,6 +24,9 @@ import java.util.Map;
 final class DiceTable extends HostPost<DiceTable.DicePost> {
     private static final int REACH_PX = 320;
     private static final int FLOAT_BETS = 3;
+
+    /** Players the host has told how to bet, once per login (a new login is a new Character). */
+    private final Set<Character> taught = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
     final class DicePost extends HostPost.Post implements ChoHanGame.Table {
         final ChoHanGame game = new ChoHanGame(this, host.random());
@@ -122,10 +129,29 @@ final class DiceTable extends HostPost<DiceTable.DicePost> {
 
     @Override
     void step(DicePost post, long now) {
+        if (post.game.phase() == ChoHanGame.Phase.OPEN && teach(post)) {
+            return;
+        }
         if (post.game.phase() == ChoHanGame.Phase.OPEN && host.random().nextInt(100) < 12
                 && host.humanOn(post.session.channel, mapId())) {
             host.say(post.session, "casino.dice.call", Map.of());
         }
+    }
+
+    /** The first time a player walks up to the table, the host tells them how to bet. */
+    private boolean teach(DicePost post) {
+        Character agent = post.agent();
+        if (agent == null || agent.getMap() == null) {
+            return false;
+        }
+        for (Character chr : agent.getMap().getAllPlayers()) {
+            if (!AgentPresence.isAgent(chr) && agent.getPosition().distance(chr.getPosition()) <= REACH_PX
+                    && taught.add(chr)) {
+                host.say(post.session, "casino.dice.hint", Map.of("name", chr.getName()));
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

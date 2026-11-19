@@ -849,8 +849,15 @@ public final class CompanionManager {
             return new RosterResult.Failed(persona.name() + " is too far away to trade.");
         }
         client.runOnIoThread(() -> {
-            if (System.currentTimeMillis() > openByMs || LivingTalk.awaitsReply(owner) || windowOpen(owner)
-                    || bot.getMap() != owner.getMap()) {
+            if (bot.getMap() != owner.getMap()) {
+                owner.dropMessage(5, persona.name() + " is too far away to trade.");
+                return;
+            }
+            if (LivingTalk.awaitsReply(owner) || windowOpen(owner)) {
+                owner.dropMessage(5, persona.name() + ": close your other window first, then ask me again.");
+                return;
+            }
+            if (System.currentTimeMillis() > openByMs) {
                 owner.dropMessage(5, persona.name() + ": ask me again when you're free.");
                 return;
             }

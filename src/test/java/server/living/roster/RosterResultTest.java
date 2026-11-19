@@ -346,7 +346,7 @@ class RosterResultTest {
         RosterResult result = new RosterService(world).delegate(ann, olwen, Assignment.TRAIN, 0, 0, 0);
 
         assertTrue(result.ok());
-        assertTrue(RosterVoice.line(olwen, result).startsWith("Olwen leaves to train at map " + LITH_HARBOR));
+        assertTrue(RosterVoice.line(olwen, result).startsWith("Olwen leaves to train at Lith Harbor"));
         assertEquals(CompanionSlots.Kind.AWAY, slots.reservation("olwen").kind());
         assertEquals(RosterState.AWAY, rows.get("olwen").state());
     }

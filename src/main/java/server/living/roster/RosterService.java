@@ -395,7 +395,7 @@ public final class RosterService {
         if (rostered == 0) {
             handOverRosterBook(owner, persona);
         }
-        return persona.name() + " joins " + owner.getName() + "'s roster, benched at map " + entry.campMapId() + ".";
+        return persona.name() + " joins " + owner.getName() + "'s roster, benched at " + CompanionView.placeName(entry.campMapId()) + ".";
     }
 
     /**
@@ -1833,7 +1833,7 @@ public final class RosterService {
         write(updated);
         world.store().event(owner.getId(), persona.id(), CAMP_EVENT, "camp " + mapId); // its record there starts again
         endYourCall(owner.getId(), persona.id()); // its owner picked: no longer its own call
-        return new RosterResult.Ok(persona.name() + " will camp at map " + mapId + ".");
+        return new RosterResult.Ok(persona.name() + " will camp at " + CompanionView.placeName(mapId) + ".");
     }
 
     /**
@@ -2004,7 +2004,7 @@ public final class RosterService {
         if (entry.state() != RosterState.ACTIVE) {
             write(updated);
             world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated) + " at map " + workMap);
-            return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated) + " at map " + workMap + "." + warning);
+            return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated) + " at " + CompanionView.placeName(workMap) + "." + warning);
         }
         List<String> lines = world.arcs().lines(persona, "delegate");
         world.residents().reply(persona, owner, movedLine != null ? movedLine
@@ -2014,7 +2014,7 @@ public final class RosterService {
         RosterEntry away = updated.with(RosterState.AWAY, System.currentTimeMillis());
         write(away);
         world.store().event(owner.getId(), persona.id(), "roster.delegate", describeAssignment(away) + " at map " + workMap);
-        return new RosterResult.Ok(persona.name() + " leaves to " + describeAssignment(away) + (mapId != 0 ? " here" : " at map " + workMap)
+        return new RosterResult.Ok(persona.name() + " leaves to " + describeAssignment(away) + (mapId != 0 ? " here" : " at " + CompanionView.placeName(workMap))
                 + ", keeping the party slot. Say '" + persona.name().toLowerCase(Locale.ROOT) + " come back' to recall." + warning);
     }
 
@@ -3155,7 +3155,7 @@ public final class RosterService {
             world.residents().whisper(persona, owner, line);
         }
         world.store().event(owner.getId(), persona.id(), "companion.hold", "map " + mapId);
-        return new RosterResult.Ok(persona.name() + " waits at map " + mapId + ".");
+        return new RosterResult.Ok(persona.name() + " waits at " + CompanionView.placeName(mapId) + ".");
     }
 
     /** Where a held companion waits: {@code mapId}, and {@code point} on it (null: where it stood). */
@@ -3199,7 +3199,7 @@ public final class RosterService {
         }
         partyChat(bot, holdLine(persona, ownerId, note));
         leaveParty(bot, entry);
-        return new RosterResult.Ok(persona.name() + " waits at map " + mapId + ".");
+        return new RosterResult.Ok(persona.name() + " waits at " + CompanionView.placeName(mapId) + ".");
     }
 
     /**
@@ -3792,7 +3792,7 @@ public final class RosterService {
             int level = world.store().characterLevel(world.residents().characterIdOf(entry.personaId()));
             lines.add("  " + name + " lv" + level + " " + entry.state().name().toLowerCase(Locale.ROOT)
                     + (entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY
-                    ? " - " + describeAssignment(entry) + " at map " + entry.campMapId() : "")
+                    ? " - " + describeAssignment(entry) + " at " + CompanionView.placeName(entry.campMapId()) : "")
                     + (entry.haulMeso() > 0 ? ", haul " + entry.haulMeso() + " meso" : ""));
         }
         return lines;
