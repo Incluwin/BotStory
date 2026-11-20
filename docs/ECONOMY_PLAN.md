@@ -537,4 +537,33 @@ Decisions for the user:
   - The casino line is transitional: chips bought before R1 (21:52 on 11-17) booked NPC_PURCHASE and were cashed as CASINO.
   - Step 2's +118 M in 4.6 h scales to about +0.6 B a full day before the levers (about +4 %). The cut to pickup 0.19
     takes about 0.25 B off vendoring. 0 ERROR lines since 14:22.
+- **11-19 close (19:01:30; the first full day at step 2): organic growth 3.08 %** (+456 M on 14.82 B). Between the
+  gates again, so **hold step 2**.
+  - Another session merged UX fixes into the main line and restarted the live server at 06:00 on 7c70f43c7. That
+    commit contains R1-R4 and step 2 (STEPS still 2). Loaded citizens ramped back from about 87 to 248 by noon, so the
+    day mixes the night on the old process with a fresh boot.
+  - Controller: pickup 0.19 -> **0.10 (the new floor)**; luxury 0.4 -> 0.5, since pickup can no longer hold growth
+    alone. Budget x1.58 (basket -1.12 %).
+  - Citizens:
+
+    | Account | 11-10..11-16 average | 11-18 | 11-19 |
+    |---|---|---|---|
+    | MOB_DROP | +158 M | +209 M | +289 M |
+    | real vendoring (journal) | about +700 M | +646 M | +653 M |
+    | shop buying (journal) | about -140 M | -154 M | -213 M |
+    | SERVICE (salons) | -476 M | -313 M | -267 M |
+    | CASINO (clean from today) | - | +40 M | -1 M |
+
+  - Kill pickups: 196,086 for the day, against 140,120 on 11-18 and about 116,400 a day for 11-10 to 11-16. Mesos per
+    pickup were flat at 1,475.
+  - That is about 8,170 an hour against the step-1 baseline of about 6,000 at 248 loaded: **k about 1.4-1.7 on a full
+    day**, so the 2.3 measured right after the 14:23 restart was mostly refilled maps.
+  - What the levers did:
+    - Pickup at 0.19 held vendoring flat while kills rose about 40 %.
+    - Shop buying (potions) rose by 59 M, the R3 sink at work.
+    - Salon spending kept falling (531 -> 313 -> 267 visits).
+  - Outlook for 11-20: pickup 0.10 takes about half off vendoring (roughly -0.3 B), and luxury at 0.5 adds some salon
+    spending. That may bring growth to around the target.
+  - With pickup at its floor, only luxury (up to 0.8) is left for step 3. 0 ERROR lines in today's log.
+  - Gate: step 3 after a close at or under 2 %. The 11-20 close is the first with pickup at 0.10.
 - **Open:** the ramp (steps 3 and 5, gated on the closes above), then R5 (companion_yield, PvP grind-minutes).
