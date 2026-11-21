@@ -25,7 +25,7 @@ public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
                 + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|alliances|market|conversation|"
-                + "level <name> <level>|login <name>|salon <name>|pq [send <name> [lobby]]|jq [send <name> [course]]|memory [name]|"
+                + "level <name> <level>|login <name>|salon <name> [hair|face|skin]|pq [send <name> [lobby]]|jq [send <name> [course]]|memory [name]|"
                 + "casino [send <name> [blackjack|dice|bar|dropgame|gacha|nxseller]]|talk");
     }
 
@@ -275,11 +275,12 @@ public class CitizensCommand extends Command {
                 case "salon" -> {
                     Citizen citizen = params.length < 2 ? null : population.citizenByName(params[1]);
                     if (citizen == null) {
-                        gm.yellowMessage("Usage: !citizens salon <name>  (a loaded citizen goes to its hair salon now)");
+                        gm.yellowMessage("Usage: !citizens salon <name> [hair|face|skin]  (a loaded citizen goes to that stylist now; hair by default)");
                         return;
                     }
-                    String refused = population.presence().sendToSalon(citizen.characterId(), System.currentTimeMillis());
-                    gm.yellowMessage(citizen.name() + (refused == null ? " is on its way to its hair salon." : ": " + refused));
+                    String look = params.length > 2 ? params[2] : "hair";
+                    String refused = population.presence().sendToSalon(citizen.characterId(), look, System.currentTimeMillis());
+                    gm.yellowMessage(citizen.name() + (refused == null ? " is on its way to its " + look.toLowerCase() + " stylist." : ": " + refused));
                 }
                 case "conversation" -> gm.yellowMessage(population.conversation().report());
                 case "memory" -> {

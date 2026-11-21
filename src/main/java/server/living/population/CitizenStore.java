@@ -353,6 +353,36 @@ public final class CitizenStore {
         }
     }
 
+    // ---- luxury rolls (docs/ECONOMY_PLAN.md section 9.6) ------------------------------------
+
+    /** The UTC day each citizen last rolled for each look at a stylist: citizen id -> look -> day; empty when the read fails. */
+    Map<Integer, Map<String, Long>> luxuryRolls() {
+        Map<Integer, Map<String, Long>> out = new HashMap<>();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT character_id, look, day FROM living_luxury_roll");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.computeIfAbsent(rs.getInt(1), id -> new HashMap<>()).put(rs.getString(2), rs.getLong(3));
+            }
+        } catch (SQLException failure) {
+            log.warn("living_luxury_roll scan failed", failure);
+        }
+        return out;
+    }
+
+    void saveLuxuryRoll(int characterId, String look, long day) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("INSERT INTO living_luxury_roll (character_id, look, day)"
+                     + " VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE day = VALUES(day)")) {
+            ps.setInt(1, characterId);
+            ps.setString(2, look);
+            ps.setLong(3, day);
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_luxury_roll write failed for {}/{}", characterId, look, failure);
+        }
+    }
+
     // ---- acquaintances -------------------------------------------------------------------
 
     public Acquaintance acquaintance(int characterId, int playerId) {
