@@ -592,4 +592,32 @@ Decisions for the user:
       for step 3.
   - Decision before step 3: look at the salon visits (and the casino payouts) first, or take step 3 on the
     casino-adjusted 1.8 %. By the gate as written, step 2 holds.
+- **Why salon visits "fell" (user: "Look into salons", 2026-11-20).** Mostly restarts, not the lever.
+  - `CitizenSalons.planned` keeps "rolled today" in memory (`rolledDay`). Every restart lets each eligible citizen roll
+    again the same UTC day. Visits complete almost every time once a citizen sets out (no walk-outs logged).
+
+    | Local day | Restarts | Visits | Different citizens | Visits each |
+    |---|---|---|---|---|
+    | 11-12 | 4 | 464 | 323 | 1.44 |
+    | 11-14 | 8 | 723 | 375 | 1.93 |
+    | 11-16 | 7 | 417 | 290 | 1.44 |
+    | 11-17 | 6 | 494 | 319 | 1.55 |
+    | 11-18 | 1 | 269 | 218 | 1.23 |
+    | 11-19 | 1 | 299 | 251 | 1.19 |
+    | 11-20 (to 19:15) | 0 | 233 | 216 | 1.08 |
+
+  - So the ~0.48 B a day of SERVICE in deploy-heavy weeks was inflated. The true salon sink at luxury 0.4-0.5 is about
+    0.25-0.3 B a day. Part of the growth rise from 11-18 came from fewer restarts, not from step 2.
+  - The pool is not shrinking:
+    - 438 of 632 active citizens in salon regions qualify (purse over 1 M + 3x `Market.expectedMeso`). They hold 8.1 B.
+    - 95 more qualify in regions with no salon (Rien, Malaysia, Singapore, Aquarium, Ereve, Ariant, Leafre, Ellin,
+      Coke Town, Crimsonwood). They hold 2.9 B, averaging 25-45 M each, and no luxury reaches them.
+  - The lever's ceiling is one visit a day per rich loaded citizen. At 0.8 that is about 350-400 visits (0.35-0.4 B):
+    **only about +0.1-0.15 B over today**, too little for step 3 with pickup already at its floor.
+  - Options before step 3:
+    - (a) keep the daily roll across restarts (an honest, smaller sink);
+    - (b) more luxuries at the same stylists, such as face and skin (VIP plastic surgery and skin care), each with its
+      own daily roll, so the lever can absorb more;
+    - (c) a salon trip or a local luxury for the 95 citizens in regions without one;
+    - (d) wealth-scaled luxuries (a rich citizen spends more than 1 M).
 - **Open:** the ramp (steps 3 and 5, gated on the closes above), then R5 (companion_yield, PvP grind-minutes).
