@@ -622,7 +622,7 @@ Decisions for the user:
     - (d) wealth-scaled luxuries (a rich citizen spends more than 1 M).
 - **Open:** the ramp (steps 3 and 5, gated on the closes above), then R5 (companion_yield, PvP grind-minutes).
 
-### 9.6 More room for the luxury lever (built 2026-11-20, not deployed)
+### 9.6 More room for the luxury lever (built 2026-11-20, live 2026-11-21 05:09)
 
 User: "Build a, b and c" (options from 9.5). Branch `feat/economy-luxury` 8eb82cbbc, merged into the main line as
 85d2aa3d1. Full split suite 16,456 / 0 / 33.
@@ -650,4 +650,8 @@ numbers (+362 M) the first full day would close near -2 %. The controller then l
 maximum the lever reaches about 1.2-1.3 B a day, so step 3 has room. The money still leaves only as SERVICE, so no
 new account is needed.
 
-**Not done:** not deployed; the live server still runs 7c70f43c7.
+**Live 2026-11-21 05:09** (user: "Yes, deploy now"): the live checkout moved to d9bb538d0 with nobody logged in, and
+the server restarted. Changeset 63 created `living_luxury_roll` at boot. In the first 7 minutes: 12 visits done (5 hair,
+6 face, 1 skin), 0 left without a new look, 0 errors. They included Singapore's own surgeon and Ariant's own skin-care
+shop. Rolls are being stored for all three looks. The 11-21 close (19:01) is the first with the new sink, for part of
+the day; 11-22 is the first full day.
