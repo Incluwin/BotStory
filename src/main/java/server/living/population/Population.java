@@ -204,7 +204,7 @@ public final class Population {
             server.living.audit.TellAudit.tick(System.currentTimeMillis());
             population.needs.tick(); // the needs board's minute (docs/BOT_CONCEPT_PLAN.md F1)
             population.rivals.tick(); // the rival crews' minute (F7)
-            population.coliseum.minute(); // Tigun stands, and citizens play their own ladder (docs/PVP_PLAN.md V4)
+            population.coliseum.minute(); // Cesar stands, and citizens play their own ladder (docs/PVP_PLAN.md V4)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -247,7 +247,7 @@ public final class Population {
         population.market.closeAll("server shutdown");
         population.needs.boards().removeAll(); // a later start spawns them again
         population.casino.stopAll(); // the cashier NPC and the tables' chips and cards
-        population.coliseum.stop(); // Tigun goes, a match running is called off
+        population.coliseum.stop(); // Cesar goes, a match running is called off
         population.memories.flushAll(); // before the citizens unload: what happened up to the last event is kept
         population.presence.logoutAll("server shutdown");
         log.info("Population stopped.");

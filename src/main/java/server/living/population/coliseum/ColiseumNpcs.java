@@ -33,12 +33,14 @@ final class ColiseumNpcs {
     record Placement(Role role, int npcId, int mapId, int x, int y) { }
 
     /**
-     * Tigun (2101004), Ariant's palace guard, keeps the ladder on Ariant's main street between the Battle Arena
-     * transport (9010022, x 868) and the town's west side; Jano (2101010) trades for Trophies beside him (V4.3).
+     * Cesar (2101014), the Royal Guard Captain, keeps the ladder on Ariant's main street between the Battle Arena
+     * transport (9010022, x 868) and the town's west side; Sejan (2101011) trades for Trophies beside him (V4.3).
+     * Both templates have a script entry in Npc.wz: the client answers a click on one without it (Tigun 2101004 and
+     * Jano 2101010, the first choice) with its own String.wz lines and never tells the server.
      */
     static final List<Placement> PLACEMENTS = List.of(
-            new Placement(Role.ARENA_MASTER, 2101004, Coliseum.ARIANT, 560, 240),
-            new Placement(Role.QUARTERMASTER, 2101010, Coliseum.ARIANT, 440, 240));
+            new Placement(Role.ARENA_MASTER, 2101014, Coliseum.ARIANT, 560, 240),
+            new Placement(Role.QUARTERMASTER, 2101011, Coliseum.ARIANT, 440, 240));
 
     private final Population population;
     /** "channel:mapId:role" -> the object id of the NPC there. */

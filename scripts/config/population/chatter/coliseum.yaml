@@ -1,5 +1,5 @@
 # The coliseum ladder's lines (docs/PVP_PLAN.md V4, server.living.population.coliseum.Coliseum): a citizen matched
-# with a player by Tigun, the Arena Master, on a private copy of a Battle Arena floor. Said on map chat between rounds
+# with a player by Cesar, the Arena Master, on a private copy of a Battle Arena floor. Said on map chat between rounds
 # (a fighter mid-round says nothing). {name} is the player; {record} the citizen's own ladder record ("12-7"),
 # {rating} its rating and {bracket} its bracket, all real. ladder.intro.new is a citizen with no ladder match yet.
 intents:

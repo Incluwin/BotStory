@@ -157,7 +157,7 @@ class TournamentRulesTest {
     @Test
     void theLetterTellsAPlayerWhatTheyMissedAndWhetherThePrizeWaits() {
         Tournament.Letter paid = Tournament.letter("Crewfriend", List.of("VETERAN|1|Wavaki|10|0|1"));
-        assertEquals("Tigun", paid.sender());
+        assertEquals("Cesar", paid.sender());
         assertEquals("Crewfriend, The Veteran tournament: you were a semi-finalist and Wavaki won it (10 Event Trophies)."
                 + " Your prize is in your bags.", paid.text());
 

@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
 
 /**
- * The coliseum ladder (docs/PVP_PLAN.md V4.1-V4.2). Tigun, the Arena Master on Ariant's main street, matches a human
+ * The coliseum ladder (docs/PVP_PLAN.md V4.1-V4.2). Cesar, the Arena Master on Ariant's main street, matches a human
  * Lv 30+ with the free citizen in its bracket, on its channel, within 5 levels, whose Glicko-2 rating is nearest
  * ({@link LadderRules#pick}); the human pays 20 mesos a level ({@link MesoAccount#PVP_FEE}). They fight best of three
  * 90 s rounds on a private copy of a Battle Arena floor under coliseum rules (arena tonics only, {@link DuelField.Rules}),
@@ -129,7 +129,7 @@ public final class Coliseum {
         }
     }
 
-    /** A human asking for a match (from Tigun's window or {@code !pvp coliseum}); chosen 0 means "find one". */
+    /** A human asking for a match (from Cesar's window or {@code !pvp coliseum}); chosen 0 means "find one". */
     private record Request(int humanId, int chosenCitizenId, boolean forced) { }
 
     private final Population population;
@@ -243,7 +243,7 @@ public final class Coliseum {
 
     // ---- the minute -----------------------------------------------------------------------------------------------
 
-    /** The social minute: Tigun stands (or goes when switched off), and citizens play their own ladder matches. */
+    /** The social minute: Cesar stands (or goes when switched off), and citizens play their own ladder matches. */
     public void minute() {
         try {
             tournament.minute(System.currentTimeMillis()); // cancels a restart's leftover run even when off
@@ -276,9 +276,9 @@ public final class Coliseum {
         }
     }
 
-    // ---- Tigun ----------------------------------------------------------------------------------------------------
+    // ---- Cesar ----------------------------------------------------------------------------------------------------
 
-    /** A player clicked an NPC: Tigun opens the ladder (true); anything else is not ours. */
+    /** A player clicked an NPC: Cesar opens the ladder (true); anything else is not ours. */
     public boolean clicked(Character player, int objectId) {
         ColiseumNpcs.Role role = npcs.roleOf(player, objectId);
         if (role == null || !on()) {
@@ -295,12 +295,12 @@ public final class Coliseum {
         return false;
     }
 
-    /** {@code !pvp coliseum shop}: Jano's window, wherever the GM stands and with the coliseum off. */
+    /** {@code !pvp coliseum shop}: Sejan's window, wherever the GM stands and with the coliseum off. */
     public void shop(Character gm) {
         quartermaster.talk(gm);
     }
 
-    private static final int TIGUN = 2101004;
+    private static final int CESAR = 2101014;
 
     void talk(Character player) {
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
@@ -309,10 +309,10 @@ public final class Coliseum {
                 () -> watch(player, null, false));
         LivingTalk.Option weekly = new LivingTalk.Option("#bThe weekly tournament#k", () -> tournamentTalk(player));
         if (bracket.isEmpty()) {
-            LivingTalk.open(player, TIGUN).menu("The ladder starts at Lv 30. Train up and come back.\r\n\r\n"
+            LivingTalk.open(player, CESAR).menu("The ladder starts at Lv 30. Train up and come back.\r\n\r\n"
                     + "Out there it is one against one, best of three, and no potions of your own. You can watch"
                     + " in the meantime.", List.of(watch, weekly, new LivingTalk.Option("#bThe ladder board#k",
-                    () -> board.show(player, TIGUN, () -> talk(player))))).show();
+                    () -> board.show(player, CESAR, () -> talk(player))))).show();
             return;
         }
         long now = System.currentTimeMillis();
@@ -321,20 +321,20 @@ public final class Coliseum {
         long fee = fee(player.getLevel());
         List<LivingTalk.Option> options = new ArrayList<>();
         options.add(new LivingTalk.Option("#bFight a ladder match#k (" + mesos(fee) + " mesos)",
-                () -> LivingTalk.open(player, TIGUN).yesNo("A ladder match costs #b" + mesos(fee) + " mesos#k, win or"
+                () -> LivingTalk.open(player, CESAR).yesNo("A ladder match costs #b" + mesos(fee) + " mesos#k, win or"
                         + " lose. Fight now?", () -> request(player, 0, false), () -> talk(player)).show()));
         options.add(new LivingTalk.Option("#bFight with my companions#k", () -> teamTalk(player)));
         options.add(watch);
         options.add(weekly);
-        options.add(new LivingTalk.Option("#bThe ladder board#k", () -> board.show(player, TIGUN, () -> talk(player))));
+        options.add(new LivingTalk.Option("#bThe ladder board#k", () -> board.show(player, CESAR, () -> talk(player))));
         options.add(new LivingTalk.Option("#bHow the ladder works#k", () -> rules(player)));
-        LivingTalk.open(player, TIGUN).menu("I'm Tigun. I keep Ariant's ladder.\r\n\r\nYour bracket: #b"
+        LivingTalk.open(player, CESAR).menu("I'm Cesar. I keep Ariant's ladder.\r\n\r\nYour bracket: #b"
                 + bracket.get().label + "#k (" + bracket.get().range() + "), rated #b" + Math.round(rating.rating())
                 + "#k, " + row.wins() + "-" + row.losses() + ".", options).show();
     }
 
     /**
-     * V6, team fights in Tigun's window: a 2v2 or 3v3 on the team ladder (as many of the player's companions as stand
+     * V6, team fights in Cesar's window: a 2v2 or 3v3 on the team ladder (as many of the player's companions as stand
      * with it), or a Crew War against its rival crew; the player's team rating for its bracket.
      */
     private void teamTalk(Character player) {
@@ -352,7 +352,7 @@ public final class Coliseum {
         for (int size = TeamRules.MIN_SIZE; size <= fieldable; size++) {
             int chosen = size;
             options.add(new LivingTalk.Option("#bA " + size + "v" + size + "#k (" + mesos(fee) + " mesos)",
-                    () -> LivingTalk.open(player, TIGUN).yesNo("A " + chosen + "v" + chosen + " costs #b" + mesos(fee)
+                    () -> LivingTalk.open(player, CESAR).yesNo("A " + chosen + "v" + chosen + " costs #b" + mesos(fee)
                             + " mesos#k, win or lose. Fight now?", () -> teamRequest(player, chosen, false, false),
                             () -> teamTalk(player)).show()));
         }
@@ -367,14 +367,14 @@ public final class Coliseum {
                 + Math.round(teams.book().teamRating(List.of(player.getId()), bracket.get(), now).rating()) + "#k, "
                 + row.wins() + "-" + row.losses() + ".";
         if (options.isEmpty()) {
-            LivingTalk.open(player, TIGUN).ok(head + "\r\n\r\n#rNone of your companions is standing with you.#k")
+            LivingTalk.open(player, CESAR).ok(head + "\r\n\r\n#rNone of your companions is standing with you.#k")
                     .back(() -> talk(player)).show();
             return;
         }
-        LivingTalk.open(player, TIGUN).menu(head, options).back(() -> talk(player)).show();
+        LivingTalk.open(player, CESAR).menu(head, options).back(() -> talk(player)).show();
     }
 
-    /** The tournament's page in Tigun's window: sign up or take it back, watch, the board, the rules. */
+    /** The tournament's page in Cesar's window: sign up or take it back, watch, the board, the rules. */
     private void tournamentTalk(Character player) {
         PvpConfig pvp = YamlConfig.config.pvp;
         List<LivingTalk.Option> options = new ArrayList<>();
@@ -385,13 +385,13 @@ public final class Coliseum {
             } else {
                 String fee = mesos(TournamentRules.fee(player.getLevel(), pvp.TOURNAMENT_FEE_PER_LEVEL));
                 options.add(new LivingTalk.Option("#bSign up#k (" + fee + " mesos)",
-                        () -> LivingTalk.open(player, TIGUN).yesNo("Signing up costs #b" + fee + " mesos#k. You get it"
+                        () -> LivingTalk.open(player, CESAR).yesNo("Signing up costs #b" + fee + " mesos#k. You get it"
                                 + " back if you take your sign-up back before the tournament starts. Sign up?",
                                 () -> tournament.signUp(player, false), () -> tournamentTalk(player)).show()));
             }
         }
         options.add(new LivingTalk.Option("#bWatch the tournament#k", () -> tournament.watch(player, null)));
-        options.add(new LivingTalk.Option("#bHow it works#k", () -> LivingTalk.open(player, TIGUN)
+        options.add(new LivingTalk.Option("#bHow it works#k", () -> LivingTalk.open(player, CESAR)
                 .ok("Every Lv bracket has its own knockout, " + pvp.TOURNAMENT_SEATS + " seats. Players who sign up take"
                         + " theirs first; my best-rated fighters fill the rest, and the better your rating the easier"
                         + " your first bout. Each bout is a best of three under ladder rules, and a new round starts"
@@ -401,13 +401,13 @@ public final class Coliseum {
                         + " and a quarter; the semi-finalists " + TournamentRules.TROPHIES[1] + "; everyone else who"
                         + " fought " + TournamentRules.TROPHIES[0] + ".")
                 .back(() -> tournamentTalk(player)).show()));
-        LivingTalk.open(player, TIGUN).menu((Tournament.on() ? "" : "#r(The tournament is closed for now.)#k\r\n\r\n")
+        LivingTalk.open(player, CESAR).menu((Tournament.on() ? "" : "#r(The tournament is closed for now.)#k\r\n\r\n")
                 + tournament.boardText(System.currentTimeMillis()), options).back(() -> talk(player)).show();
     }
 
     private void rules(Character player) {
         PvpConfig pvp = YamlConfig.config.pvp;
-        LivingTalk.open(player, TIGUN)
+        LivingTalk.open(player, CESAR)
                 .say("I find you someone in your bracket within " + LadderRules.LEVEL_WINDOW + " levels, the nearest to"
                         + " your rating, and you fight on a closed arena floor. Best of three rounds, " + pvp.COLISEUM_ROUND_SECONDS
                         + " seconds each. A round still going at the bell goes to whoever kept more of their HP.")
@@ -449,7 +449,7 @@ public final class Coliseum {
         }
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(human.getLevel());
         if (bracket.isEmpty() || !human.isAlive() || human.getEventInstance() != null || human.getClient() == null) {
-            human.dropMessage(5, "Tigun: the ladder is for the living, Lv 30 and up, and not from inside an event.");
+            human.dropMessage(5, "Cesar: the ladder is for the living, Lv 30 and up, and not from inside an event.");
             return;
         }
         Glicko2.Rating mine = book.rating(human.getId(), bracket.get(), now);
@@ -457,13 +457,13 @@ public final class Coliseum {
                 : nearest(human, bracket.get(), mine, now);
         if (opponent == null) {
             human.dropMessage(5, request.chosenCitizenId() > 0
-                    ? "Tigun: that one is not free to fight on this channel right now."
-                    : "Tigun: nobody in your bracket near your rating is free right now. Try again in a minute.");
+                    ? "Cesar: that one is not free to fight on this channel right now."
+                    : "Cesar: nobody in your bracket near your rating is free right now. Try again in a minute.");
             return;
         }
         long fee = request.forced() || human.isGM() ? 0L : fee(human.getLevel());
         if (fee > 0 && human.getMeso() < fee) {
-            human.dropMessage(5, "Tigun: the fee is " + mesos(fee) + " mesos.");
+            human.dropMessage(5, "Cesar: the fee is " + mesos(fee) + " mesos.");
             return;
         }
         if (fee > 0) {
@@ -478,7 +478,7 @@ public final class Coliseum {
         Match match = new Match(human, opponent, bracket.get(), odds, request.forced(), fee, arena, now);
         population.presence().hold(opponent.characterId, now + HOLD_MS);
         byHuman.put(human.getId(), match);
-        human.dropMessage(5, "Tigun: you fight " + foe.getName() + " (Lv " + foe.getLevel() + " " + jobName(foe)
+        human.dropMessage(5, "Cesar: you fight " + foe.getName() + " (Lv " + foe.getLevel() + " " + jobName(foe)
                 + "), rated " + Math.round(theirs.rating()) + ". To the arena!");
         log.info("Coliseum: {} (Lv {}, {}) against {} (Lv {}, {}) in {}, odds {}{}", human.getName(), human.getLevel(),
                 Math.round(mine.rating()), foe.getName(), foe.getLevel(), Math.round(theirs.rating()), bracket.get(),
@@ -797,7 +797,7 @@ public final class Coliseum {
         if (pay.trophies() > 0) {
             if (InventoryManipulator.addById(human.getClient(), ItemId.EVENT_TROPHY, (short) pay.trophies())) {
                 human.sendPacket(PacketCreator.getShowItemGain(ItemId.EVENT_TROPHY, (short) pay.trophies(), true));
-                human.dropMessage(5, "Tigun pays " + pay.trophies() + (pay.trophies() == 1 ? " Event Trophy." : " Event Trophies."));
+                human.dropMessage(5, "Cesar pays " + pay.trophies() + (pay.trophies() == 1 ? " Event Trophy." : " Event Trophies."));
             } else {
                 human.dropMessage(5, "Your inventory is full, so the ladder's Trophies were lost.");
             }
@@ -819,7 +819,7 @@ public final class Coliseum {
         }
         Character human = online(match.humanId);
         if (human != null) {
-            human.dropMessage(5, "Tigun: the match is off (" + why + ")." + (refund && match.fee > 0
+            human.dropMessage(5, "Cesar: the match is off (" + why + ")." + (refund && match.fee > 0
                     ? " Here is your fee back." : ""));
             if (refund && match.fee > 0) {
                 try (var ledgerScope = MesoFlows.as(MesoAccount.PVP_FEE)) {
@@ -956,7 +956,7 @@ public final class Coliseum {
         tournament.watch(gm, bracketWord == null ? null : bracket(bracketWord));
     }
 
-    /** {@code !pvp tournament} with nothing else: Tigun's tournament page, wherever the GM stands. */
+    /** {@code !pvp tournament} with nothing else: Cesar's tournament page, wherever the GM stands. */
     public void tournamentTalk(Character gm, boolean asGm) {
         tournamentTalk(gm);
     }

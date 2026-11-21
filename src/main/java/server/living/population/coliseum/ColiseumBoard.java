@@ -9,7 +9,7 @@ import java.util.Optional;
 
 /**
  * The ladder's pages (docs/PVP_PLAN.md V4.4): where you stand, each bracket's top 10 with how far each moved this
- * week, and the week's biggest climbs. Tigun shows them, and so does the F1 Bulletin Board's "Coliseum" page, so a
+ * week, and the week's biggest climbs. Cesar shows them, and so does the F1 Bulletin Board's "Coliseum" page, so a
  * player back from a break sees who moved while they were away.
  */
 final class ColiseumBoard {
@@ -54,14 +54,14 @@ final class ColiseumBoard {
     String standing(Character player, long now) {
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
         if (bracket.isEmpty()) {
-            return "The ladder starts at Lv 30. Tigun in Ariant still lets anyone watch from the gallery.";
+            return "The ladder starts at Lv 30. Cesar in Ariant still lets anyone watch from the gallery.";
         }
         LadderBook.Row row = book.row(player.getId(), bracket.get());
         long rating = Math.round(book.rating(player.getId(), bracket.get(), now).rating());
         String head = "Your bracket: #b" + bracket.get().label + "#k (" + bracket.get().range() + "), rated #b" + rating
                 + "#k, " + row.wins() + "-" + row.losses();
         if (row.played() == 0) {
-            return head + ". Fight Tigun's ladder in Ariant to get on the board.";
+            return head + ". Fight Cesar's ladder in Ariant to get on the board.";
         }
         int[] standing = book.standing(player.getId(), bracket.get());
         int climbed = row.climbed(LadderBook.week(now));

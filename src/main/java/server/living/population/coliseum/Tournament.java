@@ -40,15 +40,15 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * The weekly tournament (docs/PVP_PLAN.md V5). Each ladder bracket gets a knockout of {@code TOURNAMENT_SEATS} seats on
  * {@code TOURNAMENT_DAY} at {@code TOURNAMENT_HOUR}, server time, fought on {@code TOURNAMENT_CHANNEL}. Players sign up
- * with Tigun from Monday (paying {@code TOURNAMENT_FEE_PER_LEVEL} mesos a level) and take seats first; the best-rated
+ * with Cesar from Monday (paying {@code TOURNAMENT_FEE_PER_LEVEL} mesos a level) and take seats first; the best-rated
  * free citizens on that channel fill the rest and pay the same. Seeds go by ladder rating, and rounds start
  * {@code TOURNAMENT_ROUND_MINUTES} apart. A bout with a player in it is fought live on a closed arena floor; a citizen
- * bout is fought live when someone asked Tigun to watch, otherwise simulated ({@link DuelSim}). A drawn bout sends the
+ * bout is fought live when someone asked Cesar to watch, otherwise simulated ({@link DuelSim}). A drawn bout sends the
  * better seed on. Rounds are announced with server notices; the champion gets one more, the medal for a week, and a
  * citizen's own megaphone tells the rest.
  *
  * <p>Prizes ({@link TournamentRules#prize}): Trophies by how far a seat got, and half the entry pool to the champion,
- * a quarter to the finalist; the house keeps the last quarter. A player offline at the end is owed theirs, and Tigun
+ * a quarter to the finalist; the house keeps the last quarter. A player offline at the end is owed theirs, and Cesar
  * pays it on their next visit. A player who never showed for a bout wins nothing. Bouts do not move ladder ratings;
  * they are booked in {@code pvp_match} as kind TOURNAMENT.
  *
@@ -62,7 +62,7 @@ public final class Tournament {
     static final int MEDAL = 1142077;
     /** The letters' news kind (CompanionLetters): a player's result, told when they were away for it. */
     public static final String NEWS_EVENT = "coliseum.tournament";
-    static final String MASTER = "Tigun";
+    static final String MASTER = "Cesar";
     /** The longest letter a note holds. */
     static final int LETTER_MAX = 200;
     /** Signed-up players hear this long before the start. */
@@ -296,7 +296,7 @@ public final class Tournament {
 
     // ---- signing up -------------------------------------------------------------------------------------------------
 
-    /** A player signs up for their bracket's tournament this week (from Tigun's window, or a GM's command). */
+    /** A player signs up for their bracket's tournament this week (from Cesar's window, or a GM's command). */
     void signUp(Character player, boolean forced) {
         PvpConfig pvp = YamlConfig.config.pvp;
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
@@ -389,7 +389,7 @@ public final class Tournament {
         player.dropMessage(5, MASTER + ": your name is off the list." + (fee > 0 ? " Here is your fee back." : ""));
     }
 
-    /** Whether {@code player} is signed up for this week (for Tigun's window). */
+    /** Whether {@code player} is signed up for this week (for Cesar's window). */
     boolean signedUp(Character player) {
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(player.getLevel());
         Optional<TournamentStore.Week> row = bracket.flatMap(b -> store.week(b.name(),

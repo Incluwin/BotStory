@@ -1,4 +1,4 @@
-# The Arena Quartermaster (Jano in Ariant, docs/PVP_PLAN.md V4.3): what Event Trophies (4000038) buy.
+# The Arena Quartermaster (Sejan in Ariant, docs/PVP_PLAN.md V4.3): what Event Trophies (4000038) buy.
 # Each line under "stock": an item id, or weapon60 / weapon10 for the 60% / 10% attack scroll for the weapon you
 # hold; then the bundle size and its price in Trophies. The window lists them in this order.
 # Prices follow section 2's priors: consumables 2-5, a 60% scroll 15, a 10% scroll 40, a chair 30, the medal 60.

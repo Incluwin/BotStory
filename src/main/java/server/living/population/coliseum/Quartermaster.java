@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The Arena Quartermaster (docs/PVP_PLAN.md V4.3): Jano, beside Tigun in Ariant, trades Event Trophies for the stock in
+ * The Arena Quartermaster (docs/PVP_PLAN.md V4.3): Sejan, beside Cesar in Ariant, trades Event Trophies for the stock in
  * {@link #FILE}. Trophies are bound (trade, shops, drops and Duey refuse them), so this is the only place they spend.
  * A trade takes the Trophies only once the item fits, and gives them back if the item does not arrive.
  */
@@ -28,7 +28,7 @@ final class Quartermaster {
     private static final Logger log = LoggerFactory.getLogger(Quartermaster.class);
 
     static final Path FILE = Path.of("scripts", "config", "pvp", "quartermaster.yaml");
-    static final int JANO = 2101010;
+    static final int SEJAN = 2101011;
     static final String WEAPON_60 = "weapon60";
     static final String WEAPON_10 = "weapon10";
 
@@ -129,7 +129,7 @@ final class Quartermaster {
         List<Ware> wares = stock();
         int trophies = trophies(player);
         if (wares.isEmpty()) {
-            LivingTalk.open(player, JANO).ok("Nothing on my shelves today. Come back later.").show();
+            LivingTalk.open(player, SEJAN).ok("Nothing on my shelves today. Come back later.").show();
             return;
         }
         int weaponId = weaponId(player);
@@ -137,7 +137,7 @@ final class Quartermaster {
         for (Ware ware : wares) {
             options.add(new LivingTalk.Option(label(ware, ware.itemFor(weaponId)), () -> confirm(player, ware)));
         }
-        LivingTalk.open(player, JANO).menu("I'm Jano. What you win in the arena, you spend with me, and nowhere else."
+        LivingTalk.open(player, SEJAN).menu("I'm Sejan. What you win in the arena, you spend with me, and nowhere else."
                 + "\r\n\r\nYou have #b" + trophies + " Event " + (trophies == 1 ? "Trophy" : "Trophies") + "#k.",
                 options).show();
     }
@@ -156,10 +156,10 @@ final class Quartermaster {
         int itemId = ware.itemFor(weaponId(player));
         String why = refusal(ware, itemId, trophies(player), true, false);
         if (why != null) {
-            LivingTalk.open(player, JANO).ok(why).back(() -> talk(player)).show();
+            LivingTalk.open(player, SEJAN).ok(why).back(() -> talk(player)).show();
             return;
         }
-        LivingTalk.open(player, JANO).yesNo(ware.price() + " Event Trophies for #b#t" + itemId + "#"
+        LivingTalk.open(player, SEJAN).yesNo(ware.price() + " Event Trophies for #b#t" + itemId + "#"
                         + (ware.bundle() > 1 ? " x" + ware.bundle() : "") + "#k?",
                 () -> trade(player, ware), () -> talk(player)).show();
     }
@@ -172,7 +172,7 @@ final class Quartermaster {
         boolean fits = itemId > 0 && InventoryManipulator.checkSpace(player.getClient(), itemId, ware.bundle(), "");
         String why = refusal(ware, itemId, trophies, fits, oneOfAKind);
         if (why != null) {
-            LivingTalk.open(player, JANO).ok(why).back(() -> talk(player)).show();
+            LivingTalk.open(player, SEJAN).ok(why).back(() -> talk(player)).show();
             return;
         }
         InventoryManipulator.removeById(player.getClient(), InventoryType.ETC, ItemId.EVENT_TROPHY, ware.price(), false,
@@ -181,13 +181,13 @@ final class Quartermaster {
             InventoryManipulator.addById(player.getClient(), ItemId.EVENT_TROPHY, (short) ware.price());
             log.warn("Quartermaster: {} x{} did not reach {}; {} Trophies given back", itemId, ware.bundle(),
                     player.getName(), ware.price());
-            LivingTalk.open(player, JANO).ok("Hm, that didn't go through. Your Trophies are back with you.").show();
+            LivingTalk.open(player, SEJAN).ok("Hm, that didn't go through. Your Trophies are back with you.").show();
             return;
         }
         player.sendPacket(PacketCreator.getShowItemGain(itemId, (short) ware.bundle(), true));
         log.info("Quartermaster: {} traded {} Trophies for {} x{} ({} left)", player.getName(), ware.price(), itemId,
                 ware.bundle(), trophies - ware.price());
-        LivingTalk.open(player, JANO).ok("Pleasure doing business. Win me some more of those.")
+        LivingTalk.open(player, SEJAN).ok("Pleasure doing business. Win me some more of those.")
                 .back(() -> talk(player)).show();
     }
 

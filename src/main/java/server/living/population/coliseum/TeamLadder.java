@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Team fights (docs/PVP_PLAN.md V6): a player and its companions against citizens, 2v2 or 3v3, best of three under
- * coliseum rules on a private arena floor. Two kinds: a team ladder match (Tigun finds a citizen team, from one guild
+ * coliseum rules on a private arena floor. Two kinds: a team ladder match (Cesar finds a citizen team, from one guild
  * when he can, rated nearest the player's team) and a Crew War (the player's rival crew answers, and the result counts
  * on the crew's head-to-head as a challenge does). Team ratings are kept apart from 1v1 (a {@code TEAM_} book): every
  * fighter has its own, a team rates as the mean. The companions run the duel brain on the player's side and pick their
@@ -213,13 +213,13 @@ final class TeamLadder {
         }
         Optional<LadderRules.Bracket> bracket = LadderRules.Bracket.of(human.getLevel());
         if (bracket.isEmpty() || !human.isAlive() || human.getEventInstance() != null || human.getClient() == null) {
-            human.dropMessage(5, "Tigun: team fights are for the living, Lv 30 and up, and not from inside an event.");
+            human.dropMessage(5, "Cesar: team fights are for the living, Lv 30 and up, and not from inside an event.");
             return;
         }
         List<Character> companions = companionsHere(human);
         int fieldable = TeamRules.fieldable(companions.size());
         if (fieldable < TeamRules.MIN_SIZE) {
-            human.dropMessage(5, "Tigun: a team fight needs a companion standing with you.");
+            human.dropMessage(5, "Cesar: a team fight needs a companion standing with you.");
             return;
         }
         int channel = human.getClient().getChannel();
@@ -230,7 +230,7 @@ final class TeamLadder {
         if (request.kind() == Kind.CREW_WAR) {
             crew = population().rivals() == null ? null : population().rivals().crewOfMain(human.getId());
             if (crew == null) {
-                human.dropMessage(5, "Tigun: no crew has a grudge with you yet. Make some rivals first.");
+                human.dropMessage(5, "Cesar: no crew has a grudge with you yet. Make some rivals first.");
                 return;
             }
             List<Integer> free = new ArrayList<>();
@@ -245,7 +245,7 @@ final class TeamLadder {
             }
             size = Math.min(fieldable, free.size());
             if (size < TeamRules.MIN_SIZE) {
-                human.dropMessage(5, "Tigun: " + crew.name() + " can't send " + TeamRules.MIN_SIZE + " on this channel"
+                human.dropMessage(5, "Cesar: " + crew.name() + " can't send " + TeamRules.MIN_SIZE + " on this channel"
                         + " right now. Try again later.");
                 return;
             }
@@ -254,7 +254,7 @@ final class TeamLadder {
         } else {
             size = Math.max(TeamRules.MIN_SIZE, Math.min(TeamRules.MAX_SIZE, request.size()));
             if (size > fieldable) {
-                human.dropMessage(5, "Tigun: a " + size + "v" + size + " needs " + (size - 1) + " of your companions"
+                human.dropMessage(5, "Cesar: a " + size + "v" + size + " needs " + (size - 1) + " of your companions"
                         + " standing with you.");
                 return;
             }
@@ -265,7 +265,7 @@ final class TeamLadder {
                     book.teamRating(mine, bracket.get(), now), size, freeMembers(channel, human.getId(), bracket.get(),
                             now));
             if (team.isEmpty()) {
-                human.dropMessage(5, "Tigun: I can't find " + size + " in your bracket free on this channel right now."
+                human.dropMessage(5, "Cesar: I can't find " + size + " in your bracket free on this channel right now."
                         + " Try again in a minute.");
                 return;
             }
@@ -282,7 +282,7 @@ final class TeamLadder {
         long fee = request.kind() == Kind.CREW_WAR || request.forced() || human.isGM() ? 0L
                 : Coliseum.fee(human.getLevel());
         if (fee > 0 && human.getMeso() < fee) {
-            human.dropMessage(5, "Tigun: the fee is " + mesos(fee) + " mesos.");
+            human.dropMessage(5, "Cesar: the fee is " + mesos(fee) + " mesos.");
             return;
         }
         if (fee > 0) {
@@ -300,8 +300,8 @@ final class TeamLadder {
         }
         byHuman.put(human.getId(), match);
         human.dropMessage(5, request.kind() == Kind.CREW_WAR
-                ? "Tigun: " + crew.name() + " answers your Crew War with " + names(foes) + ". To the arena!"
-                : "Tigun: your " + match.label() + " is against " + foeName + " (" + names(foes) + "), rated "
+                ? "Cesar: " + crew.name() + " answers your Crew War with " + names(foes) + ". To the arena!"
+                : "Cesar: your " + match.label() + " is against " + foeName + " (" + names(foes) + "), rated "
                 + Math.round(theirs.rating()) + ". To the arena!");
         log.info("Team ladder: {} {} {} against {} {} in {}, team ratings {} vs {}, odds {}{}", match.label(),
                 human.getName(), names(side0), foeName, names(foes), bracket.get(), Math.round(ours.rating()),
@@ -572,7 +572,7 @@ final class TeamLadder {
         }
         Character human = Coliseum.online(match.humanId);
         if (human != null) {
-            human.dropMessage(5, "Tigun: the " + match.label() + " is off (" + why + ")." + (refund && match.fee > 0
+            human.dropMessage(5, "Cesar: the " + match.label() + " is off (" + why + ")." + (refund && match.fee > 0
                     ? " Here is your fee back." : ""));
             if (refund && match.fee > 0) {
                 try (var ledgerScope = MesoFlows.as(MesoAccount.PVP_FEE)) {
