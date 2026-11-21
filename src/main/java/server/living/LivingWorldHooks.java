@@ -1184,7 +1184,7 @@ public final class LivingWorldHooks {
                 return true; // the casino's chip cashier in Game Park (docs/SOLOMAPLING_PORT.md)
             }
             if (population != null && population.coliseum() != null && population.coliseum().clicked(clicker, objectId)) {
-                return true; // Tigun, the coliseum ladder's Arena Master in Ariant (docs/PVP_PLAN.md V4)
+                return true; // Cesar, the coliseum ladder's Arena Master in Ariant (docs/PVP_PLAN.md V4)
             }
             if (!world.markers().isHitbox(clicker, objectId)) {
                 return false;

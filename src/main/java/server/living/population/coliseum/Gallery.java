@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * Watching from the gallery (docs/PVP_PLAN.md V4.4). Tigun puts two free citizens of a bracket, the best rated one and
+ * Watching from the gallery (docs/PVP_PLAN.md V4.4). Cesar puts two free citizens of a bracket, the best rated one and
  * its nearest-rated foe, in a real best of three on a closed arena floor, and the watcher ringside at the floor's
  * right end. That is the watched-citizen rule: a citizen ladder match is fought for real only while a human
  * watches it; the rest stay simulated ({@link Coliseum#simulate}). A watched result counts on the ladder like any
@@ -160,11 +160,11 @@ final class Gallery {
         }
         if (byWatcher.containsKey(watcher.getId()) || coliseum.inMatch(watcher.getId())
                 || DuelRegistry.inDuel(watcher.getId())) {
-            watcher.dropMessage(5, "Tigun: one thing at a time. You are in a match or watching one already.");
+            watcher.dropMessage(5, "Cesar: one thing at a time. You are in a match or watching one already.");
             return;
         }
         if (!watcher.isAlive() || watcher.getEventInstance() != null || watcher.getClient() == null) {
-            watcher.dropMessage(5, "Tigun: not from inside an event.");
+            watcher.dropMessage(5, "Cesar: not from inside an event.");
             return;
         }
         int channel = watcher.getClient().getChannel();
@@ -190,7 +190,7 @@ final class Gallery {
         }
         Optional<int[]> pair = pair(candidates);
         if (pair.isEmpty()) {
-            watcher.dropMessage(5, "Tigun: no two " + bracket.label + " fighters near each other are free on this"
+            watcher.dropMessage(5, "Cesar: no two " + bracket.label + " fighters near each other are free on this"
                     + " channel right now. Try again in a minute.");
             return;
         }
@@ -202,7 +202,7 @@ final class Gallery {
         coliseum.population().presence().hold(a.getId(), now + Coliseum.HOLD_MS);
         coliseum.population().presence().hold(b.getId(), now + Coliseum.HOLD_MS);
         byWatcher.put(watcher.getId(), bout);
-        watcher.dropMessage(5, "Tigun: from the gallery, " + a.getName() + " (Lv " + a.getLevel() + " "
+        watcher.dropMessage(5, "Cesar: from the gallery, " + a.getName() + " (Lv " + a.getLevel() + " "
                 + Coliseum.jobName(a) + ", " + Math.round(ratingA.rating()) + ") against " + b.getName() + " (Lv "
                 + b.getLevel() + " " + Coliseum.jobName(b) + ", " + Math.round(ratingB.rating()) + "). To your seat!");
         log.info("Gallery: {} watches {} ({}) against {} ({}) in {}, odds {}{}", watcher.getName(), a.getName(),
@@ -373,7 +373,7 @@ final class Gallery {
         }
         Character watcher = Coliseum.online(bout.watcherId);
         if (watcher != null) {
-            watcher.dropMessage(5, "Tigun: the bout is off (" + why + "). Nobody's rating moves.");
+            watcher.dropMessage(5, "Cesar: the bout is off (" + why + "). Nobody's rating moves.");
         }
         log.info("Gallery: {} against {} called off: {}", bout.aName, bout.bName, why);
         close(bout);

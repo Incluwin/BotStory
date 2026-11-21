@@ -142,7 +142,7 @@ public class PvpCommand extends Command {
 
     /**
      * {@code !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]} (V5): with nothing
-     * else, Tigun's tournament page wherever the GM stands; status lists the runs; signup puts the GM's name down for
+     * else, Cesar's tournament page wherever the GM stands; status lists the runs; signup puts the GM's name down for
      * this week (no fee); start runs a bracket's tournament now, even with the switch off, with 2, 4 or 8 seats and
      * rounds that many minutes apart, and "me" seats the GM without signing up.
      */

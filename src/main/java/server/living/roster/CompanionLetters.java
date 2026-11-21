@@ -339,7 +339,7 @@ public final class CompanionLetters {
     }
 
     /**
-     * The weekly tournament's results the player was away for (docs/PVP_PLAN.md V5): one note from Tigun, inside
+     * The weekly tournament's results the player was away for (docs/PVP_PLAN.md V5): one note from Cesar, inside
      * LETTERS_MAX_NOTES and the inbox's room. Who signed it, or null when there was none or no room.
      */
     private String tournamentNote(Character owner, List<CharacterEvent> window, int sent) {
