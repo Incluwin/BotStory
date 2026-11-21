@@ -747,7 +747,7 @@ public final class PresenceScheduler {
         int salon = salons.planned(session, now);
         session.salonNpc = salon;
         if (salon != 0) {
-            return Activity.TOWN; // a luxury the economy controller allows (E4b): a visit to its region's hair salon
+            return Activity.TOWN; // a luxury the economy controller allows (E4b): a visit to a stylist near home
         }
         Cohort cohort = population.content().cohort(citizen.cohort());
         Map<String, Integer> weights = cohort == null ? Map.of("TRAIN", 60, "TOWN", 40) : cohort.activities();
@@ -1119,17 +1119,24 @@ public final class PresenceScheduler {
     }
 
     /**
-     * Ops/test knob (!citizens salon): this loaded citizen goes to its hair salon now, whatever the luxury lever and its
-     * daily roll say (docs/ECONOMY_PLAN.md E4b). Null when it went, else why not.
+     * Ops/test knob (!citizens salon): this loaded citizen goes to its stylist for {@code look} (HAIR, FACE or SKIN) now,
+     * whatever the luxury lever and its daily rolls say (docs/ECONOMY_PLAN.md E4b, section 9.6). Null when it went, else
+     * why not.
      */
-    public synchronized String sendToSalon(int characterId, long now) {
+    public synchronized String sendToSalon(int characterId, String look, long now) {
         CitizenSession session = sessions.get(characterId);
         if (session == null || !session.loaded() || !movable(session)) {
             return "not loaded, or busy (a party quest, stall, errand or move)";
         }
-        CitizenSalons.Salon salon = salons.salonFor(session);
+        CitizenSalons.Look kind;
+        try {
+            kind = CitizenSalons.Look.valueOf(look.toUpperCase());
+        } catch (IllegalArgumentException unknown) {
+            return "no such look (hair, face or skin)";
+        }
+        CitizenSalons.Salon salon = salons.salonFor(session, kind);
         if (salon == null) {
-            return "may not go: a hired hand or persona, no salon for its region, or short of the price over its level's meso";
+            return "may not go: a hired hand or persona, no stylist near its region, or short of the price over its level's meso";
         }
         session.salonNpc = salon.npcId();
         session.lastPlanAtMs = now;
