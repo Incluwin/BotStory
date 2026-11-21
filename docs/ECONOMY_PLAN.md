@@ -621,3 +621,33 @@ Decisions for the user:
     - (c) a salon trip or a local luxury for the 95 citizens in regions without one;
     - (d) wealth-scaled luxuries (a rich citizen spends more than 1 M).
 - **Open:** the ramp (steps 3 and 5, gated on the closes above), then R5 (companion_yield, PvP grind-minutes).
+
+### 9.6 More room for the luxury lever (built 2026-11-20, not deployed)
+
+User: "Build a, b and c" (options from 9.5). Branch `feat/economy-luxury` 8eb82cbbc, merged into the main line as
+85d2aa3d1. Full split suite 16,456 / 0 / 33.
+
+- **(a) Rolls kept across restarts.** Each citizen's daily roll for each look is stored in `living_luxury_roll`
+  (changeset 63, file 054), read once at the first roll after a start. A restart no longer rolls the same UTC day
+  again. The table starts empty, so on the deploy day every citizen rolls once more.
+- **(b) Face and skin.** Besides the 8 hair salons, `CitizenSalons.SALONS` now has 9 plastic surgeons and 7 skin-care
+  shops, each 1,000,000 meso like their scripts' coupons. Each look (HAIR, FACE, SKIN) has its own daily roll at the
+  luxury lever's chance; one plan sends a citizen to one stylist at most, so a rich citizen can make up to three visits
+  a day. A face is one of the surgeon's VIP faces in the citizen's own eye colour (the scripts' rule); a skin is another
+  tone from the shop's list. Showa and Amoria have no skin-care shop in the scripts.
+- **(c) Regions without a stylist.** `CitizenSalons.NEXT` sends a citizen to the next region along the way players
+  travel: Rien, Ereve, Ellin Forest, Coke Town and Singapore to Victoria; Malaysia to Singapore; Aquarium, Leafre and
+  Ariant to Orbis; the Temple of Time to Leafre; Crimsonwood to New Leaf City. Singapore and Ariant have their own
+  surgeon and skin-care shop, so only their hair visits travel.
+- `!citizens salon <name> [hair|face|skin]` sends a loaded citizen to any of the three.
+- Tests: `CitizenSalonsTest` (11, 6 new: three looks a day, kept rolls, far regions, faces, skins, every stylist's
+  script list) and `LuxuryRollSchemaTest`.
+
+**Projection.** Honest salon visits at luxury 0.5 were about 250 a day (9.5). At the 0.6 set for 11-21, three looks
+and the far regions give roughly 850-950 visits, **about 0.8-1.0 B a day against about 0.25 B now**. On 11-20's
+numbers (+362 M) the first full day would close near -2 %. The controller then lowers luxury 0.1 a close (about
+0.15 B each), so growth should come back near target in about three closes, with luxury near 0.3. At the 0.8
+maximum the lever reaches about 1.2-1.3 B a day, so step 3 has room. The money still leaves only as SERVICE, so no
+new account is needed.
+
+**Not done:** not deployed; the live server still runs 7c70f43c7.
