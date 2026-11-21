@@ -566,4 +566,30 @@ Decisions for the user:
     spending. That may bring growth to around the target.
   - With pickup at its floor, only luxury (up to 0.8) is left for step 3. 0 ERROR lines in today's log.
   - Gate: step 3 after a close at or under 2 %. The 11-20 close is the first with pickup at 0.10.
+- **11-20 close (19:01:31; the first day with pickup at 0.10 and luxury 0.5): organic growth 2.39 %** (+362 M on 15.18 B),
+  down from 3.08 %. Still between the gates, so **hold step 2**.
+  - Controller: pickup stays 0.10 (floor); luxury 0.5 -> 0.6; budget x1.58 -> x1.63, because the basket fell 2.66 %
+    (outside its band).
+  - Live unchanged: 7c70f43c7, STEPS 2, no restart, 0 ERROR lines. About 196 citizens loaded on average (afternoons 248).
+  - Citizens, 11-19 -> 11-20:
+
+    | Account | 11-19 | 11-20 |
+    |---|---|---|
+    | real vendoring | +653 M | +415 M |
+    | MOB_DROP | +289 M (196,086 pickups) | +281 M (178,339) |
+    | shop buying | -213 M | -204 M |
+    | salons | -267 M (267) | -216 M (216) |
+    | CASINO | -1 M | **+88 M** |
+
+  - **Pickup works:** 0.19 -> 0.10 cut vendoring 238 M (36 %), near the projected 0.3 B, on 9 % fewer kills.
+  - **Without the casino the day was about 1.8 %**, under the gate. Two things push the other way:
+    - **The casino paid citizens 88 M net**: chip cash-outs over purchases. It is a sink only if the house edge wins over
+      time; two clean days so far (-1 M, +88 M). Watch it, and if it stays positive, check payouts against stakes
+      (blackjack, dice, the drop game).
+    - **Salon visits keep falling while the luxury chance rises**: 531 -> 313 -> 267 -> 216 a day, while luxury went
+      0.4 -> 0.4 -> 0.5. The lever is not delivering. Is the pool of rich, loaded citizens near a salon shrinking, or
+      are fewer TOWN visits planned now that grinding is faster? With pickup at its floor, luxury is the only lever left
+      for step 3.
+  - Decision before step 3: look at the salon visits (and the casino payouts) first, or take step 3 on the
+    casino-adjusted 1.8 %. By the gate as written, step 2 holds.
 - **Open:** the ramp (steps 3 and 5, gated on the closes above), then R5 (companion_yield, PvP grind-minutes).
