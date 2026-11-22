@@ -2,7 +2,7 @@
 # (living_tie, grown from parties, circles, clears and coliseum matches) trade a call and an answer on map chat when
 # they meet on a town map, in place of an idle line. Said only while population.CITIZEN_TIES_ENABLED is on. Not a
 # chatter catalog (no intents:), the shape of scripts/config/living-world/banter.yaml. ASCII, lower-case player voice,
-# no digits.
+# no digits. The empty intents: keeps every reader of chatter/*.yaml (the chatter loader, the corpus tests) whole.
 #
 # exchanges: one theme each, so any answer fits any call of it.
 #   ties:        friend or rival (crew/TieKind keys; a citizen tie is one of the two).
@@ -14,6 +14,8 @@
 # about: its answer to "tell me about <name>" when it has no line of its own about them. Keys: the TieKind seen from
 # the speaker (spouse, rival, owes = the speaker owes them, owed = they owe the speaker, blames, blamed, friend).
 # Slot: {other} the other Resident's name.
+intents: []
+
 exchanges:
   - id: friend.hi
     ties: [friend]
