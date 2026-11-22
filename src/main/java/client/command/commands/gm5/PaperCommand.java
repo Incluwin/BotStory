@@ -16,12 +16,13 @@ import java.util.Optional;
 /**
  * {@code !paper [week]} (docs/WORLD_SYSTEMS_PLAN.md N1): composes the town paper of a week from the tables and filed
  * stories as it would read now and prints it, without keeping it. {@code week} is any date in the week (2026-11-16)
- * or a week_of number; with none, the newest week whose issue time has passed. {@code !paper issue} keeps that week's
+ * or a week_of number, {@code current} the week running now (its issue still to come); with none, the newest week
+ * whose issue time has passed. {@code !paper issue} keeps that week's
  * issue now if it has none (the Sunday minute's own work, so a second call writes nothing).
  */
 public class PaperCommand extends Command {
     {
-        setDescription("Compose and print the town paper. Usage: !paper [yyyy-mm-dd|week_of|issue]");
+        setDescription("Compose and print the town paper. Usage: !paper [yyyy-mm-dd|week_of|current|issue]");
     }
 
     @Override
@@ -46,9 +47,10 @@ public class PaperCommand extends Command {
         }
         int week;
         try {
-            week = params.length == 0 ? desk.lastDueWeek(now) : parseWeek(desk, params[0]);
+            week = params.length == 0 ? desk.lastDueWeek(now)
+                    : params[0].equalsIgnoreCase("current") ? desk.weekOf(now) : parseWeek(desk, params[0]);
         } catch (IllegalArgumentException bad) {
-            gm.yellowMessage("Not a week: " + params[0] + ". Give a date (2026-11-16) or a week_of number.");
+            gm.yellowMessage("Not a week: " + params[0] + ". Give a date (2026-11-16), a week_of number or current.");
             return;
         }
         PaperIssue issue = desk.compose(week);

@@ -253,6 +253,56 @@ the first ones share one crew letter, written by the first of them. One pink lin
 Always on, as the fix of two tells: "send it" mails an equip with drop-like random stats (a piece a package), and meso
 alone in a package with no item, as a player's meso-only Duey package; you get Duey's live notice.
 
+### The town paper
+
+Off by default: `population.PAPER_ENABLED` (docs/WORLD_SYSTEMS_PLAN.md N1, `server.living.population.paper`). Once a
+week, at `PAPER_DAY` `PAPER_HOUR`:00 server time (Sunday 00:00, four hours after the Saturday tournament), the desk
+composes the issue of the 7 days before it and keeps it as that week's one `living_paper` row (changeset 64). A server
+down at that hour issues it on its first social minute back within 24 hours; a restart in the issue hour finds the row
+and composes nothing.
+
+- **Sections** (`paper.yaml` in the population content folder: masthead, section order, several voices per story):
+  *Arena* (each bracket's tournament champion and runner-up from `pvp_tournament`, the week's biggest 1v1 ladder climb
+  from `pvp_rating`), *Records* (first ever clears, new records and the week's fastest per quest from `living_clear`,
+  rival crews' beaten times from `rival.news`), *Town* (weddings, guilds founded, alliances made, 3rd and 4th job,
+  level 70/120/200, for players and citizens; companions and GMs are not written up), *Market* (the price basket's
+  three biggest risers and fallers over the week, at least 5 percent, from `economy_cpi_daily`) and *Notices* (empty
+  until world events and bounties file there). Six stories a section at most, heaviest first; a player's Town story
+  weighs 15 more than a citizen's. Players are named (decision D2), as the records board names them.
+- **Where you meet it.** Any Bulletin Board's menu has "The paper": this week's issue and last week's, one page a
+  section. Logging in while an issue under a week old is out that you have not read gets one note from "Paperboy"
+  (the letters digest, so `LETTERS_ENABLED` too); reading it at a board first means no note. On the issue's first day
+  citizens in towns say one of its top three headlines in place of an idle line (`chatter/paper.yaml`,
+  `paper.headline`), each at most once per town map per hour and only with a player on the map; a citizen who knows
+  you (person memory) and stands on your map says "saw u in the paper" once if you are in it (`paper.named`).
+- **`!paper [yyyy-mm-dd|week_of|current]`** (GM 5) composes a week as it would read now and prints it, kept nowhere
+  (no argument: the newest week whose issue is out; `current`: the week running now);
+  `!paper issue` keeps the newest due week's issue now if it has none (the Sunday minute's own work).
+- **Retention (decision D1).** While the paper is on, each daily economy close deletes `living_event_log` rows older
+  than `PAPER_RETENTION_DAYS` (90; 0 = never) in batches of 500 for at most 30 s, keeping every kind read as state at
+  any age (`EventLogSweep.KEPT`: `letters.*`, `hire.offer`, `gm.level.*`, `mentor.*`, `apprentice.*`, `banter.muted`,
+  `kit.issued`, `bossgear.*`, `bench.camp-moved.told`, `roster.away_told`, `bench.live(-end)`, `bench.stall(-close)`,
+  `roster.camp`). A new kind that is read as state at any age must be added there.
+
+**Filing a story (the API for later pieces).** Report news through the desk, not a megaphone of your own:
+
+```java
+PaperDesk.file("town.wedding", 70, Map.of("name", "Ann", "partner", "Ben"));
+PaperDesk.fileNaming("town.guild", 50, Map.of("guild", "Lumen"), "leader", leaderCharacterId); // name looked up
+```
+
+- `key` is `"<section>.<story>"`; the section is one of `paper.yaml`'s (`arena`, `records`, `town`, `market`,
+  `notices`), and the story needs an entry in `paper.yaml`'s `stories` with `headlines`, `bodies` and `gists` (a story
+  with no words is dropped at compose time). Add a slot row for it to `PaperCatalogTest.FILED`.
+- `weight` 1..1000 against the week's other stories: a champion 100, a first clear 90, a new record 80, a wedding 70,
+  a 4th job 60, a guild 50, a level 70 milestone 35.
+- `slots` fill the templates' `{slot}`; `name`, `partner`, `champion`, `runner_up`, `leader` and a comma-separated
+  `names` are the characters the story names (the "saw u in the paper" line reads them). The row's JSON is at most
+  512 characters.
+- It is cheap and never throws: the row is written on companion-ops, and nothing is filed while the paper is off or
+  the population is not running. Rows are `paper.item` in `living_event_log` (character_id NULL); `compose` reads
+  the window's rows, so a story filed late on Saturday night makes Sunday's issue.
+
 ### Habits and learned spots
 
 Companions pick up how their owner plays (`living_world.OWNER_HABITS_ENABLED`, off until its live checks pass; plan
@@ -657,7 +707,8 @@ have sub-directories last: its directory offsets assume that order.
 `status`, `census`, `reload` (re-reads content, reports lint errors), `residents`,
 `wake <town|persona>` / `sleep <town>`, `arc <persona> <chapter>`, `flag set|clear <flag>`,
 `bond <player> <persona> <points>`, `rumor play <id>`, `phrases [approve|reject <text>]`,
-`teach <canonical> <phrase...>`, `haul <player>`, `events <player>`. `!standing <bot> [player]` (GM 5) shows a
+`teach <canonical> <phrase...>`, `haul <player>`, `events <player>`. `!paper [week|issue]` (GM 5): the town paper (The town paper,
+above). `!standing <bot> [player]` (GM 5) shows a
 player's standing with a Resident, citizen or hire and the numbers behind it (Standing, above). `!mentor <player>`
 and `!mentor offer <player>` (GM 5): a newcomer's mentorship (Mentor and apprentice, above).
 
@@ -838,6 +889,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 | mentors and apprentices | `server.living.mentor.*` (`Mentorship`, `MentorLead`, `MentorRoute`, `MentorTips`, `FirstLogin`, `Apprentices`), roles `server.living.roster.CompanionRoles`, `!mentor` (`gm5.MentorCommand`) |
 | tell audit | `server.living.audit.*`, Agent seam `AgentTellProbe`, `AdminTellsReader` (`/runtime/tells`), `tools\tells-report.ps1` |
 | crew ties and banter | `server.living.crew.*` (`Crew`, `CrewTies`, `TieKind`, `CrewBanter`, `RivalFacts`, `BanterCatalog`), `banter.yaml`, damage shares `server.living.roster.RunDamage`, `!banter` (`gm5.BanterCommand`) |
+| town paper | `server.living.population.paper.*` (`PaperDesk` filing and the week, `PaperCompose`, `PaperStore`, `PaperCatalog` + `paper.yaml`, `PaperView` board pages, `PaperTalk` + `chatter/paper.yaml`, `PaperWriters` hooks, `EventLogSweep`), `!paper` (`gm5.PaperCommand`) |
 | imperfections | `server.living.imperfections.*`, Agent seam `AgentImperfections` (+ `AgentImperfectionPolicy`, `AgentFumbles`, `AgentLateDrinkRuntime`, `AgentRezWaitRuntime`), `AdminImperfectionsReader` (`/runtime/imperfections`), field AFK `population.FieldPause` |
 
 ## Not done yet (from the plan)
