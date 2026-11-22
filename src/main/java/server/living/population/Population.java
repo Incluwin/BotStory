@@ -22,6 +22,7 @@ import server.knowledge.ContentChat;
 import server.living.LivingWorld;
 import server.living.config.ContentException;
 import server.living.population.needs.NeedLedger;
+import server.living.population.paper.PaperDesk;
 import server.living.population.records.ClearLog;
 import server.living.population.coliseum.Coliseum;
 import server.living.population.rivals.RivalCrews;
@@ -75,6 +76,7 @@ public final class Population {
     private final ClearLog clears;
     private final RivalCrews rivals;
     private final Coliseum coliseum;
+    private final PaperDesk paper;
     private final CitizenWhispers whispers;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
@@ -117,6 +119,13 @@ public final class Population {
         this.rivals = new RivalCrews(this);
         this.clears.listen(rivals); // a booked clear may be a crew's, or beat one (F7)
         this.coliseum = new Coliseum(this); // the coliseum ladder in Ariant (docs/PVP_PLAN.md V4)
+        this.paper = PaperDesk.live(() -> config, clears, // the town paper (docs/WORLD_SYSTEMS_PLAN.md N1)
+                task -> {
+                    var executor = world.executor();
+                    if (executor != null) { // none in some tests: nothing is filed
+                        executor.submit("paper", task);
+                    }
+                });
         this.whispers = new CitizenWhispers(this);
         this.whispers.onReply("rival", rivals::replied); // a player answering a crew's whisper (F7)
         this.presence = new PresenceScheduler(this);
@@ -184,6 +193,7 @@ public final class Population {
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
         AgentUseRoomLoot.install(population.useRoomLoot()); // loot sold for potion room, cheapest first
         EconomyLedger.onClose(population.controller::onClose);
+        PaperDesk.install(population.paper);
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
@@ -205,6 +215,7 @@ public final class Population {
             population.needs.tick(); // the needs board's minute (docs/BOT_CONCEPT_PLAN.md F1)
             population.rivals.tick(); // the rival crews' minute (F7)
             population.coliseum.minute(); // Cesar stands, and citizens play their own ladder (docs/PVP_PLAN.md V4)
+            population.paper.minute(System.currentTimeMillis()); // the Sunday paper (docs/WORLD_SYSTEMS_PLAN.md N1)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -239,6 +250,7 @@ public final class Population {
         AgentEtcRoomPlan.installKeepsFree(null);
         AgentUseRoomLoot.install(null);
         EconomyLedger.onClose(null);
+        PaperDesk.install(null);
         AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
             timer.cancel(false);
@@ -398,6 +410,11 @@ public final class Population {
 
     public Coliseum coliseum() {
         return coliseum;
+    }
+
+    /** The town paper (docs/WORLD_SYSTEMS_PLAN.md N1). */
+    public PaperDesk paper() {
+        return paper;
     }
 
     /** Players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). */

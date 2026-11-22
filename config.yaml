@@ -1563,6 +1563,22 @@ population:
     CONVERSATIONS_ENABLED: true
     # Technical: ms between conversations on one map while it holds 20 citizens or fewer (>= 10000); a busier map uses a third of it.
     CONVERSATION_GAP_MS: 80000
+    # The town paper (docs/WORLD_SYSTEMS_PLAN.md N1): what happened on the server this week, read at any Bulletin
+    # Board ("The paper": this week's and last week's issue). Arena (tournament champions, the week's biggest climb),
+    # Records (fastest and first clears, rival crews' beaten times), Market (the basket's biggest risers and fallers),
+    # Town (weddings, guilds and alliances founded, 3rd and 4th job, level 70/120/200 for players and citizens).
+    # Players are named (decision D2). Out every PAPER_DAY at PAPER_HOUR:00 server time; a server down at that hour
+    # issues it when it comes back the same day. On issue day citizens in towns mention the top three headlines
+    # (each at most once per town map per hour) and a player logging in gets one note that the paper is out. false =
+    # the kill switch: no stories filed, no issue, no pages, no talk and no retention sweep. Off until its live checks.
+    # Technical: paper.PaperDesk rides the 60 s social lane; stories are paper.item rows of living_event_log (PaperDesk.file), the issue one living_paper row per week_of (unique, so a restart composes it once).
+    PAPER_ENABLED: false
+    # Technical: a java.time.DayOfWeek name; with PAPER_HOUR the issue time in the server's zone, as pvp.TOURNAMENT_DAY and TOURNAMENT_HOUR place the tournament, and the issue covers the 7 days before it.
+    PAPER_DAY: SUNDAY
+    # Technical: 0..23; the default (Sunday 00:00) is four hours after the Saturday 20:00 tournament, so its champions make the issue. An issue more than 24 h late is skipped for the week.
+    PAPER_HOUR: 0
+    # Technical: living_event_log rows older than this many days are deleted in batches of 500 at the daily economy close (decision D1), keeping the kinds read as state (paper.EventLogSweep.KEPT); 0 = never, else >= 30.
+    PAPER_RETENTION_DAYS: 90
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live
