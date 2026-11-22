@@ -305,8 +305,6 @@ public class PopulationConfig {
     public double CITIZEN_RUN_INVITE_EXPLORE = 0.3d;
     /** A context whose optimistic accept rate (mean + UCB bonus) is below this is not asked (N3.6). */
     public double CITIZEN_RUN_INVITE_MIN_ACCEPT = 0.15d;
-    /** Kill switch (N3.4): citizens holding Zakum's prerequisites run a Zakum expedition. */
-    public boolean CITIZEN_ZAKUM_ENABLED = false;
 
     // Minigames citizens play in towns (docs/BOT_CONCEPT_PLAN.md F5a)
     /** Kill switch: false = no PLAY plan; citizens never open, join or play an omok or match-card room. */

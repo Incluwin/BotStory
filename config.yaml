@@ -1390,10 +1390,6 @@ population:
     CITIZEN_RUN_INVITE_EXPLORE: 0.3
     # Technical: the floor the bandit's optimistic accept rate must reach for a context to be asked; contexts never answered yes stop being asked after about 20 tries.
     CITIZEN_RUN_INVITE_MIN_ACCEPT: 0.15
-    # CITIZEN_ZAKUM (N3.4): citizens that hold Zakum's prerequisites run a Zakum expedition; a rival crew's help request
-    # (RIVAL_HELP_REQUESTS_ENABLED) then leads to that run. false = the kill switch.
-    # Technical: see docs/WORLD_SYSTEMS_PLAN_N3_REPORT.md for what is built; Zakum fights back only with a human's client on the map, so a run without one is resolved abstractly.
-    CITIZEN_ZAKUM_ENABLED: false
     # Citizens play omok and match cards in towns (2026-10-26, docs/BOT_CONCEPT_PLAN.md F5a): a citizen on a PLAY session
     # walks to a bench of a town that allows minigames, sits down in an open room near it (a player's first) or says it
     # wants a game and opens its own with the set it carries, plays a few matches and goes on with its day. A player can
