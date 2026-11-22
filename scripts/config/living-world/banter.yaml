@@ -14,6 +14,8 @@
 #             exists for the two and the caller is ahead; {lead} is the caller's number, {trail} the answerer's.
 #   minAffinity / maxAffinity: the pair's affinity range (default 0..100). weight: default 10.
 #   styles:   a hire's citizen voice style -> its own call/answer lines (else the lines above, in its voice).
+#   traits:   companion traits (docs/WORLD_SYSTEMS_PLAN.md N9): only a caller holding one of these calls it - wary,
+#             veteran, steady, shaken, homebody, trader. Said only while living_world.TRAITS_ENABLED is on.
 # Slots: {caller} {answerer} {owner} names; clear moments only: {quest} {time}; with a stat: {act} the quest or boss,
 # {lead} {trail} the two numbers, {gap} their difference (level and deaths only).
 #
@@ -465,3 +467,82 @@ exchanges:
     answer:
       - "the guild could've used a lot of things"
       - "always do. watch your own back"
+
+  # ---- companion traits (N9.2): only a caller with the trait calls these -------------------------------------
+  - id: trait.veteran.teaches
+    ties: [crewmate, friend, rival, spouse, owes, owed]
+    traits: [veteran]
+    moments: [town, walk]
+    call:
+      - "{answerer}, stick close to me next run. i know the tricks"
+      - "watch where i stand next time, {answerer}. saves a lot of potions"
+      - "want a tip? never stand where the big ones land"
+    answer:
+      - "ok ok, i'm listening"
+      - "noted. thanks"
+      - "you've done this way more than me, so sure"
+
+  - id: trait.steady.calm
+    ties: [crewmate, friend, spouse, owes, owed]
+    traits: [steady]
+    moments: [walk, clear]
+    call:
+      - "breathe, {answerer}. drink early, stay back, you'll be fine"
+      - "no rush in there. slow and clean"
+      - "you looked low back there. just pot sooner, it adds up"
+    answer:
+      - "easy for you to say"
+      - "yeah. i'll try"
+      - "how are you always so calm"
+
+  - id: trait.shaken.rest
+    ties: [crewmate, friend, spouse, owes, owed, rival]
+    traits: [shaken]
+    moments: [town]
+    call:
+      - "{owner} might let us rest a bit, right? i could use it"
+      - "i keep going down lately. anyone else feel off?"
+      - "is it just me or is everything hitting harder"
+    answer:
+      - "take it easy. we've got you"
+      - "happens to everyone. stay behind me for a while"
+      - "rest up. we'll cover"
+
+  - id: trait.wary.warns
+    ties: [crewmate, friend, spouse, owes, owed, rival]
+    traits: [wary]
+    moments: [town]
+    call:
+      - "if we're going back to that boss, i'm bringing extra potions"
+      - "some places just don't sit right with me"
+      - "remember that run that went bad? i still do"
+    answer:
+      - "bring extra for me too"
+      - "fair. we'll be careful"
+      - "yeah. me too"
+
+  - id: trait.homebody.back
+    ties: [crewmate, friend, spouse, owes, owed]
+    traits: [homebody]
+    moments: [walk]
+    call:
+      - "feels weird to be moving again after all that sitting"
+      - "did i miss anything while i was at camp?"
+      - "my legs forgot what walking is"
+    answer:
+      - "not much. good to have you back"
+      - "you missed a lot of running around"
+      - "welcome back to the real world"
+
+  - id: trait.trader.haggle
+    ties: [crewmate, friend, rival, spouse, owes, owed]
+    traits: [trader]
+    moments: [town]
+    call:
+      - "don't sell that to the shop, {answerer}. you'll get way more at a stall"
+      - "the shop's ripping you off, you know"
+      - "let me price your loot next time. trust me"
+    answer:
+      - "fine, you do the selling then"
+      - "you and your stall"
+      - "ok, merchant, what's it worth"
