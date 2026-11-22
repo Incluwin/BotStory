@@ -84,7 +84,7 @@ public final class AgentAmmoService {
 
     public static boolean requestLowAmmoShare(AgentRuntimeEntry entry, Character bot, boolean bypassShareLimits, InventoryGateway inventory) {
         WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
-        if (!canRequestShare(weaponType)) {
+        if (!AgentAmmoSharePolicy.observesOwnSupply(weaponType)) {
             AgentAmmoStateRuntime.clearAmmoShareRequested(entry);
             return false;
         }
@@ -102,6 +102,10 @@ public final class AgentAmmoService {
                 || previous.urgency() != observed.urgency();
         if (ammo >= AgentSupplyConfig.cfg.AMMO_LOW_WARN) {
             AgentAmmoStateRuntime.clearAmmoShareRequested(entry);
+            return false;
+        }
+        if (!canRequestShare(weaponType)) {
+            // A claw: the need just observed plans its own shop trip (AgentSupplyProcurementRuntime); nobody shares stars.
             return false;
         }
 

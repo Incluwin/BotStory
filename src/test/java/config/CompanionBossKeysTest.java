@@ -44,6 +44,7 @@ class CompanionBossKeysTest {
         assertTrue(CompanionBossKeys.known(" Easy_Balrog "));
         assertTrue(CompanionBossKeys.known("easy_balrog"));
         assertTrue(CompanionBossKeys.known("zakum"));
+        assertTrue(CompanionBossKeys.known("pinkbean"), "a COMPANION_BOSS_CURE_TOWNS key since 2026-11-22 (L5)");
         assertTrue(CompanionBossKeys.known(" Zakum "));
         assertTrue(CompanionBossKeys.known("balrog_normal"));
         assertTrue(CompanionBossKeys.known(" Balrog_Normal "));

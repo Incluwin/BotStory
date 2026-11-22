@@ -922,7 +922,10 @@ living_world:
     # owner buys seal cures (agent-engine.yaml AgentSupplyReadiness.CURE_STANDARDS <boss>_cure) while
     # COMPANION_BOSS_ENABLED_TYPES lists the boss and the companion meets its level. Horntail's Right Hand seals the
     # whole altar every 25 s; Leafre sells no cure, so companions buy Holy Water at Orbis (Edel, 200000002) on the way.
-    COMPANION_BOSS_CURE_TOWNS: "horntail=200000000|200000002"
+    # 2026-11-22 (WORLD_SYSTEMS_PLAN L5): Pink Bean too. Hugin casts the same seal (Mob.wz skill 120 level 8), and Leafre
+    # and the Temple of Time sell no cure. Orbis serves both: the first listed boss whose level a companion meets names
+    # its cure key there (CompanionBossRuns.cureRestockKeyAt), and both keep 150, so the stock is the same either way.
+    COMPANION_BOSS_CURE_TOWNS: "horntail=200000000|200000002,pinkbean=200000000|200000002"
     # Companions go for their next job by themselves (2026-10-05, replacing "only an owner typing a branch name in chat
     # advances a companion"; AgentJobPath, JobErrands): a companion whose persona names its job, and every companion
     # from its second job on (its own line to fourth job), takes each advancement once the game allows it. Out with

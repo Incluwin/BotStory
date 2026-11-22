@@ -471,6 +471,8 @@ class AgentSupplyReadinessBossStandardTest {
         AgentSupplyReadiness.Activity cure = AgentSupplyReadiness.Activity.partyQuest("horntail_cure");
 
         assertEquals(150, AgentSupplyReadiness.cureStandard(cure));
+        assertEquals(150, AgentSupplyReadiness.cureStandard(AgentSupplyReadiness.Activity.partyQuest("pinkbean_cure")),
+                "2026-11-22 (L5): Hugin casts Horntail's seal, so Pink Bean keeps the same stock");
         assertEquals(120, AgentSupplyReadiness.carriedCures(hero));
         assertEquals(30, AgentSupplyReadiness.cureShortfall(hero, cure));
         assertEquals(0, AgentSupplyReadiness.cureStandard(HORNTAIL), "Leafre's store sells none: not at the desk");

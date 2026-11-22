@@ -128,15 +128,25 @@ public final class JobErrands implements AgentJobPath.Rule {
 
     // ---- the seam -----------------------------------------------------------------------------
 
-    /** Its persona's job, or from second job on its own line's fourth job; null for its owner to pick. Memory only. */
+    /**
+     * Its persona's job, or from second job on its own line's fourth job; null for its owner to pick. A Resident nobody
+     * employs is held at {@code current}: its job is its persona's and nobody picks one for it, so it never asks in
+     * chat (found 2026-11-08: Beginner Residents said "hey i can change jobs now!!"). Memory only.
+     */
     @Override
     public Job path(int agentCharacterId, Job current) {
-        if (!world.config().COMPANION_JOB_ERRANDS_ENABLED || !world.residents().isPersonaCharacter(agentCharacterId)) {
+        if (!world.residents().isPersonaCharacter(agentCharacterId)) {
             return null;
         }
         Persona persona = world.residents().personaOfCharacterId(agentCharacterId);
-        if (persona == null || world.roster().cachedOwnerOf(persona.id()) == 0) {
-            return null; // a Resident nobody employs: not a companion
+        if (persona == null) {
+            return null;
+        }
+        if (world.roster().cachedOwnerOf(persona.id()) == 0) {
+            return current; // a Resident nobody employs: not a companion, not free to advance
+        }
+        if (!world.config().COMPANION_JOB_ERRANDS_ENABLED) {
+            return null;
         }
         Job path = pathFor(current, jobOf(persona));
         if (path == null && CompanionRoles.apprentice(world, persona.id())) {

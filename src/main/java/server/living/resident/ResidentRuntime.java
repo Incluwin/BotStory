@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeAdmissionMode;
+import server.agents.capabilities.townlife.AgentTownLifeProfile;
 import server.agents.capabilities.townlife.AgentTownLifeEntryRequest;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeSessionResult;
@@ -36,6 +37,8 @@ import server.living.config.LivingContent;
 import server.living.roster.CompanionLeases;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
+import server.maps.MapObject;
+import server.maps.MapObjectType;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -371,7 +374,7 @@ public final class ResidentRuntime {
         }
         Session session = new Session(persona, characterId);
         int ordinal = Math.floorMod(persona.id().hashCode(), 7);
-        Point spot = slot == null ? null : ResidentSpots.resolve(slot.spot(), map, ordinal);
+        Point spot = spotFor(persona, slot, map, ordinal);
         Point arrival = spot != null ? spot : ResidentSpots.fallback(map, ordinal);
         AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
         Character agent = null;
@@ -698,7 +701,7 @@ public final class ResidentRuntime {
         if (!key.equals(session.slotKey)) {
             session.slotKey = key;
             int ordinal = Math.floorMod(session.persona.id().hashCode(), 7);
-            session.spot = slot == null ? null : ResidentSpots.resolve(slot.spot(), map, ordinal);
+            session.spot = spotFor(session.persona, slot, map, ordinal);
             applySlot(session, map, slot, now);
             return;
         }
@@ -810,10 +813,60 @@ public final class ResidentRuntime {
 
     // ---- helpers -------------------------------------------------------------------------
 
-    private RoutineSlot currentSlot(Persona persona, int hour) {
+    private List<RoutineSlot> routineOf(Persona persona) {
         Chapter chapter = world.arcs().currentChapter(persona);
-        List<RoutineSlot> routine = chapter != null && !chapter.routineOverride().isEmpty()
-                ? chapter.routineOverride() : persona.routine();
+        return chapter != null && !chapter.routineOverride().isEmpty() ? chapter.routineOverride() : persona.routine();
+    }
+
+    /**
+     * The point of {@code slot}'s spot: at a venue, the one no other Resident of the town holds in those hours
+     * (ResidentVenuePlacement); any other spot as ResidentSpots resolves it.
+     */
+    private Point spotFor(Persona persona, RoutineSlot slot, MapleMap map, int ordinal) {
+        if (slot == null) {
+            return null;
+        }
+        if (ResidentVenuePlacement.venueOf(slot) == null) {
+            return ResidentSpots.resolve(slot.spot(), map, ordinal);
+        }
+        AgentTownLifeProfile profile = ResidentSpots.profile(map.getId()).orElse(null);
+        if (profile == null) {
+            return null;
+        }
+        List<ResidentVenuePlacement.Claim> claims = new ArrayList<>();
+        for (Persona other : world.content().personas().values()) {
+            if (!LivingContent.isHire(other.id()) && other.homeTown() != null
+                    && other.homeTown().equals(persona.homeTown()) && present(other)) {
+                for (RoutineSlot each : routineOf(other)) {
+                    claims.add(new ResidentVenuePlacement.Claim(other.id(), each));
+                }
+            }
+        }
+        List<Point> npcs = new ArrayList<>();
+        for (MapObject object : map.getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY,
+                List.of(MapObjectType.NPC))) {
+            npcs.add(new Point(object.getPosition()));
+        }
+        return ResidentVenuePlacement.place(persona.id(), slot, claims,
+                venue -> venueSpots(profile, venue),
+                spot -> ResidentSpots.resolve(spot, map, 0),
+                (x, aboveY) -> {
+                    Point below = map.getPointBelow(new Point(x, aboveY));
+                    return below == null ? null : below.y;
+                }, npcs);
+    }
+
+    static List<Point> venueSpots(AgentTownLifeProfile profile, String venueId) {
+        for (AgentTownLifeProfile.Venue venue : profile.venues()) {
+            if (venue.id().equals(venueId)) {
+                return venue.spots().stream().map(AgentTownLifeProfile.VenueSpot::point).toList();
+            }
+        }
+        return List.of();
+    }
+
+    private RoutineSlot currentSlot(Persona persona, int hour) {
+        List<RoutineSlot> routine = routineOf(persona);
         for (RoutineSlot slot : routine) {
             if (slot.covers(hour)) {
                 return slot;

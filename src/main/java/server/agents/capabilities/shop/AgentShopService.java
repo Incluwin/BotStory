@@ -277,6 +277,17 @@ public final class AgentShopService {
         };
     }
 
+    /**
+     * True when {@code bot} throws stars from a claw and carries a stack that an ordinary visit to any shop refills (the
+     * visit's own check, {@link #shouldRechargeWhileShopping}): its star trip may walk to the nearest town shop rather
+     * than to one that sells stars (AgentCareerShopCatalog.forSupply with refillsCarriedStacks).
+     */
+    public static boolean refillsCarriedStarsAtAnyShop(Character bot) {
+        WeaponType wt = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        return wt == WeaponType.CLAW && bot.getInventory(InventoryType.USE) != null
+                && shouldRechargeWhileShopping(bot, wt, AgentInventoryGatewayRuntime.inventory());
+    }
+
     /** The first item {@code shop} sells for mesos whose id {@code kind} accepts, or null. */
     private static ShopItem firstShopItem(Shop shop, IntPredicate kind) {
         for (ShopItem item : shop.getItems()) {

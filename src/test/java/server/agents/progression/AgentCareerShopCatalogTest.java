@@ -183,4 +183,46 @@ class AgentCareerShopCatalogTest {
 
         assertNull(AgentCareerShopCatalog.forSupply(pirate, AgentResourceCategory.BULLET, 211000000));
     }
+
+    @Test
+    void aClawWhoseStacksAnyShopRefillsGetsItsStarsAtTheNearestTownShopOffVictoria() {
+        AgentCareerBuildBundle assassin = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("thief-claw-standard-v1").orElseThrow();
+
+        // Its career shop is Kerning City's, which no route reaches from the other continents (live 2026-11-17: 9 of
+        // the 36 Assassins homed off Victoria carried no star, every one with emptied stacks).
+        assertNull(starStop(assassin, 200000000, false), "Orbis, a seed set");
+        assertEquals(new AgentCareerShopCatalog.ShopStop(200000002, 2012005), starStop(assassin, 200000000, true));
+        assertEquals(new AgentCareerShopCatalog.ShopStop(220000002, 2041006), starStop(assassin, 220000000, true));
+        assertEquals(new AgentCareerShopCatalog.ShopStop(230000002, 2060004), starStop(assassin, 230000000, true));
+        // The town shops' one-way rule holds for stars too: Sharp Cliff I's way down to Glibber is no supplier.
+        assertNull(starStop(assassin, 211040300, true));
+    }
+
+    @Test
+    void onVictoriaAClawRefillsAtTheNearestShopAndBuysASeedSetAtItsCareerShop() {
+        AgentCareerBuildBundle assassin = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("thief-claw-standard-v1").orElseThrow();
+
+        assertEquals(new AgentCareerShopCatalog.ShopStop(100000102, 1011100), starStop(assassin, 100000000, true));
+        // Nothing to refill: the shop that sells it a set of stars, as before.
+        assertEquals(AgentCareerShopCatalog.forBundle(assassin), starStop(assassin, 100000000, false));
+    }
+
+    @Test
+    void onlyAThrowingStarTripTakesTheNearestShopForARefill() {
+        AgentCareerBuildBundle pirate = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("pirate-gun-standard-v1").orElseThrow();
+
+        assertEquals(AgentCareerShopCatalog.forBundle(pirate), AgentCareerShopCatalog.forSupply(pirate,
+                AgentResourceCategory.BULLET, 101010000, AgentVictoriaTrainingRouteCatalog::distance, true));
+        assertEquals(new AgentCareerShopCatalog.ShopStop(101000002, 1031100), AgentCareerShopCatalog.forSupply(pirate,
+                AgentResourceCategory.MP_POTION, 101010000, AgentVictoriaTrainingRouteCatalog::distance, true));
+    }
+
+    private static AgentCareerShopCatalog.ShopStop starStop(AgentCareerBuildBundle bundle, int fromMapId,
+                                                            boolean refillsCarriedStacks) {
+        return AgentCareerShopCatalog.forSupply(bundle, AgentResourceCategory.THROWING_STAR, fromMapId,
+                AgentVictoriaTrainingRouteCatalog::distance, refillsCarriedStacks);
+    }
 }
