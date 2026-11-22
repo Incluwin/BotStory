@@ -110,6 +110,23 @@ class CitizenTiesTest {
     }
 
     @Test
+    void aFailedRunNudgesTowardRivalryButNeverTurnsAFriendAndAClearIsLeftToTheBookedClear() {
+        long now = System.currentTimeMillis();
+        ties.grow(1, 2, 12, now);
+        for (int i = 0; i < 20; i++) {
+            ties.runEnded(List.of(1, 2, 3), false);
+        }
+        assertEquals(Kind.FRIEND, ties.of(1).stream().filter(t -> t.other(1) == 2).findFirst().orElseThrow().kind(),
+                "twenty failed runs leave friends friends");
+        assertEquals(1, Math.round(felt(1, 2, now)), "worn down to a point, not past it");
+        assertEquals(Kind.RIVAL, ties.between(1, 3), "strangers who keep failing together become rivals");
+        ties.runEnded(List.of(4, 5), false);
+        assertNull(ties.between(4, 5), "one failed run alone is far under a tie that counts");
+        ties.runEnded(List.of(6, 7), true);
+        assertTrue(ties.of(6).isEmpty(), "a clear comes through ClearLog.onBooked, not here");
+    }
+
+    @Test
     void aCitizenHoldsAtMostSixAndOnlyAStrongerNewTiePushesOutItsWeakest() {
         for (int other = 2; other <= 7; other++) {
             ties.grow(1, other, 10 + other, T0);

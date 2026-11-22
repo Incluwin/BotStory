@@ -1018,6 +1018,7 @@ public final class CitizenPartyQuests {
                 + (cleared ? "" : " (" + reason + ")"));
         if (!rerolled) {
             rememberHumans(run, cleared);
+            if (population.ties() != null) population.ties().runEnded(run.citizens.keySet(), cleared); // N2.1
         }
         if (run.boss()) {
             log.info("citizen boss run: boss={} session={} outcome={} minutes={} members={} reason={}", run.bossKey,

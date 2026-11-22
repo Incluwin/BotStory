@@ -37,6 +37,8 @@ public final class CitizenTies {
     static final int CLEAR_POINTS = 6;
     /** One decided coliseum match between two citizens, toward rivalry. */
     static final int MATCH_POINTS = 4;
+    /** A failed citizen run, toward rivalry (a nudge: see {@link #runEnded}). */
+    static final int FAIL_POINTS = 2;
     static final long PRUNE_EVERY_MS = 3_600_000L;
     /** Shared minutes not added to for this long are dropped (the pair is no longer together). */
     static final long UNITS_IDLE_MS = 30 * 60_000L;
@@ -273,6 +275,37 @@ public final class CitizenTies {
             for (int j = i + 1; j < citizens.size(); j++) {
                 grow(citizens.get(i), citizens.get(j), CLEAR_POINTS, nowMs);
             }
+        }
+    }
+
+    /**
+     * A citizen run ended (CitizenPartyQuests). A clear is ignored here: it reaches {@link #cleared} through
+     * ClearLog.onBooked, so it is never counted twice. A failed run only nudges each pair toward rivalry by
+     * {@link #FAIL_POINTS}: a friendship loses that much but never drops under one point (one bad run does not make
+     * friends into rivals), and a pair with no tie starts one far under {@link #KNOWN}.
+     */
+    void runEnded(java.util.Collection<Integer> citizenIds, boolean cleared) {
+        if (!on() || cleared || citizenIds == null) {
+            return;
+        }
+        List<Integer> ids = new ArrayList<>(citizenIds);
+        long nowMs = System.currentTimeMillis();
+        for (int i = 0; i < ids.size(); i++) {
+            for (int j = i + 1; j < ids.size(); j++) {
+                failed(ids.get(i), ids.get(j), nowMs);
+            }
+        }
+    }
+
+    private synchronized void failed(int x, int y, long nowMs) {
+        if (!ensureLoaded()) {
+            return;
+        }
+        Tie tie = ties.get(key(x, y));
+        double signed = tie == null ? 0d : tie.signed(nowMs, halfLife());
+        double delta = signed > 0d ? -Math.min(FAIL_POINTS, Math.max(0d, signed - 1d)) : -FAIL_POINTS;
+        if (delta != 0d) {
+            grow(x, y, delta, nowMs);
         }
     }
 
