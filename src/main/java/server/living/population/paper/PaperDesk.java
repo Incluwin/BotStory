@@ -74,6 +74,10 @@ public final class PaperDesk {
     public record Stored(int weekOf, long issuedAtMs, String body) {
     }
 
+    /** The "paper is out" note: who it is from, its text, and the issue it tells of. */
+    public record Letter(String sender, String text, int weekOf) {
+    }
+
     private static volatile PaperDesk installed;
 
     private final Store store;
@@ -256,12 +260,26 @@ public final class PaperDesk {
         return seen == null || seen >= issue.get().weekOf() ? Optional.empty() : issue;
     }
 
-    /** {@code characterId} saw week {@code weekOf}'s issue (a letter told them, or they read it). */
+    /** {@code characterId} saw week {@code weekOf}'s issue (a letter told them, or they read it); written off-thread. */
     public void seen(int characterId, int weekOf) {
-        Integer last = store.lastSeen(characterId);
-        if (last != null && last < weekOf) {
-            store.seen(characterId, weekOf);
+        files.execute(() -> {
+            Integer last = store.lastSeen(characterId);
+            if (last != null && last < weekOf) {
+                store.seen(characterId, weekOf);
+            }
+        });
+    }
+
+    /**
+     * The "paper is out" note for a player logging in (CompanionLetters): sender and text, when an issue under a week
+     * old is out that they have not seen; empty otherwise. The caller marks it {@link #seen} once the note is sent.
+     */
+    public Optional<Letter> letter(int characterId, long nowMs) {
+        if (!on()) {
+            return Optional.empty();
         }
+        PaperCatalog words = catalog.get();
+        return unseen(characterId, nowMs).map(issue -> new Letter(words.sender(), words.letter(issue), issue.weekOf()));
     }
 
     private PaperIssue read(Stored row) {

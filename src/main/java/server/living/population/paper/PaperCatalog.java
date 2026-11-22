@@ -20,6 +20,8 @@ import java.util.TreeMap;
 public final class PaperCatalog {
     public static final String FILE = "paper.yaml";
     static final String DEFAULT_TITLE = "The Town Paper";
+    static final String DEFAULT_SENDER = "Paperboy";
+    static final int LETTER_MAX = 200;
 
     public record SectionInfo(String id, String title) {
     }
@@ -35,6 +37,8 @@ public final class PaperCatalog {
     private final Map<String, Voices> stories;
     private final List<String> quiet;
     private final String title;
+    private String sender = DEFAULT_SENDER;
+    private List<String> letters = List.of();
 
     PaperCatalog(String title, List<SectionInfo> sections, Map<String, Voices> stories, List<String> quiet) {
         this.title = title;
@@ -50,9 +54,15 @@ public final class PaperCatalog {
         Map<String, Voices> stories = new LinkedHashMap<>();
         List<String> quiet = new ArrayList<>();
         String title = DEFAULT_TITLE;
+        String sender = DEFAULT_SENDER;
+        List<String> letters = new ArrayList<>();
         if (Files.exists(file)) {
             Node root = ContentLoader.read(file);
             title = root.get("title").string(DEFAULT_TITLE);
+            sender = root.get("sender").string(DEFAULT_SENDER);
+            if (root.has("letters")) {
+                letters.addAll(root.get("letters").strings());
+            }
             for (Node node : root.get("sections").items()) {
                 sections.add(new SectionInfo(node.get("id").string(), node.get("title").string()));
             }
@@ -64,7 +74,26 @@ public final class PaperCatalog {
                 quiet.addAll(root.get("quiet").strings());
             }
         }
-        return new PaperCatalog(title, sections, stories, quiet);
+        PaperCatalog catalog = new PaperCatalog(title, sections, stories, quiet);
+        catalog.sender = sender.length() > 13 ? sender.substring(0, 13) : sender;
+        catalog.letters = List.copyOf(letters);
+        return catalog;
+    }
+
+    /** Who the "paper is out" note is from. */
+    public String sender() {
+        return sender;
+    }
+
+    /** The "paper is out" note for {@code issue}, at most {@link #LETTER_MAX} characters. */
+    public String letter(PaperIssue issue) {
+        List<PaperIssue.Story> top = issue.headlines(1);
+        String headline = top.isEmpty() ? "a quiet week" : top.get(0).headline();
+        String filled = pick(letters, issue.weekOf(), Map.of("title", title, "headline", headline));
+        if (filled == null || filled.length() > LETTER_MAX) {
+            filled = title + " is out. Read it at any Bulletin Board.";
+        }
+        return filled.length() > LETTER_MAX ? filled.substring(0, LETTER_MAX) : filled;
     }
 
     /** The paper's name on its masthead. */

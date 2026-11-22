@@ -56,6 +56,10 @@ public final class NeedScreens {
             options.add(new LivingTalk.Option("#bColiseum#k",
                     () -> population.coliseum().board(player, NeedBoards.BOARD_NPC, () -> board(player, boardMapId))));
         }
+        if (population.paper() != null && population.paper().on()) { // the town paper (docs/WORLD_SYSTEMS_PLAN.md N1)
+            options.add(new LivingTalk.Option("#bThe paper#k", () -> server.living.population.paper.PaperView.board(player,
+                    NeedBoards.BOARD_NPC, population.paper(), () -> board(player, boardMapId))));
+        }
         LivingTalk.open(player, NeedBoards.BOARD_NPC)
                 .menu("Townsfolk pin what they need here.\r\nBring it to them, or leave it here if they are away."
                         + " They pay on the spot.", options)

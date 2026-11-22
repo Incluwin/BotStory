@@ -464,6 +464,7 @@ public class Guild {
                 ps.executeUpdate();
             }
 
+            server.living.population.paper.PaperWriters.guildFounded(name, leaderId); // the town paper (N1)
             return guildId;
         } catch (Exception e) {
             monitoring.RuntimeFailureLogger.log(e);

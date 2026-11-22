@@ -25,6 +25,14 @@ sections:
   - { id: market, title: "Market" }
   - { id: notices, title: "Notices" }
 
+# The note a player logging in gets when an issue they have not seen is out (once per issue; at most 200 characters,
+# {title} and {headline}, the issue's top story). sender: who the note is from (at most 13 characters).
+sender: "Paperboy"
+letters:
+  - "{title} is out! Top story: {headline}. Read it at any Bulletin Board."
+  - "Extra, extra: {headline}. This week's {title} is up on every Bulletin Board."
+  - "Fresh off the press: {title}. {headline}, and more at any Bulletin Board."
+
 quiet:
   - "A quiet week in the Maple World. Nothing made the paper."
   - "Nothing to report this week. Even the slimes were well behaved."

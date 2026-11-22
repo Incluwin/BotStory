@@ -7,6 +7,7 @@ import server.ItemInformationProvider;
 import server.integration.AgentPresence;
 import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.life.Monster;
+import server.living.population.paper.PaperWriters;
 import server.living.standing.HireStanding;
 import server.maps.MapleMap;
 
@@ -77,6 +78,10 @@ public final class PopulationHooks {
             if (worthMentioning) {
                 population.chatter().event(ChatterEngine.Event.of("levelup.other", chr.getMapId(), channelOf(chr)).subject(chr));
             }
+            Boolean human = paperSubject(population, chr); // the town paper's milestones (N1.2)
+            if (human != null) {
+                PaperWriters.levelReached(chr.getName(), chr.getLevel(), human);
+            }
         } catch (RuntimeException failure) {
             log.debug("population levelUp hook failed", failure);
         }
@@ -93,9 +98,22 @@ public final class PopulationHooks {
                 self.journal.add("job", "became a " + chr.getJob().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
             }
             population.chatter().event(ChatterEngine.Event.of("jobadvance.other", chr.getMapId(), channelOf(chr)).subject(chr));
+            Boolean human = paperSubject(population, chr); // the town paper's 3rd and 4th jobs (N1.2)
+            if (human != null) {
+                PaperWriters.jobReached(chr.getName(), chr.getJob().getId(),
+                        server.living.roster.CompanionView.jobName(chr.getJob().getId()), human);
+            }
         } catch (RuntimeException failure) {
             log.debug("population jobAdvanced hook failed", failure);
         }
+    }
+
+    /** Who the paper writes up: TRUE for a player (not a GM), FALSE for a citizen, null for anyone else (a companion). */
+    static Boolean paperSubject(Population population, Character chr) {
+        if (!AgentPresence.isAgent(chr)) {
+            return chr.isGM() ? null : Boolean.TRUE;
+        }
+        return population.isCitizen(chr.getId()) ? Boolean.FALSE : null;
     }
 
     public static void died(Character chr) {

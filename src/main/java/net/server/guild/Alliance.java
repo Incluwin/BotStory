@@ -143,6 +143,14 @@ public class Alliance {
                 int worldid = guildMasters.get(0).getWorld();
                 Server.getInstance().allianceMessage(id, GuildPackets.updateAllianceInfo(alliance, worldid), -1, -1);
                 Server.getInstance().allianceMessage(id, GuildPackets.getGuildAlliances(alliance, worldid), -1, -1);  // thanks Vcoc for noticing guilds from other alliances being visually stacked here due to this not being updated
+                List<String> guildNames = new LinkedList<>();
+                for (Integer g : guilds) {
+                    Guild guild = Server.getInstance().getGuild(g);
+                    if (guild != null) {
+                        guildNames.add(guild.getName());
+                    }
+                }
+                server.living.population.paper.PaperWriters.allianceMade(name, guildNames); // the town paper (N1)
             } catch (Exception e) {
                 monitoring.RuntimeFailureLogger.log(e);
                 return null;
