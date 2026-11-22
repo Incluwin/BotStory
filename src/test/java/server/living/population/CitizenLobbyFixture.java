@@ -192,6 +192,13 @@ final class CitizenLobbyFixture implements AutoCloseable {
         session.mapId = here.mapId();
     }
 
+    /** An Agent that is no citizen (a player's companion), at Lakelis. */
+    Character companion(int id, String name, int level) {
+        Character chr = character(id, name, level);
+        agents.add(id);
+        return chr;
+    }
+
     /** A human at Lakelis with no party. */
     Character human(int id, String name, int level) {
         return character(id, name, level);

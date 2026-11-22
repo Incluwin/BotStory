@@ -95,7 +95,8 @@ public final class PopulationLoader {
             "whisper.busy", "whisper.training", "whisper.pq", "whisper.shop",
             // citizen-led runs (docs/WORLD_SYSTEMS_PLAN.md N3): a whispered invitation and the answers to its reply, and
             // the leader at the lobby saying who is on the way
-            "run.invite", "run.invite.member", "whisper.run.yes", "whisper.run.yes.leader", "whisper.run.no",
+            "run.invite", "run.invite.member", "run.invite.crew", "whisper.run.yes", "whisper.run.yes.leader",
+            "whisper.run.yes.crew", "whisper.run.no",
             "whisper.run.gone", "pq.coming", "boss.coming",
             "jq.start", "jq.fall", "jq.clear", "jq.giveup",
             // the casino citizens run (CitizenCasino, docs/SOLOMAPLING_PORT.md): blackjack, dice, the bar, the drop

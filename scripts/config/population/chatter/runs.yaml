@@ -1,8 +1,9 @@
 # Citizen-led runs (docs/WORLD_SYSTEMS_PLAN.md N3, CITIZEN_RUN_INVITES_ENABLED; CitizenRunInvites). run.invite: a
 # citizen whose party is forming at a lobby whispers a player it knows to come along ({pq} the quest, {levels} its band,
 # {need} the seats still open, {map} the lobby, {ch} the channel, {name} the player); run.invite.member is the same from
-# a member who is not the leader ({leader} names the leader). whisper.run.*: its answers to the player's whisper back:
-# yes (the leader's invite went out; yes.leader when the leader is someone else), no (taken well), gone (the party
+# a member who is not the leader ({leader} names the leader); run.invite.crew to a player whose party is only their own
+# companions (the seat is theirs alone: companions never come along, N3.2). whisper.run.*: its answers to the player's whisper back:
+# yes (the leader's invite went out; yes.leader when the leader is someone else; yes.crew: bench the crew first), no (taken well), gone (the party
 # filled, went in or broke up meanwhile). pq.coming / boss.coming: the leader on the lobby's map while a player who said
 # yes walks over.
 intents:
@@ -36,6 +37,26 @@ intents:
       - "hey, {leader}'s getting a {pq} going, wanna come? need {need}"
       - "doing {pq} w {leader} soon, u in?"
       - "{pq} at {map} ch{ch}, {need} open, want in?"
+  - id: run.invite.crew
+    trigger: run.invite.crew
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "doing {pq} in a few, only got 1 spot tho. ur crew ok waiting?"
+      - "{pq}? got a spot for u, just u tho, crew sits this one out"
+      - "wanna {pq}? room for 1, ur crew would have to wait"
+  - id: whisper.run.yes.crew
+    trigger: whisper.run.yes.crew
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nice, bench ur crew and ill inv u"
+      - "kk, leave ur crew for this one and ill send inv"
+      - "cool, once ur crew's out of the party ill inv"
   - id: whisper.run.yes
     trigger: whisper.run.yes
     where: any

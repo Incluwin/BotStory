@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntUnaryOperator;
 import java.util.function.Supplier;
 import java.util.function.ToIntBiFunction;
 
@@ -27,7 +28,9 @@ import java.util.function.ToIntBiFunction;
  * CITIZEN_RUN_INVITES_ENABLED}). A citizen party forming at a lobby (CitizenPartyQuests) and short of its seats has one
  * of its citizens whisper a human it knows to come along: "doing kpq in a few, wanna come? need 2". The human must be
  * known (the citizen's warmth toward them REGULAR or better, no grudge), on the party's channel, of the lobby's band,
- * not in a party, a PQ, a boss run or the Cash Shop, not standing at the lobby (its own invite covers that), and logged
+ * not in a party (one of only their own companions is fine: the line says the seat is theirs alone, and the run takes
+ * them once they bench their crew; nobody's companions are benched or moved for it, N3.2), a PQ, a boss run or the
+ * Cash Shop, not standing at the lobby (its own invite covers that), and logged
  * in for {@code CITIZEN_RUN_INVITE_LOGIN_QUIET_MS}. One invitation per human per {@code CITIZEN_RUN_INVITE_GAP_MS}
  * across all citizens; each "no" in a row doubles that gap (to 8x), a yes resets it. A yes whispered back gets the
  * leader's party invite by the seat rules of a whispered seat request (CitizenPartyQuests.acceptRunInvite): the seat
@@ -55,10 +58,17 @@ final class CitizenRunInvites {
     /** An invitation out, waiting for its answer. */
     record Pending(int askerId, int leaderId, String questKey, InviteBandit.Context context, long atMs) { }
 
+    /** A player with their crew out who said yes: the seat waits until they bench it, or until {@code untilMs}. */
+    record Benching(int askerId, int leaderId, long untilMs) { }
+
     private final Population population;
     private final CitizenPartyQuests partyQuests;
     private final Supplier<Collection<Character>> humans;
     private final ToIntBiFunction<Integer, Integer> warmth;
+    /** Character id -> the player whose companion it is (0: nobody's). */
+    private final IntUnaryOperator ownerOf;
+    /** Human id -> their yes while their crew is still out. */
+    private final Map<Integer, Benching> benching = new HashMap<>();
     private final InviteBandit bandit = new InviteBandit();
     /** Human id -> when a citizen last whispered them an invitation. */
     private final Map<Integer, Long> askedAt = new HashMap<>();
@@ -70,16 +80,42 @@ final class CitizenRunInvites {
     private final Map<String, Long> lastRan = new HashMap<>();
 
     CitizenRunInvites(Population population, CitizenPartyQuests partyQuests) {
-        this(population, partyQuests, () -> liveHumans(population), (citizen, human) -> liveWarmth(population, citizen, human));
+        this(population, partyQuests, () -> liveHumans(population), (citizen, human) -> liveWarmth(population, citizen, human),
+                CitizenRunInvites::liveOwnerOf);
     }
 
-    /** Tests bring the humans online and the warmth. */
+    /** Tests bring the humans online, the warmth and the companions' owners. */
     CitizenRunInvites(Population population, CitizenPartyQuests partyQuests, Supplier<Collection<Character>> humans,
-                      ToIntBiFunction<Integer, Integer> warmth) {
+                      ToIntBiFunction<Integer, Integer> warmth, IntUnaryOperator ownerOf) {
         this.population = population;
         this.partyQuests = partyQuests;
         this.humans = humans;
         this.warmth = warmth;
+        this.ownerOf = ownerOf;
+    }
+
+    private static int liveOwnerOf(int characterId) {
+        server.living.LivingWorld world = server.living.LivingWorld.get();
+        return world == null || world.directory() == null ? 0 : world.directory().ownerOfCharacter(characterId);
+    }
+
+    /** The player whose companion {@code characterId} is; 0 when it is nobody's. */
+    int ownerOf(int characterId) {
+        return ownerOf.applyAsInt(characterId);
+    }
+
+    /** True when {@code human} is in a party of only themselves and their own companions. */
+    boolean crewOnly(Character human) {
+        server.agents.integration.AgentPartySnapshot party = AgentPartyGatewayRuntime.party().snapshot(human);
+        if (party == null) {
+            return false;
+        }
+        for (server.agents.integration.AgentPartyMemberSnapshot member : party.members()) {
+            if (member != null && member.id() != human.getId() && ownerOf(member.id()) != human.getId()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Collection<Character> liveHumans(Population population) {
@@ -147,7 +183,7 @@ final class CitizenRunInvites {
             }
             CitizenSession asker = candidate.asker();
             ChatterEngine chatter = population.chatter();
-            String trigger = asker == leader ? "run.invite" : "run.invite.member";
+            String trigger = crewOnly(human) ? "run.invite.crew" : asker == leader ? "run.invite" : "run.invite.member";
             String line = chatter.compose(ChatterEngine.Event.of(trigger, asker.mapId, asker.channel).self(asker)
                     .subject(human).need(open).slot("ch", String.valueOf(asker.channel)).slot("leader", leader.name()));
             if (line == null) {
@@ -184,8 +220,8 @@ final class CitizenRunInvites {
         if (human.getMapId() == lobbyMapId) {
             return "at the lobby"; // the lobby's own invite asks them
         }
-        if (AgentPartyGatewayRuntime.party().snapshot(human) != null) {
-            return "in a party";
+        if (AgentPartyGatewayRuntime.party().snapshot(human) != null && !crewOnly(human)) {
+            return "in a party"; // with other players or other owners' bots
         }
         if (human.getEventInstance() != null || AgentBossRunRegistry.forMember(human.getId()) != null) {
             return "in a party quest or boss run";
@@ -198,6 +234,9 @@ final class CitizenRunInvites {
         }
         if (pending.containsKey(human.getId())) {
             return "an invitation is out";
+        }
+        if (benching.containsKey(human.getId())) {
+            return "said yes, benching their crew";
         }
         Long last = askedAt.get(human.getId());
         if (last != null && nowMs - last < gapMs(human.getId())) {
@@ -251,6 +290,15 @@ final class CitizenRunInvites {
             log.info("citizen {}'s invitation: {} said no", citizen.name(), human.getName());
             return true;
         }
+        if (crewOnly(human)) { // their crew is out: the seat waits while they bench it (nobody moves their companions)
+            synchronized (this) {
+                benching.put(human.getId(), new Benching(citizen.characterId, ask.leaderId(),
+                        nowMs + population.config().CITIZEN_RUN_INVITE_ANSWER_MS));
+            }
+            reply(citizen, human, "whisper.run.yes.crew", null);
+            log.info("citizen {}'s invitation: {} said yes, crew still out", citizen.name(), human.getName());
+            return true;
+        }
         CitizenPartyQuests.JoinAnswer joined = partyQuests.acceptRunInvite(human, ask.leaderId(), nowMs);
         CitizenSession leader = population.presence().session(ask.leaderId());
         String leaderName = leader == null ? null : leader.name();
@@ -264,6 +312,48 @@ final class CitizenRunInvites {
         reply(citizen, human, trigger, leaderName);
         log.info("citizen {}'s invitation: {} said yes ({})", citizen.name(), human.getName(), joined);
         return true;
+    }
+
+    /**
+     * Players who said yes with their crew out: one with no party any more gets the leader's invite now; one still in
+     * their crew's party past the hold keeps no seat. On the party-quest tick.
+     */
+    void followUp(long nowMs) {
+        List<Map.Entry<Integer, Benching>> due;
+        synchronized (this) {
+            due = new ArrayList<>(benching.entrySet());
+        }
+        for (Map.Entry<Integer, Benching> entry : due) {
+            Character human = null;
+            for (Character online : humans.get()) {
+                if (online != null && online.getId() == entry.getKey()) {
+                    human = online;
+                }
+            }
+            Benching bench = entry.getValue();
+            boolean free = human != null && AgentPartyGatewayRuntime.party().snapshot(human) == null;
+            if (!free && human != null && nowMs < bench.untilMs()) {
+                continue;
+            }
+            synchronized (this) {
+                benching.remove(entry.getKey());
+            }
+            if (!free) {
+                continue;
+            }
+            CitizenPartyQuests.JoinAnswer joined = partyQuests.acceptRunInvite(human, bench.leaderId(), nowMs);
+            CitizenSession asker = population.presence().session(bench.askerId());
+            if (asker != null) {
+                reply(asker, human, joined == CitizenPartyQuests.JoinAnswer.INVITED ? "whisper.join.invited"
+                        : "whisper.run.gone", null);
+            }
+            log.info("citizen run invitation: {} benched their crew ({})", human.getName(), joined);
+        }
+    }
+
+    /** True while a player who said yes to the party {@code leaderId} leads is benching their crew: the seat is theirs. */
+    synchronized boolean holdsSeat(int leaderId, long nowMs) {
+        return benching.values().stream().anyMatch(bench -> bench.leaderId() == leaderId && nowMs < bench.untilMs());
     }
 
     /** Invitations not answered within CITIZEN_RUN_INVITE_ANSWER_MS are booked as not taken. */

@@ -305,8 +305,6 @@ public class PopulationConfig {
     public double CITIZEN_RUN_INVITE_EXPLORE = 0.3d;
     /** A context whose optimistic accept rate (mean + UCB bonus) is below this is not asked (N3.6). */
     public double CITIZEN_RUN_INVITE_MIN_ACCEPT = 0.15d;
-    /** Kill switch (N3.2, decision D7): a human who joins a citizen run may bring companions (spike result decides). */
-    public boolean CITIZEN_RUN_COMPANIONS_ENABLED = false;
     /** Kill switch (N3.4): citizens holding Zakum's prerequisites run a Zakum expedition. */
     public boolean CITIZEN_ZAKUM_ENABLED = false;
 

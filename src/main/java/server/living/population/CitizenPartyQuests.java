@@ -336,6 +336,7 @@ public final class CitizenPartyQuests {
             coolUntil.values().removeIf(until -> nowMs >= until);
             humanInvitedAt.values().removeIf(at -> nowMs - at >= HUMAN_INVITE_EVERY_MS);
             invites.expire(nowMs);
+            invites.followUp(nowMs);
             advanceBossRuns(nowMs);
             if (!population.config().PQ_RUNS_ENABLED && !population.config().BOSS_RUNS_ENABLED) {
                 forming.clear();
@@ -402,7 +403,7 @@ public final class CitizenPartyQuests {
         Character leaderChr = leader.agent();
         MapleMap map = leaderChr.getMap();
         List<Character> humansHere = humansWithoutParty(map, lobby);
-        boolean held = holdingSeat(party, nowMs);
+        boolean held = holdingSeat(party, nowMs) || invites.holdsSeat(party.leaderId, nowMs);
         int size = members(leaderChr).size();
         if (!held && size < door.preferredSeats()) {
             held = inviteHuman(party, leader, lobby, humansHere, nowMs);
@@ -805,6 +806,10 @@ public final class CitizenPartyQuests {
             }
             boolean human = !AgentPresence.isAgent(chr);
             if (!human && !here.containsKey(chr.getId())) {
+                Character owner = ownerIn(chr.getId(), members, map);
+                if (owner != null && party.toldProblem.add(-owner.getId() - 1_000_000_000)) {
+                    tellHuman(leader, owner, "crew", lobby); // their crew followed them in: once, nobody moves it (N3.2)
+                }
                 return chr.getName() + " is an Agent that is not waiting here";
             }
             if (human && !door.atEntry(map, chr.getPosition())) {
@@ -831,6 +836,16 @@ public final class CitizenPartyQuests {
             return "no lobby free beside the humans'";
         }
         return "";
+    }
+
+    /** The human of the party whose companion {@code agentId} is, standing on {@code map}; null when none. */
+    private Character ownerIn(int agentId, List<AgentPartyMemberSnapshot> members, MapleMap map) {
+        int owner = invites.ownerOf(agentId);
+        if (owner == 0 || members.stream().noneMatch(member -> member.id() == owner)) {
+            return null;
+        }
+        Character chr = memberCharacter(owner, null);
+        return chr == null || AgentPresence.isAgent(chr) ? null : chr;
     }
 
     /** NORMAL load shedding on every scheduler shard. */
@@ -1036,6 +1051,8 @@ public final class CitizenPartyQuests {
             line = "{name} make some room in ur use and etc first";
         } else if (problem.contains("entrance")) {
             line = "{name} come over by the npc";
+        } else if (problem.contains("crew")) {
+            line = "{name} ur crew has to sit this one out, bench them n we go";
         } else {
             return;
         }

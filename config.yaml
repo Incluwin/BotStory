@@ -1371,8 +1371,10 @@ population:
     PQ_CALLS_PER_PARTY: 4
     # Citizen-led runs (2026-11-22, docs/WORLD_SYSTEMS_PLAN.md N3). CITIZEN_RUN_INVITES (decision D6): a citizen whose
     # party is forming at a lobby whispers a human it knows (warmth REGULAR or better, no grudge) on the same channel,
-    # whose level fits, not in a party, PQ, boss run or the Cash Shop: "doing kpq in a few, wanna come?". A yes gets the
-    # leader's invite and the seat waits while they walk over (WHISPER_JOIN_COMING_MS); a no is taken well. The needs
+    # whose level fits, not in a party (a party of only their own companions is fine: the invitation says the seat is
+    # theirs alone, and the run takes them once they bench their crew), PQ, boss run or the Cash Shop: "doing kpq in a
+    # few, wanna come?". A yes gets the leader's invite and the seat waits while they walk over (WHISPER_JOIN_COMING_MS);
+    # a no is taken well. Companions never join citizen runs (N3.2) and are never benched or moved for one. The needs
     # board's PARTY page gains "Ask to join". false = the kill switch: only lobby invites, whispers and megaphones.
     # Technical: CitizenRunInvites rides CitizenPartyQuests' 10 s tick (no timer of its own); answers come back through CitizenWhispers topic "run", so it also needs CITIZEN_WHISPERS_ENABLED.
     CITIZEN_RUN_INVITES_ENABLED: false
@@ -1388,9 +1390,6 @@ population:
     CITIZEN_RUN_INVITE_EXPLORE: 0.3
     # Technical: the floor the bandit's optimistic accept rate must reach for a context to be asked; contexts never answered yes stop being asked after about 20 tries.
     CITIZEN_RUN_INVITE_MIN_ACCEPT: 0.15
-    # CITIZEN_RUN_COMPANIONS (decision D7): a human who joins a citizen run brings their companions into its free seats.
-    # Technical: see docs/WORLD_SYSTEMS_PLAN_N3_REPORT.md (N3.2 spike); while false, companions stay out and the invitation says how many seats are open.
-    CITIZEN_RUN_COMPANIONS_ENABLED: false
     # CITIZEN_ZAKUM (N3.4): citizens that hold Zakum's prerequisites run a Zakum expedition; a rival crew's help request
     # (RIVAL_HELP_REQUESTS_ENABLED) then leads to that run. false = the kill switch.
     # Technical: see docs/WORLD_SYSTEMS_PLAN_N3_REPORT.md for what is built; Zakum fights back only with a human's client on the map, so a run without one is resolved abstractly.

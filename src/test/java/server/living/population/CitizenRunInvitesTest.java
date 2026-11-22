@@ -43,8 +43,10 @@ class CitizenRunInvitesTest {
     private final Map<String, Integer> warmth = new HashMap<>();
     /** Whispers out: "Lia->Ann run: line" (invitations) and "Lia->Ann reply: trigger" (answers). */
     private final List<String> whispers = new ArrayList<>();
+    /** Companion id -> its owner. */
+    private final Map<Integer, Integer> owners = new HashMap<>();
     private final CitizenRunInvites invites = new CitizenRunInvites(lobby.population, quests, () -> online,
-            (citizen, human) -> warmth.getOrDefault(citizen + ":" + human, 0));
+            (citizen, human) -> warmth.getOrDefault(citizen + ":" + human, 0), id -> owners.getOrDefault(id, 0));
 
     @BeforeEach
     void setUp() {
@@ -198,6 +200,91 @@ class CitizenRunInvitesTest {
         quests.tick(T0 + MINUTE);
 
         assertTrue(whispers.isEmpty());
+    }
+
+    // ---- players with their crew out (coordinator 2026-11-22: invitable, the seat is theirs alone) -------------
+
+    /** {@code owner}'s companion, out with them in their party, training beside them. */
+    private Character crewOf(Character owner, int id, String name) {
+        Character companion = lobby.companion(id, name, 24);
+        lobby.away(companion, FIELD);
+        owners.put(id, owner.getId());
+        return companion;
+    }
+
+    @Test
+    void aPlayerWithOnlyTheirOwnCrewIsInvitedForThemselvesAlone() {
+        Character lia = threeAtLakelis();
+        Character ann = trainer(10, "Ann", 24, CitizenLobbyFixture.CHANNEL);
+        lobby.parties.lead(ann, crewOf(ann, 20, "Brannock"), crewOf(ann, 21, "Fenna"));
+        knows(lia, ann, 30);
+
+        quests.tick(T0);
+
+        assertEquals(List.of("Lia->Ann run: run.invite.crew"), invitationsTo("Ann"));
+    }
+
+    @Test
+    void aPlayerPartiedWithAnotherPlayerOrAnotherOwnersBotIsNotInvited() {
+        Character lia = threeAtLakelis();
+        Character ann = trainer(10, "Ann", 24, CitizenLobbyFixture.CHANNEL);
+        Character bo = trainer(11, "Bo", 24, CitizenLobbyFixture.CHANNEL);
+        Character cy = trainer(12, "Cy", 24, CitizenLobbyFixture.CHANNEL);
+        lobby.parties.lead(ann, crewOf(ann, 20, "Brannock"), bo); // another player
+        lobby.parties.lead(cy, crewOf(ann, 21, "Fenna")); // Ann's companion on loan in Cy's party
+        for (Character human : List.of(ann, bo, cy)) {
+            knows(lia, human, 30);
+        }
+        PopulationContent.Lobby kpq = CitizenLobbyFixture.KPQ;
+
+        assertEquals("in a party", invites.gate(ann, kpq, 1, kpq.mapId(), T0));
+        assertEquals("in a party", invites.gate(cy, kpq, 1, kpq.mapId(), T0));
+        quests.tick(T0);
+        assertTrue(whispers.isEmpty(), whispers.toString());
+    }
+
+    @Test
+    void aYesWithTheCrewOutHoldsTheSeatUntilTheyBenchItAndNobodyMovesTheCrew() {
+        Character lia = threeAtLakelis();
+        Character ann = trainer(10, "Ann", 24, CitizenLobbyFixture.CHANNEL);
+        Character brannock = crewOf(ann, 20, "Brannock");
+        lobby.parties.lead(ann, brannock);
+        knows(lia, ann, 30);
+        quests.tick(T0);
+        assertEquals(1, invitationsTo("Ann").size());
+
+        assertTrue(invites.replied(lobby.session(lia), ann, "sure", T0 + 5_000L));
+        assertTrue(whispers.contains("Lia->Ann reply: whisper.run.yes.crew"), whispers.toString());
+        Character tobi = lobby.citizen(4, "Tobi", 26); // walks up: it would take the seat if the seat were not held
+        quests.tick(T0 + 10_000L);
+        quests.tick(T0 + 10_000L + CitizenPartyQuests.FILL_WAIT_MS);
+        assertTrue(door.admitted.isEmpty(), "the seat waits while Ann benches her crew");
+        assertFalse(lobby.parties.memberIds(lia).contains(tobi.getId()), "Ann's seat is not given away");
+        assertEquals(List.of(ann.getId(), brannock.getId()), lobby.parties.memberIds(ann), "nobody moved her crew");
+
+        lobby.parties.leaveCurrentParty(ann); // she benched Brannock (her party is gone)
+        quests.tick(T0 + 2 * MINUTE);
+        assertTrue(lobby.parties.hasPendingPartyInvite(ann.getId()), "the leader's invite once she is free");
+        assertTrue(whispers.contains("Lia->Ann reply: whisper.join.invited"), whispers.toString());
+    }
+
+    @Test
+    void aCrewThatFollowsTheirOwnerInKeepsTheRunOutAndTheLeaderSaysSoOnce() {
+        Character lia = threeAtLakelis();
+        Character ann = lobby.human(10, "Ann", 24); // at Lakelis, took the lobby invite
+        quests.tick(T0);
+        lobby.parties.accept(ann);
+        Character brannock = lobby.companion(20, "Brannock", 24);
+        owners.put(20, ann.getId());
+        lobby.parties.joinAgentParty(brannock, lobby.parties.snapshot(lia).id()); // the roster re-seated her crew
+
+        quests.tick(T0 + 10_000L);
+        quests.tick(T0 + 20_000L);
+
+        assertTrue(door.admitted.isEmpty(), "never with a companion in a citizen run");
+        assertEquals(1, lobby.said.stream().filter(event -> event.trigger.equals("pq.wait")
+                && "{name} ur crew has to sit this one out, bench them n we go".equals(event.text)).count());
+        assertEquals(List.of(lia.getId(), 2, 3, ann.getId(), brannock.getId()), lobby.parties.memberIds(lia));
     }
 
     // ---- rate limits -------------------------------------------------------------------------------------
