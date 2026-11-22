@@ -76,13 +76,62 @@ public final class AgentImperfections {
     /** No calibrated potion point goes below this unless its base already does (the owner-habit floor too). */
     public static final float POTION_FLOOR = 0.45f;
 
+    /**
+     * The companion traits' seam (docs/WORLD_SYSTEMS_PLAN.md N9, decision D8): a WARY companion drinks a little earlier
+     * in the content it is wary of, and the HP the engine sees is how its runs' close calls are counted. Unlike the
+     * rule it answers inside party quests and boss runs too, since that is where wariness belongs; it can only ever
+     * move a drink point up ({@link #waryHpAlert}).
+     */
+    public interface Wariness {
+        /** How far (0 to {@link #MAX_WARY_RAISE}) this Agent's HP drink point moves up now; 0 for not at all. */
+        float hpAlertRaise(Character agent);
+
+        /** The engine's potion tick saw this live Agent at {@code fraction} (0 to 1) of its maximum HP. */
+        void hpSeen(Character agent, float fraction);
+    }
+
+    /** A wary drink point never moves up by more than this (ten points), and never past 1. */
+    public static final float MAX_WARY_RAISE = 0.10f;
+
     private static volatile Rule rule;
+    private static volatile Wariness wariness;
 
     private AgentImperfections() {
     }
 
     public static void install(Rule installed) {
         rule = installed;
+    }
+
+    public static void installWariness(Wariness installed) {
+        wariness = installed;
+    }
+
+    /**
+     * The HP point {@code agent} drinks at, {@code alert} being the one it has from everything else (its owner's
+     * setting, its own point, the configured one): the same or higher, never lower, by the traits' raise (at most
+     * {@link #MAX_WARY_RAISE}, never past 1). With no seam installed, no raise or no alert (0: no HP potion key),
+     * {@code alert} exactly.
+     */
+    public static float waryHpAlert(Character agent, float alert) {
+        Wariness current = wariness;
+        if (current == null || agent == null || !(alert > 0f)) {
+            return alert;
+        }
+        float raise = current.hpAlertRaise(agent);
+        if (!(raise > 0f)) {
+            return alert;
+        }
+        return Math.max(alert, Math.min(1f, alert + Math.min(raise, MAX_WARY_RAISE)));
+    }
+
+    /** The potion tick saw {@code agent}'s HP: the traits' seam hears it (nothing while none is installed). */
+    public static void hpSeen(Character agent) {
+        Wariness current = wariness;
+        int maxHp = current == null || agent == null ? 0 : agent.getCurrentMaxHp();
+        if (maxHp > 0) {
+            current.hpSeen(agent, Math.max(0f, Math.min(1f, agent.getHp() / (float) maxHp)));
+        }
     }
 
     /** True while a rule is installed, so a caller can skip work only an imperfection needs. */

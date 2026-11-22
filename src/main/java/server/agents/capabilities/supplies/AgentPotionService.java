@@ -119,12 +119,13 @@ public final class AgentPotionService {
 
     /**
      * The HP fraction this Agent drinks below, before any Berserk adjustment: its host's own value
-     * (AgentPotionThresholds), else the configured AUTOPOT_HP_THRESH.
+     * (AgentPotionThresholds), else the configured AUTOPOT_HP_THRESH; a wary companion's a little higher in the content
+     * it is wary of (N9.3, never lower).
      */
     public static float hpThreshold(Character bot) {
         // F8.2: with no owner's or learned point, a citizen or companion drinks at its own point near the configured one
         float configured = AgentImperfections.hpAlert(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);
-        return AgentPotionThresholds.hp(bot.getId(), configured);
+        return AgentImperfections.waryHpAlert(bot, AgentPotionThresholds.hp(bot.getId(), configured));
     }
 
     /** The MP fraction this Agent drinks below: its host's own value, else the configured AUTOPOT_MP_THRESH. */
@@ -355,6 +356,7 @@ public final class AgentPotionService {
         if (entry == null || bot == null || !bot.isAlive() || bot.isChangingMaps()) {
             return;
         }
+        AgentImperfections.hpSeen(bot); // N9.1: a companion run's lowest HP and close calls
         boolean lowHp = bot.getKeymap().get(91) != null
                 && bot.getHp() <= bot.getAutopotHpAlert() * bot.getCurrentMaxHp();
         boolean lowMp = bot.getKeymap().get(92) != null

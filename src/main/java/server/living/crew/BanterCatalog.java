@@ -6,6 +6,7 @@ import server.living.config.Content.Persona;
 import server.living.config.Content.Relationship;
 import server.living.config.ContentLoader;
 import server.living.config.Node;
+import server.living.roster.Traits;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -76,10 +77,14 @@ public final class BanterCatalog {
         }
     }
 
-    /** One exchange: who may say it (ties from the caller's side, or a fixed caller/answerer pair) and when. */
+    /**
+     * One exchange: who may say it (ties from the caller's side, or a fixed caller/answerer pair) and when; with
+     * {@code traits} (N9.2), only a caller who holds one of those traits ("veteran") calls it.
+     */
     public record Exchange(String id, Set<TieKind> ties, List<String> pair, Set<Moment> moments, Stat stat,
                            int minAffinity, int maxAffinity, int weight, List<String> call, List<String> answer,
-                           Map<String, List<String>> styleCalls, Map<String, List<String>> styleAnswers) {
+                           Map<String, List<String>> styleCalls, Map<String, List<String>> styleAnswers,
+                           Set<String> traits) {
         public boolean paired() {
             return pair.size() == 2;
         }
@@ -99,14 +104,22 @@ public final class BanterCatalog {
     private final Map<TieKind, Integer> seeds;
     private final Map<String, List<String>> lines;
     private final List<Exchange> exchanges;
+    /** The companion traits' own lines (N9.2): "wary.earned", "wary.lost", "wary.entering", ... -> its lines. */
+    private final Map<String, List<String>> traitLines;
     /** Problems found while reading (unknown keys and the like): the lint reports them as errors. */
     private final List<String> problems;
 
     BanterCatalog(Map<TieKind, Integer> seeds, Map<String, List<String>> lines, List<Exchange> exchanges,
                   List<String> problems) {
+        this(seeds, lines, exchanges, Map.of(), problems);
+    }
+
+    BanterCatalog(Map<TieKind, Integer> seeds, Map<String, List<String>> lines, List<Exchange> exchanges,
+                  Map<String, List<String>> traitLines, List<String> problems) {
         this.seeds = Map.copyOf(seeds);
         this.lines = Map.copyOf(lines);
         this.exchanges = List.copyOf(exchanges);
+        this.traitLines = Map.copyOf(traitLines);
         this.problems = List.copyOf(problems);
     }
 
@@ -190,12 +203,62 @@ public final class BanterCatalog {
                     styleAnswers.put(style.getKey(), List.copyOf(style.getValue().get("answer").strings()));
                 }
             }
+            Set<String> traits = new HashSet<>();
+            for (String key : node.get("traits").strings()) {
+                if (TRAIT_KINDS.contains(key)) {
+                    traits.add(key);
+                } else {
+                    problems.add("exchange " + id + ": unknown trait '" + key + "'");
+                }
+            }
             exchanges.add(new Exchange(id, ties, List.copyOf(node.get("pair").strings()), moments, stat,
                     node.get("minAffinity").integer(0), node.get("maxAffinity").integer(CrewTies.MAX_AFFINITY),
                     node.get("weight").integer(10), List.copyOf(node.get("call").strings()),
-                    List.copyOf(node.get("answer").strings()), styleCalls, styleAnswers));
+                    List.copyOf(node.get("answer").strings()), styleCalls, styleAnswers, Set.copyOf(traits)));
         }
-        return new BanterCatalog(seeds, lines, exchanges, problems);
+        Map<String, List<String>> traitLines = new HashMap<>();
+        Node traitNode = root.get("traits");
+        if (!traitNode.isMissing()) {
+            for (Map.Entry<String, Node> kind : traitNode.entries().entrySet()) {
+                for (Map.Entry<String, Node> event : kind.getValue().entries().entrySet()) {
+                    String key = kind.getKey() + "." + event.getKey();
+                    if (!traitKeys().contains(key)) {
+                        problems.add("traits." + key + ": not a trait's earned, lost (or wary's entering) lines");
+                    } else {
+                        traitLines.put(key, List.copyOf(event.getValue().strings()));
+                    }
+                }
+            }
+        }
+        return new BanterCatalog(seeds, lines, exchanges, traitLines, problems);
+    }
+
+    /** The traits an exchange may name ("wary", "veteran", ...). */
+    static final Set<String> TRAIT_KINDS = traitKinds();
+
+    private static Set<String> traitKinds() {
+        Set<String> out = new HashSet<>();
+        for (Traits.Kind kind : Traits.Kind.values()) {
+            out.add(kind.key());
+        }
+        return Set.copyOf(out);
+    }
+
+    /** Every traits key the catalog has lines for: each trait's earned and lost, and wary's entering. */
+    static Set<String> traitKeys() {
+        Set<String> out = new TreeSet<>();
+        for (String kind : TRAIT_KINDS) {
+            out.add(kind + ".earned");
+            out.add(kind + ".lost");
+        }
+        out.add("wary.entering");
+        return out;
+    }
+
+    /** The lines of a companion trait's moment ("wary.earned"); empty for none. */
+    public List<String> traitLines(String key) {
+        List<String> found = traitLines.get(key);
+        return found == null ? List.of() : found;
     }
 
     private static Moment moment(String key) {
@@ -234,6 +297,14 @@ public final class BanterCatalog {
         }
         lintLines(out, "mute.ok", lines(MUTE_OK), Set.of("owner"));
         lintLines(out, "mute.unmute", lines(UNMUTE_OK), Set.of("owner"));
+        for (String key : traitKeys()) {
+            List<String> said = traitLines(key);
+            if (said.isEmpty()) {
+                out.add("ERROR " + FILE + " traits." + key + ": no lines");
+            }
+            boolean ofActivity = key.startsWith("wary.") || key.startsWith("veteran.");
+            lintLines(out, "traits." + key, said, ofActivity ? Set.of("act") : Set.of());
+        }
         Map<String, Persona> byId = new HashMap<>();
         for (Persona persona : personas) {
             byId.put(persona.id(), persona);

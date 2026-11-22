@@ -1117,6 +1117,18 @@ living_world:
     IMPERFECTIONS_OWNER_IDLE_MS: 60000
     IMPERFECTIONS_COMPANION_AFK_MAX_MS: 90000
     IMPERFECTIONS_COMPANION_AFK_GAP_MS: 3600000
+    # Companion traits (docs/WORLD_SYSTEMS_PLAN.md N9): what a companion lived through with its owner shows as up to
+    # three traits - wary of a boss or quest, a veteran of one, steady, shaken, a homebody, a trader - on its card and
+    # in one line it says as each is earned or lost. The only change to how it fights: wary, it drinks 5-10 points
+    # earlier at that boss or quest (decision D8). Ships off until live checks T1-T4 pass (tools/checks/checks/n9).
+    # Technical: CompanionTraits installs AgentImperfections.Wariness at LivingWorld.start; the engine's potion tick
+    # hands each run's HP to it (companion_performance.min_hp_percent and close_calls, changeset 66), Traits.of reads
+    # the runs at each record and once a day on the bench, and living_bond.flags keeps "trait:..." flags. Read at boot.
+    # false = the kill switch: nothing is measured, nothing is shown, every drink point as before.
+    TRAITS_ENABLED: false
+    # Technical: Traits.of makes a companion a TRADER once its bench.report rows (BenchLedger SELL and STALL takings)
+    # sum to this many meso over thirty days, and keeps the trait while they stay at half of it or more. Must be >= 1.
+    TRAITS_TRADER_MESO: 3000000
     # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
     # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
     # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,

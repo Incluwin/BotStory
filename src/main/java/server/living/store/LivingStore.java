@@ -1519,10 +1519,18 @@ public final class LivingStore {
     /**
      * One companion_performance row (changeset 40): how one companion's party-quest run went. {@code outcome} is
      * cleared, failed or tapped_out; {@code damageShare} its share 0..1 of the run's damage (RunDamage, F6.4), null
-     * when none was measured.
+     * when none was measured; {@code minHpPercent} its lowest HP 0..100 in the run and {@code closeCalls} how often it
+     * fell under 20 % (changeset 66, N9.1), both null when nothing measured them.
      */
     public record CompanionRunRow(int ownerCharacterId, int companionCharacterId, String personaId, String activity,
-                                  String outcome, int durationS, int deaths, int partySize, Double damageShare) {
+                                  String outcome, int durationS, int deaths, int partySize, Double damageShare,
+                                  Integer minHpPercent, Integer closeCalls) {
+        public CompanionRunRow(int ownerCharacterId, int companionCharacterId, String personaId, String activity,
+                               String outcome, int durationS, int deaths, int partySize, Double damageShare) {
+            this(ownerCharacterId, companionCharacterId, personaId, activity, outcome, durationS, deaths, partySize,
+                    damageShare, null, null);
+        }
+
         public CompanionRunRow(int ownerCharacterId, int companionCharacterId, String personaId, String activity,
                                String outcome, int durationS, int deaths, int partySize) {
             this(ownerCharacterId, companionCharacterId, personaId, activity, outcome, durationS, deaths, partySize, null);
@@ -1535,7 +1543,8 @@ public final class LivingStore {
     /** Adds one companion_performance row (recorded_at is the database's now); false when the write failed. */
     public boolean saveCompanionRun(CompanionRunRow row) {
         String sql = SqlTime.utc("INSERT INTO companion_performance (owner_character_id, companion_character_id, persona_id,"
-                + " activity, outcome, duration_s, deaths, damage_share, party_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                + " activity, outcome, duration_s, deaths, damage_share, party_size, min_hp_percent, close_calls)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, row.ownerCharacterId());
             ps.setInt(2, row.companionCharacterId());
@@ -1551,6 +1560,16 @@ public final class LivingStore {
                         .setScale(4, java.math.RoundingMode.HALF_UP));
             }
             ps.setInt(9, row.partySize());
+            if (row.minHpPercent() == null) {
+                ps.setNull(10, java.sql.Types.TINYINT);
+            } else {
+                ps.setInt(10, Math.max(0, Math.min(100, row.minHpPercent())));
+            }
+            if (row.closeCalls() == null) {
+                ps.setNull(11, java.sql.Types.SMALLINT);
+            } else {
+                ps.setInt(11, Math.max(0, Math.min(Short.MAX_VALUE, row.closeCalls())));
+            }
             ps.executeUpdate();
             return true;
         } catch (SQLException failure) {
@@ -1579,6 +1598,41 @@ public final class LivingStore {
         } catch (SQLException failure) {
             log.warn("companion_performance read failed for {}", activity, failure);
             throw new ReadFailed("companion_performance " + activity, failure);
+        }
+    }
+
+    /** One run of a companion's for its traits (N9.1): a companion_performance row's activity, outcome and HP figures. */
+    public record CompanionTraitRun(String activity, String outcome, int deaths, Integer closeCalls, long recordedAtMs) {
+    }
+
+    /**
+     * The companion's runs with this owner recorded since {@code sinceMs}, newest first, at most {@code limit}: what its
+     * traits are read from (server.living.roster.Traits).
+     *
+     * @throws ReadFailed when the read failed (not the same as no runs)
+     */
+    public List<CompanionTraitRun> companionTraitRuns(int ownerCharacterId, int companionCharacterId, long sinceMs,
+                                                      int limit) {
+        List<CompanionTraitRun> out = new ArrayList<>();
+        String sql = SqlTime.utc("SELECT activity, outcome, deaths, close_calls, recorded_at FROM companion_performance"
+                + " WHERE owner_character_id = ? AND companion_character_id = ? AND recorded_at >= ?"
+                + " ORDER BY recorded_at DESC, id DESC LIMIT ?");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, ownerCharacterId);
+            ps.setInt(2, companionCharacterId);
+            SqlTime.set(ps, 3, sinceMs);
+            ps.setInt(4, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int closeCalls = rs.getInt(4);
+                    out.add(new CompanionTraitRun(rs.getString(1), rs.getString(2), rs.getInt(3),
+                            rs.wasNull() ? null : closeCalls, SqlTime.get(rs, 5)));
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("companion_performance trait read failed for {}/{}", ownerCharacterId, companionCharacterId, failure);
+            throw new ReadFailed("companion_performance traits " + companionCharacterId, failure);
         }
     }
 
@@ -2054,6 +2108,31 @@ public final class LivingStore {
             return null;
         }
         return out;
+    }
+
+    /**
+     * The details of the character's {@code kind} events with this persona since {@code sinceMs}, oldest first (a
+     * companion's bench.report rows for its TRADER trait, N9.1); null when the read fails.
+     */
+    public List<String> eventDetailsSince(int characterId, String personaId, String kind, long sinceMs) {
+        List<String> out = new ArrayList<>();
+        String sql = SqlTime.utc("SELECT detail FROM living_event_log WHERE character_id = ? AND persona_id = ?"
+                + " AND kind = ? AND at >= ? ORDER BY id");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            ps.setString(2, personaId);
+            ps.setString(3, kind);
+            SqlTime.set(ps, 4, sinceMs);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(rs.getString(1));
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("living_event_log scan failed for {}/{} {}", characterId, personaId, kind, failure);
+            return null;
+        }
     }
 
     /** How many {@code kind} events the character has with this persona since {@code sinceMs}; 0 when the read fails. */

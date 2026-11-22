@@ -69,7 +69,7 @@ public final class Crew {
         return banter;
     }
 
-    BanterCatalog catalog() {
+    public BanterCatalog catalog() {
         BanterCatalog loaded = catalog;
         if (loaded == null) {
             loaded = BanterCatalog.load(Path.of(world.config().CONTENT_DIR));

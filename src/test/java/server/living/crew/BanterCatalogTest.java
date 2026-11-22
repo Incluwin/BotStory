@@ -97,6 +97,35 @@ class BanterCatalogTest {
         assertEquals(100, clear.maxAffinity());
     }
 
+    @Test
+    void anExchangeMayAskForACallerTraitAndAnUnknownTraitIsAnError() {
+        Map<String, Object> veteran = exchange("x.veteran", List.of("crewmate"), List.of("town"), null, "a", "b");
+        veteran.put("traits", List.of("veteran"));
+        Map<String, Object> bored = exchange("x.bored", List.of("crewmate"), List.of("town"), null, "a", "b");
+        bored.put("traits", List.of("bored"));
+        BanterCatalog catalog = parse(Map.of("exchanges", List.of(veteran, bored)));
+
+        assertEquals(java.util.Set.of("veteran"), catalog.exchanges().getFirst().traits());
+        assertTrue(catalog.exchanges().get(1).traits().isEmpty());
+        assertTrue(catalog.lint(List.of()).stream().anyMatch(line -> line.contains("unknown trait 'bored'")));
+    }
+
+    @Test
+    void everyTraitHasEarnedAndLostLinesWithoutDigitsAndOnlyWaryAndVeteranNameThePlace() {
+        BanterCatalog shipped = BanterCatalog.load(CONTENT);
+        for (String key : BanterCatalog.traitKeys()) {
+            assertTrue(shipped.traitLines(key).size() >= 3, key + " has several voices");
+        }
+
+        Map<String, Object> traits = Map.of("steady", Map.of("earned", List.of("{act} was easy"), "lost",
+                List.of("lost it after a few runs")), "wary", Map.of("bored", List.of("zzz")));
+        List<String> problems = parse(Map.of("traits", traits)).lint(List.of());
+
+        assertTrue(problems.stream().anyMatch(line -> line.contains("traits.steady.earned: slot {act}")), "" + problems);
+        assertTrue(problems.stream().anyMatch(line -> line.contains("traits.wary.bored")), "" + problems);
+        assertTrue(problems.stream().anyMatch(line -> line.contains("traits.veteran.earned: no lines")), "" + problems);
+    }
+
     private static Map<String, Object> exchange(String id, List<String> ties, List<String> moments, String stat,
                                                 String call, String answer) {
         Map<String, Object> out = new java.util.HashMap<>();

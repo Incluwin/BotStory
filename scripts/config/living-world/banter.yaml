@@ -16,6 +16,10 @@
 #   styles:   a hire's citizen voice style -> its own call/answer lines (else the lines above, in its voice).
 # Slots: {caller} {answerer} {owner} names; clear moments only: {quest} {time}; with a stat: {act} the quest or boss,
 # {lead} {trail} the two numbers, {gap} their difference (level and deaths only).
+#
+# traits: (N9.2) the one line a companion says as it earns or loses a trait, and a wary one's line on its way back in
+# there. Each list is several voices: a companion always takes the same place in it (by its id), so it keeps its
+# voice. {act} is the boss or quest (wary and veteran only). No digits, as everywhere here.
 ties:
   seeds: { spouse: 60, friend: 40, rival: 30, owes: 30, owed: 30, blames: 30, blamed: 30, crewmate: 0 }
 
@@ -28,6 +32,79 @@ mute:
     - "finally lol"
     - "oh good, i had things to say"
     - "about time"
+
+traits:
+  wary:
+    earned:
+      - "not gonna lie, {act} got to me. i'll be careful in there next time"
+      - "{act} nearly ended me. remind me to drink early in there"
+      - "ok. {act} and i are not friends anymore"
+      - "i don't like {act}. i'll go, but i'm keeping my potions close"
+    lost:
+      - "you know what, {act} doesn't scare me anymore"
+      - "{act} again? sure. i've got it figured out now"
+      - "think i'm over that {act} thing. feels good"
+      - "{act} is just another run now"
+    entering:
+      - "{act}... ok. drinking early this time, don't mind me"
+      - "careful in here. {act} and me have history"
+      - "potions ready. last time in {act} was too close"
+      - "i'll be fine. just watching my hp in {act}"
+  veteran:
+    earned:
+      - "lost count of how many {act} runs that was. i know every corner now"
+      - "{act} again? i could do it with my eyes closed at this point"
+      - "starting to feel like i live in {act}"
+      - "ask me anything about {act}. seriously, anything"
+    lost:
+      - "been ages since {act}. i'd need a refresher"
+      - "kinda rusty on {act} now, not gonna lie"
+      - "i used to know {act} inside out. used to"
+      - "{act} probably changed on me by now"
+  steady:
+    earned:
+      - "can't remember the last time i went down. knock on wood"
+      - "feeling solid lately. nothing's touching me"
+      - "is it me or have we been really clean lately"
+      - "long time no death. i'll take it"
+    lost:
+      - "ugh. there goes my streak"
+      - "well, so much for not dying"
+      - "guess i got comfortable. my bad"
+      - "and the streak ends. it was nice while it lasted"
+  shaken:
+    earned:
+      - "can we take it easy for a bit? i keep dropping"
+      - "that's too many deaths this week. i need a breather"
+      - "i'm off my game lately. sorry"
+      - "not feeling great about the last few runs. maybe a rest?"
+    lost:
+      - "ok, i think i'm back. that felt clean"
+      - "few good runs in a row. feeling like myself again"
+      - "shook it off. let's go"
+      - "better. a lot better"
+  homebody:
+    earned:
+      - "the camp's starting to feel like home, honestly"
+      - "been sitting around so long i know every rock here"
+      - "quiet out here. i don't mind it"
+      - "starting to like the bench. is that bad"
+    lost:
+      - "forgot how good it feels to be out and about"
+      - "ok, the bench can wait. this is better"
+      - "glad you called me back. was going stiff"
+      - "out in the world again. finally"
+  trader:
+    earned:
+      - "got pretty good at the stall. people pay more than you'd think"
+      - "i can smell a bad price from a mile off now"
+      - "the stall's been good to me. ask me before you sell anything"
+      - "turns out i like haggling. who knew"
+    lost:
+      - "haven't minded a stall in a while. probably lost my touch"
+      - "the stall's gone quiet. eh"
+      - "out of practice at the stall these days"
+      - "not much selling lately. fine by me"
 
 exchanges:
   # ---- a crew still getting to know each other ----------------------------------------------------------------

@@ -110,6 +110,7 @@ public final class LivingWorld {
     private final server.living.mentor.Apprentices apprentices;
     private final server.living.story.StoryArcs stories;
     private final server.living.crew.Crew crew;
+    private final server.living.roster.CompanionTraits traits;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -174,6 +175,7 @@ public final class LivingWorld {
         this.apprentices = new server.living.mentor.Apprentices(this);
         this.stories = new server.living.story.StoryArcs(this); // F6: companions' personal story arcs and scenes
         this.crew = new server.living.crew.Crew(this); // F6.4: crew ties (a view) and banter
+        this.traits = new server.living.roster.CompanionTraits(this); // N9: companion traits
     }
 
     public static LivingWorld get() {
@@ -249,6 +251,8 @@ public final class LivingWorld {
         server.living.audit.TellAudit.install(world.store, config.TELL_AUDIT_ENABLED);
         // small human slips with hard caps, citizens and companions only (docs/BOT_CONCEPT_PLAN.md F8)
         server.living.imperfections.Imperfections.install(world);
+        // companion traits (docs/WORLD_SYSTEMS_PLAN.md N9): run HP watched, a wary companion drinks earlier; only while on
+        world.traits.install();
         // and keeps the party-quest potion standard by itself, walking to a nearby shop when short (2026-10-02)
         world.restock.install();
         // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)
@@ -438,6 +442,7 @@ public final class LivingWorld {
         HiredHands.uninstall();
         server.living.audit.TellAudit.uninstall();
         server.living.imperfections.Imperfections.uninstall();
+        server.living.roster.CompanionTraits.uninstall();
         server.living.population.Population.stop();
         server.knowledge.PersonalKnowledge.shared().stop(); // the citizens logged out: their worlds are written now, DB still up
         for (ScheduledFuture<?> timer : world.timers) {
@@ -696,6 +701,11 @@ public final class LivingWorld {
     /** F6.4: crew ties and banter. */
     public server.living.crew.Crew crew() {
         return crew;
+    }
+
+    /** N9: companion traits (living_world.TRAITS_ENABLED). */
+    public server.living.roster.CompanionTraits traits() {
+        return traits;
     }
 
     /** Companions earning their own Crimsonwood Keystone (2026-10-19): the errands out. */

@@ -564,6 +564,29 @@ quest running costs one empty-map check.
 map, and each pair of free companions with its kinds, affinity and shared clears. `!banter now <player>` starts one
 exchange at once, whatever the cap and the roll (not over a fight, an instance or a mute), for live checks and clips.
 
+### Companion traits
+
+Behind `living_world.TRAITS_ENABLED` (off; docs/WORLD_SYSTEMS_PLAN.md N9, `server.living.roster.Traits` and
+`CompanionTraits`). A companion's runs with its owner give it up to three traits, kept in `living_bond.flags` as
+`trait:...` flags (so they outlast a restart), each with a higher bar to gain than to keep:
+
+| Trait | Gained | Kept while | Effect |
+|---|---|---|---|
+| WARY of a quest or boss | a death or two close calls (HP under 20 %) in its last 5 runs there | fewer than 3 clean runs in a row there | drinks 5-10 points earlier there (by its id), says so on the way in |
+| VETERAN of one | 10 clears there, one within 30 days | 8 clears, a run there within 90 days | teaching banter |
+| STEADY | its last 20 runs without a death | at most one death in its last 20 runs | calm banter |
+| SHAKEN | 3 deaths in 7 days, fewer than 3 deathless runs since | fewer than 3 deathless runs in a row | asks for a rest |
+| HOMEBODY | benched 18 days | still benched, or fewer than 3 runs in 7 days | camp banter |
+| TRADER | bench sales of `TRAITS_TRADER_MESO` in 30 days | half of that | haggling banter |
+
+Each run's row gets `min_hp_percent` and `close_calls` (changeset 66) from the engine's potion tick
+(`AgentImperfections.Wariness`). Traits are read again as each run is recorded and once a day on the bench. The card
+shows a line per trait ("Wary of Zakum since going down there"); the companion says one `banter.yaml` `traits:` line
+as one is earned or lost (one nobody heard waits for its next run); an exchange with `traits: [veteran]` is called only
+by a companion holding it. The only change to how it fights is WARY's drink point, which only moves up
+(`AgentImperfections.waryHpAlert`). `!traits <companion>` (GM 5) shows the switch, the flags, a fresh read and what it
+is made of.
+
 ### The in-game quest log
 
 Living quests can appear in the client's quest log next to the stock quests (In Progress and

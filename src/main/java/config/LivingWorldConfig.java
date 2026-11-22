@@ -651,6 +651,15 @@ public class LivingWorldConfig {
     /** Least time between two AFKs of one companion. */
     public int IMPERFECTIONS_COMPANION_AFK_GAP_MS = 3600000;
 
+    // Companion traits (2026-11-22, docs/WORLD_SYSTEMS_PLAN.md N9; CompanionTraits)
+    /**
+     * Kill switch: false = no run HP is measured, no trait is read, kept, shown or said, and no drink point moves. On,
+     * a companion WARY of a quest or boss drinks 5-10 points earlier there, never later (decision D8).
+     */
+    public boolean TRAITS_ENABLED = false;
+    /** Bench stall and sell takings over thirty days that make a companion a TRADER (it keeps it down to half). */
+    public long TRAITS_TRADER_MESO = 3_000_000L;
+
     // A companion says why its owner's whisper reached no Agent (2026-10-10)
     /**
      * Least time between two of one companion's whispered "can't right now" lines (a live bench slice keeps it, or its
@@ -972,6 +981,9 @@ public class LivingWorldConfig {
         }
         if (BENCH_UPKEEP_MAX_SHARE < 0 || BENCH_UPKEEP_MAX_SHARE > 1) {
             throw new IllegalArgumentException("living_world.BENCH_UPKEEP_MAX_SHARE must be within 0..1");
+        }
+        if (TRAITS_TRADER_MESO < 1) {
+            throw new IllegalArgumentException("living_world.TRAITS_TRADER_MESO must be >= 1");
         }
         if (BENCH_CHOOSER_EXPLORE < 0 || BENCH_CHOOSER_DEATH_COST < 0) {
             throw new IllegalArgumentException("living_world.BENCH_CHOOSER_EXPLORE and BENCH_CHOOSER_DEATH_COST must be >= 0");

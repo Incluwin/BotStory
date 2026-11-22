@@ -779,4 +779,14 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="66-companion-traits" author="ganre">
+        <!-- How low each companion's HP went in a party-quest or boss run (min_hp_percent, close_calls under 20 %),
+             written by CompanionRunRecorder behind living_world.TRAITS_ENABLED for the companion traits.
+             See docs/WORLD_SYSTEMS_PLAN.md N9.1. -->
+        <sqlFile path="db/tables/057-companion-traits.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/057-companion-traits-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

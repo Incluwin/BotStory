@@ -287,6 +287,32 @@ class CompanionCardScreensTest {
     }
 
     @Test
+    void bothCardsShowItsTraitsWithThisOwnerUnderItsRecords() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        CompanionPartyQuestService quests = mock(CompanionPartyQuestService.class);
+        CompanionRunRecorder records = mock(CompanionRunRecorder.class);
+        server.living.roster.CompanionTraits traits = mock(server.living.roster.CompanionTraits.class);
+        when(world.partyQuests()).thenReturn(quests);
+        when(quests.records()).thenReturn(records);
+        when(records.recordLines(900)).thenReturn(List.of("Zakum: cleared 1 of 3"));
+        when(world.traits()).thenReturn(traits);
+        when(traits.cardLines(owner.getId(), "hadrik")).thenReturn(List.of("Wary of Zakum since going down there"));
+        when(traits.cardLines(owner.getId(), "mira")).thenReturn(List.of("A homebody after a long spell on the bench"));
+
+        menus.card(owner, hadrikRow);
+
+        assertTrue(lastTalk().text().contains("Zakum: cleared 1 of 3\r\nWary of Zakum since going down there\r\n"),
+                lastTalk().text());
+        LivingTalk.forget(owner);
+
+        menus.card(owner, miraRow);
+
+        String bench = lastTalk().text();
+        assertTrue(bench.contains("\r\nA homebody after a long spell on the bench\r\n")
+                && bench.indexOf("homebody") < bench.indexOf("#L"), bench);
+    }
+
+    @Test
     void oneOnItsOwnRestockTripSaysItIsAtTheStoreAndOneGoneForItsJobWhom() {
         rows.addAll(List.of(hadrikRow, miraRow));
         registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(900)).thenReturn(mock(AgentRuntimeEntry.class));
