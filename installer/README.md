@@ -23,7 +23,9 @@ Bring your own client: MapleStory v83 installed, with a Cosmic or Community Repa
    the address already there (unless `/HOST=` or `/PORT=` is given).
 6. **Residents (optional).** Point it at your server folder and it offers to run
    `tools\living-world-client.bat` at the end, which makes the Residents' portraits and quest log from your
-   server (needs Java and Python; the server must have started once).
+   server (needs Java and Python; the server must have started once). It also sets `MOD_RESIDENT_FILES=on` in
+   the server's `.env`: restart the server after it. Skip it and the game still works, with stock portraits for
+   the Residents and no Resident quests in the quest log.
 
 The launcher opens its **Features** page first; switch modules on or off there.
 

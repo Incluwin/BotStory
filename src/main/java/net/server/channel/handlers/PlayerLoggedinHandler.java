@@ -60,6 +60,7 @@ import scripting.event.EventInstanceManager;
 import server.life.MobSkill;
 import server.living.LivingWorldHooks;
 import server.ShopBuyback;
+import server.mods.RepackMaps;
 import server.mods.ServerMods;
 import service.NoteService;
 import tools.DatabaseConnection;
@@ -78,7 +79,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 
 public final class PlayerLoggedinHandler extends AbstractPacketHandler {
@@ -433,16 +433,10 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             }
 
             // Tell the client to use the custom scripts available for the NPCs provided, instead of the WZ entries.
+            // A client closes on an NPC id its Npc.wz lacks, so the Repack-only ones go only to a Repack client.
             if (YamlConfig.config.server.USE_NPCS_SCRIPTABLE) {
-
-                // Create a copy to prevent always adding entries to the server's list.
-                Map<Integer, String> npcsIds = YamlConfig.config.server.NPCS_SCRIPTABLE
-                        .entrySet().stream().collect(Collectors.toMap(
-                                entry -> Integer.parseInt(entry.getKey()),
-                                Entry::getValue
-                        ));
-
-                c.sendPacket(PacketCreator.setNPCScriptable(npcsIds));
+                c.sendPacket(PacketCreator.setNPCScriptable(
+                        RepackMaps.get().scriptableNpcs(c, RepackMaps.configuredScriptableNpcs())));
             }
 
             if (newcomer) {

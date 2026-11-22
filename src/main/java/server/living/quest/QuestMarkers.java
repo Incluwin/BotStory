@@ -7,6 +7,7 @@ import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.resident.ResidentRuntime;
 import server.maps.MapleMap;
+import server.mods.ServerMods;
 import tools.PacketCreator;
 
 import java.awt.Point;
@@ -80,9 +81,21 @@ public final class QuestMarkers {
         }
     }
 
+    /**
+     * The hitbox NPC to spawn, or 0 for none: the configured id exists only in a client that has the Residents' files
+     * (it is written with the portraits), and a client without it closes when it is spawned.
+     */
+    public static int hitboxNpc(int configured) {
+        return hitboxNpc(configured, ServerMods.get());
+    }
+
+    public static int hitboxNpc(int configured, ServerMods mods) {
+        return configured > 0 && mods.isOn(ServerMods.RESIDENT_FILES) ? configured : 0;
+    }
+
     /** Keeps one hitbox under every marker a player sees, and removes the rest. */
     public synchronized void trackHitboxes() {
-        int npcId = world.config().QUEST_MARKER_HITBOX_NPC;
+        int npcId = hitboxNpc(world.config().QUEST_MARKER_HITBOX_NPC);
         if (npcId <= 0) {
             return;
         }

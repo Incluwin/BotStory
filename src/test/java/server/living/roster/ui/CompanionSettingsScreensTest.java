@@ -75,6 +75,17 @@ import static org.mockito.Mockito.when;
 class CompanionSettingsScreensTest {
     private static final int ANN = 10;
     private static final int HADRIK_PORTRAIT = 9970001;
+
+    /** A Resident's own portrait is shown only while the clients have the Residents' files (server mod resident_files). */
+    @org.junit.jupiter.api.BeforeEach
+    void theClientsHaveTheResidentFiles() {
+        server.mods.ServerMods.get().set(server.mods.ServerMods.RESIDENT_FILES, true);
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void theResidentFilesSwitchIsBackOff() {
+        server.mods.ServerMods.get().set(server.mods.ServerMods.RESIDENT_FILES, false);
+    }
     private static final int ROSTER_BOOK = 2430011;
     private static final byte MENU = 4;
     private static final byte NUMBER = 3;
