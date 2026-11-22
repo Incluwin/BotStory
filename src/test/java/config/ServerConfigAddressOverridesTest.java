@@ -34,12 +34,43 @@ class ServerConfigAddressOverridesTest {
         assertEquals("127.0.0.1", config.TAILSCALEHOST);
     }
 
+    @Test
+    void aSecondServerMovesItsPortsAndDatabase() {
+        ServerConfig config = configured();
+
+        config.applySecondServerOverrides(Map.of(
+                "SERVER_LOGIN_PORT", "18484",
+                "SERVER_CHANNEL_BASE_PORT", " 17575 ",
+                "ADMIN_CONTROL_PORT_BIND", "18480",
+                "DB_URL_FORMAT", "jdbc:mysql://%s:3306/cosmic_check"));
+
+        assertEquals(18484, config.LOGIN_PORT);
+        assertEquals(17575, config.CHANNEL_BASE_PORT);
+        assertEquals(18480, config.ADMIN_CONTROL_PORT_BIND);
+        assertEquals("jdbc:mysql://%s:3306/cosmic_check", config.DB_URL_FORMAT);
+    }
+
+    @Test
+    void theLiveServerKeepsItsPortsWithoutTheVariables() {
+        ServerConfig config = configured();
+
+        config.applySecondServerOverrides(Map.of("SERVER_LOGIN_PORT", "", "SERVER_CHANNEL_BASE_PORT", "seven",
+                "ADMIN_CONTROL_PORT_BIND", "70000"));
+
+        assertEquals(8484, config.LOGIN_PORT);
+        assertEquals(7575, config.CHANNEL_BASE_PORT);
+        assertEquals(8480, config.ADMIN_CONTROL_PORT_BIND);
+        assertEquals("jdbc:mysql://%s:3306/cosmic", config.DB_URL_FORMAT);
+    }
+
     private static ServerConfig configured() {
         ServerConfig config = new ServerConfig();
         config.HOST = "127.0.0.1";
         config.LANHOST = "127.0.0.1";
         config.LOCALHOST = "127.0.0.1";
         config.TAILSCALEHOST = "127.0.0.1";
+        config.ADMIN_CONTROL_PORT_BIND = 8480;
+        config.DB_URL_FORMAT = "jdbc:mysql://%s:3306/cosmic";
         return config;
     }
 }

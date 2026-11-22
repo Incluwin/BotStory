@@ -1,11 +1,15 @@
 name: Build and test
+# master is the P0nk/Cosmic line; BotStory is pushed (through the scrub script) as feat/companion-manager, the
+# default branch of Incluwin/BotStory, so both are built.
 on:
   push:
     branches:
       - master
+      - feat/companion-manager
   pull_request:
     branches:
       - master
+      - feat/companion-manager
 
 permissions:
   contents: read
