@@ -147,7 +147,17 @@ due, hand him the fragments (`AgentOpqHandOver`) and take his pieces to the stat
 Size: about 700-1,000 lines with tests, and the leader driver can only be proven live. Evidence against starting it in
 this wave: human-led OPQ runs with companions still run over the 45-minute clock (runs 4-6), so the conductor it would
 build on is not yet clearing; `tickStorage` never sets statusStg2 (unverified stall). Recommendation: its own session
-after the OPQ clock work, with live check G4.
+after the OPQ clock work, with live check G4 (coordinator 2026-11-22: design only in this wave).
+
+- Files: `opq/AgentOpqSession` (mark), `opq/AgentOpqAdmissionService` (`admitCitizens`), `opq/AgentOpqConductor`
+  (`conducts`, leader checks, silent calls), new `opq/AgentOpqCitizenLeader` (the leader driver), new
+  `opq/AgentOpqLobbyPolicy` and `opq/AgentOpqFullRateSimulation`, `opq/AgentOpqCoordinator` (`tapOut`, the hold),
+  `scripts/event/OrbisPQ.js` (`maxLobbies` from the policy), `agent-engine.yaml` (policy keys),
+  `population/CitizenPqDoor` (`Opq`), tests beside each.
+- Size: 700-1,000 lines with tests.
+- First: human-led OPQ clears inside its 45-minute clock (the conductor it builds on); the storage stage's statusStg2
+  question answered; the user's call on OPQ lobbies per channel (1 -> 2).
+- Live checks: G4 (citizen-led OPQ to the end with a human in the party), plus one citizen-only run to the end.
 
 ## N3.4 design: citizen Zakum (not built)
 
@@ -186,7 +196,18 @@ the player as a held seat (the `acceptRunInvite` path), and the list opens once 
 which is why the help request waits on the errand.
 
 **Size.** Errand (quests, trial trip, forging) 300-500 lines; door, Boss record, lobby, provisioning 300-400; rival
-hand-off 100-150; tests; live checks G5, G6. Well over a third of N3: deliver as design, build in its own session.
+hand-off 100-150; tests; live checks G5, G6. Well over a third of N3: deliver as design, build in its own session
+(coordinator 2026-11-22: accepted as the N3.4 result).
+
+- Files: new `population/CitizenZakumErrand` (beside `CitizenJobErrands`), new `population/CitizenZakumDoor` (beside
+  `CitizenBossDoor`), `population/CitizenPartyQuests` (`shippedDoors`, `helpRun`), `expedition/boss/AgentBossCitizenRuns`
+  (Zakum `Boss`), `scripts/config/population/regions.yaml` (`zakum` lobby), `rivals/RivalCrews` (`replied` yes -> run),
+  `config.yaml` + `PopulationConfig` (`CITIZEN_ZAKUM_ENABLED`), chatter lines, tests.
+- Size: 800-1,100 lines with tests.
+- First: the user's call on unwatched Zakum ((a) none in v1, recommended, or (b) a rolled clear); a live proof that a
+  citizen can walk the trials (the errand) and drop the Eye.
+- Live checks: G5 (citizen Zakum with a human signed up), G6 (a rival crew's help request ends in a Zakum run), and an
+  errand check (a citizen completes 100200/100201 and forges the Eye where players can see).
 
 ## N3.5 LPQ spike (D5: report only)
 
@@ -209,6 +230,12 @@ worth building now.
 - Evidence: the Agent-led path has never cleared live, stage 9 (Alishar) wiped Lv 48 crews, and the user deferred LPQ
   on 2026-10-25 (`CITIZEN_PARTY_QUESTS_PLAN.md` 268-273). Next step if wanted: one GM-run stock Agent-led LPQ to
   the end; build only on a clear.
+- Files (if built): `scripts/event/LudiPQ.js` (`maxLobbies`), new `lpq/AgentLpqLobbyPolicy`, `lpq/AgentLpqSession`
+  (mark), `lpq/AgentLpqAdmissionService` (`admitCitizens`), `lpq/AgentLpqCoordinator` (hold on the mark, the stage-5
+  text), `population/CitizenPqDoor` (`Lpq`), `agent-engine.yaml`.
+- Size: 400-600 lines with tests, plus roster work if citizens lack Teleport/Dark Sight.
+- First: one stock Agent-led LPQ cleared live; the user's earlier deferral (2026-10-25) lifted.
+- Live checks: a citizen-only LPQ to the end; one with a human aboard (the rescues they would see).
 
 ## Decided here (not in the plan)
 
