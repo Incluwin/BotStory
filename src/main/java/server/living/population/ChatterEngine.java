@@ -248,6 +248,9 @@ public final class ChatterEngine {
                 if (population.memories() != null && population.memories().askAfter(session, now)) {
                     continue; // asked after a friend who is away instead (the letters)
                 }
+                if (population.tieTalk() != null && population.tieTalk().talk(session, now)) {
+                    continue; // traded a line with a citizen it is tied to instead (N2.2)
+                }
                 speakSelf(Event.of("dwell", session.mapId, session.channel).self(session), true);
             }
             smegaCadence(now);

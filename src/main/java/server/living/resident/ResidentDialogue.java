@@ -737,6 +737,10 @@ public final class ResidentDialogue {
         if (lines.isEmpty() && other == null && knows(speaker, persona, "where is " + key)) {
             return; // a game thing, not a person: what it is known for (where it is, where it drops)
         }
+        String tied = lines.isEmpty() ? ResidentTieLines.about(world.content(), persona, other) : null;
+        if (tied != null) {
+            lines = List.of(tied); // a tied Resident of its town, by the tie (docs/WORLD_SYSTEMS_PLAN.md N2.2)
+        }
         if (lines.isEmpty()) {
             lines = world.arcs().lines(persona, "aboutUnknown");
         }

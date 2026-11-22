@@ -72,6 +72,7 @@ public final class Population {
     private final TownConversations conversations;
     private final PersonMemories memories;
     private final CitizenTies ties;
+    private final TieTalk tieTalk;
     private final NeedLedger needs;
     private final ClearLog clears;
     private final RivalCrews rivals;
@@ -114,6 +115,7 @@ public final class Population {
         this.conversations = new TownConversations(this);
         this.memories = new PersonMemories(this);
         this.ties = new CitizenTies(this); // citizens' ties to each other (docs/WORLD_SYSTEMS_PLAN.md N2.1)
+        this.tieTalk = new TieTalk(this); // and what they say of them (N2.2)
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
         this.rivals = new RivalCrews(this);
@@ -264,6 +266,7 @@ public final class Population {
                 fresh.names().middle(), fresh.names().end());
         voices.reload();
         chatter.reload();
+        tieTalk.reload();
         clears.reload(); // rivals.yaml's quest labels
         return fresh.warnings();
     }
@@ -415,6 +418,10 @@ public final class Population {
 
     public CitizenTies ties() {
         return ties;
+    }
+
+    public TieTalk tieTalk() {
+        return tieTalk;
     }
 
     public List<Integer> channels() {
