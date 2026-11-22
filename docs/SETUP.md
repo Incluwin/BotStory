@@ -359,3 +359,45 @@ The server runs without any of these.
     keeps it, and can't enter the game on this client. The server log names it at login
     (`carries ... while server mod botstory_wz is off`).
   - See [the game client](#2-the-game-client).
+
+## For maintainers: public-client smoke test
+
+GitHub issues #1 and #3 were a stock v83 client closing on NPCs only BotStory's own client files have, and
+users found them first. Before every scrub push, run the smoke test from the shared tools folder
+(`MapleServer\tools\release`, outside this repository). It never moves a ref or pushes, and it stays off the
+live server's ports and database.
+
+1. **Server half**, about 15 minutes, no game client:
+   `powershell -File tools\release\public-smoke.ps1 -Ref feat/companion-manager`
+   - It exports the tree the scrub push would publish (`rewrite-email-for-push.pl`, objects only, then
+     `git archive` of the rewritten commit).
+   - It does what `setup.bat` does for a new user: `.env` from `.env.example`, the DB login,
+     `MOD_FUSION_ANVIL=on`, and the build. Every other `MOD_*` stays at its public default.
+   - It starts the tree with `start-server.bat` on login port 18584 and channels from 18675, with a fresh
+     database `cosmic_pubsmoke`. The admin port is off, because the live server holds 8480.
+   - A headless login probe (`PublicSmokeLogin.java`) logs in as `admin`/`admin`, enters the game and warps
+     through Mushroom Town and four Victoria towns.
+   - It fails on any server log line starting `STOCK-CLIENT-LACKS`, or when the server drops the probe.
+2. **Client half**, on the shared desktop: start the server half with `-KeepServer`, then
+   `powershell -File tools\release\public-smoke-client.ps1 -ClientDir <folder>`. The folder is a public
+   user's client: plain v83 exe and dlls, the stock WZ files, the public BotStory-Kaentake launcher as
+   `Launch Game.exe` with its dll and `Custom.wz`, and a `config.ini` that points at 127.0.0.1:18584 (set
+   `remember_password=0`, `quick_login=0` and `resolution=0`). The driver does these steps:
+   - logs in and enters the game;
+   - opens a Resident's menu and the Crew window;
+   - walks three towns (`tools\cua\takes\public-smoke-client.take`);
+   - asks the Coke Town gate, where a stock-file player must be kept out of the Repack map.
+
+   It fails when `MapleStory.exe` exits, then runs the same log check. It backs up
+   `HKCU\Software\Wizet\MapleStory` first and restores it afterwards. `-Phase stop` stops the smoke server.
+
+The log line comes from `server.mods.StockClientAudit`. It is on only with
+`-Dbotstory.stockClientAudit=true` and never on a normal server. It covers the packet builders that name an
+NPC (spawn, controller, NPC window, the login's scriptable list) or a map (`SET_FIELD`). It flags an NPC
+that is not in the server's `wz/Npc.wz` or that is on the Repack-only list (`mods/repack-npcs.txt`), and a
+map that is on `mods/repack-maps.txt`. `-Dbotstory.loginPort` and `-Dbotstory.channelBasePort` move a
+server's ports. Their defaults are 8484 and 7575.
+
+To check that the test still catches the 11-22 crash, run `public-smoke.ps1 -FlipResidentFiles`. It sets
+`resident_files: on` in the exported copy only, which is the state before the fix, and it must FAIL on the
+quest-marker hitbox NPC 9970999.
