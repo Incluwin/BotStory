@@ -3,6 +3,7 @@ package server.mods;
 import client.BotClient;
 import client.Character;
 import client.Client;
+import config.YamlConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.life.LifeFactory;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongSupplier;
@@ -43,6 +45,7 @@ public final class RepackMaps {
     static final String RESOURCE = "/mods/repack-maps.txt";
     /** Written by tools/repack-import/incomplete.js: listed maps whose background, object or tile the Repack lacks. */
     static final String INCOMPLETE_RESOURCE = "/mods/repack-incomplete-maps.txt";
+    static final String NPCS_RESOURCE = "/mods/repack-npcs.txt";
     static final String INCOMPLETE_LINE = "That place was never finished in the Community Repack game files: its"
             + " pictures are missing, and your game would close there. You stay here.";
     /** The P5 feature id a Kaentake.dll on the Repack files would report active. */
@@ -124,6 +127,8 @@ public final class RepackMaps {
 
     private static final Map<Integer, String> AREAS = load(RESOURCE);
     private static final Map<Integer, String> INCOMPLETE = load(INCOMPLETE_RESOURCE);
+    /** NPCs only the Repack's Npc.wz has: naming one to a client on the Cosmic files closes it. */
+    private static final Set<Integer> NPCS = load(NPCS_RESOURCE).keySet();
 
     private static volatile RepackMaps instance;
 
@@ -214,6 +219,41 @@ public final class RepackMaps {
         return mods.isOn(ServerMods.REPACK_MAPS);
     }
 
+    /** Whether only the Community Repack's Npc.wz has this NPC (mods/repack-npcs.txt). */
+    public static boolean repackOnlyNpc(int npcId) {
+        return NPCS.contains(npcId);
+    }
+
+    public static Set<Integer> repackOnlyNpcs() {
+        return NPCS;
+    }
+
+    /**
+     * The scriptable NPCs (config.yaml NPCS_SCRIPTABLE) this client may be sent at login. The client looks each one
+     * up in its Npc.wz, and a client on the Cosmic files closes on a Repack-only NPC ("Unknown error 0x80030002"), so
+     * those go only to a client that has said it has the Repack files; {@link #recordWord} sends them the moment an
+     * account says so.
+     */
+    public Map<Integer, String> scriptableNpcs(Client client, Map<Integer, String> all) {
+        boolean repack = open() && files(client) == Files.REPACK;
+        Map<Integer, String> out = new TreeMap<>();
+        all.forEach((npcId, text) -> {
+            if (repack || !repackOnlyNpc(npcId)) {
+                out.put(npcId, text);
+            }
+        });
+        return out;
+    }
+
+    /** config.yaml NPCS_SCRIPTABLE by NPC id; empty while USE_NPCS_SCRIPTABLE is off. */
+    public static Map<Integer, String> configuredScriptableNpcs() {
+        Map<Integer, String> out = new TreeMap<>();
+        if (YamlConfig.config.server.USE_NPCS_SCRIPTABLE) {
+            YamlConfig.config.server.NPCS_SCRIPTABLE.forEach((id, text) -> out.put(Integer.parseInt(id), text));
+        }
+        return out;
+    }
+
     private static boolean isBot(Client client) {
         return client == null || client instanceof BotClient;
     }
@@ -270,6 +310,18 @@ public final class RepackMaps {
             return false;
         }
         record(client.getAccID(), files, Source.PLAYER);
+        if (files == Files.REPACK && open()) {
+            // the login list left the Repack-only NPCs out: without them their clicks never reach the server
+            Map<Integer, String> held = new TreeMap<>();
+            configuredScriptableNpcs().forEach((npcId, text) -> {
+                if (repackOnlyNpc(npcId)) {
+                    held.put(npcId, text);
+                }
+            });
+            if (!held.isEmpty()) {
+                client.sendPacket(PacketCreator.setNPCScriptable(held));
+            }
+        }
         return true;
     }
 

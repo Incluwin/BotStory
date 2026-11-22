@@ -134,10 +134,22 @@ public final class ServerMods {
     public static final ServerMod OWN_HIT = new ServerMod("own_hit",
             "Your own hit numbers from PvP and server bosses (client feature own_hit)", true);
 
+    /**
+     * The clients have the Residents' files, made per client by tools\living-world-client.bat (or the installer's
+     * Residents step): an Npc.wz image per Resident for its own portrait (9970000+, portrait-npc-ids.yaml) and the
+     * invisible quest-marker hitbox NPC (living_world.QUEST_MARKER_HITBOX_NPC). A client sent an NPC id its Npc.wz
+     * lacks closes ("Unknown error 0x80030002"), so off, a Resident's window shows a stock townsperson of its town and
+     * the quest icons are not clickable (double-click the Resident instead). Boot only: the hitbox tracker is started
+     * at boot.
+     */
+    public static final ServerMod RESIDENT_FILES = new ServerMod("resident_files",
+            "Clients have the Residents' files (own portraits, clickable quest icons; tools/living-world-client.bat)",
+            false, true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
             SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER, CASH_SHOP_WINDOW, REPACK_MAPS,
-            CRYSSEA, OWN_HIT);
+            CRYSSEA, OWN_HIT, RESIDENT_FILES);
 
     private static volatile ServerMods instance;
 

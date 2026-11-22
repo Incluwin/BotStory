@@ -44,6 +44,7 @@ import server.living.standing.HireStanding;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.mods.ServerMods;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -143,6 +144,11 @@ public final class ResidentDialogue {
             Map.entry("mushroom-town", new int[] {2100, 2101}),
             Map.entry("happyville", new int[] {2001000, 2002000, 2002001}));
 
+    /** Every borrowed townsperson portrait, by town: stock NPCs that every client's Npc.wz has. */
+    static java.util.Collection<int[]> borrowedPortraits() {
+        return PORTRAITS.values();
+    }
+
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);
         if (ownLook > 0) {
@@ -155,13 +161,24 @@ public final class ResidentDialogue {
         return town[Math.floorMod(persona.id().hashCode(), town.length)];
     }
 
-    /** The NPC id whose portrait is this persona's own face (the configured or the rendered 9970000+ one); 0 when none. */
+    /**
+     * The NPC id whose portrait is this persona's own face (the configured or the rendered 9970000+ one); 0 when none.
+     * A rendered one exists only in a client that has the Residents' files, and a client without it closes on the
+     * window, so it is used only while the server mod resident_files is on.
+     */
     public static int renderedPortraitOf(Persona persona) {
+        LivingWorld world = LivingWorld.get();
+        return renderedPortraitOf(persona, world == null ? null : world.content(), ServerMods.get());
+    }
+
+    static int renderedPortraitOf(Persona persona, LivingContent content, ServerMods mods) {
         if (persona.portraitNpcId() > 0) {
             return persona.portraitNpcId();
         }
-        LivingWorld world = LivingWorld.get();
-        return world == null ? 0 : world.content().portraitNpcId(persona.id());
+        if (content == null || !mods.isOn(ServerMods.RESIDENT_FILES)) {
+            return 0;
+        }
+        return content.portraitNpcId(persona.id());
     }
 
     private static final Pattern ROSTER = Pattern.compile("^(roster|who do i have|my companions|my crew|who travels with me|list companions)$");

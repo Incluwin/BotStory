@@ -123,20 +123,21 @@ Community Repack set). There are two ways to make one from public files:
   account and character: entering the game, a Resident's menu, quest log and quest markers, and
   accepting a Resident quest and handing it in.
 
-Two server mods in `config.yaml` (`mods.SWITCHES`) decide which client a server serves:
+Three server mods in `config.yaml` (`mods.SWITCHES`) decide which client a server serves:
 
 | Mod | When on | Installer client | Plain kaentake client |
 |---|---|---|---|
 | `fusion_anvil` | Every equip carries its Fusion Anvil transmog id, and the Fusion Anvil works | Needs it **on**: its DLL always reads that id, so with it off it misreads every item | Needs it **off**: misreads every item and closes as soon as a character enters the game |
 | `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), the Hunter's Codex becomes a cash medal, and GM commands may hand out the 303 Community Repack equips | Keep it off | Keep it off |
+| `resident_files` | A Resident's window shows its own portrait, and the quest icons over Residents are clickable | **On** only after step 4 on every client (the step sets it); a client without those files closes on them | The same |
 
-Both ship off in `config.yaml`. `setup.bat` sets `MOD_FUSION_ANVIL=on` in `.env` when it is blank,
+All three ship off in `config.yaml`. `setup.bat` sets `MOD_FUSION_ANVIL=on` in `.env` when it is blank,
 for the installer client; for plain kaentake, set `MOD_FUSION_ANVIL=off` there. With Docker or a
 server started by hand, nothing sets it: put `MOD_FUSION_ANVIL=on` in `.env` yourself for the
 installer client (Docker passes it on; by hand, set it in the environment). `botstory_wz` is
 only for the BotStory host's own client, whose WZ files have those items: any other client closes
 when a character wearing one enters the game. A server serves one kind of client at a time. The
-line `Server mods: ...` at server start shows both switches.
+line `Server mods: ...` at server start shows all three switches.
 
 **Checklist for the client by hand** (details in the numbered steps below; the steps give no
 download sizes or times, so none are listed here):
@@ -145,7 +146,7 @@ download sizes or times, so none are listed here):
    copy the 12 `cosmic-wz` files over the installed ones.
 2) Copy kaentake into the client folder (or use `HeavenMS-localhost-WINDOW.exe` for this PC only).
 3) kaentake only: set the large-address-aware flag with `botstory_wz.py exe`. Needs Python 3.8+.
-4) Start the server once and stop it, then run `tools\living-world-client.bat` on the client
+4) Optional, for the Residents' own portraits and quest log: start the server once and stop it, then run `tools\living-world-client.bat` on the client
    (with Docker: the two `docker compose run` exports, then `botstory_wz.py residents`). Needs
    Python 3.8+.
 5) Optional: set the three `QUEST_MARKER_*` lines in `config.yaml` to show quest markers.
@@ -176,7 +177,10 @@ download sizes or times, so none are listed here):
    py -3 tools\wz-patcher\botstory_wz.py exe --exe "C:\Nexon\MapleStory\MapleStory.exe"
    ```
 
-4. **Add the Residents' portraits and quest log** before you first log in:
+4. **Add the Residents' portraits and quest log** (optional). Without this step the game still
+   works: a Resident's window shows a stock townsperson's portrait, its quests are missing from
+   the quest log (chat lines and the Resident's own menu still track them), and you double-click
+   the Resident instead of its quest icon. To add them:
    1. Start the server once, so it creates the Residents, then stop it. At first only the
       Residents of Lith Harbor (`ALWAYS_AWAKE_TOWNS` in `config.yaml`) have characters. The
       others get theirs when a player first enters their town.
@@ -190,6 +194,12 @@ download sizes or times, so none are listed here):
       Resident NPCs (ids from 9970000, and 9970999 for clickable quest markers) and the
       Residents' quests into your client's `Npc.wz`, `String.wz`, `Quest.wz` and `Etc.wz`. The
       originals go to `botstory-wz-backup\`.
+   3. The tool then sets `MOD_RESIDENT_FILES=on` in the server's `.env` when that line is blank
+      (the server mod `resident_files`). Start the server again: only with it on does the
+      server use the Residents' own portraits and clickable quest icons. **Every client that
+      connects needs this step first.** A client without these files closes with
+      `Unknown error 0x80030002` when the server names one of those NPCs, so keep
+      `MOD_RESIDENT_FILES=off` while any client has not run it.
 
    **With Docker,** `tools\living-world-client.bat` does not work: it needs the server built on
    this PC and MySQL on port 3306. The server part runs in the container instead, so Java is not
@@ -217,9 +227,12 @@ download sizes or times, so none are listed here):
    py -3 tools\wz-patcher\botstory_wz.py residents --client "C:\Nexon\MapleStory" --export logs\client-export
    ```
 
-   The v83 client expects every NPC and quest the server shows it to exist in its WZ files.
-   Without this step it closes when you talk to a Resident, and the status bar and chat box do
-   not appear. Residents without a character yet borrow a stock townsperson's portrait; the
+   With Docker, nothing sets the switch: after the last command, put `MOD_RESIDENT_FILES=on` in
+   `.env` yourself and restart the server.
+
+   The v83 client expects every NPC the server shows it to exist in its WZ files, which is why
+   the server shows the Residents' own NPCs only while `resident_files` is on.
+   Residents without a character yet borrow a stock townsperson's portrait; the
    first line the export prints names them (`no character yet: ...`). Run this step again after
    you have visited their towns, and after the Residents' gear or quests change.
 5. **Quest markers without BotStory's `Custom.wz`.** The markers over Residents are drawn from
@@ -330,9 +343,14 @@ The server runs without any of these.
   `JAVA_HOME` must point at a JDK 21.
 - **`Could not read config file config.yaml`.** The server must start from the repository folder;
   `start-server.bat` does this for you.
-- **The client closes when you talk to a Resident, or shows no status bar.** Check that you ran
-  step 4 of [the game client](#2-the-game-client) (`tools\living-world-client.bat`) on that
-  client, so the Residents' NPCs and quests are in its WZ files.
+- **The client closes with `Unknown error 0x80030002` (error code -2147287038)** on entering
+  the game, or when you double-click a Resident. The server named an NPC that client's `Npc.wz`
+  does not have. Check the server's start line `Server mods: ...`:
+  - `resident_files on` needs step 4 of [the game client](#2-the-game-client)
+    (`tools\living-world-client.bat`) run on **that** client. Run it, or set
+    `MOD_RESIDENT_FILES=off` in `.env` and restart the server.
+  - A server older than 2026-11-22 sent those NPCs to every client: update it (`git pull`, then
+    start it again).
 - **The client closes as soon as a character enters the game.**
   - Check the server's start line `Server mods: ...`. With a client made from public files,
     `fusion_anvil` and `botstory_wz` must both be off. A `(MOD_...)` after a switch means a `.env`
