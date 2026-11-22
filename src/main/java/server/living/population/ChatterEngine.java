@@ -248,6 +248,9 @@ public final class ChatterEngine {
                 if (population.memories() != null && population.memories().askAfter(session, now)) {
                     continue; // asked after a friend who is away instead (the letters)
                 }
+                if (population.paperTalk() != null && population.paperTalk().talk(session, now)) {
+                    continue; // the paper's headlines on its first day instead (docs/WORLD_SYSTEMS_PLAN.md N1.3)
+                }
                 speakSelf(Event.of("dwell", session.mapId, session.channel).self(session), true);
             }
             smegaCadence(now);

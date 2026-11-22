@@ -112,7 +112,9 @@ public final class PopulationLoader {
             "casino.drop.cheer",
             "casino.gacha.open", "casino.gacha.prize",
             "casino.nx.sell", "casino.nx.flavor", "casino.nx.wrong", "casino.nx.thanks", "casino.nx.code",
-            "town.chalkboard", "town.avatar");
+            "town.chalkboard", "town.avatar",
+            // the town paper's headlines on issue day, and a known player named in it (paper.PaperTalk, N1.3)
+            "paper.headline", "paper.named");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

@@ -22,7 +22,9 @@ import server.knowledge.ContentChat;
 import server.living.LivingWorld;
 import server.living.config.ContentException;
 import server.living.population.needs.NeedLedger;
+import server.living.population.paper.EventLogSweep;
 import server.living.population.paper.PaperDesk;
+import server.living.population.paper.PaperTalk;
 import server.living.population.records.ClearLog;
 import server.living.population.coliseum.Coliseum;
 import server.living.population.rivals.RivalCrews;
@@ -77,6 +79,8 @@ public final class Population {
     private final RivalCrews rivals;
     private final Coliseum coliseum;
     private final PaperDesk paper;
+    private final PaperTalk paperTalk;
+    private final EventLogSweep sweep;
     private final CitizenWhispers whispers;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
@@ -126,6 +130,11 @@ public final class Population {
                         executor.submit("paper", task);
                     }
                 });
+        this.sweep = EventLogSweep.live(() -> config); // the event log's retention (decision D1, N1.3)
+        this.paperTalk = new PaperTalk(paper, mapId -> "town".equals(fields.kind(mapId)), session -> {
+            Character agent = session.agent();
+            return agent == null || agent.getMap() == null ? List.of() : agent.getMap().getAllPlayers();
+        }, chatter::speakTo, memories);
         this.whispers = new CitizenWhispers(this);
         this.whispers.onReply("rival", rivals::replied); // a player answering a crew's whisper (F7)
         this.presence = new PresenceScheduler(this);
@@ -192,7 +201,11 @@ public final class Population {
         AgentLootPolicy.installSelectivity(population.controller);
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
         AgentUseRoomLoot.install(population.useRoomLoot()); // loot sold for potion room, cheapest first
-        EconomyLedger.onClose(population.controller::onClose);
+        EconomyLedger.onClose(close -> {
+            population.controller.onClose(close);
+            // the event log's 90-day retention (decision D1, docs/WORLD_SYSTEMS_PLAN.md N1.3), off the close's thread
+            population.world.executor().submit("paper.sweep", () -> population.sweep.atClose(System.currentTimeMillis()));
+        });
         PaperDesk.install(population.paper);
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
@@ -415,6 +428,11 @@ public final class Population {
     /** The town paper (docs/WORLD_SYSTEMS_PLAN.md N1). */
     public PaperDesk paper() {
         return paper;
+    }
+
+    /** Citizens' talk of the paper's headlines on its first day (N1.3). */
+    public PaperTalk paperTalk() {
+        return paperTalk;
     }
 
     /** Players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). */
