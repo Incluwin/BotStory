@@ -630,6 +630,12 @@ public final class RivalCrews implements ClearLog.Listener {
             return;
         }
         Owed debt = new Owed(clear.quest(), clear.durationMs(), crewBest, clear.clearedAtMs());
+        if (population.memories() != null && population.config().HEARSAY_ENABLED) { // a race they won (N2.4)
+            for (int memberId : crew.members()) {
+                population.memories().record(memberId, crew.mainId(), server.living.population.PersonMemory.Kind.RACE_WON, 0,
+                        population.clears().labels().label(clear.quest()), 1);
+            }
+        }
         Character main = onlineCharacter(crew.mainId());
         if (main == null || !congratulate(crew, main, debt)) {
             owed.put(crew.accountId(), debt);

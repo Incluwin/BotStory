@@ -74,6 +74,7 @@ public final class Population {
     private final CitizenTies ties;
     private final TieTalk tieTalk;
     private final Hearsay hearsay;
+    private final KillSteals killSteals;
     private final NeedLedger needs;
     private final ClearLog clears;
     private final RivalCrews rivals;
@@ -118,6 +119,7 @@ public final class Population {
         this.ties = new CitizenTies(this); // citizens' ties to each other (docs/WORLD_SYSTEMS_PLAN.md N2.1)
         this.tieTalk = new TieTalk(this); // and what they say of them (N2.2)
         this.hearsay = new Hearsay(this, new java.util.Random()); // and of the humans they met (N2.3)
+        this.killSteals = new KillSteals(this); // and of who took their kills (N2.4)
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
         this.rivals = new RivalCrews(this);
@@ -188,6 +190,9 @@ public final class Population {
         AgentStallHolds.install(population.market::keepForStall); // list or vendor (docs/ECONOMY_PLAN.md E3)
         population.controller.start(); // the last applied E4 setting (docs/ECONOMY_PLAN.md E4)
         AgentLootPolicy.installSelectivity(population.controller);
+        // citizens leave alone a mob a human is fighting, while kill-steal memory is on (docs/WORLD_SYSTEMS_PLAN.md N2.4)
+        server.agents.capabilities.combat.AgentGrindManners.install(id -> population.config().KS_MEMORY_ENABLED
+                && population.isCitizen(id));
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
         AgentUseRoomLoot.install(population.useRoomLoot()); // loot sold for potion room, cheapest first
         EconomyLedger.onClose(population.controller::onClose);
@@ -243,6 +248,7 @@ public final class Population {
         MesoFlows.installClassifier(null);
         AgentStallHolds.install(null);
         AgentLootPolicy.installSelectivity(null);
+        server.agents.capabilities.combat.AgentGrindManners.install(null);
         AgentEtcRoomPlan.installKeepsFree(null);
         AgentUseRoomLoot.install(null);
         EconomyLedger.onClose(null);
@@ -430,9 +436,13 @@ public final class Population {
         return hearsay;
     }
 
-    /** One line for !ties: hearsay's tellings and reads. */
+    /** One line for !ties: hearsay's tellings and reads, and kill-steals each way. */
     public String hearsayReport() {
-        return hearsay.report();
+        return hearsay.report() + "; " + killSteals.report();
+    }
+
+    KillSteals killSteals() {
+        return killSteals;
     }
 
     public List<Integer> channels() {

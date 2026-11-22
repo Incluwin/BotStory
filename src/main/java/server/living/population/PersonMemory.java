@@ -85,7 +85,16 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
          */
         HEARD_GOOD(4, 0, 0L),
         /** Hearsay of something bad they did. */
-        HEARD_BAD(4, 0, 0L);
+        HEARD_BAD(4, 0, 0L),
+        /** It saw them win a coliseum ladder match or tournament bout (N2.4); the detail is which. */
+        WON(5, 4, HOUR_MS),
+        /** They beat its rival crew's best time (N2.4); the detail is the quest. */
+        RACE_WON(5, 3, DAY_MS),
+        /**
+         * They kept finishing the mobs it had done most of the work on, where it was training first (N2.4, decision D4):
+         * a grudge from nothing ({@link #COLD}), as a let-down is.
+         */
+        KS(7, -35, 30 * 60_000L);
 
         final double weight;
         final int warmth;
@@ -288,6 +297,7 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             case "fam" -> "famed " + who;
             case "dfm" -> "defamed " + who;
             case "won" -> "won at the coliseum";
+            case "race" -> "beat " + who + "'s crew's time";
             case "ks" -> "kept taking " + who + "'s kills";
             default -> "did something for " + who;
         };
@@ -370,7 +380,8 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
                     strongest);
         }
         if (felt <= COOL) {
-            boolean letDown = strongest != null && (strongest.kind() == Kind.PQ_LEFT || strongest.kind() == Kind.DEFAMED);
+            boolean letDown = strongest != null && (strongest.kind() == Kind.PQ_LEFT || strongest.kind() == Kind.DEFAMED
+                    || strongest.kind() == Kind.KS);
             return new Greeting("memory.greet.cool", letDown ? strongest : null);
         }
         if (strongest != null && nowMs - strongest.atMs() < VAGUE_AFTER_MS) {
@@ -383,8 +394,10 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
                 case FAMED -> "memory.greet.famed";
                 case HELPED -> "memory.greet.helped";
                 case FULFILLED, FULFILLED_BOARD -> "memory.greet.fulfilled";
+                case WON -> "memory.greet.won";
+                case RACE_WON -> "memory.greet.race";
                 case TALK, THANKED -> "memory.greet.talk";
-                case PQ_LEFT, DEFAMED, HEARD_GOOD, HEARD_BAD -> null;
+                case PQ_LEFT, DEFAMED, KS, HEARD_GOOD, HEARD_BAD -> null;
             };
             if (trigger != null) {
                 return new Greeting(trigger, strongest);
@@ -474,6 +487,9 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             case DEFAMED -> "they defamed me";
             case FULFILLED -> "they brought me " + (what.isEmpty() ? "what i needed" : what);
             case FULFILLED_BOARD -> "they left " + (what.isEmpty() ? "what i needed" : what) + " for me at the board";
+            case WON -> "saw them win at the coliseum";
+            case RACE_WON -> "they beat our " + quest + " time";
+            case KS -> "they kept taking my kills";
             case HEARD_GOOD, HEARD_BAD -> {
                 Heard heard = Heard.parse(what);
                 yield heard == null ? "heard about them" : "heard from " + heard.teller() + " they "

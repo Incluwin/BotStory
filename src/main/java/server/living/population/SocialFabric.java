@@ -239,6 +239,9 @@ public final class SocialFabric {
             if (population.hearsay() != null) {
                 population.hearsay().minute(now); // word of mouth about the humans they met (N2.3)
             }
+            if (population.killSteals() != null) {
+                population.killSteals().minute(now);
+            }
             PersonMemories memories = population.memories();
             if (memories != null) {
                 memories.flush(now); // what happened between citizens and players this minute, in one batch

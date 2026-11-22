@@ -222,12 +222,15 @@ final class Hearsay {
             case FAMED -> "fam";
             case PQ_LEFT -> "left-" + quest;
             case DEFAMED -> "dfm";
+            case WON -> "won";
+            case RACE_WON -> "race";
+            case KS -> "ks";
             default -> null;
         };
     }
 
     static boolean good(Kind kind) {
-        return kind != Kind.PQ_LEFT && kind != Kind.DEFAMED;
+        return kind != Kind.PQ_LEFT && kind != Kind.DEFAMED && kind != Kind.KS;
     }
 
     /** One line for ops. */

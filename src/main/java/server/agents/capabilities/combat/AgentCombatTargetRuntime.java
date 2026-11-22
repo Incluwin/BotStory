@@ -57,6 +57,7 @@ public final class AgentCombatTargetRuntime {
             List<Monster> candidates = AgentCombatCandidateProvider.local(bot, botPos, rangeSq);
             int baseCandidateCount = candidates.size();
             candidates.removeIf(monster -> !AgentCombatObjectiveTargetStateRuntime.allows(entry, monster.getId()));
+            AgentGrindManners.leaveTheirs(bot, candidates); // a human's mob is theirs (N2.4; polite bots only)
             int objectiveCandidateCount = candidates.size();
             AgentCombatDecisionContext assignmentContext = decisionContext;
             AgentCombatRegionAssignmentPolicy.SearchScope<Monster> assignmentScope =

@@ -268,6 +268,10 @@ final class TournamentBout {
             tellAll(coliseum, names[side] + " beats " + names[1 - side] + " (" + (reason.startsWith("forfeit")
                     ? "a forfeit" : score.from(side)) + ") and goes through.");
             CitizenSession winner = citizen(coliseum, side);
+            Character won = human[side] && !reason.startsWith("forfeit") ? fighter(coliseum, side) : null;
+            if (won != null && coliseum.population().memories() != null) { // seen by the citizens there (N2.4)
+                coliseum.population().memories().witnessed(won, server.living.population.PersonMemory.Kind.WON, "tournament");
+            }
             if (winner != null && !reason.startsWith("forfeit")) {
                 coliseum.say(winner, "tournament.win", names[1 - side], Map.of("round", roundName));
             }

@@ -236,7 +236,8 @@ public final class AgentSkillAttackPlanRuntime {
         AgentAttackExecutionProvider.SkillAttackTiming skillTiming =
                 AgentAttackExecutionProvider.resolveSkillAttackTiming(skill, action, bot, fallbackAttackData);
         List<Monster> targets = AgentCombatTargetSelector.collectTargetsInHitBox(
-                primaryTarget, hitBox, Math.max(1, effect.getMobCount()), server.agents.perception.AgentMapPerception.monsters(bot.getMap()));
+                primaryTarget, hitBox, Math.max(1, effect.getMobCount()),
+                AgentGrindManners.mannerly(bot, server.agents.perception.AgentMapPerception.monsters(bot.getMap())));
         if (skillId == DragonKnight.DRAGON_ROAR
                 && !AgentCombatSupportPolicy.canUseDragonRoarPlan(
                 bot, targets.size(),

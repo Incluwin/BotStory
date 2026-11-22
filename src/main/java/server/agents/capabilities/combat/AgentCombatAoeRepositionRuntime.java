@@ -63,7 +63,8 @@ public final class AgentCombatAoeRepositionRuntime {
         }
         List<Monster> sweetTargets = AgentCombatTargetSelector.collectTargetsInHitBox(
                 sweetPrimary, shifted, aoeSkillMobs,
-                AgentCombatObjectiveTargetStateRuntime.allowedMonsters(entry, server.agents.perception.AgentMapPerception.monsters(bot.getMap())));
+                AgentGrindManners.mannerly(bot, AgentCombatObjectiveTargetStateRuntime.allowedMonsters(entry,
+                        server.agents.perception.AgentMapPerception.monsters(bot.getMap()))));
         if (sweetTargets.size() <= fireNowBest.targets.size()) {
             return null;
         }

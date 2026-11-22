@@ -131,6 +131,8 @@ public class Monster extends AbstractLoadedLife {
     private volatile Set<Integer> hitBeforeRevive = Set.of();
     private int spawnEffect = 0;
     private final HashMap<Integer, AtomicLong> takenDamage = new HashMap<>();
+    /** Who landed the killing blow (killBy), 0 before or without one: the living world's kill-steal reading (N2.4). */
+    private volatile int killerId;
     private ScheduledFuture<?> monsterItemDrop = null;
     private Runnable removeAfterAction = null;
     private boolean availablePuppetUpdate = true;
@@ -568,6 +570,11 @@ public class Monster extends AbstractLoadedLife {
         return takenDamage.containsKey(chr.getId());
     }
 
+    /** Who landed the killing blow; 0 while it lives or when it died without a killer. */
+    public int killerId() {
+        return killerId;
+    }
+
     public long damageBy(int characterId) {
         AtomicLong d = takenDamage.get(characterId);
         return d == null ? 0L : d.get();
@@ -880,6 +887,7 @@ public class Monster extends AbstractLoadedLife {
     }
 
     public Character killBy(final Character killer) {
+        killerId = killer != null ? killer.getId() : 0;
         distributeExperience(killer != null ? killer.getId() : 0);
 
         final Pair<Character, Boolean> lastController = aggroRemoveController();

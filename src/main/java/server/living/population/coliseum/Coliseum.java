@@ -16,6 +16,7 @@ import server.economy.ledger.MesoFlows;
 import server.living.population.ChatterEngine;
 import server.living.population.Citizen;
 import server.living.population.CitizenSession;
+import server.living.population.PersonMemory;
 import server.living.population.Population;
 import server.living.population.PresenceScheduler;
 import server.living.resident.LivingTalk;
@@ -751,6 +752,9 @@ public final class Coliseum {
                     fighters);
         } catch (RuntimeException failure) {
             log.warn("Coliseum: booking {} against {} failed", match.humanName, match.citizenName, failure);
+        }
+        if (human != null && winnerSide == 0 && !forfeited && population.memories() != null) {
+            population.memories().witnessed(human, PersonMemory.Kind.WON, "ladder"); // seen by the citizens there (N2.4)
         }
         CitizenSession session = population.presence().session(match.citizenId);
         if (session != null && !forfeited) {

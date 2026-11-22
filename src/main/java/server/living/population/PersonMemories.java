@@ -139,6 +139,23 @@ public final class PersonMemories {
                 config.HEARSAY_WARMTH_MAX), good ? "HEARD_GOOD" : "HEARD_BAD");
     }
 
+    /**
+     * Every loaded citizen on {@code human}'s map and channel saw them do {@code kind} (docs/WORLD_SYSTEMS_PLAN.md N2.4:
+     * a ladder or tournament win); memory only. Written only while HEARSAY_ENABLED is on: these deeds are there to be
+     * told.
+     */
+    public void witnessed(Character human, Kind kind, String detail) {
+        if (!on() || !config().HEARSAY_ENABLED || human == null || human.getMap() == null) {
+            return;
+        }
+        int channel = human.getClient() == null ? 0 : human.getClient().getChannel();
+        for (CitizenSession session : population.presence().sessions()) {
+            if (!session.virtual && session.mapId == human.getMapId() && (channel == 0 || session.channel == channel)) {
+                record(session.characterId, human.getId(), kind, human.getMapId(), detail, 1);
+            }
+        }
+    }
+
     private void change(int citizenId, int playerId, UnaryOperator<PersonMemory> change, String what) {
         for (int attempt = 0; attempt < 3; attempt++) {
             Entry entry = entry(citizenId, playerId);

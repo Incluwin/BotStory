@@ -39,3 +39,25 @@ intents:
         - "{name}. heard about u"
       playful-social-v1:
         - "ooh ur {name}... {teller} told me stuff lol"
+  # First-hand deeds a citizen saw (N2.4), greeted the next time they meet: a ladder or tournament win it watched
+  # (memory.greet.won, {what} = ladder or tournament) and a rival crew's time they beat (memory.greet.race, {pq}).
+  - id: memory.greet.won.map
+    trigger: memory.greet.won
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}! saw ur {what} match, nice"
+      - "hey {name}, gg at the coliseum"
+      - "{name} the champ lol. good fight {when}"
+  - id: memory.greet.race.map
+    trigger: memory.greet.race
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}... u beat our {pq} time. we'll get it back"
+      - "oh its {name}. enjoy that {pq} record while it lasts"
+      - "{name}! still salty about that {pq} time lol"
