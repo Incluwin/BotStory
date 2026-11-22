@@ -506,6 +506,8 @@ public final class CitizenPartyQuests {
             if (party.invitedFar.contains(member.id())) { // asked along from afar: the lobby hears why they wait
                 population.chatter().event(ChatterEngine.Event.of(trigger(doors.get(party.questKey), "coming"),
                         leader.mapId, leader.channel).self(leader).subject(human));
+                log.info("citizen {} party at map {} waits for {} (asked along, on the way)", leader.name(), party.mapId,
+                        human == null ? member.name() : human.getName());
             }
         }
     }
