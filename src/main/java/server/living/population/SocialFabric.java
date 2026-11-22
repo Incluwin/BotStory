@@ -236,6 +236,9 @@ public final class SocialFabric {
                 ties.minute(now); // party and circle mates together this minute grow their ties (N2.1)
                 ties.flush(now);
             }
+            if (population.hearsay() != null) {
+                population.hearsay().minute(now); // word of mouth about the humans they met (N2.3)
+            }
             PersonMemories memories = population.memories();
             if (memories != null) {
                 memories.flush(now); // what happened between citizens and players this minute, in one batch

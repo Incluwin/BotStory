@@ -77,7 +77,15 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
          */
         FULFILLED(6, 8, DAY_MS),
         /** The same, left at a board while it was away: it warms less. */
-        FULFILLED_BOARD(4, 4, DAY_MS);
+        FULFILLED_BOARD(4, 4, DAY_MS),
+        /**
+         * Hearsay (docs/WORLD_SYSTEMS_PLAN.md N2.3): another citizen told it of something good they did. The detail is
+         * {@code witness:deed[:teller]} (the teller is the witness when left out), the count how many tellings from the
+         * witness (1 or 2). Its warmth is {@link #heard}'s, never the kind's.
+         */
+        HEARD_GOOD(4, 0, 0L),
+        /** Hearsay of something bad they did. */
+        HEARD_BAD(4, 0, 0L);
 
         final double weight;
         final int warmth;
@@ -87,6 +95,11 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             this.weight = weight;
             this.warmth = warmth;
             this.foldMs = foldMs;
+        }
+
+        /** Hearsay, not its own experience of them. */
+        public boolean heard() {
+            return this == HEARD_GOOD || this == HEARD_BAD;
         }
 
         static Kind parse(String name) {
@@ -210,6 +223,95 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
         return new PersonMemory(floor, nowMs, firstMetAtMs > 0L ? firstMetAtMs : nowMs, kept(episodes, nowMs, config));
     }
 
+    /** Every episode is hearsay (and there is at least one): it knows them only from what it was told. */
+    public boolean hearsayOnly() {
+        if (episodes.isEmpty()) {
+            return false;
+        }
+        for (Episode episode : episodes) {
+            if (!episode.kind().heard()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * This memory having heard (docs/WORLD_SYSTEMS_PLAN.md N2.3) that they did {@code deed} to {@code witness}, from
+     * {@code teller}, {@code tellings} from the witness (1: the witness told it), about {@code mapId}. A citizen that knows
+     * them first-hand keeps to its own experience: nothing changes. Decision D3: otherwise hearsay moves warmth only while
+     * it is within +/-{@code warmthMax}, by {@link #HEARD_WARMTH} toward that bound and never past it, so what it heard
+     * alone can make it friendlier, never a friend or a grudge. The same deed of the same witness heard again changes
+     * nothing.
+     */
+    public PersonMemory heard(boolean good, String witness, String deed, String teller, int tellings, int mapId, long nowMs,
+                              PopulationConfig config, int warmthMax) {
+        Heard told = new Heard(clean(witness).replace(":", ""), clean(deed).replace(":", ""), clean(teller).replace(":", ""));
+        for (Episode episode : episodes) {
+            Heard known = episode.kind().heard() ? Heard.parse(episode.detail()) : null;
+            if (known != null && known.witness().equalsIgnoreCase(told.witness()) && known.deed().equalsIgnoreCase(told.deed())) {
+                return this;
+            }
+        }
+        for (Episode episode : episodes) {
+            if (!episode.kind().heard()) {
+                return this; // it knows them itself: its own eyes over what it is told
+            }
+        }
+        int felt = feltWarmth(nowMs, config);
+        int warmed = felt;
+        if (Math.abs(felt) <= warmthMax) {
+            warmed = good ? Math.min(warmthMax, felt + HEARD_WARMTH) : Math.max(-warmthMax, felt - HEARD_WARMTH);
+        }
+        List<Episode> next = new ArrayList<>(episodes);
+        next.add(new Episode(good ? Kind.HEARD_GOOD : Kind.HEARD_BAD, nowMs, mapId, Math.max(1, tellings), told.detail()));
+        return new PersonMemory(warmed, nowMs, firstMetAtMs, kept(next, nowMs, config));
+    }
+
+    /**
+     * A deed code (Hearsay) in a few words naming {@code witness}: "ful" helped Ann out, "fam" famed Ann, "dfm" defamed
+     * Ann, "won" won at the coliseum, "ks" kept taking Ann's kills, "clr-kpq" cleared KPQ with Ann, "left-kpq" left Ann's
+     * KPQ run halfway. An unknown code is "did something".
+     */
+    public static String deedWords(String code, String witness) {
+        String who = witness == null || witness.isEmpty() ? "someone" : witness;
+        String deed = code == null ? "" : code.toLowerCase(Locale.ROOT);
+        String quest = deed.indexOf('-') > 0 ? deed.substring(deed.indexOf('-') + 1).toUpperCase(Locale.ROOT) : "a party quest";
+        if (deed.startsWith("clr")) {
+            return "cleared " + quest + " with " + who;
+        }
+        if (deed.startsWith("left")) {
+            return "left " + who + "'s " + quest + " run halfway";
+        }
+        return switch (deed) {
+            case "ful" -> "helped " + who + " out";
+            case "fam" -> "famed " + who;
+            case "dfm" -> "defamed " + who;
+            case "won" -> "won at the coliseum";
+            case "ks" -> "kept taking " + who + "'s kills";
+            default -> "did something for " + who;
+        };
+    }
+
+    /** What one telling moves warmth by (within the hearsay bound). */
+    static final int HEARD_WARMTH = 4;
+
+    /** A hearsay episode's detail: who it was done to, a deed code (Hearsay.deed reads it), who told it. */
+    public record Heard(String witness, String deed, String teller) {
+        String detail() {
+            return teller.isEmpty() || teller.equalsIgnoreCase(witness) ? witness + ":" + deed
+                    : witness + ":" + deed + ":" + teller;
+        }
+
+        public static Heard parse(String detail) {
+            String[] parts = detail == null ? new String[0] : detail.split(":", 3);
+            if (parts.length < 2 || parts[0].isEmpty() || parts[1].isEmpty()) {
+                return null;
+            }
+            return new Heard(parts[0], parts[1], parts.length == 3 && !parts[2].isEmpty() ? parts[2] : parts[0]);
+        }
+    }
+
     private static int partyPoints(int minutes) {
         return Math.min(PARTY_WARMTH_MAX, minutes / PARTY_MINUTES_PER_POINT);
     }
@@ -263,6 +365,10 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
     public Greeting greeting(long nowMs, PopulationConfig config) {
         double felt = warmthAt(nowMs, config);
         Episode strongest = strongest(nowMs, config);
+        if (strongest != null && strongest.kind().heard() && hearsayOnly()) { // it only heard of them (N2.3)
+            return new Greeting(strongest.kind() == Kind.HEARD_GOOD ? "memory.greet.heard" : "memory.greet.heardbad",
+                    strongest);
+        }
         if (felt <= COOL) {
             boolean letDown = strongest != null && (strongest.kind() == Kind.PQ_LEFT || strongest.kind() == Kind.DEFAMED);
             return new Greeting("memory.greet.cool", letDown ? strongest : null);
@@ -278,7 +384,7 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
                 case HELPED -> "memory.greet.helped";
                 case FULFILLED, FULFILLED_BOARD -> "memory.greet.fulfilled";
                 case TALK, THANKED -> "memory.greet.talk";
-                case PQ_LEFT, DEFAMED -> null;
+                case PQ_LEFT, DEFAMED, HEARD_GOOD, HEARD_BAD -> null;
             };
             if (trigger != null) {
                 return new Greeting(trigger, strongest);
@@ -368,6 +474,11 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             case DEFAMED -> "they defamed me";
             case FULFILLED -> "they brought me " + (what.isEmpty() ? "what i needed" : what);
             case FULFILLED_BOARD -> "they left " + (what.isEmpty() ? "what i needed" : what) + " for me at the board";
+            case HEARD_GOOD, HEARD_BAD -> {
+                Heard heard = Heard.parse(what);
+                yield heard == null ? "heard about them" : "heard from " + heard.teller() + " they "
+                        + deedWords(heard.deed(), heard.witness());
+            }
         };
     }
 

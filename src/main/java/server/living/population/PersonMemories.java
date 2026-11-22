@@ -123,6 +123,22 @@ public final class PersonMemories {
         change(citizenId, playerId, memory -> memory.warmedTo(warmth, nowMs, config), "warmth");
     }
 
+    /**
+     * The citizen hears from {@code teller} that the player did {@code deed} to {@code witness} (docs/WORLD_SYSTEMS_PLAN.md
+     * N2.3, {@link PersonMemory#heard}); memory only. A pair it never met gets its row at the next flush, inside
+     * MEMORY_PEOPLE_MAX (hearsay-only memories are forgotten first).
+     */
+    public void hear(int citizenId, int playerId, boolean good, String witness, String deed, String teller, int tellings,
+                     int mapId) {
+        if (!on() || citizenId <= 0 || playerId <= 0 || citizenId == playerId) {
+            return;
+        }
+        long nowMs = System.currentTimeMillis();
+        PopulationConfig config = config();
+        change(citizenId, playerId, memory -> memory.heard(good, witness, deed, teller, tellings, mapId, nowMs, config,
+                config.HEARSAY_WARMTH_MAX), good ? "HEARD_GOOD" : "HEARD_BAD");
+    }
+
     private void change(int citizenId, int playerId, UnaryOperator<PersonMemory> change, String what) {
         for (int attempt = 0; attempt < 3; attempt++) {
             Entry entry = entry(citizenId, playerId);
@@ -357,7 +373,11 @@ public final class PersonMemories {
         if (episode.mapId() > 0) {
             event.slot("place", population.fields().name(episode.mapId()).toLowerCase(Locale.ROOT));
         }
-        if (!episode.detail().isEmpty()) {
+        PersonMemory.Heard heard = episode.kind().heard() ? PersonMemory.Heard.parse(episode.detail()) : null;
+        if (heard != null) { // {witness} it was done to, {teller} who told it, {deed} in words (N2.3)
+            event.slot("witness", heard.witness()).slot("teller", heard.teller())
+                    .slot("deed", PersonMemory.deedWords(heard.deed(), heard.witness()));
+        } else if (!episode.detail().isEmpty()) {
             event.slot("pq", episode.detail().toUpperCase(Locale.ROOT)).slot("what", episode.detail()).item(episode.detail());
         }
     }
@@ -509,7 +529,9 @@ public final class PersonMemories {
         }
         List<Integer> leastFirst = new ArrayList<>(others.keySet());
         leastFirst.removeIf(playerId -> inBatch != null && inBatch.contains(playerId));
-        leastFirst.sort(Comparator.comparingDouble(playerId -> others.get(playerId).salience(nowMs, config)));
+        // what it only heard of goes first (N2.3), then the least memorable
+        leastFirst.sort(Comparator.comparing((Integer playerId) -> !others.get(playerId).hearsayOnly())
+                .thenComparingDouble(playerId -> others.get(playerId).salience(nowMs, config)));
         List<Integer> forget = leastFirst.subList(0, Math.min(over, leastFirst.size()));
         if (forget.isEmpty()) {
             return; // everyone it remembers is in its company this minute: the cap waits for the next newcomer
@@ -569,21 +591,32 @@ public final class PersonMemories {
                 + " greetings=" + greetings.get() + " lost=" + lost.get() + " lastPrune=" + lastPruned;
     }
 
-    /** What this citizen remembers, one line a person, most memorable first (the cache's copy where it has one). */
-    public List<String> describe(int citizenId) {
-        long nowMs = System.currentTimeMillis();
-        PopulationConfig config = config();
-        Map<Integer, PersonMemory> people = new HashMap<>();
+    /**
+     * What this citizen remembers of each player: its rows (one read), the cache's copy where it has one. Null when the
+     * read fails.
+     */
+    Map<Integer, PersonMemory> known(int citizenId) {
         List<MemoryRow> rows = population.store().memories(citizenId);
-        if (rows != null) {
-            rows.forEach(row -> people.put(row.playerId(), row.memory()));
+        if (rows == null) {
+            return null;
         }
+        Map<Integer, PersonMemory> people = new HashMap<>();
+        rows.forEach(row -> people.put(row.playerId(), row.memory()));
         for (Entry entry : cache.values()) {
             PersonMemory cached = entry.citizenId == citizenId ? peek(citizenId, entry.playerId) : null;
             if (cached != null && !cached.isEmpty()) {
                 people.put(entry.playerId, cached);
             }
         }
+        return people;
+    }
+
+    /** What this citizen remembers, one line a person, most memorable first (the cache's copy where it has one). */
+    public List<String> describe(int citizenId) {
+        long nowMs = System.currentTimeMillis();
+        PopulationConfig config = config();
+        Map<Integer, PersonMemory> known = known(citizenId);
+        Map<Integer, PersonMemory> people = known == null ? new HashMap<>() : known;
         List<Integer> order = new ArrayList<>(people.keySet());
         order.sort(Comparator.comparingDouble((Integer playerId) -> people.get(playerId).salience(nowMs, config)).reversed());
         List<String> out = new ArrayList<>();

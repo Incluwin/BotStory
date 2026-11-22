@@ -73,6 +73,7 @@ public final class Population {
     private final PersonMemories memories;
     private final CitizenTies ties;
     private final TieTalk tieTalk;
+    private final Hearsay hearsay;
     private final NeedLedger needs;
     private final ClearLog clears;
     private final RivalCrews rivals;
@@ -116,6 +117,7 @@ public final class Population {
         this.memories = new PersonMemories(this);
         this.ties = new CitizenTies(this); // citizens' ties to each other (docs/WORLD_SYSTEMS_PLAN.md N2.1)
         this.tieTalk = new TieTalk(this); // and what they say of them (N2.2)
+        this.hearsay = new Hearsay(this, new java.util.Random()); // and of the humans they met (N2.3)
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
         this.rivals = new RivalCrews(this);
@@ -422,6 +424,15 @@ public final class Population {
 
     public TieTalk tieTalk() {
         return tieTalk;
+    }
+
+    Hearsay hearsay() {
+        return hearsay;
+    }
+
+    /** One line for !ties: hearsay's tellings and reads. */
+    public String hearsayReport() {
+        return hearsay.report();
     }
 
     public List<Integer> channels() {

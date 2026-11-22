@@ -26,6 +26,7 @@ public class TiesCommand extends Command {
             return;
         }
         gm.yellowMessage(population.ties().report());
+        gm.yellowMessage(population.hearsayReport());
         if (params.length < 1) {
             return;
         }

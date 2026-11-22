@@ -550,8 +550,16 @@ public final class CitizenStore {
     }
 
     /**
+     * A row whose every episode line is hearsay (docs/WORLD_SYSTEMS_PLAN.md N2.3): as many lines as "HEARD_" in it.
+     * An empty episodes column (only a warmth left) is not one.
+     */
+    static final String HEARSAY_ONLY = "episodes <> '' AND LENGTH(episodes) - LENGTH(REPLACE(episodes, CHAR(10), '')) + 1"
+            + " = (LENGTH(episodes) - LENGTH(REPLACE(episodes, 'HEARD_', ''))) / 6";
+
+    /**
      * The hourly prune: every memory unchanged since {@code cutoffMs} is forgotten, then, past {@code totalMax}
-     * remembered pairs, the oldest down to nine tenths of it. How many it forgot; -1 when it failed.
+     * remembered pairs, down to nine tenths of it: rows that hold only hearsay first (oldest first), then the oldest.
+     * How many it forgot; -1 when it failed.
      */
     public int pruneMemories(long cutoffMs, int totalMax) {
         try (Connection con = DatabaseConnection.getConnection()) {
@@ -567,6 +575,16 @@ public final class CitizenStore {
                 remembered = rs.next() ? rs.getInt(1) : 0;
             }
             if (remembered <= totalMax) {
+                return forgotten;
+            }
+            try (PreparedStatement ps = con.prepareStatement(SqlTime.utc("UPDATE living_acquaintance SET " + FORGET_SET
+                    + " WHERE memory_at IS NOT NULL AND " + HEARSAY_ONLY + " ORDER BY memory_at LIMIT ?"))) {
+                ps.setInt(1, Math.max(0, remembered - totalMax * 9 / 10));
+                int hearsay = ps.executeUpdate();
+                forgotten += hearsay;
+                remembered -= hearsay;
+            }
+            if (remembered <= totalMax * 9 / 10) {
                 return forgotten;
             }
             long newestForgotten;

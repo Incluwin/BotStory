@@ -56,6 +56,8 @@ public final class PopulationLoader {
             "memory.greet.pq", "memory.greet.pqfail", "memory.greet.party", "memory.greet.bought", "memory.greet.sold",
             "memory.greet.famed", "memory.greet.helped", "memory.greet.talk", "memory.greet.warm", "memory.greet.vague",
             "memory.greet.cool", "memory.hello", "memory.hello.cool",
+            // what citizens heard of players from other citizens (Hearsay, docs/WORLD_SYSTEMS_PLAN.md N2.3)
+            "memory.greet.heard", "memory.greet.heardbad",
             // minigames citizens play in towns (CitizenMiniGames): wanting a game, room titles, room chat
             "game.lf", "game.title.omok", "game.title.cards", "game.hi", "game.nice", "game.win", "game.loss", "game.tie",
             "game.bye",
@@ -117,7 +119,7 @@ public final class PopulationLoader {
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",
             "memory.greet.warm", "memory.greet.vague", "memory.greet.cool", "memory.hello", "memory.hello.cool",
-            "memory.asked", "memory.greet.fulfilled");
+            "memory.asked", "memory.greet.fulfilled", "memory.greet.heard", "memory.greet.heardbad");
     private static final Set<String> WHERE = Set.of("town", "field", "fm", "lobby", "any");
     /** "whisper" lines are only ever composed for a whisper (ChatterEngine.compose), never picked to speak. */
     private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega", "room", "whisper");
