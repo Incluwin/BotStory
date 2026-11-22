@@ -177,7 +177,8 @@ Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or e
   follow hourly routines and sleep when nobody is near.
 - **Talking to them:** say a Resident's name, stand near them or whisper. "menu" or a
   double-click opens a real NPC window with their portrait. The portrait is rendered from your
-  client's own `Character.wz`, so no game art ships with the server.
+  client's own `Character.wz`, so no game art ships with the server; until a client has run that
+  step (`resident_files` in [docs/SETUP.md](docs/SETUP.md)), a stock townsperson's portrait stands in.
 - **Quests:** 197 of them, 118 for friendship.
   - They show in the client's quest log under "Residents", with Quest Helper targets.
   - Quest markers float over Residents, shown only to the player they concern.

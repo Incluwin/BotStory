@@ -366,7 +366,7 @@ public final class LivingWorld {
         if (config.QUEST_MARKER_PULSE_MS > 0) {
             world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.markers::tick,
                     config.QUEST_MARKER_PULSE_MS, config.QUEST_MARKER_PULSE_MS));
-            if (config.QUEST_MARKER_HITBOX_NPC > 0) {
+            if (server.living.quest.QuestMarkers.hitboxNpc(config.QUEST_MARKER_HITBOX_NPC) > 0) {
                 world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.markers::trackHitboxes,
                         config.QUEST_MARKER_HITBOX_TRACK_MS, config.QUEST_MARKER_HITBOX_TRACK_MS));
             }

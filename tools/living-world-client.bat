@@ -8,6 +8,8 @@ REM 1. ResidentPortraitExportMain: looks from the database, ids in portrait-npc-
 REM 2. QuestLogExportMain: quest-log ids and text (after 1: a quest names its giver's portrait)
 REM 3. tools\wz-patcher\botstory_wz.py residents: writes Npc.wz, String.wz, Quest.wz and Etc.wz
 REM    (in place, originals kept in <client folder>\botstory-wz-backup\, unless --out is given)
+REM 4. sets MOD_RESIDENT_FILES=on in .env when it is blank: the server names the Residents' own NPC ids only
+REM    then, because a client without these files closes on them (every client of this server needs this step)
 setlocal
 REM database settings as start-server.bat and launch.bat read them: this repo's .env (setup.bat),
 REM then the .env one folder up (an older layout), then config.yaml
@@ -33,4 +35,8 @@ if not defined PY (
 )
 java -Dwz-path=wz -cp target\Cosmic.jar server.living.config.ResidentPortraitExportMain scripts\config\living-world target\resident-portraits.json || exit /b 1
 java -Dwz-path=wz -cp target\Cosmic.jar server.living.config.QuestLogExportMain scripts\config\living-world target\living-quest-log.json || exit /b 1
-%PY% tools\wz-patcher\botstory_wz.py residents --client "%~1" --export target %2 %3 %4 %5
+%PY% tools\wz-patcher\botstory_wz.py residents --client "%~1" --export target %2 %3 %4 %5 || exit /b 1
+REM the server may now name the Residents' own NPC ids to its clients (server mod resident_files)
+set "ENVFILE=%~dp0..\.env"
+if not exist "%ENVFILE%" if exist "%~dp0..\..\.env" set "ENVFILE=%~dp0..\..\.env"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup\enable-resident-files.ps1" -EnvFile "%ENVFILE%"

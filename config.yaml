@@ -436,7 +436,9 @@ server:
       #9200000: Talk to Cody # Cody
       9001105: Rescue Gaga!  # Grandpa moon bunny
       # Community Repack entries (docs/REPACK_IMPORT_PLAN.md): quest NPCs with no Npc.wz script, so without this the
-      # client answers a click itself and the trip scripts never run (RepackNpcScriptableTest).
+      # client answers a click itself and the trip scripts never run (RepackNpcScriptableTest). An NPC only the Repack
+      # files have (mods/repack-npcs.txt: Cobie) is sent only to an account that answered "Repack files": a client on
+      # the Cosmic files closes on entering the game when the list names an NPC it lacks.
       9270030: The road over the ridge         # Ralph the wanderer: Ulu City
       2020012: The path behind the statue      # Spirit of Snow Statue: Lion King's Castle
       2140000: The doors to other times        # Temple Keeper: Three Doors' destinations
@@ -583,7 +585,8 @@ living_world:
     QUEST_MARKER_REFRESH_MS: 10000
     # Clicking a marker opens the Resident's menu: an invisible NPC the icon's size (written with the portraits by
     # tools\living-world-client.bat or MapleEdit/app/living_world_portraits.py) is spawned under it for that
-    # player only. 0 = not clickable.
+    # player only. 0 = not clickable. A client without that NPC closes when it is spawned, so it is spawned only
+    # while the server mod resident_files is on (mods.SWITCHES below, MOD_RESIDENT_FILES in .env).
     # The client hit-tests an NPC as standing on its position, so LIFT raises it from the feet to the icon.
     QUEST_MARKER_HITBOX_NPC: 9970999
     QUEST_MARKER_HITBOX_LIFT: 72
@@ -1649,8 +1652,14 @@ mods:
     #   own_hit                a hit the server applies to a player (a PvP duel, a server-run boss) is also sent to
     #                          that player's own client with own_hit active, which draws the number over the player
     #                          (S->C 0x189 PVP_HIT); display only; off: the victim sees only the HP bar drop
-    # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
-    # needs both on.
+    #   resident_files         every client has the Residents' files that tools\living-world-client.bat (or the
+    #                          installer's Residents step) makes in a client folder: a Resident's window shows its
+    #                          own portrait and the quest icons over Residents are clickable. A client without those
+    #                          files closes ("Unknown error 0x80030002") on such a window or icon, so off: a stock
+    #                          townsperson's portrait, and a double-click on the Resident instead of its icon. That
+    #                          tool sets MOD_RESIDENT_FILES=on in .env when it is blank. Boot only
+    # fusion_anvil, botstory_wz and resident_files ship off, for a client made from public files (docs/SETUP.md); the
+    # BotStory client needs all three on.
     SWITCHES:
         client_feature_policy: on
         fusion_anvil: off
@@ -1666,6 +1675,7 @@ mods:
         repack_maps: on
         cryssea: off
         own_hit: on
+        resident_files: off
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays

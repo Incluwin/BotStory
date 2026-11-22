@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -265,6 +267,49 @@ class RepackMapsTest {
             offered++;
         }
         assertEquals(11, offered, "two doors to the Future and nine Arcane River towns");
+    }
+
+    /**
+     * 2026-11-22: a stock Cosmic client closed on entering the game ("Unknown error 0x80030002") because the login
+     * list of scriptable NPCs named Cobie 2142112, whom only the Repack's Npc.wz has.
+     */
+    @Test
+    void aRepackOnlyNpcIsScriptableOnlyForARepackClient() {
+        Map<Integer, String> all = Map.of(9001105, "Rescue Gaga!", 2140000, "The doors", 2142112, "The scouts' way");
+        Set<Integer> everyClient = Set.of(9001105, 2140000);
+
+        assertTrue(RepackMaps.repackOnlyNpc(2142112));
+        assertFalse(RepackMaps.repackOnlyNpc(2140000), "the Temple Keeper is in the Cosmic files too");
+        assertEquals(everyClient, maps.scriptableNpcs(client, all).keySet(), "an account that has not answered");
+        maps.record(ACCOUNT, Files.COSMIC, Source.PLAYER);
+        assertEquals(everyClient, maps.scriptableNpcs(client, all).keySet());
+        maps.record(ACCOUNT, Files.REPACK, Source.PLAYER);
+        assertEquals(all.keySet(), maps.scriptableNpcs(client, all).keySet());
+        mods.set(ServerMods.REPACK_MAPS, false);
+        assertEquals(everyClient, maps.scriptableNpcs(client, all).keySet(), "closed: nobody meets a Repack NPC");
+    }
+
+    @Test
+    void anAccountThatAnswersRepackIsSentTheNpcsItsLoginListLeftOut() {
+        assertTrue(maps.recordWord(client, "cosmic"));
+        verify(client, never()).sendPacket(any());
+
+        assertTrue(maps.recordWord(client, "repack"));
+        verify(client).sendPacket(any());
+    }
+
+    @Test
+    void theRepackOnlyNpcListIsWhatTheImportBroughtIn() throws IOException {
+        // the list is what tools/repack-import/export.js imported from the Repack's Npc.wz
+        String report = java.nio.file.Files.readString(Path.of("tools/repack-import/export-report.json"));
+        Matcher npcs = Pattern.compile("\"imported\":\\s*\\{\\s*\"npcs\":\\s*\\[([^\\]]*)\\]").matcher(report);
+        assertTrue(npcs.find(), "export-report.json lists the imported NPCs");
+        Set<Integer> imported = new TreeSet<>();
+        for (String id : npcs.group(1).split(",")) {
+            imported.add(Integer.parseInt(id.replace("\"", "").trim()));
+        }
+        assertEquals(imported, new TreeSet<>(RepackMaps.repackOnlyNpcs()), "mods/repack-npcs.txt");
+        assertTrue(RepackMaps.configuredScriptableNpcs().containsKey(2142112), "Cobie is still scriptable for Repack clients");
     }
 
     private static Path mapFile(int map) {
