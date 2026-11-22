@@ -71,6 +71,7 @@ public final class Population {
     private final TownFidgets fidgets;
     private final TownConversations conversations;
     private final PersonMemories memories;
+    private final CitizenTies ties;
     private final NeedLedger needs;
     private final ClearLog clears;
     private final RivalCrews rivals;
@@ -112,10 +113,12 @@ public final class Population {
         this.fidgets = new TownFidgets(this);
         this.conversations = new TownConversations(this);
         this.memories = new PersonMemories(this);
+        this.ties = new CitizenTies(this); // citizens' ties to each other (docs/WORLD_SYSTEMS_PLAN.md N2.1)
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
         this.rivals = new RivalCrews(this);
         this.clears.listen(rivals); // a booked clear may be a crew's, or beat one (F7)
+        this.clears.onBooked(ties::cleared); // and its citizens grow closer (N2.1)
         this.coliseum = new Coliseum(this); // the coliseum ladder in Ariant (docs/PVP_PLAN.md V4)
         this.whispers = new CitizenWhispers(this);
         this.whispers.onReply("rival", rivals::replied); // a player answering a crew's whisper (F7)
@@ -408,6 +411,10 @@ public final class Population {
     /** What citizens remember of the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md). */
     public PersonMemories memories() {
         return memories;
+    }
+
+    public CitizenTies ties() {
+        return ties;
     }
 
     public List<Integer> channels() {

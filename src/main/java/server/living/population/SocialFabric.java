@@ -199,6 +199,9 @@ public final class SocialFabric {
         if (memories != null) {
             memories.forgetCitizen(citizen.characterId());
         }
+        if (population.ties() != null) {
+            population.ties().forget(citizen.characterId());
+        }
     }
 
     /** Every minute: guilds exist and recruit, circles form and party up, acquaintances, fame. */
@@ -228,6 +231,11 @@ public final class SocialFabric {
             acquaintances(now);
             fame(now);
             gossip();
+            CitizenTies ties = population.ties();
+            if (ties != null) {
+                ties.minute(now); // party and circle mates together this minute grow their ties (N2.1)
+                ties.flush(now);
+            }
             PersonMemories memories = population.memories();
             if (memories != null) {
                 memories.flush(now); // what happened between citizens and players this minute, in one batch

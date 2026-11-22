@@ -167,6 +167,13 @@ public final class Coliseum {
         this.board.tournament(tournament::boardText);
     }
 
+    /** Two citizens' decided match edges them toward rivalry (docs/WORLD_SYSTEMS_PLAN.md N2.1); a draw is none. */
+    void matched(int aId, int bId, int winnerSide) {
+        if (winnerSide >= 0 && population.ties() != null) {
+            population.ties().matched(winnerSide == 0 ? aId : bId, winnerSide == 0 ? bId : aId);
+        }
+    }
+
     Population population() {
         return population;
     }
@@ -892,6 +899,7 @@ public final class Coliseum {
                 int winner = simulatedMatch(DuelSim.fighterOf(a, reference, pvp), DuelSim.fighterOf(b, reference, pvp),
                         pvp, random);
                 book.record(a.getId(), b.getId(), bracket, winner == 0 ? 1d : winner == 1 ? 0d : 0.5d, now);
+                matched(a.getId(), b.getId(), winner);
                 used.add(a.getId());
                 used.add(b.getId());
                 simmed.put(pairKey(a.getId(), b.getId()), now);
