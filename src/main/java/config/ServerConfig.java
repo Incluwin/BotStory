@@ -406,6 +406,38 @@ public class ServerConfig {
         TAILSCALEHOST = addressOverride(environment, "SERVER_TAILSCALEHOST", TAILSCALEHOST);
     }
 
+    /**
+     * Login port. Not a config.yaml key: only {@link #applySecondServerOverrides} changes it, from SERVER_LOGIN_PORT.
+     */
+    public int LOGIN_PORT = 8484;
+    /** First channel port (world w, channel c listens on CHANNEL_BASE_PORT + (c - 1) + 100 * w); see LOGIN_PORT. */
+    public int CHANNEL_BASE_PORT = 7575;
+
+    /**
+     * A second server beside the live one on the same host (tools/checks/start-check-stack.ps1): SERVER_LOGIN_PORT,
+     * SERVER_CHANNEL_BASE_PORT and ADMIN_CONTROL_PORT_BIND move its listeners, DB_URL_FORMAT points it at its own
+     * database. The live server sets none of them, so a missing, blank or non-numeric variable keeps the configured value.
+     */
+    public void applySecondServerOverrides(Map<String, String> environment) {
+        LOGIN_PORT = portOverride(environment, "SERVER_LOGIN_PORT", LOGIN_PORT);
+        CHANNEL_BASE_PORT = portOverride(environment, "SERVER_CHANNEL_BASE_PORT", CHANNEL_BASE_PORT);
+        ADMIN_CONTROL_PORT_BIND = portOverride(environment, "ADMIN_CONTROL_PORT_BIND", ADMIN_CONTROL_PORT_BIND);
+        DB_URL_FORMAT = addressOverride(environment, "DB_URL_FORMAT", DB_URL_FORMAT);
+    }
+
+    private static int portOverride(Map<String, String> environment, String name, int configured) {
+        String value = environment.get(name);
+        if (value == null || value.isBlank()) {
+            return configured;
+        }
+        try {
+            int port = Integer.parseInt(value.trim());
+            return port > 0 && port < 65536 ? port : configured;
+        } catch (NumberFormatException e) {
+            return configured;
+        }
+    }
+
     private static String addressOverride(Map<String, String> environment, String name, String configured) {
         String value = environment.get(name);
         return value == null || value.isBlank() ? configured : value.trim();

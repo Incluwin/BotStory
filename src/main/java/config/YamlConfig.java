@@ -29,6 +29,7 @@ public class YamlConfig {
             YamlConfig config = reader.read(YamlConfig.class);
             reader.close();
             config.server.applyAddressOverrides(System.getenv());
+            config.server.applySecondServerOverrides(System.getenv());
             if (config.living_world == null) {
                 config.living_world = new LivingWorldConfig();
             }

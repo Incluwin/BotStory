@@ -995,9 +995,10 @@ public class Server {
             }
         }
 
-        loginServer = initLoginServer(8484);
+        int loginPort = YamlConfig.config.server.LOGIN_PORT;
+        loginServer = initLoginServer(loginPort);
 
-        log.info("Listening on port 8484");
+        log.info("Listening on port {}", loginPort);
 
         online = true;
         Duration initDuration = Duration.between(beforeInit, Instant.now());
