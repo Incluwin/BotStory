@@ -80,6 +80,7 @@ import net.server.world.PartyCharacter;
 import net.server.world.PartyOperation;
 import net.server.world.World;
 import server.CashShop;
+import server.mods.StockClientAudit;
 import server.CashShop.CashItem;
 import server.CashShop.CashItemFactory;
 import server.CashShop.SpecialCashItem;
@@ -222,6 +223,7 @@ public class PacketCreator {
         p.writeInt(chr.getExp()); // current exp
         p.writeShort(chr.getFame()); // fame
         p.writeInt(chr.getGachaExp()); //Gacha Exp
+        StockClientAudit.map(chr.getMapId(), "SET_FIELD");
         p.writeInt(chr.getMapId()); // current map id
         p.writeByte(chr.getInitialSpawnpoint()); // spawnpoint
         p.writeInt(0);
@@ -1096,6 +1098,7 @@ public class PacketCreator {
         p.writeInt(chr.getClient().getChannel() - 1);
         p.writeInt(0);//updated
         p.writeByte(0);//updated
+        StockClientAudit.map(to.getId(), "SET_FIELD");
         p.writeInt(to.getId());
         p.writeByte(spawnPoint);
         p.writeShort(chr.getHp());
@@ -1114,6 +1117,7 @@ public class PacketCreator {
         p.writeInt(chr.getClient().getChannel() - 1);
         p.writeInt(0);//updated
         p.writeByte(0);//updated
+        StockClientAudit.map(to.getId(), "SET_FIELD");
         p.writeInt(to.getId());
         p.writeByte(spawnPoint);
         p.writeShort(chr.getHp());
@@ -1382,6 +1386,7 @@ public class PacketCreator {
     }
 
     public static Packet spawnNPC(NPC life) {
+        StockClientAudit.npc(life.getId(), "SPAWN_NPC");
         OutPacket p = OutPacket.create(SendOpcode.SPAWN_NPC);
         p.writeInt(life.getObjectId());
         p.writeInt(life.getId());
@@ -1397,6 +1402,7 @@ public class PacketCreator {
 
     /** An NPC the server tracks outside the map's objects (e.g. a click target sent to one player). */
     public static Packet spawnNPC(int objectId, int npcId, int x, int cy, int fh) {
+        StockClientAudit.npc(npcId, "SPAWN_NPC");
         OutPacket p = OutPacket.create(SendOpcode.SPAWN_NPC);
         p.writeInt(objectId);
         p.writeInt(npcId);
@@ -1411,6 +1417,7 @@ public class PacketCreator {
     }
 
     public static Packet spawnNPCRequestController(NPC life, boolean miniMap) {
+        StockClientAudit.npc(life.getId(), "SPAWN_NPC_REQUEST_CONTROLLER");
         OutPacket p = OutPacket.create(SendOpcode.SPAWN_NPC_REQUEST_CONTROLLER);
         p.writeByte(1);
         p.writeInt(life.getObjectId());
@@ -3451,6 +3458,7 @@ public class PacketCreator {
      * @return
      */
     public static Packet getNPCTalk(int npc, byte msgType, String talk, String endBytes, byte speaker) {
+        StockClientAudit.npc(npc, "NPC_TALK");
         final OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
         p.writeByte(4); // ?
         p.writeInt(npc);
@@ -3473,6 +3481,7 @@ public class PacketCreator {
     }
 
     public static Packet getNPCTalkStyle(int npc, String talk, int[] styles) {
+        StockClientAudit.npc(npc, "NPC_TALK");
         final OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
         p.writeByte(4); // ?
         p.writeInt(npc);
@@ -3491,6 +3500,7 @@ public class PacketCreator {
     }
 
     public static Packet getNPCTalkNum(int npc, String talk, int def, int min, int max, byte speaker) {
+        StockClientAudit.npc(npc, "NPC_TALK");
         final OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
         p.writeByte(4); // ?
         p.writeInt(npc);
@@ -3505,6 +3515,7 @@ public class PacketCreator {
     }
 
     public static Packet getNPCTalkText(int npc, String talk, String def) {
+        StockClientAudit.npc(npc, "NPC_TALK");
         final OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
         p.writeByte(4); // Doesn't matter
         p.writeInt(npc);
@@ -3518,6 +3529,7 @@ public class PacketCreator {
 
     // NPC Quiz packets thanks to Eric
     public static Packet OnAskQuiz(int nSpeakerTypeID, int nSpeakerTemplateID, int nResCode, String sTitle, String sProblemText, String sHintText, int nMinInput, int nMaxInput, int tRemainInitialQuiz) {
+        StockClientAudit.npc(nSpeakerTemplateID, "NPC_TALK");
         OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
         p.writeByte(nSpeakerTypeID);
         p.writeInt(nSpeakerTemplateID);
@@ -3536,6 +3548,7 @@ public class PacketCreator {
     }
 
     public static Packet OnAskSpeedQuiz(int nSpeakerTypeID, int nSpeakerTemplateID, int nResCode, int nType, int dwAnswer, int nCorrect, int nRemain, int tRemainInitialQuiz) {
+        StockClientAudit.npc(nSpeakerTemplateID, "NPC_TALK");
         OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
         p.writeByte(nSpeakerTypeID);
         p.writeInt(nSpeakerTemplateID);
@@ -7555,6 +7568,7 @@ public class PacketCreator {
      * @return a packet which makes the npc's provided scriptable.
      */
     public static Packet setNPCScriptable(Map<Integer, String> scriptableNpcIds) {  // thanks to GabrielSin
+        scriptableNpcIds.keySet().forEach(id -> StockClientAudit.npc(id, "SET_NPC_SCRIPTABLE"));
         OutPacket p = OutPacket.create(SendOpcode.SET_NPC_SCRIPTABLE);
         p.writeByte(scriptableNpcIds.size());
         scriptableNpcIds.forEach((id, name) -> {
