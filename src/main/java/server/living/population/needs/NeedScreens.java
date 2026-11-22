@@ -117,6 +117,12 @@ public final class NeedScreens {
         if (carried > 0 && need.takesFrom(player.getId(), nowMs)) {
             options.add(new LivingTalk.Option("Hand it over here", () -> give(player, needId, carried, true)));
         }
+        if (need.kind() == NeedKind.PARTY && NeedLedger.guestOf(need) == 0 && population.partyQuests() != null
+                && population.config().CITIZEN_RUN_INVITES_ENABLED) { // N3.1: the invitation from the player's side
+            options.add(new LivingTalk.Option("Ask to join", () -> LivingTalk.open(player, NeedBoards.BOARD_NPC)
+                    .back(() -> details(player, needId, boardMapId))
+                    .ok(population.partyQuests().askToJoin(player, need.citizenId(), System.currentTimeMillis())).show()));
+        }
         if (holder == player.getId()) {
             options.add(new LivingTalk.Option("Let it go", () -> {
                 ledger.drop(player.getId(), needId, System.currentTimeMillis());

@@ -185,6 +185,9 @@ final class CitizenLobbyFixture implements AutoCloseable {
         when(chr.getMapId()).thenReturn(here.mapId());
         onLobby.add(chr);
         CitizenSession session = session(chr);
+        if (session == null) {
+            return; // a human walked over
+        }
         session.activity = Activity.PQ;
         session.mapId = here.mapId();
     }

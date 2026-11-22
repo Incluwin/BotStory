@@ -287,6 +287,29 @@ public class PopulationConfig {
     /** A lobby party short of its seats calls at most this many citizens over, one a minute, never more than it needs. */
     public int PQ_CALLS_PER_PARTY = 4;
 
+    // Citizen-led runs (docs/WORLD_SYSTEMS_PLAN.md N3)
+    /**
+     * Kill switch (N3.1, decision D6): a citizen forming a run whispers a human it knows (warmth REGULAR or better) to
+     * come along; the needs board's PARTY page gains "Ask to join". Needs CITIZEN_WHISPERS_ENABLED for the answers.
+     */
+    public boolean CITIZEN_RUN_INVITES_ENABLED = false;
+    /** At most one invitation whisper per human this often, across all citizens (doubled per "no" in a row, to 8x). */
+    public int CITIZEN_RUN_INVITE_GAP_MS = 1800000;
+    /** No invitation whisper this long after the human logged in. */
+    public int CITIZEN_RUN_INVITE_LOGIN_QUIET_MS = 600000;
+    /** An invitation not answered this long counts as not taken (the bandit learns from it). */
+    public int CITIZEN_RUN_INVITE_ANSWER_MS = 180000;
+    /** A forming party whispers at most this many invitations. */
+    public int CITIZEN_RUN_INVITES_PER_PARTY = 2;
+    /** The invitation bandit's UCB exploration weight (N3.6). */
+    public double CITIZEN_RUN_INVITE_EXPLORE = 0.3d;
+    /** A context whose optimistic accept rate (mean + UCB bonus) is below this is not asked (N3.6). */
+    public double CITIZEN_RUN_INVITE_MIN_ACCEPT = 0.15d;
+    /** Kill switch (N3.2, decision D7): a human who joins a citizen run may bring companions (spike result decides). */
+    public boolean CITIZEN_RUN_COMPANIONS_ENABLED = false;
+    /** Kill switch (N3.4): citizens holding Zakum's prerequisites run a Zakum expedition. */
+    public boolean CITIZEN_ZAKUM_ENABLED = false;
+
     // Minigames citizens play in towns (docs/BOT_CONCEPT_PLAN.md F5a)
     /** Kill switch: false = no PLAY plan; citizens never open, join or play an omok or match-card room. */
     public boolean MINIGAMES_ENABLED = false;
@@ -529,6 +552,12 @@ public class PopulationConfig {
                 || PQ_RUN_COOLDOWN_MS < 0 || PQ_CALLS_PER_PARTY < 0) {
             throw new IllegalArgumentException(
                     "population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX, PQ_CALLS_PER_PARTY and the PQ_*_MS must be >= 0");
+        }
+        if (CITIZEN_RUN_INVITE_GAP_MS < 0 || CITIZEN_RUN_INVITE_LOGIN_QUIET_MS < 0 || CITIZEN_RUN_INVITE_ANSWER_MS < 10000
+                || CITIZEN_RUN_INVITES_PER_PARTY < 0 || CITIZEN_RUN_INVITE_EXPLORE < 0 || CITIZEN_RUN_INVITE_MIN_ACCEPT < 0
+                || CITIZEN_RUN_INVITE_MIN_ACCEPT > 1) {
+            throw new IllegalArgumentException("population.CITIZEN_RUN_INVITE_GAP_MS, _LOGIN_QUIET_MS, _INVITES_PER_PARTY and"
+                    + " _EXPLORE must be >= 0, CITIZEN_RUN_INVITE_ANSWER_MS >= 10000, CITIZEN_RUN_INVITE_MIN_ACCEPT 0..1");
         }
         if (MEMORY_PEOPLE_MAX < 1 || MEMORY_EPISODES_MAX < 1 || MEMORY_EPISODES_MAX > 8 || MEMORY_TOTAL_MAX < 1
                 || MEMORY_FORGET_DAYS < 1 || MEMORY_HALF_LIFE_DAYS <= 0 || MEMORY_WARMTH_HALF_LIFE_DAYS <= 0

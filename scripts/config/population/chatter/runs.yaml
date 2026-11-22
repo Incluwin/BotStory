@@ -1,0 +1,100 @@
+# Citizen-led runs (docs/WORLD_SYSTEMS_PLAN.md N3, CITIZEN_RUN_INVITES_ENABLED; CitizenRunInvites). run.invite: a
+# citizen whose party is forming at a lobby whispers a player it knows to come along ({pq} the quest, {levels} its band,
+# {need} the seats still open, {map} the lobby, {ch} the channel, {name} the player); run.invite.member is the same from
+# a member who is not the leader ({leader} names the leader). whisper.run.*: its answers to the player's whisper back:
+# yes (the leader's invite went out; yes.leader when the leader is someone else), no (taken well), gone (the party
+# filled, went in or broke up meanwhile). pq.coming / boss.coming: the leader on the lobby's map while a player who said
+# yes walks over.
+intents:
+  - id: run.invite
+    trigger: run.invite
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "doing {pq} in a few, wanna come? need {need}"
+      - "hey {name} we're getting a {pq} going, u in?"
+      - "{pq}? we're at {map} ch{ch}, {need} spot open"
+      - "u free? {pq} party, need {need} more"
+      - "wanna {pq}? got {need} open"
+      - "yo, {pq} in a bit if u want in"
+    styles:
+      quiet-practical-v1:
+        - "{pq} ch{ch}, {need} open. come?"
+        - "{pq} soon, need {need}. u in?"
+      playful-social-v1:
+        - "{name}!! {pq} with us? need {need} more"
+        - "come {pq} with us, it'll be fun. {need} spot open"
+  - id: run.invite.member
+    trigger: run.invite.member
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey, {leader}'s getting a {pq} going, wanna come? need {need}"
+      - "doing {pq} w {leader} soon, u in?"
+      - "{pq} at {map} ch{ch}, {need} open, want in?"
+  - id: whisper.run.yes
+    trigger: whisper.run.yes
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nice, sent inv. we're at {map} ch{ch}"
+      - "sent u one! {map} ch{ch}, we'll wait"
+      - "kk invd, come to {map} ch{ch}"
+      - "inv sent, we wait by the npc"
+  - id: whisper.run.yes.leader
+    trigger: whisper.run.yes.leader
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nice, {leader} sent u inv. {map} ch{ch}"
+      - "{leader} invd u, we're at {map} ch{ch}"
+      - "kk {leader}'s inviting, come to {map}"
+  - id: whisper.run.no
+    trigger: whisper.run.no
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "np, next time"
+      - "all good!"
+      - "kk no worries"
+      - "np np, have fun"
+      - "ah ok, another time then"
+  - id: whisper.run.gone
+    trigger: whisper.run.gone
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ah sorry we just filled up"
+      - "aw we went already, next one?"
+      - "dang, party's gone. sorry"
+  - id: pq.coming.map
+    trigger: pq.coming
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 30000
+    lines:
+      - "waiting on {name}, they're coming"
+      - "{name}'s on the way, give it a sec"
+      - "1 more coming, hold on"
+  - id: boss.coming.map
+    trigger: boss.coming
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 30000
+    lines:
+      - "waiting on {name}, they're on the way"
+      - "hold up, {name}'s coming"
