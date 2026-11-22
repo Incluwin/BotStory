@@ -387,6 +387,26 @@ class CompanionRestockTest {
     }
 
     @Test
+    void inOrbisACompanionAtPinkBeansLevelKeepsItsSealCureStandardWhileTheSwitchListsPinkBean() {
+        // 2026-11-22 (WORLD_SYSTEMS_PLAN L5): Hugin casts Horntail's seal; Leafre and the Temple of Time sell no cure
+        config.COMPANION_BOSS_CURE_TOWNS = "horntail=200000000|200000002,pinkbean=200000000|200000002";
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,pinkbean";
+        when(world.bossRuns()).thenReturn(new CompanionBossRuns(world));
+        when(fenna.getMapId()).thenReturn(200_000_002);
+        when(fenna.getLevel()).thenReturn(130);
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("pinkbean_cure"), restock.standing(FENNA));
+
+        when(fenna.getLevel()).thenReturn(119);
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "below Pink Bean's level (the expedition's 120): the everyday standard");
+
+        when(fenna.getLevel()).thenReturn(130);
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,horntail,pinkbean";
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("horntail_cure"), restock.standing(FENNA),
+                "both on: the first listed names the key, and both keep the same 150 Holy Water");
+    }
+
+    @Test
     void inOrbisACompanionAtHorntailsLevelKeepsItsSealCureStandardWhileTheSwitchListsHorntail() {
         // 2026-10-14 (P18, user yes): Horntail's Right Hand seals the altar and Leafre sells no cure; Orbis does
         config.COMPANION_BOSS_CURE_TOWNS = "horntail=200000000|200000002";

@@ -118,8 +118,11 @@ class LivingWorldConfigRestockTest {
             assertTrue(failure.getMessage().startsWith("living_world.COMPANION_BOSS_CURE_TOWNS must list"), bad);
         }
 
-        assertEquals(java.util.List.of("horntail"), YamlConfig.config.living_world.companionCureBossKeysAt(200_000_000),
-                "shipped: Orbis, whose store (Edel) sells Holy Water");
+        assertEquals(java.util.List.of("horntail", "pinkbean"),
+                YamlConfig.config.living_world.companionCureBossKeysAt(200_000_000),
+                "shipped: Orbis, whose store (Edel) sells Holy Water, for Horntail and (2026-11-22, L5) Pink Bean");
+        assertEquals(java.util.List.of(200_000_000, 200_000_002),
+                YamlConfig.config.living_world.companionCureTownsFor("pinkbean"));
     }
 
     @Test
