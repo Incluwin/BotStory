@@ -19,7 +19,7 @@ import java.util.stream.Stream;
  * {@code -Dbotstory.stockClientAudit=true} the packet builders that name an NPC or a map report every id a stock
  * client lacks, once per id and packet, as a WARN line starting with {@link #MARK}. Stock NPCs are the server's own
  * wz/Npc.wz images minus the Repack-only ones; anything else (generated Resident portraits, the quest-marker
- * hitbox) is not stock. Off (the default) it costs one boolean read per packet.
+ * hitbox) is not stock. Off (the default) a call is one read of a static final boolean: no allocation, no lookup.
  */
 public final class StockClientAudit {
     private static final Logger log = LoggerFactory.getLogger(StockClientAudit.class);
@@ -32,6 +32,11 @@ public final class StockClientAudit {
     private static final Set<String> reported = ConcurrentHashMap.newKeySet();
 
     private StockClientAudit() {
+    }
+
+    /** Whether {@code -Dbotstory.stockClientAudit=true} was given; read once at class load. */
+    public static boolean enabled() {
+        return ENABLED;
     }
 
     /** {@code packet} named NPC {@code npcId} to a client. */

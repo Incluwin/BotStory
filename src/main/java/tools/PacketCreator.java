@@ -7568,7 +7568,9 @@ public class PacketCreator {
      * @return a packet which makes the npc's provided scriptable.
      */
     public static Packet setNPCScriptable(Map<Integer, String> scriptableNpcIds) {  // thanks to GabrielSin
-        scriptableNpcIds.keySet().forEach(id -> StockClientAudit.npc(id, "SET_NPC_SCRIPTABLE"));
+        if (StockClientAudit.enabled()) {
+            scriptableNpcIds.keySet().forEach(id -> StockClientAudit.npc(id, "SET_NPC_SCRIPTABLE"));
+        }
         OutPacket p = OutPacket.create(SendOpcode.SET_NPC_SCRIPTABLE);
         p.writeByte(scriptableNpcIds.size());
         scriptableNpcIds.forEach((id, name) -> {

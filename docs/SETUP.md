@@ -373,8 +373,10 @@ live server's ports and database.
      `git archive` of the rewritten commit).
    - It does what `setup.bat` does for a new user: `.env` from `.env.example`, the DB login,
      `MOD_FUSION_ANVIL=on`, and the build. Every other `MOD_*` stays at its public default.
-   - It starts the tree with `start-server.bat` on login port 18584 and channels from 18675, with a fresh
-     database `cosmic_pubsmoke`. The admin port is off, because the live server holds 8480.
+   - It starts the tree with `start-server.bat` beside the live server, through the second-server environment
+     variables (`ServerConfig.applySecondServerOverrides`): `SERVER_LOGIN_PORT=18584`,
+     `SERVER_CHANNEL_BASE_PORT=18675`, `ADMIN_CONTROL_PORT_BIND=18580`, and `DB_URL_FORMAT` pointing at a fresh
+     database `cosmic_pubsmoke`. The exported tree's files stay as published.
    - A headless login probe (`PublicSmokeLogin.java`) logs in as `admin`/`admin`, enters the game and warps
      through Mushroom Town and four Victoria towns.
    - It fails on any server log line starting `STOCK-CLIENT-LACKS`, or when the server drops the probe.
@@ -395,8 +397,8 @@ The log line comes from `server.mods.StockClientAudit`. It is on only with
 `-Dbotstory.stockClientAudit=true` and never on a normal server. It covers the packet builders that name an
 NPC (spawn, controller, NPC window, the login's scriptable list) or a map (`SET_FIELD`). It flags an NPC
 that is not in the server's `wz/Npc.wz` or that is on the Repack-only list (`mods/repack-npcs.txt`), and a
-map that is on `mods/repack-maps.txt`. `-Dbotstory.loginPort` and `-Dbotstory.channelBasePort` move a
-server's ports. Their defaults are 8484 and 7575.
+map that is on `mods/repack-maps.txt`. The switch is read once into a `static final boolean`, so with it off
+each of those calls is one boolean read: no allocation and no lookup.
 
 To check that the test still catches the 11-22 crash, run `public-smoke.ps1 -FlipResidentFiles`. It sets
 `resident_files: on` in the exported copy only, which is the state before the fix, and it must FAIL on the
