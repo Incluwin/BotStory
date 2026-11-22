@@ -1,5 +1,7 @@
 package server.living.roster;
 
+import server.agents.capabilities.build.AgentJobPath;
+
 import client.Character;
 import client.Job;
 import org.junit.jupiter.api.AfterEach;
@@ -115,6 +117,24 @@ class JobErrandsTest {
         assertNull(errands.path(999, Job.MAGICIAN), "not a persona's character");
         game.config.COMPANION_JOB_ERRANDS_ENABLED = false;
         assertNull(errands.path(CASSE, Job.MAGICIAN));
+    }
+
+    /**
+     * Found 2026-11-08 (Repack Residents live check): Beginner Residents nobody employs said the companion job prompt
+     * "hey i can change jobs now!!" on materializing, though their job is their persona's and nobody can pick one for
+     * them. Such a Resident is not free to advance: the rule holds it at its job (so AgentBuildService.buildJobPrompt
+     * stays quiet) and never sends it on an errand, with the errands switch on or off.
+     */
+    @Test
+    void aResidentNobodyEmploysIsHeldAtItsJobSoItNeverAsksToChangeJobs() {
+        int oharu = 834;
+        game.companionOf(0, "oharu", "Oharu", oharu, RosterState.ACTIVE, LITH);
+        when(game.residents.isPersonaCharacter(oharu)).thenReturn(true);
+
+        assertEquals(Job.BEGINNER, errands.path(oharu, Job.BEGINNER), "held at its persona's job, nobody asks");
+        assertNull(AgentJobPath.next(Job.BEGINNER, errands.path(oharu, Job.BEGINNER), 42), "and no errand");
+        game.config.COMPANION_JOB_ERRANDS_ENABLED = false;
+        assertEquals(Job.BEGINNER, errands.path(oharu, Job.BEGINNER), "the errands switch does not free it");
     }
 
     @Test
