@@ -86,6 +86,7 @@ public final class Population {
     private final PaperTalk paperTalk;
     private final EventLogSweep sweep;
     private final CitizenWhispers whispers;
+    private final GuildChat guildChat;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -149,6 +150,8 @@ public final class Population {
         this.whispers.onReply(CitizenRunInvites.TOPIC, partyQuests.invites()::replied); // a run invitation's answer (N3.1)
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
+        this.guildChat = new GuildChat(this); // guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1)
+        this.clears.onBooked(clear -> guildChat.cleared(clear, System.currentTimeMillis())); // a guild's gz
     }
 
     public static Population get() {
@@ -220,6 +223,12 @@ public final class Population {
             population.world.executor().submit("paper.sweep", () -> population.sweep.atClose(System.currentTimeMillis()));
         });
         PaperDesk.install(population.paper);
+        server.agents.integration.AgentDialogueTransportRuntime.installGuildSink((bot, text) -> { // N5.1 answers
+            net.server.guild.Guild guild = bot == null ? null : net.server.Server.getInstance().getGuild(bot.getGuildId());
+            if (guild != null) {
+                guild.guildChat(bot.getName(), bot.getId(), text);
+            }
+        });
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
@@ -248,6 +257,7 @@ public final class Population {
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             population.partyQuests.tick();
             population.jumpQuests.tick(); // jump quests ride the party quests' lane (docs/BOT_CONCEPT_PLAN.md F5b)
+            population.guildChat.tick(System.currentTimeMillis()); // a guild mate's LFG party invites (N5.1)
         }, CitizenPartyQuests.TICK_MS, CitizenPartyQuests.TICK_MS));
         instance = population;
         log.info("Population started: {} citizens ({}), {} target, {} online max, channels {}", population.registry.size(),
@@ -448,6 +458,11 @@ public final class Population {
     /** Citizens' talk of the paper's headlines on its first day (N1.3). */
     public PaperTalk paperTalk() {
         return paperTalk;
+    }
+
+    /** Guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1). */
+    public GuildChat guildChat() {
+        return guildChat;
     }
 
     /** Players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). */

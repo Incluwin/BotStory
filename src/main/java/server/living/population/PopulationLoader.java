@@ -121,7 +121,12 @@ public final class PopulationLoader {
             "casino.nx.sell", "casino.nx.flavor", "casino.nx.wrong", "casino.nx.thanks", "casino.nx.code",
             "town.chalkboard", "town.avatar",
             // the town paper's headlines on issue day, and a known player named in it (paper.PaperTalk, N1.3)
-            "paper.headline", "paper.named");
+            "paper.headline", "paper.named",
+            // guild life (docs/WORLD_SYSTEMS_PLAN.md N5; GuildChat, GuildGoals): said in guild chat
+            "guild.reply.hi", "guild.reply.bye", "guild.reply.np", "guild.member.hi", "guild.member.bye", "guild.gz",
+            "guild.clear.gz", "guild.clear.self", "guild.lfg.invited", "guild.lfg.full", "guild.lfg.level",
+            "guild.lfg.party", "guild.lfg.wait", "guild.lfg.none", "guild.lfg.going", "guild.lfg.ready",
+            "guild.goal.new", "guild.goal.met");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

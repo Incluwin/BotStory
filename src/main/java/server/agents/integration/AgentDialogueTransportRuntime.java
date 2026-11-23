@@ -105,8 +105,21 @@ public final class AgentDialogueTransportRuntime {
                             AgentChatTextSanitizer.sanitize(message));
                 }
             }
+            case GUILD -> {
+                java.util.function.BiConsumer<Character, String> sink = guildSink;
+                if (sink != null) {
+                    sink.accept(AgentRuntimeIdentityRuntime.bot(entry), AgentChatTextSanitizer.sanitize(message));
+                }
+            }
             default -> sayMapNow(AgentRuntimeIdentityRuntime.bot(entry), message);
         }
+    }
+
+    /** Where a GUILD reply goes: the living world installs its guild chat (docs/WORLD_SYSTEMS_PLAN.md N5.1); none drops it. */
+    private static volatile java.util.function.BiConsumer<Character, String> guildSink;
+
+    public static void installGuildSink(java.util.function.BiConsumer<Character, String> sink) {
+        guildSink = sink;
     }
 
     public static void visibleSayNow(AgentRuntimeEntry entry, String message) {

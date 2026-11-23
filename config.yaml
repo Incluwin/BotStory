@@ -1315,6 +1315,13 @@ population:
     ALLIANCE_LEAVE_AFTER_DAYS: 3
     ALLIANCE_PLAYER_MINUTES: 240
     ALLIANCE_REASK_DAYS: 7
+    # Guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1): a player's guild chat line is heard by the online
+    # citizens of their guild, and at most two of them answer after a short pause; a player logging in is greeted and one
+    # logging out seen off, a level-up or a clear gets a gz, and "anyone up for kpq" ends in a real party invite from a
+    # guild mate's forming party (or a guild mate goes to the lobby for it). false = the kill switch: guild chat is
+    # stock again (citizens still post their own idle lines). Off until live check U1 passes.
+    # Technical: GuildChat is called from MultiChatHandler (type 2), PlayerLoggedinHandler/Client (the stock guild online notice), PopulationHooks.levelUp and ClearLog.onBooked; questions and named lines take one Conversation.guildTurn (the CONVERSATION_* budgets) answered on AgentReplyChannel.GUILD; the LFG follow-up rides CitizenPartyQuests' 10 s tick.
+    GUILD_CHAT_ENABLED: false
     BUDDIES_ENABLED: true
     BUDDY_REQUEST_AFTER_MINUTES: 30
     MARKET_ENABLED: true

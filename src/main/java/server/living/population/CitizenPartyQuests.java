@@ -615,6 +615,30 @@ public final class CitizenPartyQuests {
         };
     }
 
+    /**
+     * A party forming for {@code questKey} that one of {@code anyOf} leads or is in (a guild mate's party,
+     * docs/WORLD_SYSTEMS_PLAN.md N5.1 GuildChat): {leader id, the one of {@code anyOf} in it (the leader first)}, or
+     * null when none is.
+     */
+    synchronized int[] formingWith(java.util.Collection<Integer> anyOf, String questKey) {
+        for (Forming party : forming.values()) {
+            if (!party.questKey.equals(questKey)) {
+                continue;
+            }
+            if (anyOf.contains(party.leaderId)) {
+                return new int[] {party.leaderId, party.leaderId};
+            }
+            CitizenSession leader = population.presence().session(party.leaderId);
+            Character leaderChr = leader == null ? null : leader.agent();
+            for (AgentPartyMemberSnapshot member : leaderChr == null ? List.<AgentPartyMemberSnapshot>of() : members(leaderChr)) {
+                if (member != null && anyOf.contains(member.id())) {
+                    return new int[] {party.leaderId, member.id()};
+                }
+            }
+        }
+        return null;
+    }
+
     /** The citizens of the forming party standing at the lobby, its leader first (who may ask a human along). */
     private static List<CitizenSession> citizensIn(List<AgentPartyMemberSnapshot> members, CitizenSession leader,
                                                    Map<Integer, CitizenSession> here) {

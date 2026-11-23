@@ -63,6 +63,7 @@ import scripting.quest.QuestActionManager;
 import scripting.quest.QuestScriptManager;
 import server.MapleLeafLogger;
 import server.ThreadManager;
+import server.living.population.PopulationHooks;
 import server.TimerManager;
 import server.agents.diagnostics.MobReactionCaptureRuntime;
 import server.agents.diagnostics.MapTransitionPacketTraceRuntime;
@@ -1237,6 +1238,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                             if (guild != null) {
                                 final Server server = Server.getInstance();
                                 server.setGuildMemberOnline(player, false, player.getClient().getChannel());
+                                PopulationHooks.guildMemberOnline(player, false); // N5.1
                                 player.sendPacket(GuildPackets.showGuildInfo(player));
                             }
                             if (bl != null) {

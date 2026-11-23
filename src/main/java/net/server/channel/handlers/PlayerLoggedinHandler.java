@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.life.MobSkill;
 import server.living.LivingWorldHooks;
+import server.living.population.PopulationHooks;
 import server.ShopBuyback;
 import server.mods.RepackMaps;
 import server.mods.ServerMods;
@@ -300,6 +301,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
                     playerGuild.getMGC(player.getId()).setCharacter(player);
                     player.setMGC(playerGuild.getMGC(player.getId()));
                     server.setGuildMemberOnline(player, true, c.getChannel());
+                    PopulationHooks.guildMemberOnline(player, true); // greeted (N5.1)
                     c.sendPacket(GuildPackets.showGuildInfo(player));
                     int allianceId = player.getGuild().getAllianceId();
                     if (allianceId > 0) {

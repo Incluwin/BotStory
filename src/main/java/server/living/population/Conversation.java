@@ -7,6 +7,8 @@ import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.commands.AgentReplyChannel;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.integration.typesafe.JevAnswer;
 import server.agents.integration.typesafe.JevClient;
 import server.agents.integration.typesafe.JevRequest;
@@ -217,6 +219,34 @@ public final class Conversation {
             // which the dialogue application already caps; release after a short hold
             server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, inFlight::release, 4_000L);
         }
+    }
+
+    /**
+     * A guild mate's turn at a human's guild line (docs/WORLD_SYSTEMS_PLAN.md N5.1, GuildChat): the generated tier as
+     * on map chat, under the same per-player day budget, citizen cooldown and concurrency, answered back in guild chat
+     * (the content tier answers there too, through the dialogue runtime's answerer). False when a budget keeps it quiet.
+     */
+    boolean guildTurn(CitizenSession session, Character speaker, String text) {
+        if (!population.config().CONVERSATION_ENABLED || session.entry == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        Long cooldown = citizenCooldown.get(session.characterId);
+        if (cooldown != null && now - cooldown < population.config().CONVERSATION_CITIZEN_COOLDOWN_MS
+                || !spend(playerBudget, speaker.getId(), population.config().CONVERSATION_PER_PLAYER_PER_DAY, now)
+                || !inFlight.tryAcquire()) {
+            return false;
+        }
+        session.journal.add("talk", speaker.getName() + " said in guild chat \"" + trim(text, 60) + "\"");
+        citizenCooldown.put(session.characterId, now);
+        generatedTurns.incrementAndGet();
+        try {
+            AgentSocialDialogueRuntime.maybeRespond(session.entry, speaker, text,
+                    AgentReplyRoute.of(AgentReplyChannel.GUILD, speaker));
+        } finally {
+            server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, inFlight::release, 4_000L);
+        }
+        return true;
     }
 
     /** A player it remembers warmly ({@link PersonMemory#WARM}): their lines are never ignored on purpose. */

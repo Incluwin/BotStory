@@ -191,6 +191,24 @@ public class PopulationConfig {
     public int ALLIANCE_PLAYER_MINUTES = 240;
     /** Days before a citizen alliance asks the same player guild again. */
     public int ALLIANCE_REASK_DAYS = 7;
+    /**
+     * Guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1, GuildChat): a human's guild line is answered by at
+     * most two online citizens of their guild, logins and logouts greeted, level-ups and clears congratulated, and an
+     * LFG line ends in a citizen party's invite. Off until live check U1 passes.
+     */
+    public boolean GUILD_CHAT_ENABLED = false;
+    /** Weekly guild goals (N5.2, GuildGoals): each bot guild picks one a week, met from real deeds, paid in GP. */
+    public boolean GUILD_GOALS_ENABLED = false;
+    /** GP a bot guild gets for meeting its weekly goal (decision D11: GP only, no meso). */
+    public int GUILD_GOAL_GP = 300;
+    /** Targets of the goal kinds: party-quest clears, needs-board requests met, coliseum match wins. */
+    public int GUILD_GOAL_CLEARS = 6;
+    public int GUILD_GOAL_NEEDS = 4;
+    public int GUILD_GOAL_WINS = 4;
+    /** Minutes between counts of the goals' progress on the social tick. */
+    public int GUILD_GOAL_CHECK_MINUTES = 10;
+    /** The guild ladder (N5.3): guild-versus-guild team matches at the coliseum, rated as a guild. */
+    public boolean GUILD_LADDER_ENABLED = false;
     public boolean BUDDIES_ENABLED = true;
     /** Shared party minutes with a human before a citizen sends one buddy request. */
     public int BUDDY_REQUEST_AFTER_MINUTES = 30;
@@ -574,6 +592,11 @@ public class PopulationConfig {
                 || PQ_RUN_COOLDOWN_MS < 0 || PQ_CALLS_PER_PARTY < 0) {
             throw new IllegalArgumentException(
                     "population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX, PQ_CALLS_PER_PARTY and the PQ_*_MS must be >= 0");
+        }
+        if (GUILD_GOAL_GP < 0 || GUILD_GOAL_CLEARS < 1 || GUILD_GOAL_NEEDS < 1 || GUILD_GOAL_WINS < 1
+                || GUILD_GOAL_CHECK_MINUTES < 1) {
+            throw new IllegalArgumentException("population.GUILD_GOAL_GP must be >= 0, GUILD_GOAL_CLEARS, _NEEDS, _WINS"
+                    + " and GUILD_GOAL_CHECK_MINUTES >= 1");
         }
         if (CITIZEN_RUN_INVITE_GAP_MS < 0 || CITIZEN_RUN_INVITE_LOGIN_QUIET_MS < 0 || CITIZEN_RUN_INVITE_ANSWER_MS < 10000
                 || CITIZEN_RUN_INVITES_PER_PARTY < 0 || CITIZEN_RUN_INVITE_EXPLORE < 0 || CITIZEN_RUN_INVITE_MIN_ACCEPT < 0
