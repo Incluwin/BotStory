@@ -1,0 +1,31 @@
+# The town paper's talk (docs/WORLD_SYSTEMS_PLAN.md N1.3, server.living.population.paper.PaperTalk). On an issue's
+# first day a citizen in town that would say an idle line says one of its top three headlines instead, each at most
+# once per town map per hour, and only with a player on the map. {gist} is the story as a citizen says it (paper.yaml's
+# gists: "ann and ben got married", "kerning pq record is 14:00 now"). paper.named: a player it knows, named in the
+# issue, standing on its map ({name}), once per player and issue. Needs population.PAPER_ENABLED.
+intents:
+  - id: paper.headline.town
+    trigger: paper.headline
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "did u see the paper? {gist}"
+      - "paper says {gist}"
+      - "{gist}, its in the paper"
+      - "read the paper yet? {gist}"
+      - "lol {gist}. saw it in the paper"
+      - "wait {gist}?? just read it on the board"
+
+  - id: paper.named.town
+    trigger: paper.named
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name}! saw u in the paper lol"
+      - "yo {name} ur in the paper"
+      - "{name} famous now. saw u on the board lol"
+      - "{name} gz, ur in this weeks paper"

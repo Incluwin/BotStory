@@ -1,0 +1,206 @@
+# The town paper's words (docs/WORLD_SYSTEMS_PLAN.md N1, server.living.population.paper). Read at any Bulletin Board
+# ("The paper"), one page a section. sections: print order and titles; a section with no story this week is left out.
+# stories: one entry per story key ("<section>.<story>", what PaperDesk.file and the desk's own sections file), with
+# several voices of each part. The week picks the voice, so the same week reads the same. {slot} takes the story's
+# slot; a voice naming a slot the story lacks is passed over. headline: the page's bold line. body: one or two plain
+# sentences under it. gist: lower case, how a citizen in town says it ("paper says {gist}", chatter/paper.yaml).
+#
+# Slots by story (what the desk fills in):
+#   arena.champion        bracket, champion, runner_up       arena.climb    name, bracket, points
+#   arena.champion.alone  bracket, champion (no final played)
+#   records.first         quest, names                        records.record / records.fastest   quest, time, names
+#   records.rival         crew, quest, time
+#   market.riser / market.faller   item, percent
+#   town.wedding          name, partner                       town.guild     guild, leader
+#   town.alliance         alliance, names (its guilds)        town.job       name, job
+#   town.level            name, level
+# title: the masthead. Players are named like citizens (decision D2, as the records board does). ASCII only, no '#' (NPC window codes).
+
+title: "The Henesys Herald"
+
+sections:
+  - { id: arena, title: "Arena" }
+  - { id: records, title: "Records" }
+  - { id: town, title: "Town" }
+  - { id: market, title: "Market" }
+  - { id: notices, title: "Notices" }
+
+# The note a player logging in gets when an issue they have not seen is out (once per issue; at most 200 characters,
+# {title} and {headline}, the issue's top story). sender: who the note is from (at most 13 characters).
+sender: "Paperboy"
+letters:
+  - "{title} is out! Top story: {headline}. Read it at any Bulletin Board."
+  - "Extra, extra: {headline}. This week's {title} is up on every Bulletin Board."
+  - "Fresh off the press: {title}. {headline}, and more at any Bulletin Board."
+
+quiet:
+  - "A quiet week in the Maple World. Nothing made the paper."
+  - "Nothing to report this week. Even the slimes were well behaved."
+  - "No news this week. Get out there and make some."
+
+stories:
+  - key: arena.champion
+    headlines:
+      - "{champion} wins the {bracket} tournament"
+      - "{bracket} crown goes to {champion}"
+      - "{champion} takes the {bracket} title"
+    bodies:
+      - "{champion} beat {runner_up} in Saturday's final at the coliseum in Ariant."
+      - "Cesar handed the medal to {champion} after a final against {runner_up}."
+      - "It came down to {champion} and {runner_up}. {champion} walked out with the medal."
+    gists:
+      - "{champion} won the {bracket} tournament"
+      - "{champion} beat {runner_up} in the {bracket} final"
+      - "{champion} took the {bracket} tourney"
+
+  - key: arena.champion.alone
+    headlines:
+      - "{champion} wins the {bracket} tournament"
+      - "{bracket} crown goes to {champion}"
+    bodies:
+      - "{champion} came out on top of Saturday's {bracket} bracket at the coliseum."
+      - "Cesar handed the {bracket} medal to {champion}."
+    gists:
+      - "{champion} won the {bracket} tournament"
+      - "{champion} took the {bracket} tourney"
+
+  - key: arena.climb
+    headlines:
+      - "{name} climbs {points} on the {bracket} ladder"
+      - "Biggest climb of the week: {name}"
+    bodies:
+      - "No one on the {bracket} ladder rose further this week than {name}, up {points} points."
+      - "{name} put {points} points on their {bracket} rating this week."
+    gists:
+      - "{name} went up {points} on the {bracket} ladder"
+      - "{name} climbed like {points} rating this week"
+
+  - key: records.first
+    headlines:
+      - "First ever clear of {quest}"
+      - "{quest} falls for the first time"
+      - "History at {quest}"
+    bodies:
+      - "Nobody had cleared {quest} before this week. {names} did it first."
+      - "The records board has a new name at the top of {quest}: {names}, the first to clear it."
+    gists:
+      - "{names} were the first ever to clear {quest}"
+      - "someone finally cleared {quest}. {names}"
+
+  - key: records.record
+    headlines:
+      - "New record at {quest}: {time}"
+      - "{quest} record broken"
+      - "{time} at {quest}, the fastest yet"
+    bodies:
+      - "{names} cleared {quest} in {time}, faster than anyone before them."
+      - "The {quest} record now belongs to {names}: {time}."
+    gists:
+      - "{names} set a new {quest} record, {time}"
+      - "the {quest} record is {time} now"
+
+  - key: records.fastest
+    headlines:
+      - "Fastest {quest} of the week: {time}"
+      - "{quest} in {time}"
+    bodies:
+      - "{names} had the week's best {quest} at {time}. The record stands."
+      - "The week's quickest {quest} was {names} in {time}."
+    gists:
+      - "fastest {quest} this week was {time}"
+      - "{names} did {quest} in {time} this week"
+
+  - key: records.rival
+    headlines:
+      - "{crew} beat a time at {quest}"
+      - "{crew} on the board at {quest}"
+    bodies:
+      - "The crew called {crew} cleared {quest} in {time} and beat a time they were chasing."
+      - "{crew} posted {time} at {quest}. Someone's record just got shorter."
+    gists:
+      - "{crew} beat someones {quest} time"
+      - "{crew} did {quest} in {time}"
+
+  - key: market.riser
+    headlines:
+      - "{item} is dear this week"
+      - "{item} up {percent} percent"
+      - "Prices: {item} climbs"
+    bodies:
+      - "{item} sells for {percent} percent more than it did a week ago."
+      - "Buyers paid {percent} percent more for {item} this week. Sellers, take note."
+    gists:
+      - "{item} went up {percent}%"
+      - "{item} is pricey rn"
+      - "{item} prices are up"
+
+  - key: market.faller
+    headlines:
+      - "{item} is cheap this week"
+      - "{item} down {percent} percent"
+      - "Prices: {item} slides"
+    bodies:
+      - "{item} sells for {percent} percent less than it did a week ago."
+      - "A good week to stock up on {item}: down {percent} percent."
+    gists:
+      - "{item} dropped {percent}%"
+      - "{item} is cheap rn"
+      - "{item} prices crashed"
+
+  - key: town.wedding
+    headlines:
+      - "Wedding bells for {name} and {partner}"
+      - "{name} and {partner} are married"
+      - "Congratulations, {name} and {partner}"
+    bodies:
+      - "{name} and {partner} said their vows this week. The paper wishes them well."
+      - "Friends gathered as {name} and {partner} were married."
+    gists:
+      - "{name} and {partner} got married"
+      - "{name} married {partner}"
+
+  - key: town.guild
+    headlines:
+      - "New guild: {guild}"
+      - "{leader} founds {guild}"
+    bodies:
+      - "{leader} put down five million mesos and founded {guild} this week."
+      - "There is a new name on the guild rolls: {guild}, led by {leader}."
+    gists:
+      - "{leader} started a guild called {guild}"
+      - "theres a new guild, {guild}"
+
+  - key: town.alliance
+    headlines:
+      - "{alliance} alliance formed"
+      - "Guilds unite as {alliance}"
+    bodies:
+      - "{names} joined hands this week as the {alliance} alliance."
+      - "A new alliance, {alliance}, brings together {names}."
+    gists:
+      - "{names} made an alliance called {alliance}"
+      - "new alliance {alliance}"
+
+  - key: town.job
+    headlines:
+      - "{name} becomes a {job}"
+      - "Advancement: {name}, {job}"
+    bodies:
+      - "{name} took the next step this week and is now a {job}."
+      - "The instructors signed off: {name} is a {job} now."
+    gists:
+      - "{name} is a {job} now"
+      - "{name} made {job}"
+
+  - key: town.level
+    headlines:
+      - "{name} reaches level {level}"
+      - "Level {level}: {name}"
+      - "{name} hits {level}"
+    bodies:
+      - "{name} reached level {level} this week."
+      - "Another milestone: {name} is level {level}."
+    gists:
+      - "{name} hit {level}"
+      - "{name} is level {level} now"
+      - "{name} got to {level}"

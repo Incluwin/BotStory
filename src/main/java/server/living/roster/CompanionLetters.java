@@ -302,6 +302,9 @@ public final class CompanionLetters {
                     : summary.substring(0, summary.length() - 1) + "; " + coliseum + " wrote to you.";
             sent++;
         }
+        if (paperNote(owner, sent)) { // the town paper is out (docs/WORLD_SYSTEMS_PLAN.md N1)
+            sent++;
+        }
         if (summary != null) {
             owner.dropMessage(5, summary);
         }
@@ -357,6 +360,22 @@ public final class CompanionLetters {
         }
         notes.show(owner);
         return letter.sender();
+    }
+
+    /**
+     * One note that this week's paper is out, when there is an issue under a week old the owner has not seen (read at a
+     * board or told by an earlier note), inside LETTERS_MAX_NOTES and the inbox's room; true when it was sent.
+     */
+    private boolean paperNote(Character owner, int sent) {
+        var desk = server.living.population.paper.PaperDesk.get();
+        var letter = desk == null ? null : desk.letter(owner.getId(), System.currentTimeMillis()).orElse(null);
+        if (letter == null || sent >= world.config().LETTERS_MAX_NOTES || notes.room(owner.getName()) <= 0
+                || !notes.send(letter.text(), letter.sender(), owner.getName())) {
+            return false;
+        }
+        desk.seen(owner.getId(), letter.weekOf());
+        notes.show(owner);
+        return true;
     }
 
     /** Each companion's news over the window, by persona id; a camp move it made counts too. */

@@ -11,6 +11,7 @@ import server.economy.ledger.MesoFlows;
 import server.living.config.Content.Loadout;
 import server.living.population.PopulationContent.Career;
 import server.living.resident.ResidentShaper;
+import server.living.population.paper.PaperWriters;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -151,6 +152,10 @@ public final class ProgressionLedger {
             if (progress[0] > 0 && progress[0] < target) {
                 bumpLevel(citizen.characterId(), target);
                 touched++;
+                int milestone = PaperWriters.milestoneCrossed(progress[0], target); // the town paper (N1.2)
+                if (milestone > 0) {
+                    PaperWriters.levelReached(current.name(), milestone, false);
+                }
             }
             if (current.lastLedgerAtMs() < now - 6 * 3_600_000L) {
                 population.update(citizen.characterId(), latest -> latest.hired() ? latest

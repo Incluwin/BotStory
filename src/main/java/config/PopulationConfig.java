@@ -459,6 +459,13 @@ public class PopulationConfig {
     public boolean CONVERSATIONS_ENABLED = false;
     /** One conversation per town map at most this often while 20 citizens or fewer stand on it (busier maps: a third). */
     public int CONVERSATION_GAP_MS = 80000;
+    /** Kill switch: false = no town paper (no filed stories, no Sunday issue, no board pages or headline talk, no sweep). */
+    public boolean PAPER_ENABLED = false;
+    /** The day of the week the paper comes out (a java.time.DayOfWeek name), at PAPER_HOUR:00 server time. */
+    public String PAPER_DAY = "SUNDAY";
+    public int PAPER_HOUR = 0;
+    /** living_event_log rows older than this many days are swept at the daily economy close (decision D1); 0 = never. */
+    public int PAPER_RETENTION_DAYS = 90;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
@@ -582,6 +589,20 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.CASINO_BLACKJACK_TABLES must be 0..5, CASINO_MAX_BET >= 10000,"
                     + " CASINO_SHIFT_MIN_MS..MAX_MS a range from 60000, CASINO_COOLDOWN_MS and GACHA_BOX_PRICE >= 0,"
                     + " GACHA_BOX_GAP_MS >= 30000, NX_CODE_PRICE and NX_CODE_AMOUNT >= 1, CONVERSATION_GAP_MS >= 10000");
+        }
+        if (PAPER_HOUR < 0 || PAPER_HOUR > 23 || PAPER_RETENTION_DAYS < 0 || (PAPER_RETENTION_DAYS > 0 && PAPER_RETENTION_DAYS < 30)
+                || !dayOfWeek(PAPER_DAY)) {
+            throw new IllegalArgumentException("population.PAPER_DAY must name a day of the week, PAPER_HOUR be 0..23 and"
+                    + " PAPER_RETENTION_DAYS 0 (never) or at least 30");
+        }
+    }
+
+    private static boolean dayOfWeek(String name) {
+        try {
+            java.time.DayOfWeek.valueOf(name == null ? "" : name.trim().toUpperCase(Locale.ROOT));
+            return true;
+        } catch (IllegalArgumentException notADay) {
+            return false;
         }
     }
 }

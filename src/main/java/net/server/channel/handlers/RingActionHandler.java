@@ -357,6 +357,7 @@ public final class RingActionHandler extends AbstractPacketHandler {
         partner.addMarriageRing(Ring.loadFromDb(rings.getRight()));
         InventoryManipulator.addFromDrop(partner.getClient(), ringEqp, false, -1);
         partner.broadcastMarriageMessage();
+        server.living.population.paper.PaperWriters.wedding(player.getName(), partner.getName()); // the town paper (N1)
     }
 
     @Override

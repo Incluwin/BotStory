@@ -159,6 +159,8 @@ public final class LoreCouples implements AgentLoadHook.Rule {
             if (marriage <= 0) {
                 return;
             }
+            // the pair's rows are new: their wedding is news (the town paper, N1)
+            server.living.population.paper.PaperWriters.wedding(chr.getName(), ledger.nameOf(spouse));
         }
         wearRing(chr, spouse);
     }
