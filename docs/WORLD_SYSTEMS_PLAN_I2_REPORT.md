@@ -27,20 +27,36 @@ Branch `feat/world-prices` on `feat/companion-manager` 3d04e47df. Switch `popula
   arm, step and unsold count).
 - **Index trajectory** (`PriceIndexTrajectoryTest`). Setup: real Market paths, seed index 1000, NPC floor 400. Browsing
   citizens pay up to 0.9 x the current index and make up a share b of buyers; the rest pay a fixed 1100. 4000 rounds x
-  5 seeds. Settled means (rounds 3000-4000), off/on:
+  5 seeds. Settled means (rounds 3000-4000) at the shipped tuning, off/on:
 
   | b | off | on |
   |---|---|---|
-  | 0 | 960 | 1030 |
-  | 0.1 | 946 | 951 |
-  | 0.3 | 742 | 725 |
-  | 0.5 | 405 | 458 |
-  | 0.7 | 401 | 415 |
+  | 0 | 960 | 1029 |
+  | 0.1 | 946 | 944 |
+  | 0.3 | 742 | 703 |
+  | 0.5 | 405 | 476 |
 
-  - Asserted: the index is never under the floor, and the settled mean on >= 0.9 x off's. The worst gap seen was -2 %;
-    the margin covers seed noise.
-  - The fall to the floor at b >= 0.5 happens with the learner off too: it is today's unsold step-down. The learner
-    adds deeper transient dips while it explores (min 593 vs 855 at b = 0.1).
+  Three assertions:
+  1. The index is never under the floor.
+  2. The settled mean on is >= 0.9 x off's.
+  3. Each seed's lowest index in its first 500 rounds is >= 0.85 x the fixed rule's (worst measured 0.92).
+
+  The fall to the floor at b >= 0.5 happens with the learner off too: it is today's rule (ECONOMY_PLAN section 10).
+- **Tuning (asked: damp early dips with a heavier prior).** The dips came from the 0.85 and 0.90 arms, which sell to
+  browsers capped at exactly 0.9 x index. With PRICE_PRIOR_SAMPLES = 30 (30 pseudo-sales at today's 0.9-1.2) and
+  PRICE_EXPLORE = 1.0, exploration spreads over more sales. Measured (prior / explore -> worst early-dip ratio, worst
+  settled on/off):
+
+  | Prior / explore | Worst early dip | Worst settled |
+  |---|---|---|
+  | 3 / 0.6 | 0.56 | 0.98 |
+  | 10 / 0.6 | 0.53 | 0.93 |
+  | 30 / 0.6 | 0.63 | 0.94 |
+  | 30 / 1.0 | 0.92 | 0.95 |
+  | 60 / 1.0 | -- | 0.77 (settled fails at b = 0.3) |
+
+  A heavier prior alone did not help; it needed the larger exploration weight with it. The ask, hat and offer
+  convergence tests still pass at 30 / 1.0.
 - **Off switch.** Off: `Market.newAsks()` is null, `ask()` is `0.9 + random.nextDouble() x 0.3` on the same Random, the
   premium is NEEDS_SUPPLY_PREMIUM, and the bench start is 1.0. Nothing is booked or stored.
   `PriceLearningSimulationTest.offTheStallPricesAreTodaysDrawForDrawOnTheSameSeed` pins this.
@@ -140,13 +156,23 @@ that reads `con.getAutoCommit()`, false when unsure.
 4. **The request-end hook sits in `NeedStore.update`, not `NeedLedger.close()`.** Some MET paths (`takeEscrow`,
    `LiveNeedHands`) never pass through close(), and NeedLedger belongs to N6. A MET request updated twice (MET, then
    thanked) is booked once.
-5. **PRICE_EXPLORE defaults to 0.6.** At 0.2, an arm outside today's range (prior 0) was never tried against rewards
-   near 1.0; the simulation caught it.
+5. **PRICE_EXPLORE defaults to 1.0 and PRICE_PRIOR_SAMPLES to 30** (see Tuning). At 0.2, an arm outside today's range
+   (prior 0) was never tried against rewards near 1.0.
 6. **Arms are picked per item per stall,** so several stacks of one item share an arm and their bundles add up.
 7. **Known gaps:**
    - A stall whose citizen is gone at close books nothing.
    - A SUPPLY request open across a restart books nothing; the 60 s pick guard skips it.
    - An end that rolled back, if its request then ends otherwise before the next market tick, books that later end once.
+
+## Live CPI (read-only GET /runtime/stats/cpi, 11-23)
+
+- **Trend:** CPI 54.8 on 11-22, down from 100 on 10-28.
+- **Source:** 32 of 33 basket items are priced from the INDEX, so the CPI is the index today.
+- **Against the NPC price (WZ):**
+  - one item is on its floor (1452022, 1.00x) and one near it (2020014, 1.48x);
+  - the potions are at their 4-6x seed;
+  - scrolls have an NPC price of 1, so they have no practical floor.
+- Details and the two candidate fixes are in ECONOMY_PLAN section 10. Nothing was changed.
 
 ## Expected effect on the CPI basket
 
