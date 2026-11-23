@@ -343,6 +343,10 @@ The server runs without any of these.
   `JAVA_HOME` must point at a JDK 21.
 - **`Could not read config file config.yaml`.** The server must start from the repository folder;
   `start-server.bat` does this for you.
+- **The client closes or vanishes and the server only shows `Connection reset`.** Start the client
+  again: a v83 client that crashed sends its crash report on its next start, and the server logs
+  it as `Client crash report from ...` (console and `logs/cosmic-log.log`) with the character, the
+  map, the exception and its address. Include that block when you report the problem.
 - **The client closes with `Unknown error 0x80030002` (error code -2147287038)** on entering
   the game, or when you double-click a Resident. The server named an NPC that client's `Npc.wz`
   does not have. Check the server's start line `Server mods: ...`:
