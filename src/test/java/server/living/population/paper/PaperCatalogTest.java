@@ -37,6 +37,7 @@ class PaperCatalogTest {
         FILED.put("town.wedding", Map.of("name", "Ann", "partner", "Ben"));
         FILED.put("town.guild", Map.of("guild", "Lumen", "leader", "Ann"));
         FILED.put("town.alliance", Map.of("alliance", "Dawn", "names", "Lumen, Ember"));
+        FILED.put("town.guildgoal", Map.of("guild", "Lumen", "goal", "6 KPQ clears"));
         FILED.put("town.job", Map.of("name", "Ann", "job", "Crusader"));
         FILED.put("town.level", Map.of("name", "Ann", "level", "120"));
     }

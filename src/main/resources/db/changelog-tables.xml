@@ -807,4 +807,13 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="67-guild-life" author="ganre">
+        <!-- Weekly bot guild goals (living_guild_goal, population.GUILD_GOALS_ENABLED) and the coliseum's guild book
+             (pvp_guild_rating, population.GUILD_LADDER_ENABLED). See docs/WORLD_SYSTEMS_PLAN.md N5.2 and N5.3. -->
+        <sqlFile path="db/tables/058-guild-life.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/058-guild-life-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

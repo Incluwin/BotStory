@@ -87,6 +87,7 @@ public final class Population {
     private final EventLogSweep sweep;
     private final CitizenWhispers whispers;
     private final GuildChat guildChat;
+    private final GuildGoals guildGoals;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -151,6 +152,7 @@ public final class Population {
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
         this.guildChat = new GuildChat(this); // guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1)
+        this.guildGoals = new GuildGoals(this); // and a goal a week (N5.2)
         this.clears.onBooked(clear -> guildChat.cleared(clear, System.currentTimeMillis())); // a guild's gz
     }
 
@@ -251,6 +253,7 @@ public final class Population {
             population.rivals.tick(); // the rival crews' minute (F7)
             population.coliseum.minute(); // Cesar stands, and citizens play their own ladder (docs/PVP_PLAN.md V4)
             population.paper.minute(System.currentTimeMillis()); // the Sunday paper (docs/WORLD_SYSTEMS_PLAN.md N1)
+            population.guildGoals.minute(System.currentTimeMillis()); // bot guilds' weekly goals (N5.2)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -458,6 +461,11 @@ public final class Population {
     /** Citizens' talk of the paper's headlines on its first day (N1.3). */
     public PaperTalk paperTalk() {
         return paperTalk;
+    }
+
+    /** Bot guilds' weekly goals (docs/WORLD_SYSTEMS_PLAN.md N5.2). */
+    public GuildGoals guildGoals() {
+        return guildGoals;
     }
 
     /** Guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1). */

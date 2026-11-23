@@ -1322,6 +1322,24 @@ population:
     # stock again (citizens still post their own idle lines). Off until live check U1 passes.
     # Technical: GuildChat is called from MultiChatHandler (type 2), PlayerLoggedinHandler/Client (the stock guild online notice), PopulationHooks.levelUp and ClearLog.onBooked; questions and named lines take one Conversation.guildTurn (the CONVERSATION_* budgets) answered on AgentReplyChannel.GUILD; the LFG follow-up rides CitizenPartyQuests' 10 s tick.
     GUILD_CHAT_ENABLED: false
+    # Weekly guild goals (docs/WORLD_SYSTEMS_PLAN.md N5.2): each bot guild picks one goal a week from its level band
+    # (GUILD_GOAL_CLEARS clears of a party quest citizens run; with a player in the guild also GUILD_GOAL_NEEDS needs-board
+    # requests met by members or GUILD_GOAL_WINS coliseum wins) and counts its members' real deeds, the player's
+    # included. Meeting it pays GUILD_GOAL_GP guild points (decision D11: GP only, no meso), a guild chat line and a
+    # story in the town paper, and moves the guild on the rank board (Guild Headquarters). false = the kill switch:
+    # no goal is set, counted or paid. Off until live check U2 passes. !citizens goals [check] shows them.
+    # Technical: GuildGoals rides the social minute (a count every GUILD_GOAL_CHECK_MINUTES), reads ClearStore.between, NeedStore.endedSince and pvp_match wins once a count, and pays through the conditional living_guild_goal UPDATE (done = 0 -> 1), so a restart never pays twice.
+    GUILD_GOALS_ENABLED: false
+    # Technical: Server.gainGP on the guild loaded in the server cache (Guild.gainGP writes guilds.GP); GPQ pays 15-30 a stage, so 300 is about one guild quest. 0 = no GP (line and paper only).
+    GUILD_GOAL_GP: 300
+    # Technical: a PQ_CLEARS goal's target (each goal kind's target >= 1); a member's deed counts once per clear, met request or won match, and only while they are a member at the count (progress never goes down).
+    GUILD_GOAL_CLEARS: 6
+    # Technical: a NEEDS_MET goal counts living_need rows that went MET this week with fulfilled_by a member; only picked for a guild with a player in it (citizens never hand in).
+    GUILD_GOAL_NEEDS: 4
+    # Technical: a COLISEUM_WINS goal counts pvp_match rows this week with a member on winner_side (any kind: ladder, team, tournament); only for a guild with a player and a band reaching Lv 30.
+    GUILD_GOAL_WINS: 4
+    # Technical: minutes between counts on the 60 s social tick (>= 1); each count is three window reads for all guilds, not one per guild.
+    GUILD_GOAL_CHECK_MINUTES: 10
     BUDDIES_ENABLED: true
     BUDDY_REQUEST_AFTER_MINUTES: 30
     MARKET_ENABLED: true
