@@ -51,7 +51,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks|ownhit ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|team [2|3]|crewwar|teamsim [n]|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|team [2|3]|guild [2|3]|guildtop|crewwar|teamsim [n]|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
     }
 
     @Override
@@ -108,6 +108,11 @@ public class PvpCommand extends Command {
                 coliseum.teamRequest(gm, Math.max(2, Math.min(3, number(params, 2, 2))), false, true);
                 gm.yellowMessage("PvP: looking for a citizen team for you and your companions.");
             }
+            case "guild" -> { // N5.3: a guild match, guild mates first
+                coliseum.guildRequest(gm, Math.max(2, Math.min(3, number(params, 2, 2))), true);
+                gm.yellowMessage("PvP: looking for another guild's team against yours.");
+            }
+            case "guildtop" -> coliseum.guildTop(gm, 10).forEach(gm::yellowMessage);
             case "crewwar" -> {
                 coliseum.teamRequest(gm, 3, true, true);
                 gm.yellowMessage("PvP: calling your rival crew to the arena.");

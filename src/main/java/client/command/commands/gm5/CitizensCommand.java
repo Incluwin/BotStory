@@ -252,6 +252,14 @@ public class CitizensCommand extends Command {
                                 + (guild == null || guild.getAllianceId() <= 0 ? "" : " [alliance " + guild.getAllianceId() + "]"));
                     }
                 }
+                case "goals" -> { // bot guilds' weekly goals (docs/WORLD_SYSTEMS_PLAN.md N5.2); "check" counts now
+                    if (params.length >= 2 && params[1].equalsIgnoreCase("check")) {
+                        gm.yellowMessage("guild goals: " + population.guildGoals().checkNow() + " paid");
+                    }
+                    for (String line : population.guildGoals().status(System.currentTimeMillis())) {
+                        gm.yellowMessage(line);
+                    }
+                }
                 case "alliances" -> {
                     for (String line : population.social().alliances().report()) {
                         gm.yellowMessage(line);

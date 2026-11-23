@@ -303,6 +303,42 @@ PaperDesk.fileNaming("town.guild", 50, Map.of("guild", "Lumen"), "leader", leade
   the population is not running. Rows are `paper.item` in `living_event_log` (character_id NULL); `compose` reads
   the window's rows, so a story filed late on Saturday night makes Sunday's issue.
 
+### Guild life
+
+Bot guilds are stock guilds a citizen founded (`living_guild`); players join them by a recruiter's invite
+(docs/WORLD_SYSTEMS_PLAN.md N5, `server.living.population.GuildChat` / `GuildGoals`, `coliseum.TeamLadder`). Three
+switches, all off until their live checks pass (`tools/checks/checks/n5-guild-life`, U1-U5):
+
+- **Guild chat that answers** (`population.GUILD_CHAT_ENABLED`). A player's guild line is heard by the online citizens
+  of their guild; at most two answer, each 2.5-6.5 s after the line plus its typing delay. A greeting, goodbye or
+  thanks gets templated lines (`chatter/guild.yaml`, once per 45 s per player); a question or a line naming a mate
+  takes one turn of the conversation path (`Conversation.guildTurn`: the `CONVERSATION_*` budgets, answered back in
+  guild chat through `AgentReplyChannel.GUILD`); other statements are picked up one time in four. A player's login is
+  greeted (a channel change is not), a logout seen off half the time if they stay gone; a member's level-up and a
+  clear with a player of the guild in it get a "gz". An LFG line ("anyone up for kpq", "lf2m hpq", "kpq anyone?") for
+  a quest citizens run (`PQ_RUN_QUESTS`) ends in a real party: a party forming with a guild mate in it has its leader
+  invite the player (as a yes to a run invitation, N3.1), else a free guild mate of the band (in town or training)
+  heads to the lobby and, once its party forms there (up to 10 minutes), the leader invites them. A player outside
+  the quest's band is told so; citizens of another guild never answer.
+- **Weekly goals** (`population.GUILD_GOALS_ENABLED`). Each bot guild has one goal a week (Monday 00:00 UTC), seeded by
+  guild and week: `GUILD_GOAL_CLEARS` clears of a party quest of its band, or, with a player among its members,
+  `GUILD_GOAL_NEEDS` needs-board requests met by members or `GUILD_GOAL_WINS` coliseum wins. Every
+  `GUILD_GOAL_CHECK_MINUTES` the social minute counts members' deeds of the week from `living_clear`, MET `living_need`
+  rows (`fulfilled_by`) and `pvp_match` winners, against who is a member at that count (a member who left stops
+  counting; progress never goes down). Meeting it pays `GUILD_GOAL_GP` guild points (decision D11), a guild chat line
+  and a `town.guildgoal` paper story, once: the row's `done` flag is set by the conditional UPDATE that decides the
+  payout. One `living_guild_goal` row a guild a week (changeset 67). A citizen master also posts the goal on the
+  stock guild BBS ("Goal: 6 KPQ clears") and takes down its last one. The rank board in the Guild Headquarters
+  (`9040004`, `9040008`, `Guild.displayGuildRanks`) lists every guild by GP, so a guild that meets goals climbs it.
+  `!citizens goals [check]` lists this week's goals (`check`: count now).
+- **Guild ladder** (`population.GUILD_LADDER_ENABLED`). In Cesar's team window a player in a guild gets "A 2v2 / 3v3
+  for <guild>": free guild mates of the bracket within the level window fill the side (nearest level first), then
+  the player's own companions, never a stranger; the foe is another guild's full team, never a pickup team. The match
+  rates the members' team ratings as before and the two guilds in the guild book (`LadderStore.guildBook()`,
+  `pvp_guild_rating`, kept apart from `pvp_rating`); it is booked in `pvp_match` as kind `GUILD`. Background team
+  sims between two citizen guild teams move the guild book too. `!pvp coliseum guild [2|3]` (GM, no fee) and
+  `!pvp coliseum guildtop`.
+
 ### Habits and learned spots
 
 Companions pick up how their owner plays (`living_world.OWNER_HABITS_ENABLED`, off until its live checks pass; plan

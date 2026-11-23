@@ -13,7 +13,7 @@
 #   market.riser / market.faller   item, percent
 #   town.wedding          name, partner                       town.guild     guild, leader
 #   town.alliance         alliance, names (its guilds)        town.job       name, job
-#   town.level            name, level
+#   town.level            name, level                         town.guildgoal guild, goal
 # title: the masthead. Players are named like citizens (decision D2, as the records board does). ASCII only, no '#' (NPC window codes).
 
 title: "The Henesys Herald"
@@ -180,6 +180,17 @@ stories:
     gists:
       - "{names} made an alliance called {alliance}"
       - "new alliance {alliance}"
+
+  - key: town.guildgoal
+    headlines:
+      - "{guild} meets its weekly goal"
+      - "Guild goal done: {guild}"
+    bodies:
+      - "{guild} set out to make {goal} this week and did it, and the guild hall's rank board shows it."
+      - "Members of {guild} made {goal} together this week. Their guild points went up for it."
+    gists:
+      - "{guild} hit their guild goal this week"
+      - "{guild} did {goal} this week"
 
   - key: town.job
     headlines:

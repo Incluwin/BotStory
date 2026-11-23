@@ -90,6 +90,7 @@ public final class AgentChatJevStateFactory {
         return switch (channel) {
             case PARTY -> "party chat";
             case WHISPER -> "whisper";
+            case GUILD -> "guild chat";
             default -> "map chat";
         };
     }

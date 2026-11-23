@@ -82,6 +82,7 @@ public final class PopulationHooks {
             if (human != null) {
                 PaperWriters.levelReached(chr.getName(), chr.getLevel(), human);
             }
+            population.guildChat().levelUp(chr, System.currentTimeMillis()); // a guild mate's gz (N5.1)
         } catch (RuntimeException failure) {
             log.debug("population levelUp hook failed", failure);
         }
@@ -338,6 +339,36 @@ public final class PopulationHooks {
         } catch (RuntimeException failure) {
             log.debug("population casino hook failed", failure);
             return false;
+        }
+    }
+
+    /**
+     * A human's line in their guild chat (multi-chat 2, docs/WORLD_SYSTEMS_PLAN.md N5.1): their guild's online
+     * citizens may answer; true when one took it.
+     */
+    public static boolean guildChat(Character speaker, String text) {
+        Population population = Population.get();
+        if (population == null || speaker == null || AgentPresence.isAgent(speaker)) {
+            return false;
+        }
+        try {
+            return population.guildChat().heard(speaker, text, System.currentTimeMillis());
+        } catch (RuntimeException failure) {
+            log.debug("population guild chat hook failed", failure);
+            return false;
+        }
+    }
+
+    /** A human guild member logged in or out (the stock guild online notice): a guild mate greets or sees them off. */
+    public static void guildMemberOnline(Character chr, boolean online) {
+        Population population = Population.get();
+        if (population == null || chr == null || AgentPresence.isAgent(chr)) {
+            return;
+        }
+        try {
+            population.guildChat().memberOnline(chr, online, System.currentTimeMillis());
+        } catch (RuntimeException failure) {
+            log.debug("population guild online hook failed", failure);
         }
     }
 

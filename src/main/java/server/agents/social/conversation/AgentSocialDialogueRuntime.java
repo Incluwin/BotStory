@@ -186,7 +186,9 @@ public final class AgentSocialDialogueRuntime {
             return;
         }
         int askedOn = speaker.getMapId();
-        boolean anyMap = route != null && route.channel() == AgentReplyChannel.WHISPER;
+        // a whisper or a guild line reaches its asker on any map (docs/WORLD_SYSTEMS_PLAN.md N5.1)
+        boolean anyMap = route != null && (route.channel() == AgentReplyChannel.WHISPER
+                || route.channel() == AgentReplyChannel.GUILD);
         StringBuilder said = new StringBuilder();
         for (Styled line : lines) {
             String text = line.text();

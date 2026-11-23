@@ -626,6 +626,18 @@ public final class ChatterEngine {
     }
 
     /**
+     * A citizen answers in its guild's chat (docs/WORLD_SYSTEMS_PLAN.md N5.1, GuildChat) in its voice, {@code noticeMs}
+     * after the line it answers plus its typing delay; {@code atSend} (may be null) may drop it then (the one greeted
+     * logged out again). No intent picker, line budget or cooldown: GuildChat caps the repliers. Returns the total delay.
+     */
+    public long guildSay(CitizenSession session, String text, long noticeMs, UnaryOperator<String> atSend) {
+        String rendered = population.voices().render(session.citizen, text, System.currentTimeMillis());
+        long delayMs = Math.max(0L, noticeMs) + population.voices().delayMs(session.citizen, rendered);
+        deliver(session, "guild", rendered, delayMs, atSend);
+        return delayMs;
+    }
+
+    /**
      * A citizen replies on map chat in its voice with its typing delay (greetings, conversation templates): no intent
      * picker or map line budget, because someone spoke to it, but nothing while chatter is off and at most one line per
      * self cooldown, so "hi mia" typed every second gets one "hey".

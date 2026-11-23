@@ -27,8 +27,16 @@ class LadderStore implements LadderBook.Store {
     static final String TEAM = "TEAM";
     /** V6: the team ladder's ratings are kept apart from 1v1 under this prefix to the bracket (TEAM_VETERAN). */
     static final String TEAM_PREFIX = "TEAM_";
+    /** N5.3: guild-versus-guild team matches in pvp_match. */
+    static final String GUILD = "GUILD";
+    /** N5.3: the guild book's brackets (GUILD_VETERAN), in pvp_guild_rating: its ids are guild ids. */
+    static final String GUILD_PREFIX = "GUILD_";
 
     private final String prefix;
+    /** The table, its id column, and how a ranked row gets its name and level (and leaves GMs out). */
+    private final String table;
+    private final String idColumn;
+    private final String named;
 
     /** The 1v1 ladder's store. */
     LadderStore() {
@@ -37,7 +45,21 @@ class LadderStore implements LadderBook.Store {
 
     /** A store whose brackets are kept under {@code prefix} ({@link #TEAM_PREFIX} for the team ladder). */
     LadderStore(String prefix) {
+        this(prefix, "pvp_rating", "character_id",
+                ", c.name, c.level FROM pvp_rating r JOIN characters c ON c.id = r.character_id WHERE c.gm = 0 AND");
+    }
+
+    private LadderStore(String prefix, String table, String idColumn, String named) {
         this.prefix = prefix;
+        this.table = table;
+        this.idColumn = idColumn;
+        this.named = named;
+    }
+
+    /** The guild book (docs/WORLD_SYSTEMS_PLAN.md N5.3): one rating a guild, kept in pvp_guild_rating. */
+    static LadderStore guildBook() {
+        return new LadderStore(GUILD_PREFIX, "pvp_guild_rating", "guild_id",
+                ", g.name, 0 AS level FROM pvp_guild_rating r JOIN guilds g ON g.guildid = r.guild_id WHERE");
     }
 
     private String key(LadderRules.Bracket bracket) {
@@ -50,7 +72,7 @@ class LadderStore implements LadderBook.Store {
             return Optional.empty();
         }
         String sql = SqlTime.utc("SELECT rating, deviation, volatility, wins, losses, updated_at, week_of, week_rating"
-                + " FROM pvp_rating WHERE character_id = ? AND bracket = ? AND season = ?");
+                + " FROM " + table + " WHERE " + idColumn + " = ? AND bracket = ? AND season = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             ps.setString(2, key(bracket));
@@ -78,7 +100,7 @@ class LadderStore implements LadderBook.Store {
         if (!DatabaseConnection.isInitialized()) {
             return;
         }
-        String sql = SqlTime.utc("INSERT INTO pvp_rating (character_id, bracket, season, rating, deviation, volatility,"
+        String sql = SqlTime.utc("INSERT INTO " + table + " (" + idColumn + ", bracket, season, rating, deviation, volatility,"
                 + " wins, losses, updated_at, week_of, week_rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 + " ON DUPLICATE KEY UPDATE rating = VALUES(rating), deviation = VALUES(deviation),"
                 + " volatility = VALUES(volatility), wins = VALUES(wins), losses = VALUES(losses),"
@@ -121,10 +143,8 @@ class LadderStore implements LadderBook.Store {
         if (!DatabaseConnection.isInitialized()) {
             return List.of();
         }
-        String sql = SqlTime.utc("SELECT r.character_id, r.rating, r.deviation, r.volatility, r.wins, r.losses,"
-                + " r.updated_at, r.week_of, r.week_rating, c.name, c.level FROM pvp_rating r"
-                + " JOIN characters c ON c.id = r.character_id WHERE r.bracket = ? AND r.season = ? AND c.gm = 0"
-                + where);
+        String sql = SqlTime.utc("SELECT r." + idColumn + " AS id, r.rating, r.deviation, r.volatility, r.wins, r.losses,"
+                + " r.updated_at, r.week_of, r.week_rating" + named + " r.bracket = ? AND r.season = ?" + where);
         List<LadderBook.Ranked> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, key(bracket));
@@ -133,7 +153,7 @@ class LadderStore implements LadderBook.Store {
             ps.setInt(4, limit);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    out.add(new LadderBook.Ranked(row(rs, rs.getInt("character_id"), bracket), rs.getString("name"),
+                    out.add(new LadderBook.Ranked(row(rs, rs.getInt("id"), bracket), rs.getString("name"),
                             rs.getInt("level")));
                 }
             }
@@ -148,9 +168,8 @@ class LadderStore implements LadderBook.Store {
         if (!DatabaseConnection.isInitialized()) {
             return new int[] {0, 0};
         }
-        String sql = "SELECT COALESCE(SUM(r.rating > ?), 0), COUNT(*) FROM pvp_rating r"
-                + " JOIN characters c ON c.id = r.character_id"
-                + " WHERE r.bracket = ? AND r.season = ? AND r.wins + r.losses >= ? AND c.gm = 0";
+        String sql = "SELECT COALESCE(SUM(r.rating > ?), 0), COUNT(*)" + named.substring(named.indexOf(" FROM "))
+                + " r.bracket = ? AND r.season = ? AND r.wins + r.losses >= ?";
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setDouble(1, rating);
             ps.setString(2, key(bracket));

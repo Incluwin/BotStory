@@ -1,0 +1,222 @@
+# Guild life (docs/WORLD_SYSTEMS_PLAN.md N5; GuildChat, GuildGoals). Composed for one citizen and said in its guild's
+# chat (ChatterEngine.guildSay), never picked to speak on their own. {name} is the human (or member) the line is for.
+# guild.reply.*: a human's greeting, goodbye or thanks in guild chat. guild.member.hi / .bye: a human member logged in
+# or out. guild.gz: a member levelled (the stock notice is out). guild.clear.gz: a human member cleared {pq};
+# guild.clear.self: a citizen tells the guild it cleared {pq}. guild.lfg.*: answers to "anyone up for {pq}": invited
+# (its party's leader sent the invite; {map} {ch} where it forms), full, level ({levels} the band), party (leave yours
+# first), wait (an invite to someone else is out), none (nobody free), going (a mate heads to {map} for it), ready
+# (its party formed there and the invite is out). guild.goal.new / .met: the week's goal ({goal}) set and met.
+intents:
+  - id: guild.reply.hi
+    trigger: guild.reply.hi
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey {name}"
+      - "hi {name}"
+      - "yo"
+      - "heyy"
+      - "o/"
+      - "sup {name}"
+    styles:
+      quiet-practical-v1:
+        - "hi"
+        - "hey"
+      playful-social-v1:
+        - "{name}!! hii"
+        - "heyyy {name} :D"
+  - id: guild.reply.bye
+    trigger: guild.reply.bye
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "cya {name}"
+      - "night"
+      - "later"
+      - "gn {name}"
+      - "bye bye"
+    styles:
+      playful-social-v1:
+        - "nooo stay lol. gn {name}"
+  - id: guild.reply.np
+    trigger: guild.reply.np
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "np"
+      - "np {name}"
+      - "anytime"
+      - "yw"
+  - id: guild.member.hi
+    trigger: guild.member.hi
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hi {name}"
+      - "wb {name}"
+      - "yo {name}"
+      - "hey {name}"
+      - "{name}!"
+    styles:
+      quiet-practical-v1:
+        - "hi {name}"
+      playful-social-v1:
+        - "{name} is here!! hii"
+  - id: guild.member.bye
+    trigger: guild.member.bye
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "bye {name}"
+      - "cya {name}"
+      - "night {name}"
+  - id: guild.gz
+    trigger: guild.gz
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gz {name}"
+      - "gratz {name}!"
+      - "grats"
+      - "gz!"
+      - "nice, {level} already"
+      - "gz on {level}"
+    styles:
+      quiet-practical-v1:
+        - "gz"
+      playful-social-v1:
+        - "GZ {name}!!"
+  - id: guild.clear.gz
+    trigger: guild.clear.gz
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nice {pq} {name}"
+      - "gz on the {pq} clear"
+      - "{pq} done? nice"
+      - "gj {name}"
+  - id: guild.clear.self
+    trigger: guild.clear.self
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "just finished {pq}"
+      - "{pq} done finally"
+      - "cleared {pq} :)"
+      - "another {pq} down"
+  - id: guild.lfg.invited
+    trigger: guild.lfg.invited
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ya we're doing {pq} at {map} ch{ch}, sent u an inv"
+      - "{name} come, {pq} at {map} ch{ch}. inv sent"
+      - "we're forming {pq} rn, ch{ch} {map}. accept the inv"
+      - "sent u inv, we're at {map} ch{ch}"
+  - id: guild.lfg.full
+    trigger: guild.lfg.full
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ah we just filled up, sry"
+      - "our {pq} is full rn, next one?"
+  - id: guild.lfg.level
+    trigger: guild.lfg.level
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{pq} is {levels} tho"
+      - "ur not {levels} are u? thats {pq}"
+      - "cant get in, {pq} is {levels}"
+  - id: guild.lfg.party
+    trigger: guild.lfg.party
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "leave ur party and i'll inv u"
+      - "ur in a party, drop it and i'll inv"
+  - id: guild.lfg.wait
+    trigger: guild.lfg.wait
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "1 sec, waiting on someone else's answer"
+      - "hold on, inv out to someone already"
+  - id: guild.lfg.none
+    trigger: guild.lfg.none
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "cant rn sry"
+      - "busy atm, maybe later"
+      - "not rn, try fm?"
+      - "after this, gimme a bit"
+  - id: guild.lfg.going
+    trigger: guild.lfg.going
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "sure, omw to {map}"
+      - "ya i'm down, heading to {map}"
+      - "ok, meet at {map}. i'll make the party"
+      - "sure, going to {map} now"
+  - id: guild.lfg.ready
+    trigger: guild.lfg.ready
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "at {map} ch{ch}, sent u inv"
+      - "party up, inv sent. {map} ch{ch}"
+      - "{name} accept the inv, we're at {map}"
+  - id: guild.goal.new
+    trigger: guild.goal.new
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "this week: {goal}. lets do it"
+      - "guild goal this week is {goal}"
+      - "ok guys, {goal} this week"
+  - id: guild.goal.met
+    trigger: guild.goal.met
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "we did it! {goal} done, gj all"
+      - "goal done: {goal}. ty everyone"
+      - "{goal} done!! gp up"

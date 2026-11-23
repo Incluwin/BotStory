@@ -50,7 +50,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 final class TeamLadder {
     private static final Logger log = LoggerFactory.getLogger(TeamLadder.class);
 
-    enum Kind { TEAM, CREW_WAR }
+    enum Kind { TEAM, CREW_WAR, GUILD }
 
     /** A team match a player is in. */
     static final class TeamMatch {
@@ -81,6 +81,10 @@ final class TeamLadder {
         final Map<Integer, long[]> totals = new HashMap<>();
         int winnerSide = -1;
         String why = "";
+        /** A guild match (N5.3): the player's guild, the foe's, and the player's guild mates on side 0. */
+        int guildId;
+        int foeGuildId;
+        List<Integer> mates = List.of();
 
         TeamMatch(Kind kind, Character human, List<Integer> side0, List<Integer> companions, List<Integer> side1,
                   String foeName, Crew crew, LadderRules.Bracket bracket, double odds, boolean forced, long fee,
@@ -107,7 +111,8 @@ final class TeamLadder {
         }
 
         String label() {
-            return kind == Kind.CREW_WAR ? "Crew War" : size() + "v" + size();
+            return kind == Kind.CREW_WAR ? "Crew War" : kind == Kind.GUILD ? "guild " + size() + "v" + size()
+                    : size() + "v" + size();
         }
     }
 
@@ -116,6 +121,8 @@ final class TeamLadder {
 
     private final Coliseum coliseum;
     private final LadderBook book;
+    /** The guild book (docs/WORLD_SYSTEMS_PLAN.md N5.3): one rating a guild, its ids guild ids. */
+    private final LadderBook guildBook;
     private final LadderStore store;
     private final Random random = new Random();
     private final Queue<Request> requests = new ConcurrentLinkedQueue<>();
@@ -125,13 +132,27 @@ final class TeamLadder {
 
     /** {@code matches} books the matches in pvp_match; {@code ratings} keeps the team ratings (a TEAM_ store). */
     TeamLadder(Coliseum coliseum, LadderStore matches, LadderBook.Store ratings) {
+        this(coliseum, matches, ratings, LadderStore.guildBook());
+    }
+
+    /** {@code guildRatings}: the guild book's store (N5.3). */
+    TeamLadder(Coliseum coliseum, LadderStore matches, LadderBook.Store ratings, LadderBook.Store guildRatings) {
         this.coliseum = coliseum;
         this.store = matches;
         this.book = new LadderBook(ratings);
+        this.guildBook = new LadderBook(guildRatings);
     }
 
     LadderBook book() {
         return book;
+    }
+
+    LadderBook guildBook() {
+        return guildBook;
+    }
+
+    private boolean guildLadderOn() {
+        return population().config().GUILD_LADDER_ENABLED;
     }
 
     private Population population() {
@@ -218,7 +239,7 @@ final class TeamLadder {
         }
         List<Character> companions = companionsHere(human);
         int fieldable = TeamRules.fieldable(companions.size());
-        if (fieldable < TeamRules.MIN_SIZE) {
+        if (fieldable < TeamRules.MIN_SIZE && request.kind() != Kind.GUILD) {
             human.dropMessage(5, "Cesar: a team fight needs a companion standing with you.");
             return;
         }
@@ -227,7 +248,49 @@ final class TeamLadder {
         List<Integer> foes;
         String foeName;
         int size;
-        if (request.kind() == Kind.CREW_WAR) {
+        List<Integer> guildSide = null;
+        int foeGuildId = 0;
+        if (request.kind() == Kind.GUILD) {
+            // N5.3: the player fights for its guild, guild mates filling the side before its own companions
+            if (!guildLadderOn() && !request.forced()) {
+                human.dropMessage(5, "Cesar: guild matches are not on yet.");
+                return;
+            }
+            int guildId = human.getGuildId();
+            if (guildId <= 0 || human.getGuild() == null) {
+                human.dropMessage(5, "Cesar: join a guild first, then fight for it.");
+                return;
+            }
+            size = Math.max(TeamRules.MIN_SIZE, Math.min(TeamRules.MAX_SIZE, request.size()));
+            List<TeamRules.Member> free = freeMembers(channel, human.getId(), bracket.get(), now);
+            List<Integer> companionIds = new ArrayList<>();
+            companions.forEach(c -> companionIds.add(c.getId()));
+            Optional<List<Integer>> mine = TeamRules.guildSide(human.getId(), human.getLevel(), guildId, size, free,
+                    companionIds);
+            if (mine.isEmpty()) {
+                human.dropMessage(5, "Cesar: " + human.getGuild().getName() + " can't field " + size + " in your bracket"
+                        + " here right now: bring guild mates or companions on this channel.");
+                return;
+            }
+            guildSide = mine.get();
+            List<TeamRules.Member> others = new ArrayList<>(free);
+            List<Integer> taken = guildSide;
+            others.removeIf(member -> taken.contains(member.characterId()));
+            Optional<TeamRules.Team> team = TeamRules.guildFoe(human.getLevel(),
+                    book.teamRating(guildSide, bracket.get(), now), size, guildId, others);
+            if (team.isEmpty()) {
+                human.dropMessage(5, "Cesar: no other guild can send " + size + " in your bracket on this channel right"
+                        + " now. Try again in a minute.");
+                return;
+            }
+            foes = team.get().members();
+            foeName = team.get().name();
+            for (TeamRules.Member member : others) {
+                if (member.characterId() == foes.get(0)) {
+                    foeGuildId = member.guildId();
+                }
+            }
+        } else if (request.kind() == Kind.CREW_WAR) {
             crew = population().rivals() == null ? null : population().rivals().crewOfMain(human.getId());
             if (crew == null) {
                 human.dropMessage(5, "Cesar: no crew has a grudge with you yet. Make some rivals first.");
@@ -273,12 +336,27 @@ final class TeamLadder {
             foeName = team.get().name();
         }
         List<Integer> side0 = new ArrayList<>();
-        side0.add(human.getId());
         List<Integer> companionIds = new ArrayList<>();
-        companions.subList(0, size - 1).forEach(c -> {
-            side0.add(c.getId());
-            companionIds.add(c.getId());
-        });
+        List<Integer> mates = new ArrayList<>();
+        if (guildSide != null) {
+            side0.addAll(guildSide);
+            for (Character companion : companions) {
+                if (guildSide.contains(companion.getId())) {
+                    companionIds.add(companion.getId());
+                }
+            }
+            for (int id : guildSide) {
+                if (id != human.getId() && !companionIds.contains(id)) {
+                    mates.add(id);
+                }
+            }
+        } else {
+            side0.add(human.getId());
+            companions.subList(0, size - 1).forEach(c -> {
+                side0.add(c.getId());
+                companionIds.add(c.getId());
+            });
+        }
         long fee = request.kind() == Kind.CREW_WAR || request.forced() || human.isGM() ? 0L
                 : Coliseum.fee(human.getLevel());
         if (fee > 0 && human.getMeso() < fee) {
@@ -290,17 +368,31 @@ final class TeamLadder {
                 human.gainMeso((int) -fee, true);
             }
         }
-        Glicko2.Rating ours = book.teamRating(side0, bracket.get(), now);
-        Glicko2.Rating theirs = book.teamRating(foes, bracket.get(), now);
+        Glicko2.Rating ours = guildSide != null ? guildBook.rating(human.getGuildId(), bracket.get(), now)
+                : book.teamRating(side0, bracket.get(), now);
+        Glicko2.Rating theirs = guildSide != null ? guildBook.rating(foeGuildId, bracket.get(), now)
+                : book.teamRating(foes, bracket.get(), now);
         double odds = Glicko2.winChance(ours, theirs);
         TeamMatch match = new TeamMatch(request.kind(), human, side0, companionIds, foes, foeName, crew, bracket.get(),
                 odds, request.forced(), fee, coliseum.nextArenaId(), now);
+        if (guildSide != null) {
+            match.guildId = human.getGuildId();
+            match.foeGuildId = foeGuildId;
+            match.mates = List.copyOf(mates);
+        }
         for (int foe : foes) {
             population().presence().hold(foe, now + Coliseum.HOLD_MS);
+        }
+        for (int mate : mates) {
+            population().presence().hold(mate, now + Coliseum.HOLD_MS);
         }
         byHuman.put(human.getId(), match);
         human.dropMessage(5, request.kind() == Kind.CREW_WAR
                 ? "Cesar: " + crew.name() + " answers your Crew War with " + names(foes) + ". To the arena!"
+                : request.kind() == Kind.GUILD
+                ? "Cesar: " + human.getGuild().getName() + " (" + names(side0) + ") against " + foeName + " ("
+                + names(foes) + "), guilds rated " + Math.round(ours.rating()) + " and " + Math.round(theirs.rating())
+                + ". To the arena!"
                 : "Cesar: your " + match.label() + " is against " + foeName + " (" + names(foes) + "), rated "
                 + Math.round(theirs.rating()) + ". To the arena!");
         log.info("Team ladder: {} {} {} against {} {} in {}, team ratings {} vs {}, odds {}{}", match.label(),
@@ -507,7 +599,14 @@ final class TeamLadder {
         double score0 = winnerSide == 0 ? 1d : winnerSide == 1 ? 0d : 0.5d;
         List<LadderBook.Change> changes = book.recordTeams(match.side0, match.side1, match.bracket, score0, now);
         LadderBook.Change mine = changes.get(0);
+        LadderBook.Change[] guilds = match.kind == Kind.GUILD && match.foeGuildId > 0
+                ? guildBook.record(match.guildId, match.foeGuildId, match.bracket, score0, now) : null;
         Character human = Coliseum.online(match.humanId);
+        if (human != null && guilds != null) {
+            human.dropMessage(5, "Guild rating " + Math.round(guilds[0].before().rating().rating()) + " -> "
+                    + Math.round(guilds[0].after().rating().rating()) + " (" + match.bracket.label + ", "
+                    + guilds[0].after().wins() + "-" + guilds[0].after().losses() + ").");
+        }
         if (human != null) {
             String verdict = winnerSide == 0 ? "You beat " + match.foeName
                     : winnerSide == 1 ? match.foeName + " beat you" : "You drew with " + match.foeName;
@@ -516,7 +615,7 @@ final class TeamLadder {
                     + " (" + match.bracket.label + ", " + mine.after().wins() + "-" + mine.after().losses() + ").");
             try {
                 coliseum.payLadder(human, winnerSide, match.odds, forfeited, match.forced,
-                        match.kind == Kind.CREW_WAR ? "crew war" : "team", now);
+                        match.kind == Kind.CREW_WAR ? "crew war" : match.kind == Kind.GUILD ? "guild" : "team", now);
             } catch (RuntimeException failure) {
                 log.warn("Team ladder: paying {} failed", match.humanName, failure);
             }
@@ -535,7 +634,8 @@ final class TeamLadder {
                 List<LadderStore.Fighter> fighters = new ArrayList<>();
                 match.side0.forEach(id -> fighters.add(ladderFighter(match, id, 0)));
                 match.side1.forEach(id -> fighters.add(ladderFighter(match, id, 1)));
-                store.insertMatch(LadderStore.TEAM, now, match.arenaId, seconds, winnerSide, why, match.odds, fighters);
+                store.insertMatch(match.kind == Kind.GUILD ? LadderStore.GUILD : LadderStore.TEAM, now, match.arenaId,
+                        seconds, winnerSide, why, match.odds, fighters);
             }
         } catch (RuntimeException failure) {
             log.warn("Team ladder: booking {} against {} failed", match.humanName, match.foeName, failure);
@@ -591,6 +691,7 @@ final class TeamLadder {
             match.ground.close(match.companions);
         }
         match.side1.forEach(id -> population().presence().release(id));
+        match.mates.forEach(id -> population().presence().release(id));
     }
 
     void stop() {
@@ -633,7 +734,7 @@ final class TeamLadder {
         int played = 0;
         for (Map.Entry<LadderRules.Bracket, List<Character>> entry : byBracket.entrySet()) {
             int size = TeamRules.MIN_SIZE + random.nextInt(TeamRules.MAX_SIZE - TeamRules.MIN_SIZE + 1);
-            List<List<Character>> teams = teams(entry.getValue(), size);
+            List<List<Character>> teams = teams(entry.getValue(), size, random);
             Set<Integer> used = new HashSet<>();
             LadderRules.Bracket bracket = entry.getKey();
             for (List<Character> a : teams) {
@@ -666,7 +767,13 @@ final class TeamLadder {
                 a.forEach(chr -> simA.add(DuelSim.fighterOf(chr, reference, pvp)));
                 foe.forEach(chr -> simB.add(DuelSim.fighterOf(chr, reference, pvp)));
                 int winner = simulatedMatch(simA, simB, pvp, random);
-                book.recordTeams(ids(a), ids(foe), bracket, winner == 0 ? 1d : winner == 1 ? 0d : 0.5d, now);
+                double scoreA = winner == 0 ? 1d : winner == 1 ? 0d : 0.5d;
+                book.recordTeams(ids(a), ids(foe), bracket, scoreA, now);
+                int guildA = guildOf(a);
+                int guildB = guildOf(foe);
+                if (guildLadderOn() && guildA > 0 && guildB > 0 && guildA != guildB) {
+                    guildBook.record(guildA, guildB, bracket, scoreA, now); // two guild teams: the guild book (N5.3)
+                }
                 used.add(a.get(0).getId());
                 used.add(foe.get(0).getId());
                 simmed.put(Coliseum.pairKey(a.get(0).getId(), foe.get(0).getId()), now);
@@ -676,8 +783,19 @@ final class TeamLadder {
         return played;
     }
 
+    /** The guild every member of {@code team} is in, or 0 for a pickup team. */
+    static int guildOf(List<Character> team) {
+        int guildId = team.isEmpty() ? 0 : team.get(0).getGuildId();
+        for (Character chr : team) {
+            if (chr.getGuildId() != guildId) {
+                return 0;
+            }
+        }
+        return Math.max(0, guildId);
+    }
+
     /** {@code pool} cut into teams of {@code size}: one a guild that has as many, then the rest as pickup teams. */
-    private List<List<Character>> teams(List<Character> pool, int size) {
+    static List<List<Character>> teams(List<Character> pool, int size, Random random) {
         List<Character> shuffled = new ArrayList<>(pool);
         Collections.shuffle(shuffled, random);
         Map<Integer, List<Character>> guilds = new LinkedHashMap<>();

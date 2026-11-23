@@ -86,6 +86,8 @@ public final class Population {
     private final PaperTalk paperTalk;
     private final EventLogSweep sweep;
     private final CitizenWhispers whispers;
+    private final GuildChat guildChat;
+    private final GuildGoals guildGoals;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -149,6 +151,9 @@ public final class Population {
         this.whispers.onReply(CitizenRunInvites.TOPIC, partyQuests.invites()::replied); // a run invitation's answer (N3.1)
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
+        this.guildChat = new GuildChat(this); // guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1)
+        this.guildGoals = new GuildGoals(this); // and a goal a week (N5.2)
+        this.clears.onBooked(clear -> guildChat.cleared(clear, System.currentTimeMillis())); // a guild's gz
     }
 
     public static Population get() {
@@ -220,6 +225,12 @@ public final class Population {
             population.world.executor().submit("paper.sweep", () -> population.sweep.atClose(System.currentTimeMillis()));
         });
         PaperDesk.install(population.paper);
+        server.agents.integration.AgentDialogueTransportRuntime.installGuildSink((bot, text) -> { // N5.1 answers
+            net.server.guild.Guild guild = bot == null ? null : net.server.Server.getInstance().getGuild(bot.getGuildId());
+            if (guild != null) {
+                guild.guildChat(bot.getName(), bot.getId(), text);
+            }
+        });
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
@@ -242,12 +253,14 @@ public final class Population {
             population.rivals.tick(); // the rival crews' minute (F7)
             population.coliseum.minute(); // Cesar stands, and citizens play their own ladder (docs/PVP_PLAN.md V4)
             population.paper.minute(System.currentTimeMillis()); // the Sunday paper (docs/WORLD_SYSTEMS_PLAN.md N1)
+            population.guildGoals.minute(System.currentTimeMillis()); // bot guilds' weekly goals (N5.2)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             population.partyQuests.tick();
             population.jumpQuests.tick(); // jump quests ride the party quests' lane (docs/BOT_CONCEPT_PLAN.md F5b)
+            population.guildChat.tick(System.currentTimeMillis()); // a guild mate's LFG party invites (N5.1)
         }, CitizenPartyQuests.TICK_MS, CitizenPartyQuests.TICK_MS));
         instance = population;
         log.info("Population started: {} citizens ({}), {} target, {} online max, channels {}", population.registry.size(),
@@ -448,6 +461,16 @@ public final class Population {
     /** Citizens' talk of the paper's headlines on its first day (N1.3). */
     public PaperTalk paperTalk() {
         return paperTalk;
+    }
+
+    /** Bot guilds' weekly goals (docs/WORLD_SYSTEMS_PLAN.md N5.2). */
+    public GuildGoals guildGoals() {
+        return guildGoals;
+    }
+
+    /** Guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1). */
+    public GuildChat guildChat() {
+        return guildChat;
     }
 
     /** Players' whispers to citizens (docs/BOT_CONCEPT_PLAN.md F5c). */

@@ -76,6 +76,7 @@ public final class MultiChatHandler extends AbstractPacketHandler {
         } else if (type == 2 && player.getGuildId() > 0) {
             Server.getInstance().guildChat(player.getGuildId(), player.getName(), player.getId(), chattext);
             ChatLogger.log(c, "Guild", chattext);
+            server.living.population.PopulationHooks.guildChat(player, chattext); // guild mates answer (N5.1)
         } else if (type == 3 && player.getGuild() != null) {
             int allianceId = player.getGuild().getAllianceId();
             if (allianceId > 0) {
