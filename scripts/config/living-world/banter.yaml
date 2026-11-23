@@ -9,7 +9,7 @@
 #   ties:     who may say it, from the caller's side: spouse, rival, owes (the caller owes), owed, blames, blamed,
 #             friend, crewmate (no authored tie, under the friend mark).
 #   pair:     [caller, answerer] persona ids instead of ties: lines in those two Residents' own voices (preferred).
-#   moments:  town, walk, clear.
+#   moments:  town, walk, clear, camp (benched companions idling in their owner's crew camp, N7; map chat).
 #   stat:     level, record, deaths, best_time, damage: a rival number. The exchange is said only when that record
 #             exists for the two and the caller is ahead; {lead} is the caller's number, {trail} the answerer's.
 #   minAffinity / maxAffinity: the pair's affinity range (default 0..100). weight: default 10.
@@ -546,3 +546,83 @@ exchanges:
       - "fine, you do the selling then"
       - "you and your stall"
       - "ok, merchant, what's it worth"
+
+  # ---- the crew camp (docs/WORLD_SYSTEMS_PLAN.md N7): benched companions idling together while their owner visits ----
+  - id: camp.waiting
+    ties: [crewmate, friend, rival, spouse, owes, owed]
+    moments: [camp]
+    call:
+      - "{owner} finally came by"
+      - "think {owner} is taking us out soon?"
+      - "nice of {owner} to check on us"
+    answer:
+      - "about time"
+      - "hope so. i'm getting rusty"
+      - "they always come back eventually"
+
+  - id: camp.idle
+    ties: [crewmate, friend, rival, spouse, owes, owed]
+    moments: [camp]
+    call:
+      - "anyone else bored out of their mind"
+      - "how long have we been sitting here"
+      - "{answerer}, you hungry? i'm hungry"
+      - "this floor is not as comfy as it looks"
+    answer:
+      - "you get used to it"
+      - "too long"
+      - "always"
+      - "beats getting hit by mushrooms all day"
+
+  - id: camp.new
+    ties: [crewmate]
+    moments: [camp]
+    maxAffinity: 20
+    call:
+      - "so you're with {owner} too. how'd that happen"
+      - "{answerer} right? we haven't really talked"
+    answer:
+      - "long story. short version, they asked"
+      - "yeah. nice to finally meet properly"
+
+  - id: camp.friends
+    ties: [friend, spouse]
+    moments: [camp]
+    call:
+      - "save me a spot next to you, {answerer}"
+      - "glad you're here, {answerer}. it's quiet otherwise"
+    answer:
+      - "always"
+      - "same. it's better with company"
+
+  - id: camp.rivals
+    ties: [rival]
+    moments: [camp]
+    call:
+      - "enjoy the rest, {answerer}. you'll need it to keep up"
+      - "bet {owner} picks me first next time"
+    answer:
+      - "keep dreaming"
+      - "we'll see who's still standing at the end"
+
+  - id: trait.veteran.camp
+    ties: [crewmate, friend, rival, spouse, owes, owed]
+    traits: [veteran]
+    moments: [camp]
+    call:
+      - "did i ever tell you about the time we nearly wiped"
+      - "you should've seen the last run, {answerer}. close call after close call"
+    answer:
+      - "only every time we sit down"
+      - "go on then"
+
+  - id: trait.homebody.camp
+    ties: [crewmate, friend, spouse, owes, owed]
+    traits: [homebody]
+    moments: [camp]
+    call:
+      - "honestly i like it here. quiet, warm, nobody hitting me"
+      - "i could stay at camp forever"
+    answer:
+      - "you basically have"
+      - "you would say that"

@@ -248,7 +248,38 @@ final class CompanionCrewScreens {
         if (PqEntrance.keys().stream().anyMatch(world.config()::companionPqEnabled)) {
             actions.add(new Option("Who should come along?", () -> suggestions(owner, from, surface)));
         }
+        // N7: the crew camp, where the free bench idles while the owner visits (CrewCamp keeps the entry gates)
+        server.living.roster.CrewCamp camp = world.crewCamp();
+        if (camp != null && camp.on()) {
+            actions.add(new Option("Crew camp...", () -> campPage(owner, from, surface)));
+        }
         return actions;
+    }
+
+    /**
+     * The Camp page (docs/WORLD_SYSTEMS_PLAN.md N7.1): what the camp is, and the way there or back; the move itself runs
+     * on companion-ops (CrewCamp.enter refuses with its own pink line from a run, a boss map, the Free Market, the
+     * coliseum or while dead).
+     */
+    private void campPage(Character owner, Persona from, Surface surface) {
+        server.living.roster.CrewCamp camp = world.crewCamp();
+        boolean there = camp.inCamp(owner.getId());
+        List<Option> options = new ArrayList<>();
+        options.add(new Option(there ? "Leave the camp" : "Go to the camp", () -> world.executor().submit(
+                "menu.crew.camp " + owner.getId(), () -> {
+                    if (there) {
+                        camp.leave(owner);
+                    } else {
+                        camp.enter(owner);
+                    }
+                })));
+        String text = there
+                ? voice(from, "My crew's camp. Leaving takes me back to where I was.",
+                "our camp. leaving takes you back to where you were.")
+                : voice(from, "My crew's camp: a quiet place where my benched crew rests while I visit. Leaving takes me"
+                        + " back to where I stand now.", "our camp. the rest of the bench hangs out there while you visit."
+                        + " you come back to right where you are.");
+        talk(owner, from, surface).menu(text + "\r\n", options).back(() -> render(owner, from, "", surface)).show();
     }
 
     // ---- the crew-wide pages -----------------------------------------------------------------

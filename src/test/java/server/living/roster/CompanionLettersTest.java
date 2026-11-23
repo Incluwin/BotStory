@@ -420,7 +420,8 @@ class CompanionLettersTest {
             game.runTimers();
 
             assertTrue(notes.sent.isEmpty());
-            assertTrue(game.store.events(BenchLedger.REPORT_EVENT).isEmpty(), "no rows while the letters are off");
+            // the rows are written whatever the letters do (docs/WORLD_SYSTEMS_PLAN.md N7: the crew camp reads them too)
+            assertEquals(1, game.store.events(BenchLedger.REPORT_EVENT).size(), "the row, though no letter is sent");
             assertTrue(game.store.events(CompanionLetters.AWAY_EVENT).isEmpty());
             assertNotNull(ledger.takeReport(ANN, "olwen", 0), "the call-back report is as it was");
         }

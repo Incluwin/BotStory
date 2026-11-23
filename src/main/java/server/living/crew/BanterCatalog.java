@@ -42,7 +42,8 @@ public final class BanterCatalog {
     private static final Set<String> NUMBER_SLOTS = Set.of("lead", "trail", "gap");
 
     public enum Moment {
-        TOWN, WALK, CLEAR;
+        /** CAMP: benched companions idling in their owner's crew camp (docs/WORLD_SYSTEMS_PLAN.md N7). */
+        TOWN, WALK, CLEAR, CAMP;
 
         String key() {
             return name().toLowerCase(Locale.ROOT);

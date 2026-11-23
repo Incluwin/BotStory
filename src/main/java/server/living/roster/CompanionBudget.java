@@ -15,9 +15,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * ceiling, and a per-owner gap between two loads. {@link #decide} is the pure rule. P5: a benched companion's live
  * slice is charged to one of three pools (BenchDutyDispatcher): BENCH_LIVE at its field camp (per owner and
  * server-wide), BENCH_TOWN resting in town and COMMERCE at a Free Market stall (each per owner and server-wide too).
+ * N7: CAMP is the crew camp's own pool (CrewCamp, BenchCampForm), server-wide only and never counted against the
+ * bench pools; a camp load is a burst like EXPEDITION (its owner's crew is there when they arrive), not spaced.
  */
 public final class CompanionBudget {
-    public enum Kind { COMPANION, BENCH_LIVE, EXPEDITION, BENCH_TOWN, COMMERCE }
+    public enum Kind { COMPANION, BENCH_LIVE, EXPEDITION, BENCH_TOWN, COMMERCE, CAMP }
 
     private static final String CEILING = "Agent ceiling ";
 
@@ -37,7 +39,13 @@ public final class CompanionBudget {
 
     /** What is loaded right now, as one admission sees it. */
     record Usage(int agents, int ownerCompanions, int benchLive, int ownerBenchLive, int expedition, int benchTown,
-                 int commerce, int ownerBenchTown, int ownerCommerce) {
+                 int commerce, int ownerBenchTown, int ownerCommerce, int camp) {
+        Usage(int agents, int ownerCompanions, int benchLive, int ownerBenchLive, int expedition, int benchTown,
+              int commerce, int ownerBenchTown, int ownerCommerce) {
+            this(agents, ownerCompanions, benchLive, ownerBenchLive, expedition, benchTown, commerce, ownerBenchTown,
+                    ownerCommerce, 0);
+        }
+
         Usage(int agents, int ownerCompanions, int benchLive, int ownerBenchLive, int expedition) {
             this(agents, ownerCompanions, benchLive, ownerBenchLive, expedition, 0, 0);
         }
@@ -99,7 +107,7 @@ public final class CompanionBudget {
         Usage now = usage(owner.getId());
         return admit(kind, owner.getId(), System.currentTimeMillis(), new Usage(Math.max(0, now.agents() - 1),
                 Math.max(0, now.ownerCompanions() - 1), now.benchLive(), now.ownerBenchLive(), now.expedition(),
-                now.benchTown(), now.commerce(), now.ownerBenchTown(), now.ownerCommerce()));
+                now.benchTown(), now.commerce(), now.ownerBenchTown(), now.ownerCommerce(), now.camp()));
     }
 
     private Admission admit(Kind kind, int ownerId, long nowMs, Usage usage) {
@@ -108,7 +116,7 @@ public final class CompanionBudget {
             world.store().event(ownerId, null, "companion.budget_denied", kind + ": " + admission.reason());
             return admission;
         }
-        if (kind != Kind.EXPEDITION && !tryTakeLoadSlot(ownerId, nowMs)) {
+        if (kind != Kind.EXPEDITION && kind != Kind.CAMP && !tryTakeLoadSlot(ownerId, nowMs)) {
             return Admission.deny("one load every " + world.config().COMPANION_SPAWN_INTERVAL_MS + " ms");
         }
         return Admission.ALLOW;
@@ -125,7 +133,7 @@ public final class CompanionBudget {
                 bench.liveCount(Kind.BENCH_LIVE), bench.liveCountFor(ownerId, Kind.BENCH_LIVE),
                 world.leases().count(CompanionLeases.Kind.EXPEDITION), bench.liveCount(Kind.BENCH_TOWN),
                 bench.liveCount(Kind.COMMERCE), bench.liveCountFor(ownerId, Kind.BENCH_TOWN),
-                bench.liveCountFor(ownerId, Kind.COMMERCE));
+                bench.liveCountFor(ownerId, Kind.COMMERCE), world.crewCamp() == null ? 0 : world.crewCamp().liveCount());
     }
 
     static Admission decide(Kind kind, Usage usage, LivingWorldConfig config) {
@@ -149,6 +157,8 @@ public final class CompanionBudget {
                     ? Admission.deny("server stall pool " + config.COMMERCE_LIVE_MAX + " full")
                     : usage.ownerCommerce() >= config.COMMERCE_PER_OWNER
                     ? Admission.deny(config.COMMERCE_PER_OWNER + " stalls already used") : Admission.ALLOW;
+            case CAMP -> usage.camp() >= config.CREW_CAMP_MAX
+                    ? Admission.deny("server camp pool " + config.CREW_CAMP_MAX + " full") : Admission.ALLOW;
         };
     }
 

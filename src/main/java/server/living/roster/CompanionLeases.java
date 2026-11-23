@@ -12,9 +12,9 @@ public final class CompanionLeases {
     /**
      * BENCH_LIVE, BENCH_TOWN and COMMERCE are a benched companion's live slice (P5, BenchDutyDispatcher): at its field
      * camp, resting in town, or at a Free Market stall. LOAN is a companion its owner lent to a friend, charged to the
-     * friend (CompanionLoans).
+     * friend (CompanionLoans). CAMP is a benched companion idling in its owner's crew camp (N7, BenchCampForm).
      */
-    public enum Kind { COMPANION, BENCH_LIVE, RESIDENT, POPULATION, PQ_BACKGROUND, EXPEDITION, BENCH_TOWN, COMMERCE, LOAN }
+    public enum Kind { COMPANION, BENCH_LIVE, RESIDENT, POPULATION, PQ_BACKGROUND, EXPEDITION, BENCH_TOWN, COMMERCE, LOAN, CAMP }
 
     /** What a character is loaded for, and the owner it is charged to (0 = nobody). */
     public record Lease(Kind kind, int ownerId) { }

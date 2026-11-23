@@ -46,6 +46,14 @@ public final class DuelGround {
         return open(Stagehand.LIVE, owner, mapId, exitMapId);
     }
 
+    /**
+     * The same copy, telling {@code onLeft} (on the game thread that saw it) of each character that left it on its own:
+     * a portal, a death, a disconnect, a warp from elsewhere (the crew camp, docs/WORLD_SYSTEMS_PLAN.md N7).
+     */
+    public static DuelGround open(Character owner, int mapId, int exitMapId, java.util.function.Consumer<Character> onLeft) {
+        return open(Stagehand.LIVE, owner, mapId, exitMapId, onLeft);
+    }
+
     static DuelGround open(Stagehand hands, Character owner) {
         if (owner == null || owner.getMap() == null) {
             return null;
@@ -54,6 +62,11 @@ public final class DuelGround {
     }
 
     static DuelGround open(Stagehand hands, Character owner, int mapId, int exitMapId) {
+        return open(hands, owner, mapId, exitMapId, null);
+    }
+
+    static DuelGround open(Stagehand hands, Character owner, int mapId, int exitMapId,
+                           java.util.function.Consumer<Character> onLeft) {
         if (owner == null || owner.getClient() == null) {
             return null;
         }
@@ -63,6 +76,9 @@ public final class DuelGround {
             public void left(Character chr) {
                 if (made[0] != null) {
                     made[0].gone.add(chr.getId());
+                }
+                if (onLeft != null) {
+                    onLeft.accept(chr);
                 }
             }
 

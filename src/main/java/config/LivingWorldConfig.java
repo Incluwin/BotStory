@@ -660,6 +660,17 @@ public class LivingWorldConfig {
     /** Bench stall and sell takings over thirty days that make a companion a TRADER (it keeps it down to half). */
     public long TRAITS_TRADER_MESO = 3_000_000L;
 
+    // Crew camp (2026-11-23, docs/WORLD_SYSTEMS_PLAN.md N7; CrewCamp, BenchCampForm)
+    /**
+     * Kill switch: false = no camp is offered (Crew window, needs board), none can be entered, and no camp companion is
+     * loaded. On, an owner visits a private copy of {@link #CREW_CAMP_MAP_ID} where their free benched crew idles.
+     */
+    public boolean CREW_CAMP_ENABLED = false;
+    /** The stock indoor map each owner's camp is a private copy of (decision D10). */
+    public int CREW_CAMP_MAP_ID = 220000306;
+    /** Camp companions loaded at once server-wide (the CAMP pool, apart from the bench pools); 0 = none. */
+    public int CREW_CAMP_MAX = 16;
+
     // A companion says why its owner's whisper reached no Agent (2026-10-10)
     /**
      * Least time between two of one companion's whispered "can't right now" lines (a live bench slice keeps it, or its
@@ -984,6 +995,9 @@ public class LivingWorldConfig {
         }
         if (TRAITS_TRADER_MESO < 1) {
             throw new IllegalArgumentException("living_world.TRAITS_TRADER_MESO must be >= 1");
+        }
+        if (CREW_CAMP_MAX < 0 || CREW_CAMP_MAP_ID <= 0) {
+            throw new IllegalArgumentException("living_world.CREW_CAMP_MAX must be >= 0 and CREW_CAMP_MAP_ID > 0");
         }
         if (BENCH_CHOOSER_EXPLORE < 0 || BENCH_CHOOSER_DEATH_COST < 0) {
             throw new IllegalArgumentException("living_world.BENCH_CHOOSER_EXPLORE and BENCH_CHOOSER_DEATH_COST must be >= 0");

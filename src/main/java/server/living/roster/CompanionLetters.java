@@ -69,7 +69,7 @@ public final class CompanionLetters {
      * Rows one digest reads at most, the newest: about two weeks of a full bench's (ten companions, a row each a ledger
      * tick); a longer absence leaves out its oldest news.
      */
-    private static final int WINDOW_ROWS = 20000;
+    static final int WINDOW_ROWS = 20000;
     /** A note's length, as a player's note is held to. */
     static final int NOTE_MAX = 200;
     /** A note's sender name: the notes table's VARCHAR(13). */

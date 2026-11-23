@@ -145,6 +145,12 @@ public final class CrewBanter {
     /** A clear of the owner with two or more of its companions in it, waiting for a calm moment off the instance. */
     record Pending(String quest, long durationMs, long expiresAtMs, Set<Integer> companionIds) { }
 
+    /**
+     * A crew camp exchange (N7): the call, then the answer {@code answerDelayMs} later, each already in its speaker's own
+     * voice; the camp says both in map chat.
+     */
+    public record CampExchange(Speaker caller, String call, Speaker answerer, String answer, long answerDelayMs) { }
+
     /** A chosen exchange: who calls, who answers, and the two lines as filled. */
     record Plan(Exchange exchange, Speaker caller, Speaker answerer, String call, String answer, Moment moment) { }
 
@@ -267,6 +273,38 @@ public final class CrewBanter {
                 ports.say(plan.answerer(), ports.render(plan.answerer(), plan.answer(), seed ^ 0x5DEECE66DL));
             }
         });
+    }
+
+    /**
+     * The crew camp's moment (docs/WORLD_SYSTEMS_PLAN.md N7): an exchange of the camp moment between two of these
+     * speakers (benched companions idling in the owner's camp, not its party), by the same choosing as a party's, the
+     * owner's mute and its recent lines kept; null while banter is off or muted, or when nothing fits. The camp decides
+     * when; this only chooses and renders.
+     */
+    public CampExchange camp(int ownerId, String ownerName, List<Speaker> speakers) {
+        if (!ports.on() || speakers == null || speakers.size() < 2) {
+            return null;
+        }
+        OwnerState state = owners.computeIfAbsent(ownerId, id -> new OwnerState());
+        if (state.muted) {
+            return null;
+        }
+        Scene scene = new Scene(ownerId, ownerName, 0, 0, false, false, true, 0, 0, speakers);
+        Plan plan = plan(scene, state, Moment.CAMP, ports.now());
+        if (plan == null) {
+            return null;
+        }
+        state.lastPair = CrewTies.pairKey(plan.caller().personaId(), plan.answerer().personaId());
+        remember(state, plan.call());
+        remember(state, plan.answer());
+        long seed = random.nextLong();
+        String answer = ports.render(plan.answerer(), plan.answer(), seed ^ 0x5DEECE66DL);
+        long delay = Math.min(MAX_ANSWER_DELAY_MS, READ_MIN_MS + (long) (random.nextDouble() * READ_SPREAD_MS)
+                + ports.typingMs(plan.answerer(), plan.answer()));
+        log.info("crew camp banter: owner={} exchange={} {} -> {}", ownerId, plan.exchange().id(), plan.caller().name(),
+                plan.answerer().name());
+        return new CampExchange(plan.caller(), ports.render(plan.caller(), plan.call(), seed), plan.answerer(), answer,
+                delay);
     }
 
     // ---- choosing ------------------------------------------------------------------------------

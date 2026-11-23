@@ -376,6 +376,27 @@ final class FakeLivingStore {
             }
             return out.subList(Math.max(0, out.size() - (int) inv.getArgument(4)), out.size()); // the newest
         });
+        when(store.personaEventsAfterMarker(anyInt(), anyString(), any(), anyString(), anyInt())).thenAnswer(inv -> {
+            String owner = String.valueOf((int) inv.getArgument(0));
+            String persona = inv.getArgument(1);
+            List<String> kinds = inv.getArgument(2);
+            String marker = inv.getArgument(3);
+            int from = 0;
+            for (int i = 0; i < events.size(); i++) {
+                String[] row = events.get(i).split(" ", 4);
+                if (row[0].equals(owner) && row[1].equals(persona) && row[2].equals(marker)) {
+                    from = i + 1;
+                }
+            }
+            List<LivingStore.CharacterEvent> out = new ArrayList<>();
+            for (String line : events.subList(from, events.size())) {
+                String[] row = line.split(" ", 4);
+                if (row[0].equals(owner) && row[1].equals(persona) && kinds.contains(row[2])) {
+                    out.add(new LivingStore.CharacterEvent(row[1], row[2], row.length > 3 ? row[3] : null));
+                }
+            }
+            return out.subList(Math.max(0, out.size() - (int) inv.getArgument(4)), out.size()); // the newest
+        });
         when(store.characterLevel(anyInt())).thenAnswer(inv -> levels.getOrDefault((int) inv.getArgument(0), 0));
         when(store.personaState(anyString())).thenAnswer(inv -> personaStates.getOrDefault((String) inv.getArgument(0),
                 new PersonaState(inv.getArgument(0), 0, null, 0, 0)));
