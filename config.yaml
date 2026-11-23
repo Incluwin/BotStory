@@ -1672,9 +1672,11 @@ population:
     BOUNTY_CLAIM_MINUTES: 180
     # CITIZEN_FIELD_BOSS_ENABLED (decision D9): citizens whose level fits a catalogued field boss sometimes train on its
     # map and camp it. With a human on the map the fight is real; with none, the campers roll for it on their level and
-    # number every FIELD_BOSS_ROLL_MINUTES and a win is booked like any kill (a loss costs nothing, nobody dies of it).
-    # Manners: citizens never start on a boss a human hit first; one whispers "want a hand?" and they join only on a
-    # yes. Citizens that started first tell a human who arrives and offer a seat. false = the kill switch: no camping
+    # number every FIELD_BOSS_ROLL_MINUTES; a win removes it with no drops, EXP or meso and books an untimed kill (never a
+    # ranked or raced time), at most FIELD_BOSS_ROLLED_KILLS_PER_DAY a boss, never while a human holds a bounty on it or
+    # stands one map away (a loss costs nothing, nobody dies of it). Manners: citizens never start on a boss a human hit
+    # first; one whispers "want a hand?" and they join only on a yes, and the human's party keeps its drops. Citizens
+    # that started first tell a human who arrives they were first and the human may join in. false = the kill switch: no camping
     # picks, no citizen ever hits a field boss (decision 19 as before), no rolls.
     # Technical: population.FieldBossCamps on the 60 s social lane; AgentBossTargetGate's P13 field rule gains one allow through AgentFieldBossSeats; PresenceScheduler.mapFor TRAIN asks FieldBossCamps.pick first.
     CITIZEN_FIELD_BOSS_ENABLED: false
@@ -1684,6 +1686,8 @@ population:
     FIELD_BOSS_POTION_FLOOR: 50
     # Technical: minutes between two rolls of the campers at one unwatched boss; the chance is 20 % for one camper at the boss's level, +12 % a camper more, +2 % a level above, held to 5..90 %.
     FIELD_BOSS_ROLL_MINUTES: 5
+    # Technical: rolled (unwatched) kills of one catalogued boss a UTC day at most, all channels together; with 2 a script boss (up to 8 spawns a channel a day) mostly waits for humans, and 0 stops rolled kills entirely.
+    FIELD_BOSS_ROLLED_KILLS_PER_DAY: 2
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

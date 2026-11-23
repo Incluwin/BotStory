@@ -597,6 +597,9 @@ public final class RivalCrews implements ClearLog.Listener {
 
     private void crewCleared(Clear clear, long crewBestBefore) {
         Crew crew = byId(clear.crewId());
+        if (crew != null && !clear.timed() && onlineCharacter(crew.mainId()) == null) {
+            news(crew, clear, 0L); // an untimed kill (a rolled field boss, N6.3): the letters say they got it, not how fast
+        }
         if (crew == null || !clear.timed()) {
             return;
         }
@@ -907,6 +910,7 @@ public final class RivalCrews implements ClearLog.Listener {
             return null;
         }
         Map<String, long[]> best = new LinkedHashMap<>(); // quest -> {time, beaten}
+        java.util.Set<String> got = new java.util.LinkedHashSet<>(); // untimed kills (N6.3): no time to tell
         long[] duels = null; // V3.4: the latest duel's {winner side, wins, losses, draws}
         for (String detail : details) {
             String[] parts = detail.split("\\|");
@@ -923,6 +927,10 @@ public final class RivalCrews implements ClearLog.Listener {
                 }
                 long time = Long.parseLong(parts[2]);
                 long beaten = Long.parseLong(parts[3]);
+                if (time <= 0L) {
+                    got.add(parts[1]);
+                    continue;
+                }
                 long[] kept = best.get(parts[1]);
                 if (kept == null || time < kept[0]) {
                     best.put(parts[1], new long[]{time, beaten});
@@ -931,7 +939,8 @@ public final class RivalCrews implements ClearLog.Listener {
                 // a hand-edited row
             }
         }
-        if (best.isEmpty() && duels == null) {
+        got.removeAll(best.keySet());
+        if (best.isEmpty() && got.isEmpty() && duels == null) {
             return null;
         }
         List<String> runs = new ArrayList<>();
@@ -940,8 +949,14 @@ public final class RivalCrews implements ClearLog.Listener {
             runs.add(label + " in " + ClearLog.time(run.getValue()[0])
                     + (run.getValue()[1] > 0L ? " (beat ur " + ClearLog.time(run.getValue()[1]) + " :P)" : ""));
         }
+        List<String> downed = new ArrayList<>();
+        for (String quest : got) {
+            downed.add(population.clears().labels().label(quest).toLowerCase(java.util.Locale.ROOT));
+        }
         String text = "hey " + mainName + ", " + crew.name() + " here."
                 + (runs.isEmpty() ? "" : " while u were gone we did " + String.join(", ", runs) + ".")
+                + (downed.isEmpty() ? "" : (runs.isEmpty() ? " while u were gone we" : " we also") + " took down "
+                + String.join(", ", downed) + ".")
                 + (duels == null ? " catch up if u can lol" : " " + duelNews(duels));
         String sender = leader.name().length() <= 13 ? leader.name() : leader.name().substring(0, 13);
         return new Letter(sender, text.length() <= 200 ? text : text.substring(0, 197) + "...");

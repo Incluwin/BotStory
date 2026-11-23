@@ -306,6 +306,22 @@ public final class Bounties {
         }
     }
 
+    /** Whether an online human holds a boss bounty on {@code mobId} now (no rolled kill takes it from them, N6.3). */
+    public boolean held(int mobId, long nowMs) {
+        Set<Integer> ids = bosses.get(mobId);
+        if (ids == null || !on()) {
+            return false;
+        }
+        for (int needId : ids) {
+            Need need = ledger.need(needId);
+            int holder = need == null ? 0 : need.holder(nowMs);
+            if (holder != 0 && world().online(holder) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** A claim was taken: its kills count from now, not from the next minute. */
     void claimed(Need need) {
         Map<Integer, Set<Integer>> huntIndex = copy(hunts);

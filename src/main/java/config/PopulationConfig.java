@@ -522,6 +522,7 @@ public class PopulationConfig {
     public double FIELD_BOSS_CAMP_CHANCE = 0.1;
     public int FIELD_BOSS_POTION_FLOOR = 50;
     public int FIELD_BOSS_ROLL_MINUTES = 5;
+    public int FIELD_BOSS_ROLLED_KILLS_PER_DAY = 2;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
@@ -663,7 +664,8 @@ public class PopulationConfig {
                 || BOUNTY_PURSE_SHARE > 1.0d || BOUNTY_MIN_OFFER < 0L || BOUNTY_BOSS_PER_LEVEL < 0L
                 || BOUNTY_HUNT_PER_LEVEL < 0L || BOUNTY_HUNT_KILLS < 1 || BOUNTY_SHARE_PERCENT < 1
                 || BOUNTY_SHARE_PERCENT > 100 || BOUNTY_CLAIM_MINUTES < 1 || FIELD_BOSS_CAMP_CHANCE < 0.0d
-                || FIELD_BOSS_CAMP_CHANCE > 1.0d || FIELD_BOSS_POTION_FLOOR < 0 || FIELD_BOSS_ROLL_MINUTES < 1) {
+                || FIELD_BOSS_CAMP_CHANCE > 1.0d || FIELD_BOSS_POTION_FLOOR < 0 || FIELD_BOSS_ROLL_MINUTES < 1
+                || FIELD_BOSS_ROLLED_KILLS_PER_DAY < 0) {
             throw new IllegalArgumentException("population.BOUNTY_CHANCE must be 0..1, BOUNTY_PURSE_SHARE over 0 up to 1,"
                     + " BOUNTY_HUNT_KILLS and BOUNTY_CLAIM_MINUTES at least 1, BOUNTY_SHARE_PERCENT 1..100,"
                     + " FIELD_BOSS_CAMP_CHANCE 0..1, FIELD_BOSS_ROLL_MINUTES at least 1 and the rest not negative");

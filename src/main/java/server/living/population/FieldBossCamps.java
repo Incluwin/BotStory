@@ -25,12 +25,16 @@ import java.util.function.IntPredicate;
  * <ul>
  * <li><b>Watched or abstract.</b> With a human on the map the fight is real: {@link #allows} opens the P13 field gate
  * (AgentBossTargetGate) for it. With none it never hits the boss (the boss would not fight back); a roll on the
- * campers' level and number every FIELD_BOSS_ROLL_MINUTES settles it instead ({@link #minute}): a win takes the boss
- * down and books the kill like any (ClearLog, all campers as members, so a rival crew's campers race it); a loss costs
- * nothing, and nobody dies of a roll.</li>
+ * campers' level and number every FIELD_BOSS_ROLL_MINUTES settles it instead ({@link #minute}): a win removes the boss
+ * with nothing left behind (no drops, EXP or meso) and books the kill untimed (ClearLog, all campers as members: a kill
+ * on the records, never a time to rank or race); a loss costs nothing, and nobody dies of a roll. Rolled kills are held
+ * to FIELD_BOSS_ROLLED_KILLS_PER_DAY a boss, and none is rolled while a human holds a bounty on it or stands one map
+ * away.</li>
  * <li><b>Manners</b>, since loot follows the top damager: citizens never start on a boss a human has already hit. One
- * whispers the top human "want a hand?" once, and they join only on a yes. Citizens that started first say so to a human
- * who arrives and offer a seat, once a human a fight.</li>
+ * whispers the top human "want a hand?" once, and they join only on a yes, and then never own its drops: the human's
+ * party keeps the loot whoever tops the damage ({@link #dropOwner}). Citizens that started first tell a human who
+ * arrives that they were here first and the human is welcome to join in (no party seat: campers form none), once a
+ * human a fight.</li>
  * <li><b>Potions.</b> A camper under FIELD_BOSS_POTION_FLOOR HP potions is refused, so it leaves the fight (and its
  * supply rules send it to restock) before it is in danger.</li>
  * </ul>
@@ -40,6 +44,7 @@ public final class FieldBossCamps {
     private static final Logger log = LoggerFactory.getLogger(FieldBossCamps.class);
     public static final String TOPIC = "boss";
     private static final long MINUTE_MS = 60_000L;
+    private static final long DAY_MS = 86_400_000L;
     /** Campers counted toward one roll at most (a party). */
     static final int PARTY_MAX = 6;
 
@@ -63,6 +68,8 @@ public final class FieldBossCamps {
     private volatile FieldBosses bosses;
     private final Map<String, Fight> fights = new ConcurrentHashMap<>();
     private final Map<String, Long> rolledAt = new ConcurrentHashMap<>();
+    /** Boss key -> {UTC day, rolled kills that day}. */
+    private final Map<String, long[]> rolledKills = new ConcurrentHashMap<>();
     private int wins;
     private int losses;
 
@@ -166,6 +173,28 @@ public final class FieldBossCamps {
             }
         }
         return false;
+    }
+
+    /**
+     * Monster.killBy's drop owner (through LivingWorldHooks.bossDropOwner): a citizen that tops a field boss in a fight a
+     * human started (it joined on a yes) loots nothing; the human who dealt the most of those on the map owns the drops.
+     * Null leaves the stock owner (campers that started first keep what they earned).
+     */
+    Character dropOwner(Monster monster, Character candidate) {
+        if (!on() || monster == null || candidate == null || monster.getMap() == null
+                || !population.isCitizen(candidate.getId())) {
+            return null;
+        }
+        Fight fight = fights.get(key(monster.getMap(), monster));
+        if (fight == null) {
+            return null;
+        }
+        synchronized (fight) {
+            if (!fight.humansFirst) {
+                return null;
+            }
+        }
+        return topHuman(monster.getMap(), monster);
     }
 
     /** The human on the map who dealt the boss the most, or null when no human hit it. */
@@ -298,6 +327,9 @@ public final class FieldBossCamps {
         rolledAt.put(where, nowMs);
         rolledAt.keySet().removeIf(other -> nowMs - rolledAt.getOrDefault(other, nowMs) > 60 * MINUTE_MS);
         FieldBosses.Boss listed = bosses().ofMob(boss.getId());
+        if (listed == null || !rollable(listed, map, boss, nowMs)) {
+            return;
+        }
         List<Character> party = new ArrayList<>();
         int levels = 0;
         for (CitizenSession session : camp) {
@@ -308,7 +340,7 @@ public final class FieldBossCamps {
                 levels += agent.getLevel();
             }
         }
-        if (party.isEmpty() || listed == null) {
+        if (party.isEmpty()) {
             return;
         }
         double chance = chance(party.size(), levels / (double) party.size(), listed.level());
@@ -319,18 +351,47 @@ public final class FieldBossCamps {
             return;
         }
         wins++;
-        long fightMs = (60L + random.nextInt(240)) * 1_000L / party.size();
+        countRolledKill(listed.key(), nowMs);
         if (population.config().FIELD_BOSS_RECORDS_ENABLED && population.clears() != null) {
-            population.clears().cleared(party, listed.key(), "field:" + map.getId(), nowMs - fightMs, nowMs);
+            // untimed (no start): a kill on the records, never a time to rank or race
+            population.clears().cleared(party, listed.key(), "field:" + map.getId(), 0L, nowMs);
         }
-        Character top = party.get(random.nextInt(party.size()));
-        map.killMonster(boss, top, true, (short) 0);
+        map.killMonster(boss, null, false, (short) 0); // no killer: no drops, EXP or meso; its respawn runs as for any death
         for (CitizenSession session : camp) {
             session.journal.add("boss", "took down " + listed.label().toLowerCase(java.util.Locale.ROOT) + " with "
                     + (party.size() - 1) + " others");
         }
         log.info("citizens at {} ({}): {} campers took it down unwatched ({}%)", listed.key(), map.getId(), party.size(),
                 Math.round(chance * 100));
+    }
+
+    /**
+     * A roll may take this boss: under FIELD_BOSS_ROLLED_KILLS_PER_DAY rolled kills of it today (UTC), no online human
+     * holding a bounty on it, and no human on a map one portal away (heading in, perhaps).
+     */
+    boolean rollable(FieldBosses.Boss listed, MapleMap map, Monster boss, long nowMs) {
+        long[] today = rolledKills.get(listed.key());
+        if (today != null && today[0] == nowMs / DAY_MS && today[1] >= population.config().FIELD_BOSS_ROLLED_KILLS_PER_DAY) {
+            return false;
+        }
+        server.living.population.needs.NeedLedger needs = population.needs();
+        if (needs != null && needs.bounties().held(boss.getId(), nowMs)) {
+            return false;
+        }
+        int channel = map.getChannelServer() == null ? 0 : map.getChannelServer().getId();
+        for (server.maps.Portal portal : map.getPortals()) {
+            int next = portal.getTargetMapId();
+            MapleMap there = next <= 0 || next == 999999999 || next == map.getId() ? null : population.map(channel, next);
+            if (there != null && !humansOn(there).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void countRolledKill(String bossKey, long nowMs) {
+        long day = nowMs / DAY_MS;
+        rolledKills.compute(bossKey, (key, old) -> old == null || old[0] != day ? new long[] {day, 1} : new long[] {day, old[1] + 1});
     }
 
     /** The roll: 20 % for one at the boss's level, +12 % a camper more, +2 % a level above it; 5..90 %. */

@@ -146,6 +146,12 @@ public final class PopulationHooks {
         }
     }
 
+    /** N6.3: the human who owns a field boss's drops when a citizen invited into their fight topped it; else null. */
+    public static Character fieldBossDropOwner(Monster monster, Character candidate) {
+        Population population = Population.get();
+        return population == null || population.camps() == null ? null : population.camps().dropOwner(monster, candidate);
+    }
+
     public static void mobKilled(Monster monster, Set<Integer> attackerIds, MapleMap map) {
         Population population = Population.get();
         if (population == null || monster == null || map == null) {

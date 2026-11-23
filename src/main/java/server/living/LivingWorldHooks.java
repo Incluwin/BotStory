@@ -1163,6 +1163,9 @@ public final class LivingWorldHooks {
         try {
             server.living.roster.CompanionBossRuns bossRuns = world.bossRuns();
             Character owner = bossRuns == null ? null : bossRuns.dropOwner(monster, candidate);
+            if (owner == null) { // a camping citizen that joined a human's field-boss fight on a yes loots nothing (N6.3)
+                owner = server.living.population.PopulationHooks.fieldBossDropOwner(monster, candidate);
+            }
             return owner == null ? candidate : owner;
         } catch (RuntimeException failure) {
             log.warn("living world bossDropOwner hook failed", failure);

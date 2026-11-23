@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -179,16 +181,60 @@ class FieldBossCampsTest {
     }
 
     @Test
-    void unwatchedCampersNeverHitTheBossAndAWonRollBooksTheKillForAllOfThem() {
+    void unwatchedCampersNeverHitTheBossAndAWonRollRemovesItBareAndBooksAnUntimedKill() {
         assertFalse(camps.allows(kim, stumpy), "nobody on the map: the boss would not fight back");
         when(dice.nextDouble()).thenReturn(0.0d);
 
         camps.minute(1_000L);
 
-        verify(map).killMonster(eq(stumpy), any(Character.class), eq(true), eq((short) 0));
-        verify(clears).cleared(eq(List.of(kim, lu)), eq("field.stumpy"), eq("field:" + STUMPY_MAP), anyLong(), eq(1_000L));
-        camps.minute(2_000L);
-        verify(map, times(1)).killMonster(any(Monster.class), any(Character.class), eq(true), eq((short) 0));
+        // no killer: no drops, no EXP, no meso left for anyone
+        verify(map).killMonster(eq(stumpy), eq((Character) null), eq(false), eq((short) 0));
+        verify(map, never()).killMonster(any(Monster.class), any(Character.class), eq(true), anyShort());
+        // started 0: booked untimed, a kill on the records and never a time to rank or race
+        verify(clears).cleared(eq(List.of(kim, lu)), eq("field.stumpy"), eq("field:" + STUMPY_MAP), eq(0L), eq(1_000L));
+    }
+
+    @Test
+    void rolledKillsAreHeldToTheirDailyCapPerBoss() {
+        config.FIELD_BOSS_ROLLED_KILLS_PER_DAY = 1;
+        when(dice.nextDouble()).thenReturn(0.0d);
+        camps.minute(1_000L);
+        camps.minute(1_000L + 6 * 60_000L); // the next roll window, the same UTC day
+        verify(map, times(1)).killMonster(any(Monster.class), eq((Character) null), eq(false), eq((short) 0));
+        camps.minute(86_400_000L + 1_000L); // a new day
+        verify(map, times(2)).killMonster(any(Monster.class), eq((Character) null), eq(false), eq((short) 0));
+    }
+
+    @Test
+    void noRollWhileAHumanStandsOneMapAway() {
+        when(dice.nextDouble()).thenReturn(0.0d);
+        server.maps.Portal door = mock(server.maps.Portal.class);
+        when(door.getTargetMapId()).thenReturn(101030403);
+        when(map.getPortals()).thenReturn(List.of(door));
+        MapleMap next = mock(MapleMap.class);
+        when(next.getAllPlayers()).thenReturn(List.of(ann));
+        when(population.map(anyInt(), eq(101030403))).thenReturn(next);
+
+        camps.minute(1_000L);
+        verify(map, never()).killMonster(any(Monster.class), any(), anyBoolean(), anyShort());
+    }
+
+    @Test
+    void aCitizenInvitedIntoAHumansFightNeverOwnsTheDrops() {
+        players.add(ann);
+        when(stumpy.damageBy(ANN)).thenReturn(5_000L);
+        camps.allows(kim, stumpy); // the human was first
+        camps.replied(kimSession, ann, "yes");
+        assertEquals(ann, camps.dropOwner(stumpy, kim), "the human's party keeps the loot");
+        assertEquals(null, camps.dropOwner(stumpy, ann), "a human top damager: the stock owner");
+    }
+
+    @Test
+    void campersThatStartedFirstKeepWhatTheyEarn() {
+        players.add(ann);
+        camps.allows(kim, stumpy); // nobody hit it: campers first
+        when(stumpy.damageBy(ANN)).thenReturn(500L);
+        assertEquals(null, camps.dropOwner(stumpy, kim));
     }
 
     @Test
@@ -196,7 +242,7 @@ class FieldBossCampsTest {
         when(dice.nextDouble()).thenReturn(0.99d);
         camps.minute(1_000L);
 
-        verify(map, never()).killMonster(any(Monster.class), any(Character.class), eq(true), eq((short) 0));
+        verify(map, never()).killMonster(any(Monster.class), any(), anyBoolean(), anyShort());
         verifyNoInteractions(clears);
         verify(kim, never()).updateHp(anyInt());
         verify(lu, never()).updateHp(anyInt());

@@ -37,7 +37,8 @@ intents:
       - "np, its all urs. gl"
       - "kk, we'll wait for the next one"
       - "all good, have fun"
-  # campers started first; a human arrives: they say so and offer a seat
+  # campers started first; a human arrives: they say so, and the human is welcome to hit it too (no party: campers
+  # form none, so no line promises a seat or a share)
   - id: fieldboss.seat
     trigger: fieldboss.seat
     where: any
@@ -45,9 +46,9 @@ intents:
     weight: 10
     cooldownMs: 0
     lines:
-      - "hey {name}, we've been camping {item} for a bit. hop in if u want"
-      - "{name} we're on {item} rn, u can join us"
-      - "oh hi {name}. we got here first but theres room, help us with {item}?"
+      - "hey {name}, we were on {item} first but feel free to join in"
+      - "{name} we got here first lol, ur welcome to hit {item} too"
+      - "oh hi {name}. we've been on {item} a bit, jump in if u want"
     styles:
       quiet-practical-v1:
-        - "{name}, we're on {item}. join if u like"
+        - "{name}, we were here first. join in if u like"

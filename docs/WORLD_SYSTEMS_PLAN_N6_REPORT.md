@@ -39,7 +39,7 @@ change. All three switches ship off: `population.FIELD_BOSS_RECORDS_ENABLED`, `B
 ## Design as built
 
 - **N6.1** `records.FieldBossKills` is called from `PopulationHooks.mobKilled`, which `LivingWorldHooks.mobKilled`
-  already calls, so the hot `LivingWorldHooks.java` is untouched. Memory only on the killing thread.
+  already calls, so N6.1 needs no `LivingWorldHooks.java` hunk. Memory only on the killing thread.
   - The record goes through `ClearLog.cleared` with quest = the boss key (`field.stumpy`) and instance `field:<map>`.
   - Members are the top damager still on the map plus its party members on the map.
   - `QuestLabels.load` appends the catalogue after `rivals.yaml`, so the records page, `@records stumpy`, the
@@ -89,23 +89,54 @@ change. All three switches ship off: `population.FIELD_BOSS_RECORDS_ENABLED`, `B
    claimant must be online (anywhere) at the kill to be paid. Otherwise the bounty stays held, and they can take the
    next spawn.
 9. **A bounty claim holds `BOUNTY_CLAIM_MINUTES` (180)** and counts toward `NEEDS_CLAIMS_PER_PLAYER`.
-10. **N6.3 unwatched.** Campers never hit the boss without a human on the map. A roll every
-    `FIELD_BOSS_ROLL_MINUTES` (5) decides it: 20 % for one camper at the boss's level, +12 % per extra camper, +2 % per
-    level above the boss, held to 5-90 %.
-    - A win `killMonster`s the boss (drops to a random camper) and books every camper (up to 6).
-    - A loss changes nothing.
-    - Bounties never pay on an unwatched kill, since no human was there.
+10. **N6.3 unwatched** (with the coordinator's conditions, 2026-11-23). Campers never hit the boss without a human on
+    the map. A roll every `FIELD_BOSS_ROLL_MINUTES` (5) decides it: 20 % for one camper at the boss's level, +12 % per
+    extra camper, +2 % per level above the boss, held to 5-90 %.
+    - A win removes the boss with `map.killMonster(boss, null, false, 0)`. With no killer that path drops nothing and
+      gives no EXP or meso, while the spawn point's or script's respawn still runs.
+    - The kill is booked **untimed** (started 0, so `duration_ms` 0, which `Clear.timed()` reads as none). It counts
+      as a kill by that party: `records.first` and the records page's first clear. It never enters fastest times,
+      player or crew bests, or the paper's record and fastest stories. A crew's rolled kill can never beat a time:
+      `crewCleared` returns on an untimed clear. Its only news is the letters' "while u were gone we took down stumpy".
+    - Rate: at most `FIELD_BOSS_ROLLED_KILLS_PER_DAY` (2) rolled kills per boss per UTC day, all channels together.
+      With campers present and p >= 20 % a boss falls within about 25 minutes, so the cap binds: **expected rolled
+      kills <= 2 per boss per day**. A script boss spawns up to 8 times a channel a day, 24 on three channels.
+    - No roll while an online human holds a claimed bounty on that boss, or while a human stands on a map one portal
+      away.
+    - Respawn wait for a human who arrives just after a rolled kill (from N6.0): a script boss is back 0-3 h later
+      (1.5 h on average) on that channel, and the other channels have their own copy. A map-life boss is back about
+      2-4 s after the human steps onto the map, because its spawn point only respawns while a player is there.
+    - A loss changes nothing, and nobody dies of a roll.
+    - Bounties never pay on a rolled kill, since no human was there.
 11. **N6.3 "first"** is decided the first time a camper's gate is asked while a human is on the map. If a human has
     damaged the boss by then, humans were first; otherwise citizens were.
+11b. **Drops after a yes** (coordinator condition 4). `Monster.killBy` gives the drops to `getHighestDamagerId` on the
+    map, then to `LivingWorldHooks.bossDropOwner`. That hook now also asks `FieldBossCamps.dropOwner`. When a citizen
+    tops a field boss in a fight a human started (the campers joined on a yes), the top human damager on the map owns
+    the drops and mesos instead. When the campers started first they keep what they earned, as any first party would.
+    The record of that fight still follows damage (FieldBossKills), so a citizen top damager can head the record of a
+    fight whose loot went to the human.
+11c. **No seat promise** (condition 5). Campers form no game Party, so the arrival line only says they were here first
+    and the human is welcome to join in (`fieldboss.seat`). The human keeps what their damage earns.
 12. **The potion floor** (`FIELD_BOSS_POTION_FLOOR`, 50 HP potions) makes the gate refuse the camper, so it fights the
     ordinary mobs until its existing supply rules send it to restock. It does not walk away at once.
+12b. **How the defaults were chosen.**
+    - `FIELD_BOSS_POTION_FLOOR` 50 HP potions: the companion Easy Balrog standard was 40/50 (P7, decision 8), and a
+      field boss hits softer than Balrog. 50 is the same reserve, and it is above the grind's own POT_STOP, so a camper
+      leaves the fight before its potion trip would fire mid-fight.
+    - `FIELD_BOSS_CAMP_CHANCE` 0.1: one TRAIN plan in ten, for a citizen whose band fits a boss on its continent. About
+      240 citizens spread over roughly 35 boss bands gives at most a few campers per boss map at once. That is enough
+      for a camp to be seen, and too few to crowd a boss map.
+    - `FIELD_BOSS_ROLLED_KILLS_PER_DAY` 2 is deliberately low (see 10).
 13. **Camping picks** are only on the citizen's home continent and only on maps with ordinary monsters
     (`WorldKnowledge.fieldCapacity > 0`), so campers never idle while they wait.
 
 ## Not done / open
 
-- No game Party is formed for campers in a real fight, so the record lists the top damager only, and a crew gets a
-  watched field-boss time only through a top damager (crew credit needs two or more members).
+- **Follow-up: a real party for campers.** Campers would form a citizen Party when they camp (as CitizenPartyQuests does
+  for PQs). Then the record lists the whole camp, and crew credit works for watched fights. The arrival line could then
+  offer a real seat: a party invite to the human, with the loot rule unchanged (the human's party keeps drops after a
+  yes). Until then the line promises nothing.
 - With `KS_MEMORY_ENABLED` on, N2's grind manners also leave a mob alone that a human hit and the bot has not. A camper
   invited after the human started may therefore still skip the boss in the grind target pick. This is not verified;
   B5 will show it.
@@ -135,7 +166,9 @@ change. All three switches ship off: `population.FIELD_BOSS_RECORDS_ENABLED`, `B
   - `describe` -> `bountyPage`.
 - `PresenceScheduler.java`: `mapFor` TRAIN asks `campFor` first, plus the new private `campFor`.
 - `config.yaml`: one population block after `PAPER_RETENTION_DAYS` (15 keys).
-- Not touched: `LivingWorldHooks.java`, `ChatterEngine.java`, `SocialFabric.java`, `Market.java`, `CitizenSpots.java`,
+- `LivingWorldHooks.java`: one hunk in `bossDropOwner`. When the boss-run owner is null, it asks
+  `PopulationHooks.fieldBossDropOwner` (N6.3 drops).
+- Not touched: `ChatterEngine.java`, `SocialFabric.java`, `Market.java`, `CitizenSpots.java`,
   `CompanionCardScreens.java`, `banter.yaml`, `changelog-tables.xml`.
 - Other shared files:
   - `Population.java` (fields, construction, the whisper topic, the seat install and uninstall, the social-lane minute,
@@ -146,5 +179,6 @@ change. All three switches ship off: `population.FIELD_BOSS_RECORDS_ENABLED`, `B
   - `Monster.java` (`firstHitAtMs`, `totalDamageTaken`);
   - `AgentBossTargetGate.java` (one condition);
   - `QuestLabels.java`;
-  - `CitizenTies.java` and `RivalCrews.java` (the paper calls);
+  - `CitizenTies.java` and `RivalCrews.java` (the paper calls; RivalCrews also turns an untimed crew kill into letter
+    news);
   - `chatter/needs.yaml`, the new `chatter/fieldboss.yaml` and `paper.yaml`.
