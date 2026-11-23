@@ -457,7 +457,9 @@ uses (rule 3).
   - Go on while growth stays at or under 2 % a day; step back above 5 % (the cadence doc's stop line).
   - Measure each step's k from TRAIN stints' EXP an hour.
 - **R5. Re-key what learned the slow rate** (cadence doc section 4): scale `companion_yield` rows by the measured k, or
-  reset them. After the last step, re-run PvP V0.6 and rewrite `scripts/config/pvp/grind-minutes.yaml`.
+  reset them. After the last step, re-run PvP V0.6 and rewrite `scripts/config/pvp/grind-minutes.yaml`. Only rows of
+  `source = 'companion'` and `source = 'citizen'` learned a kill rate: leave the `source = 'price'` rows (the learned
+  price levers, WORLD_SYSTEMS_PLAN I2, whose job_branch and level_band are a lever key and an arm) as they are.
 
 ### 9.4 Projection and decisions
 - At k = 2 after R1-R4: +0.78 B, less about 0.55 B (pickup 0.15) and about 0.15 B (potions), with up to ~0.3 B of luxury

@@ -434,8 +434,8 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
             int itemId = stocked.getKey();
             InventoryType type = ItemConstants.getInventoryType(itemId);
             int per = type == InventoryType.EQUIP ? 1 : Math.min(stocked.getValue(), type == InventoryType.ETC ? 100 : 10);
-            long unit = Math.max(1L, Math.round(population.market().price(itemId) * asks.getOrDefault(itemId, 1.0d)));
-            int price = (int) Math.min(Integer.MAX_VALUE, Math.max(population.market().npcPays(itemId, per), unit * per));
+            int price = listingPrice(population.market().price(itemId), asks.getOrDefault(itemId, 1.0d),
+                    population.market().npcPays(itemId, per), per);
             int left = stocked.getValue();
             for (Item slot : agent.getInventory(type).listById(itemId)) {
                 int bundles = Math.min(left, slot.getQuantity()) / per;
@@ -468,13 +468,24 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         for (int itemId : items) {
             int arm = sell || learner == null ? -1 : learner.benchArm(itemId);
             double start = arm >= 0 ? learner.benchMultiplier(arm) : 1.0d;
-            double ask = sell ? QUICK_SALE : Math.max(QUICK_SALE, start - step * unsold.getOrDefault(itemId, 0));
+            double ask = sell ? QUICK_SALE : stallAsk(start, step, unsold.getOrDefault(itemId, 0));
             asks.put(itemId, ask);
             if (arm >= 0) {
                 stall.learned.put(itemId, new double[]{arm, ask});
             }
         }
         return asks;
+    }
+
+    /** A STALL's ask over the index: its start less {@code step} per unsold whole slice, never under QUICK_SALE. */
+    static double stallAsk(double start, double step, int unsoldSlices) {
+        return Math.max(QUICK_SALE, start - step * unsoldSlices);
+    }
+
+    /** A bundle's price: {@code per} units at the index times the ask, never under what an NPC pays for the bundle. */
+    static int listingPrice(long index, double ask, long npcPays, int per) {
+        long unit = Math.max(1L, Math.round(index * ask));
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(npcPays, unit * per));
     }
 
     /** The population market's learned prices, or null (no population, or a market without them). */
