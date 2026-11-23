@@ -1336,6 +1336,9 @@ public final class RosterService {
             despawn(entry, "called back on its way out"); // it comes back from where it stood, so it frees its lease first
         }
         world.benchDuty().endFor(persona.id(), "called by owner"); // a live slice ends properly and frees its lease
+        if (world.crewCamp() != null) {
+            world.crewCamp().release(persona.id()); // its crew camp copy unloads and frees its CAMP lease (N7)
+        }
         world.residents().releaseForRecruit(persona.id());
         if (!world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, owner.getId())) {
             return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());

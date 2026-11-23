@@ -18,6 +18,8 @@ import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static server.living.crew.CrewKit.OWNER;
@@ -331,6 +333,54 @@ class CrewBanterTest {
     record Said(int speaker, String line) { }
 
     /** Every roll passes and every pick is the first. */
+    // ---- the crew camp (docs/WORLD_SYSTEMS_PLAN.md N7) ----------------------------------------------
+
+    @Test
+    void theCampPicksOnlyCampExchangesAndRendersBothLines() {
+        CrewBanter.CampExchange exchange = banter.camp(OWNER, "Ann", List.of(fenna, ilse));
+
+        assertNotNull(exchange);
+        java.util.Set<String> campLines = new java.util.HashSet<>();
+        for (BanterCatalog.Exchange one : catalog.exchanges()) {
+            if (one.moments().contains(BanterCatalog.Moment.CAMP)) {
+                one.call().forEach(line -> campLines.add(CrewBanter.fill(line, Map.of("caller", "Fenna", "answerer", "Ilse",
+                        "owner", "Ann"))));
+                one.call().forEach(line -> campLines.add(CrewBanter.fill(line, Map.of("caller", "Ilse", "answerer", "Fenna",
+                        "owner", "Ann"))));
+            }
+        }
+        assertTrue(campLines.contains(exchange.call()), "a camp moment's call: " + exchange.call());
+        assertNotEquals(exchange.caller().characterId(), exchange.answerer().characterId());
+        assertTrue(exchange.answerDelayMs() >= CrewBanter.READ_MIN_MS && exchange.answerDelayMs() <= CrewBanter.MAX_ANSWER_DELAY_MS);
+        assertTrue(ports.said.isEmpty(), "the camp says it, not the banter");
+    }
+
+    @Test
+    void theCampHasNoExchangeWhenOffMutedOrAlone() {
+        assertNull(banter.camp(OWNER, "Ann", List.of(fenna)), "one alone");
+        ports.on = false;
+        assertNull(banter.camp(OWNER, "Ann", List.of(fenna, ilse)), "CREW_BANTER_ENABLED off");
+        ports.on = true;
+        banter.heard(OWNER, "quiet guys!");
+        ports.runDue();
+        assertNull(banter.camp(OWNER, "Ann", List.of(fenna, ilse)), "the owner's quiet holds at camp too");
+    }
+
+    @Test
+    void aTraitCampExchangeNeedsACallerWithTheTrait() {
+        CrewBanter.CampExchange plain = banter.camp(OWNER, "Ann", List.of(fenna, ilse));
+        assertFalse(plain.call().contains("nearly wiped") || plain.call().contains("close call after"), plain.call());
+        ports.traits.put(FENNA, java.util.Set.of("veteran"));
+        boolean veteranLine = false;
+        for (int i = 0; i < 40 && !veteranLine; i++) {
+            CrewBanter.CampExchange one = new CrewBanter(ports, ties, () -> catalog, new RivalFacts(sources), new Random(i))
+                    .camp(OWNER, "Ann", List.of(fenna, ilse));
+            veteranLine = one != null && one.caller().characterId() == FENNA
+                    && (one.call().contains("nearly wiped") || one.call().contains("close call after"));
+        }
+        assertTrue(veteranLine, "a veteran sometimes tells its war stories at camp");
+    }
+
     static final class FirstPick extends Random {
         @Override
         public double nextDouble() {

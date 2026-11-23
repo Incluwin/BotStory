@@ -53,12 +53,31 @@ public final class Crew {
     private final CrewTieStore store = new CrewTieStore();
     private final CrewTies ties;
     private final CrewBanter banter;
+    private final BanterPorts banterPorts;
     private volatile BanterCatalog catalog;
 
     public Crew(LivingWorld world) {
         this.world = world;
         this.ties = new CrewTies(new TiePorts());
-        this.banter = new CrewBanter(new BanterPorts(), ties, this::catalog, new FactSources());
+        this.banterPorts = new BanterPorts();
+        this.banter = new CrewBanter(banterPorts, ties, this::catalog, new FactSources());
+    }
+
+    /**
+     * The crew camp's exchange (docs/WORLD_SYSTEMS_PLAN.md N7, on companion-ops): two of these benched companions idling
+     * in their owner's camp trade a call and an answer of banter.yaml's camp moment, as their tie and traits allow, in
+     * their own voices; null for none (banter off or muted, fewer than two, nothing fits). Nothing is said here.
+     */
+    public CrewBanter.CampExchange campExchange(int ownerId, String ownerName, List<Character> bots) {
+        List<CrewBanter.Speaker> speakers = new ArrayList<>();
+        for (Character bot : bots) {
+            String personaId = bot == null ? null : world.directory().personaIdOfCharacter(bot.getId());
+            if (personaId != null && bot.isAlive()) {
+                speakers.add(new CrewBanter.Speaker(bot.getId(), personaId, bot.getName(), bot.getLevel(),
+                        banterPorts.styleOf(personaId, bot.getId())));
+            }
+        }
+        return banter.camp(ownerId, ownerName, speakers);
     }
 
     public CrewTies ties() {

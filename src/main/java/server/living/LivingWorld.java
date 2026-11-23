@@ -111,6 +111,7 @@ public final class LivingWorld {
     private final server.living.story.StoryArcs stories;
     private final server.living.crew.Crew crew;
     private final server.living.roster.CompanionTraits traits;
+    private final server.living.roster.CrewCamp crewCamp;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -176,6 +177,7 @@ public final class LivingWorld {
         this.stories = new server.living.story.StoryArcs(this); // F6: companions' personal story arcs and scenes
         this.crew = new server.living.crew.Crew(this); // F6.4: crew ties (a view) and banter
         this.traits = new server.living.roster.CompanionTraits(this); // N9: companion traits
+        this.crewCamp = new server.living.roster.CrewCamp(this); // N7: the crew camp
     }
 
     public static LivingWorld get() {
@@ -396,6 +398,14 @@ public final class LivingWorld {
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.crewWindow::tick,
                 server.living.roster.ui.NativeCrewWindow.WATCH_MS, server.living.roster.ui.NativeCrewWindow.WATCH_MS));
         world.crewWindow.install(); // P10 Step 7: the native window draws the crew pages for a protocol-2 client
+        // N7: every crew camp looked at on companion-ops (its bench, idle life, banter); nothing runs while none is open
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> {
+                    if (world.crewCamp.anyOpen()) {
+                        world.executor.submit("crew.camp", world.crewCamp::tick);
+                    }
+                },
+                server.living.roster.CrewCamp.TICK_MS, server.living.roster.CrewCamp.TICK_MS));
         instance = world;
         // P10: a client that said HELLO before the world was there heard "not enabled": it hears WELCOME again now
         world.crewWindow.started(onlineCharacters());
@@ -451,7 +461,8 @@ public final class LivingWorld {
         world.timers.clear();
         // bench allies on a boss run (P7 Part B) go first on the one companion-ops thread: the wait below covers them
         world.executor.submit("boss.allies_stop", world.bossRuns::stopAllies);
-        // live bench slices unload on companion-ops like every companion unload; shutdown waits for their saves
+        // live bench slices and crew camps unload on companion-ops like every companion unload; shutdown waits for saves
+        world.executor.submit("crew.camp.end_all", world.crewCamp::endAll);
         try {
             world.executor.submit("bench_duty.end_all", () -> world.benchDuty.endAll("server shutdown"))
                     .get(CompanionExecutor.DEFAULT_WATCHDOG_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
@@ -701,6 +712,11 @@ public final class LivingWorld {
     /** F6.4: crew ties and banter. */
     public server.living.crew.Crew crew() {
         return crew;
+    }
+
+    /** N7: the crew camp (living_world.CREW_CAMP_ENABLED). */
+    public server.living.roster.CrewCamp crewCamp() {
+        return crewCamp;
     }
 
     /** N9: companion traits (living_world.TRAITS_ENABLED). */
