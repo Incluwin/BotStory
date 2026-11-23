@@ -1129,6 +1129,22 @@ living_world:
     # Technical: Traits.of makes a companion a TRADER once its bench.report rows (BenchLedger SELL and STALL takings)
     # sum to this many meso over thirty days, and keeps the trait while they stay at half of it or more. Must be >= 1.
     TRAITS_TRADER_MESO: 3000000
+    # Crew camp (docs/WORLD_SYSTEMS_PLAN.md N7): a private copy of one stock indoor map per owner, entered from the
+    # Crew window ("Crew camp...") or any needs board, where your benched companions that are not out on a live duty
+    # sit, wander and chat while you are there; talk to one for what it did since you last asked, and read the camp
+    # notice for the full away report, records, traits and who is out where. Leaving puts you back where you stood.
+    # Ships off until live checks H1-H5 pass (tools/checks/checks/n7).
+    # Technical: CrewCamp opens a DuelGround (SceneInstance) copy per owner with every portal closed, its exit the town
+    # the owner came from; BenchCampForm loads each free BENCHED companion under the CAMP lease and budget pool on the
+    # owner's channel and unloads them all when the owner leaves, disconnects or the server stops. One 15 s timer.
+    CREW_CAMP_ENABLED: false
+    # Technical: the map id copied for every camp (decision D10, the user's pick). Candidates from the 11-23 spike, all
+    # stock v83 with no mobs, NPCs or reactors: 220000306 Ludibrium Empty House II (default), 130000110 Ereve Knights
+    # Chamber 2nd Floor, 140000010 Rien Library 1st Floor. Not 220000305 Empty House I: it holds a scripted Gachapon.
+    CREW_CAMP_MAP_ID: 220000306
+    # Technical: the CAMP pool, camp companions loaded at once server-wide (CompanionBudget.Kind.CAMP), never counted
+    # against BENCH_LIVE, BENCH_TOWN or COMMERCE; an owner past the cap sees the rest as "resting elsewhere". 0 = none.
+    CREW_CAMP_MAX: 16
     # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
     # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
     # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,
