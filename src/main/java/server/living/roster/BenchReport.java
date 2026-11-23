@@ -20,9 +20,10 @@ import java.util.function.IntFunction;
  * and said once, in one short whisper, when its owner calls it back ("farmed 143 stolen fences and 12k meso at Ant
  * Tunnel I. died once."), lowercase like its voice but for the place's own name. Taking the report forgets the tally, so a second call tells nothing new twice; a seat taken
  * without a word (a login's restore) takes it too. Only what reached the haul counts as farmed (never a trainee's own
- * pickups), and nothing here moves an item or a meso. Kept in memory: a restart starts every tally afresh. While the
- * letters are on (docs/BOT_CONCEPT_PLAN.md F3), what the tallies gain is also kept until it is {@link #drain drained}
- * into bench.report rows, which outlive a restart for the login digest (CompanionLetters).
+ * pickups), and nothing here moves an item or a meso. Kept in memory: a restart starts every tally afresh. What the
+ * tallies gain is also kept until it is {@link #drain drained} into bench.report rows, which outlive a restart for the
+ * login digest (CompanionLetters, docs/BOT_CONCEPT_PLAN.md F3) and each companion's crew camp report ({@link #tell},
+ * docs/WORLD_SYSTEMS_PLAN.md N7: written whether or not the letters are on).
  * Thread-safe: the ledger, the harvest and the call run on companion-ops, a stall's sales may come from elsewhere.
  */
 final class BenchReport {
@@ -222,6 +223,33 @@ final class BenchReport {
      */
     String take(int ownerId, String personaId, int levelNow, IntFunction<String> placeNames, IntFunction<String> itemNames) {
         Tally tally = personaId == null ? null : tallies.remove(key(ownerId, personaId));
+        return line(tally, levelNow, placeNames, itemNames);
+    }
+
+    /**
+     * The same line read back from bench.report rows (oldest first): their sums, the field of the last that names one,
+     * and the lowest level a row started from (docs/WORLD_SYSTEMS_PLAN.md N7, the crew camp). Null when they hold
+     * nothing worth telling.
+     */
+    static String tell(List<Row> rows, int levelNow, IntFunction<String> placeNames, IntFunction<String> itemNames) {
+        Tally tally = new Tally();
+        for (Row row : rows) {
+            tally.exp += Math.max(0L, row.exp());
+            if (row.level() > 0 && (tally.startLevel <= 0 || row.level() < tally.startLevel)) {
+                tally.startLevel = row.level();
+            }
+            tally.meso += Math.max(0L, row.meso());
+            tally.sold += Math.max(0L, row.sold());
+            tally.deaths += Math.max(0, row.deaths());
+            where(tally, row.camp());
+            if (row.items() != null) {
+                row.items().forEach((item, count) -> tally.items.merge(item, count, Integer::sum));
+            }
+        }
+        return line(tally, levelNow, placeNames, itemNames);
+    }
+
+    private static String line(Tally tally, int levelNow, IntFunction<String> placeNames, IntFunction<String> itemNames) {
         if (tally == null || !tally.worthTelling(levelNow)) {
             return null;
         }

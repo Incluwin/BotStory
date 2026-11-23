@@ -42,6 +42,7 @@ public final class EventLogSweep {
             "bossgear.",              // BossGearRecord: worn / removed, the latest per persona
             "bench.camp-moved.told",  // RosterService.campMoved: the marker
             "roster.away_told",       // RosterService.awayReleases: the marker
+            "camp.",                  // CrewCamp (N7): camp.told, each companion's camp report cursor
             "bench.live",             // BenchDutyDispatcher: with bench.live-end, the 60 newest per persona
             "bench.live-end",
             "bench.stall",            // BenchStallForm: with bench.stall-close, the 60 newest per persona

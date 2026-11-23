@@ -2225,6 +2225,42 @@ public final class LivingStore {
     }
 
     /**
+     * One companion's events of these {@code kinds} under the character, since that companion's newest {@code marker}
+     * event (from its first event with none), oldest first: the newest {@code limit} of them (the crew camp's report,
+     * BenchLedger.tellAtCamp, docs/WORLD_SYSTEMS_PLAN.md N7). Null when the read fails.
+     */
+    public List<CharacterEvent> personaEventsAfterMarker(int characterId, String personaId, List<String> kinds,
+                                                         String marker, int limit) {
+        String sql = "SELECT persona_id, kind, detail FROM living_event_log WHERE character_id = ? AND persona_id = ?"
+                + " AND kind IN (" + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ")"
+                + " AND id > COALESCE((SELECT MAX(id) FROM living_event_log WHERE character_id = ? AND persona_id = ?"
+                + " AND kind = ?), 0) ORDER BY id DESC LIMIT ?";
+        List<CharacterEvent> out = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setInt(at++, characterId);
+            ps.setString(at++, personaId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            ps.setInt(at++, characterId);
+            ps.setString(at++, personaId);
+            ps.setString(at++, marker);
+            ps.setInt(at, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new CharacterEvent(rs.getString(1), rs.getString(2), rs.getString(3)));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log scan failed for {}/{} {}", characterId, personaId, kinds, failure);
+            return null;
+        }
+        java.util.Collections.reverse(out);
+        return out;
+    }
+
+    /**
      * The last {@code limit} events of one companion of the character's of these {@code kinds}, oldest first, each as
      * {kind, detail} (its own record at its camps, BenchDutyDispatcher.campRecord). Empty when the read fails.
      */

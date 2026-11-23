@@ -25,6 +25,7 @@ import server.living.config.Content.StepType;
 import server.living.population.Population;
 import server.living.population.PopulationContent.Field;
 import server.living.standing.HireStanding;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.HaulItem;
@@ -51,6 +52,10 @@ public final class BenchLedger {
     private static final Logger log = LoggerFactory.getLogger(BenchLedger.class);
     /** What one companion's bench work gained, as a living_event_log row (BenchReport.Row as JSON): the letters' news. */
     static final String REPORT_EVENT = "bench.report";
+    /** Written as a companion's crew camp report is told (docs/WORLD_SYSTEMS_PLAN.md N7): its next one starts after it. */
+    public static final String CAMP_TOLD_EVENT = "camp.told";
+    /** bench.report rows one camp report reads at most, the newest (two weeks of a row a ledger tick). */
+    static final int CAMP_REPORT_ROWS = 2000;
     private static final double KILLS_PER_HOUR = 110.0d;
     private static final double MESO_PER_KILL_PER_LEVEL = 9.0d;
     private static final double UPKEEP_PER_LEVEL_PER_HOUR = 30.0d;
@@ -72,7 +77,7 @@ public final class BenchLedger {
     /** {@code placeNames} and {@code itemNames} name a camp and an item in the call-back report (the game's data by default). */
     BenchLedger(LivingWorld world, IntFunction<String> placeNames, IntFunction<String> itemNames) {
         this.world = world;
-        this.report = new BenchReport(() -> world.config() != null && world.config().LETTERS_ENABLED);
+        this.report = new BenchReport(() -> true); // the letters' and the crew camp's rows (N7: whether letters are on or not)
         this.placeNames = placeNames;
         this.itemNames = itemNames;
     }
@@ -571,7 +576,65 @@ public final class BenchLedger {
      * nothing worth telling happened. The tally is spent either way. {@code levelNow}: its level now (0: unknown).
      */
     public String takeReport(int ownerId, String personaId, int levelNow) {
-        return report.take(ownerId, personaId, levelNow, placeNames, itemNames);
+        String line = report.take(ownerId, personaId, levelNow, placeNames, itemNames);
+        if (line != null && world.config() != null && world.config().CREW_CAMP_ENABLED) {
+            markToldAtCamp(ownerId, personaId); // said on the way back: its camp report starts after it (N7)
+        }
+        return line;
+    }
+
+    /**
+     * The crew camp's report of one companion (docs/WORLD_SYSTEMS_PLAN.md N7): what its bench.report rows hold since its
+     * last {@link #CAMP_TOLD_EVENT} marker, as the call-back line ("farmed 143 stolen fences ... died once."), or null
+     * when nothing worth telling happened. Read from the rows, so a restart in between loses nothing; told once: the
+     * marker is written after it, and the call-back tally it overlaps is spent. {@code levelNow}: its level now (0:
+     * unknown). Null too when the rows cannot be read (nothing is marked then).
+     */
+    public String tellAtCamp(int ownerId, String personaId, int levelNow) {
+        flushReports(ownerId); // what its last ticks gained is in the rows first
+        List<LivingStore.CharacterEvent> rows = world.store().personaEventsAfterMarker(ownerId, personaId,
+                List.of(REPORT_EVENT), CAMP_TOLD_EVENT, CAMP_REPORT_ROWS);
+        if (rows == null) {
+            return null;
+        }
+        List<BenchReport.Row> decoded = new ArrayList<>();
+        for (LivingStore.CharacterEvent row : rows) {
+            BenchReport.Row one = BenchReport.decode(row.detail());
+            if (one != null) {
+                decoded.add(one);
+            }
+        }
+        String line = BenchReport.tell(decoded, levelNow, placeNames, itemNames);
+        report.take(ownerId, personaId, levelNow, placeNames, itemNames); // the call-back says none of it again
+        markToldAtCamp(ownerId, personaId);
+        return line;
+    }
+
+    /**
+     * The owner's bench.report rows since their last logout (the letters' away marker; from their first row with none),
+     * oldest first, for the camp notice's away report: the same rows the letters read. Null when the read fails.
+     */
+    public List<LivingStore.CharacterEvent> rowsSinceLogout(int ownerId) {
+        flushReports(ownerId);
+        return world.store().eventsAfterMarker(ownerId, List.of(REPORT_EVENT), List.of(CompanionLetters.AWAY_EVENT),
+                List.of(REPORT_EVENT), CompanionLetters.WINDOW_ROWS);
+    }
+
+    /** The full report of one companion's rows, read only (the camp notice): no marker is written. */
+    public String reportOfRows(List<LivingStore.CharacterEvent> rows, String personaId, int levelNow) {
+        List<BenchReport.Row> decoded = new ArrayList<>();
+        for (LivingStore.CharacterEvent row : rows) {
+            BenchReport.Row one = REPORT_EVENT.equals(row.kind()) && personaId.equals(row.personaId())
+                    ? BenchReport.decode(row.detail()) : null;
+            if (one != null) {
+                decoded.add(one);
+            }
+        }
+        return BenchReport.tell(decoded, levelNow, placeNames, itemNames);
+    }
+
+    private void markToldAtCamp(int ownerId, String personaId) {
+        world.store().event(ownerId, personaId, CAMP_TOLD_EVENT, "");
     }
 
     /** True while a boss run's bench ally trip holds the persona (CompanionBossAllies, from memory). */

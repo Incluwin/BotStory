@@ -680,6 +680,12 @@ public final class LivingWorldHooks {
             return false;
         }
         try {
+            String camper = world.crewCamp() == null ? null : world.crewCamp().campCompanion(clicker, target);
+            if (camper != null) { // a benched companion idling in its owner's crew camp tells its report (N7)
+                world.executor().submit("camp.talk " + clicker.getId(),
+                        () -> new server.living.roster.ui.CampScreens(world).talk(clicker, camper));
+                return true;
+            }
             return world.dialogue().onCharacterClicked(clicker, target);
         } catch (RuntimeException failure) {
             log.warn("living world characterClicked hook failed", failure);
@@ -1186,6 +1192,10 @@ public final class LivingWorldHooks {
             }
             if (population != null && population.coliseum() != null && population.coliseum().clicked(clicker, objectId)) {
                 return true; // Cesar, the coliseum ladder's Arena Master in Ariant (docs/PVP_PLAN.md V4)
+            }
+            if (world.crewCamp() != null && world.crewCamp().isNotice(clicker, objectId)) {
+                new server.living.roster.ui.CampScreens(world).notice(clicker); // the crew camp's notice (N7)
+                return true;
             }
             if (!world.markers().isHitbox(clicker, objectId)) {
                 return false;
