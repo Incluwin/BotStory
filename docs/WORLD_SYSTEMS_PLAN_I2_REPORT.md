@@ -3,6 +3,16 @@
 Branch `feat/world-prices` on `feat/companion-manager` 3d04e47df. Switch `population.PRICE_LEARNING_ENABLED`, shipped
 **off**. No schema change, no new timer, no new meso faucet.
 
+**Split suite on ee8de6646 (11-23): 16,669 run / 0 failures / 0 errors / 33 skipped, PASS.**
+
+| Group | Tests run | Skipped |
+|---|---|---|
+| capabilities | 6,563 | 1 |
+| agents | 2,254 | 17 |
+| rest | 7,852 | 15 |
+
+Baseline: 16,634.
+
 ## What was built
 
 - **I2.1 shared UCB.** `population/Ucb.java` holds the bonus `explore x sqrt(ln(1 + N) / (1 + n))`, the best index and
