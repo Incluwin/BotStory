@@ -65,7 +65,7 @@ public final class PopulationLoader {
             "memory.asked",
             // the needs board (needs.NeedLedger): its request whispered, thanks for a board hand-in, a hand-in in person,
             // a scroll it was brought passing or failing; and a player who brought it something, met again
-            "need.whisper", "need.thanks", "need.got", "need.scroll.pass", "need.scroll.fail", "memory.greet.fulfilled",
+            "need.whisper", "need.thanks", "need.got", "need.bounty.boss", "need.bounty.hunt", "need.bounty.paid", "fieldboss.ask", "fieldboss.join", "fieldboss.stay", "fieldboss.seat", "need.scroll.pass", "need.scroll.fail", "memory.greet.fulfilled",
             // small imperfections (F8): a short pause on a field (D6), "rez pls?" and the thanks after a Resurrection
             "brb", "rez.ask.self", "rez.thanks.self",
             // the rival crew (rivals.RivalCrews, F7): banter, beating a player's time, congratulations, joining and

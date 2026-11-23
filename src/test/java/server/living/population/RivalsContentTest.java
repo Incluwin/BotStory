@@ -52,7 +52,8 @@ class RivalsContentTest {
         Set<String> aliases = new HashSet<>();
         for (QuestLabels.Quest quest : labels.all()) {
             assertTrue(listed.add(quest.script()), "listed twice: " + quest.script());
-            assertTrue(Files.exists(Path.of("scripts/event", quest.script() + ".js")), quest.script());
+            assertTrue(labels.field(quest.script()) // a field boss (N6.1) is a record of kills, not of a script
+                    || Files.exists(Path.of("scripts/event", quest.script() + ".js")), quest.script());
             assertFalse(quest.label().isBlank(), quest.script());
             for (String alias : quest.aliases()) {
                 assertTrue(aliases.add(alias.toLowerCase(Locale.ROOT)), "alias used twice: " + alias);

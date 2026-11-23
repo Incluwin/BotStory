@@ -27,13 +27,26 @@ public final class QuestLabels {
     }
 
     private final Map<String, Quest> byScript;
+    /** The keys of field bosses ({@link FieldBosses}, N6.1): records of a boss kill, not of an event script. */
+    private final java.util.Set<String> fields;
 
     public QuestLabels(List<Quest> quests) {
+        this(quests, FieldBosses.none());
+    }
+
+    /** The listed quests, then each catalogued field boss as a boss record under its key (N6.1). */
+    public QuestLabels(List<Quest> quests, FieldBosses bosses) {
         Map<String, Quest> map = new LinkedHashMap<>();
         for (Quest quest : quests) {
             map.put(quest.script(), quest);
         }
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        for (FieldBosses.Boss boss : bosses.all()) {
+            map.putIfAbsent(boss.key(), new Quest(boss.key(), boss.label(), true, boss.aliases()));
+            keys.add(boss.key());
+        }
         this.byScript = map;
+        this.fields = java.util.Set.copyOf(keys);
     }
 
     /** {@code rivals.yaml} in {@code contentDir}; none listed when it is missing. */
@@ -47,7 +60,12 @@ public final class QuestLabels {
                         "boss".equals(node.get("kind").string("pq")), aliases));
             }
         }
-        return new QuestLabels(out);
+        return new QuestLabels(out, FieldBosses.load(contentDir));
+    }
+
+    /** Whether {@code script} is a field boss's key (its records come from kills, not an event's clear). */
+    public boolean field(String script) {
+        return script != null && fields.contains(script);
     }
 
     /** Listed quests in file order. */

@@ -392,6 +392,21 @@ class RivalCrewsTest {
     }
 
     @Test
+    void anUntimedKillIsLetterNewsThatTheyGotItNeverATime() {
+        fourInBand();
+        Crew crew = formed();
+        ports.online.clear();
+
+        crews.cleared(clear(crew.id(), 0L, 5001, 5002), 0L, Map.of()); // a rolled field-boss kill (N6.3)
+
+        verify(livingStore).event(ANN, null, RivalCrews.NEWS_EVENT, "Ironclads|BalrogBattle_Easy|0|0");
+        verify(chatter, never()).megaphone(any(CitizenSession.class), anyString(), anyBoolean());
+        RivalCrews.Letter letter = crews.letter(ANN, "Ann", List.of("Ironclads|BalrogBattle_Easy|0|0"));
+        assertEquals("hey Ann, Ironclads here. while u were gone we took down easy balrog. catch up if u can lol",
+                letter.text());
+    }
+
+    @Test
     void theLettersPickUpTheLatestDuelAndItsRecord() {
         fourInBand();
         formed();

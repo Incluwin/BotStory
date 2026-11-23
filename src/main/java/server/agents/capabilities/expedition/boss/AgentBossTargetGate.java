@@ -39,7 +39,8 @@ public final class AgentBossTargetGate {
             return false;
         }
         if (monster.getMap().getEventInstance() == null
-                && !AgentBossRunHost.installed().mayEngageFieldBoss(agent, monster)) {
+                && !AgentBossRunHost.installed().mayEngageFieldBoss(agent, monster)
+                && !AgentFieldBossSeats.allows(agent, monster)) { // a camping citizen, by its manners (N6.3)
             return true;
         }
         boolean magic = agent.getJob() != null && agent.getJob().getJobNiche() == 2;

@@ -77,6 +77,12 @@ public final class NeedLedger {
 
         /** Whether the loaded citizen's bag has room for {@code count} of the item. */
         boolean room(Character citizen, int itemId, int count);
+
+        /**
+         * A met bounty (N6.2): {@code pay} meso from the citizen's purse (its stored row when {@code citizen} is null)
+         * to the player, storing {@code after} in the same commit. Null when done, else why not.
+         */
+        String payBounty(Character player, Character citizen, Need need, Need after, long pay);
     }
 
     /** The item data the ledger reads (WZ names, a scroll's rate, the scroll rule, an equip's base); apart so tests need no database. */
@@ -136,6 +142,7 @@ public final class NeedLedger {
     private Hands hands;
     private final Items items;
     private final NeedBoards boards;
+    private final Bounties bounties;
     private final Map<Integer, Need> live = new ConcurrentHashMap<>();
     /** "citizen:KIND:item" -> when such a request last ended (the repost pause). */
     private final Map<String, Long> ended = new ConcurrentHashMap<>();
@@ -159,6 +166,7 @@ public final class NeedLedger {
         this.hands = hands;
         this.items = items;
         this.boards = new NeedBoards(population, this);
+        this.bounties = new Bounties(population, this, null);
     }
 
     public boolean on() {
@@ -182,6 +190,11 @@ public final class NeedLedger {
         return boards;
     }
 
+    /** Citizens' bounties on field bosses and monsters (docs/WORLD_SYSTEMS_PLAN.md N6.2). */
+    public Bounties bounties() {
+        return bounties;
+    }
+
     /** Loads the stored requests once, the first time the switch is on (never at construction: tests, switch off). */
     synchronized void start(long nowMs) {
         if (started) {
@@ -198,7 +211,7 @@ public final class NeedLedger {
         log.info("needs board: {} requests live, {} citizens with escrow", live.size(), escrowHolders.size());
     }
 
-    private Object lock(int citizenId) {
+    Object lock(int citizenId) {
         return locks.computeIfAbsent(citizenId, id -> new Object());
     }
 
@@ -342,6 +355,7 @@ public final class NeedLedger {
                 yield parts.length > 1 && !parts[1].isEmpty() && guestOf(need) == 0 ? parts[1] : parts[0];
             }
             case MENTOR -> "a mentor";
+            case BOUNTY -> bounties.forWords(need);
         };
     }
 
@@ -349,6 +363,9 @@ public final class NeedLedger {
     String what(Need need) {
         if (need.kind() == NeedKind.MENTOR) {
             return "someone to show them around";
+        }
+        if (need.kind() == NeedKind.BOUNTY) {
+            return bounties.what(need);
         }
         if (need.kind() == NeedKind.PARTY) {
             String role = forWords(need);
@@ -376,6 +393,10 @@ public final class NeedLedger {
     }
 
     void slots(Need need, ChatterEngine.Event event) {
+        if (need.kind() == NeedKind.BOUNTY) {
+            bounties.slots(need, event);
+            return;
+        }
         event.item(spoken(need.itemId()))
                 .slot("what", what(need))
                 .slot("count", String.valueOf(need.remaining()))
@@ -408,6 +429,7 @@ public final class NeedLedger {
             supply(session, agent, nowMs);
             scroll(session, agent, nowMs);
             mentor(session, agent, nowMs);
+            bounties.derive(session, agent, nowMs); // N6.2: a bounty pinned now and then
         }
     }
 
@@ -557,6 +579,15 @@ public final class NeedLedger {
         return false;
     }
 
+    long deadlineOf(NeedKind kind, long nowMs) {
+        return deadline(kind, nowMs);
+    }
+
+    /** The citizen's purse: its loaded character's, else its stored row. */
+    long purse(int citizenId, Character agent) {
+        return hands().purse(citizenId, agent);
+    }
+
     private long deadline(NeedKind kind, long nowMs) {
         PopulationConfig config = config();
         if (kind == NeedKind.GEAR) {
@@ -598,7 +629,7 @@ public final class NeedLedger {
         return need;
     }
 
-    private void replace(Need need) {
+    void replace(Need need) {
         live.put(need.id(), need);
         store.update(need);
     }
@@ -775,7 +806,7 @@ public final class NeedLedger {
     /** The player holds the request for NEEDS_CLAIM_MINUTES, at most NEEDS_CLAIMS_PER_PLAYER at once. */
     public Claim claim(int playerId, int needId, long nowMs) {
         Need need = live.get(needId);
-        if (need == null || !need.isOpen() || !need.kind().item()) {
+        if (need == null || !need.isOpen() || !need.kind().item() && need.kind() != NeedKind.BOUNTY) {
             return Claim.GONE;
         }
         synchronized (lock(need.citizenId())) {
@@ -790,7 +821,12 @@ public final class NeedLedger {
             if (holder != playerId && claimedBy(playerId, nowMs).size() >= config().NEEDS_CLAIMS_PER_PLAYER) {
                 return Claim.LIMIT;
             }
-            replace(need.withClaim(playerId, nowMs + config().NEEDS_CLAIM_MINUTES * MINUTE_MS));
+            int minutes = need.kind() == NeedKind.BOUNTY ? config().BOUNTY_CLAIM_MINUTES : config().NEEDS_CLAIM_MINUTES;
+            Need held = need.withClaim(playerId, nowMs + minutes * MINUTE_MS);
+            replace(held);
+            if (held.kind() == NeedKind.BOUNTY) {
+                bounties.claimed(held); // its kills count from now (N6.2)
+            }
             log.info("need {} of citizen {} claimed by player {}", needId, need.citizenId(), playerId);
             return Claim.OK;
         }
@@ -926,6 +962,83 @@ public final class NeedLedger {
         session.journal.add("needs", "picked up what people left at the board");
     }
 
+    // ---- bounties (N6.2) ---------------------------------------------------------------------------------
+
+    /**
+     * {@code count} more of the player's kills toward a bounty they hold (a hunt's monster, or a boss's fall with
+     * {@code share} of its damage by their party). Below its count the kills are only counted; at it the citizen pays
+     * the whole price from its purse in one NEED_FULFILLED transaction (no new meso), remembers who helped
+     * (FULFILLED_BOARD, the deed hearsay tells) and, when about, whispers its thanks. Null when counted or paid, else
+     * why not (the count is kept, and the next kill tries again).
+     */
+    public String payBounty(Character player, int needId, int count, double share, long nowMs) {
+        Need need = live.get(needId);
+        if (!on() || need == null || need.kind() != NeedKind.BOUNTY) {
+            return "That bounty is gone.";
+        }
+        String name = population.citizen(need.citizenId()) == null ? "They" : population.citizen(need.citizenId()).name();
+        CitizenSession session = population.presence().session(need.citizenId());
+        Character citizen = session != null && !session.virtual ? session.agent() : null;
+        Need after;
+        long pay;
+        synchronized (lock(need.citizenId())) {
+            need = live.get(needId);
+            if (need == null || !need.isOpen() || need.holder(nowMs) != player.getId()) {
+                return "That bounty is gone.";
+            }
+            int counted = Math.min(need.quantity(), need.delivered() + Math.max(0, count));
+            Need tally = new Need(need.id(), need.citizenId(), need.kind(), need.itemId(), need.quantity(), counted,
+                    need.offer(), need.detail(), need.mapId(), need.state(), need.claimedBy(), need.claimedUntilMs(),
+                    need.fulfilledBy(), need.thanked(), need.createdAtMs(), need.deadlineMs(), need.closedAtMs());
+            if (counted < need.quantity()) {
+                replace(tally);
+                return null;
+            }
+            pay = need.pay(need.quantity());
+            if (hands().purse(need.citizenId(), citizen) < pay) {
+                replace(tally);
+                log.info("bounty {} of citizen {} met by {} but its purse is short of {}", needId, need.citizenId(),
+                        player.getName(), pay);
+                return name + " can't pay that right now.";
+            }
+            after = new Need(need.id(), need.citizenId(), need.kind(), need.itemId(), need.quantity(), need.quantity(),
+                    need.offer(), need.detail(), need.mapId(), Need.State.MET, 0, 0L, player.getId(), true,
+                    need.createdAtMs(), need.deadlineMs(), nowMs);
+            String refused = hands().payBounty(player, citizen, need, after, pay);
+            if (refused != null) {
+                replace(tally);
+                return refused;
+            }
+            live.remove(needId);
+            ended.put(key(after.citizenId(), after.kind(), after.itemId()), nowMs);
+        }
+        bountyPaid(player, session, citizen, after, pay, share);
+        return null;
+    }
+
+    private void bountyPaid(Character player, CitizenSession session, Character citizen, Need need, long pay, double share) {
+        String what = bounties.forWords(need);
+        if (population.memories() != null) {
+            population.memories().record(need.citizenId(), player.getId(), PersonMemory.Kind.FULFILLED_BOARD,
+                    need.mapId(), what, 1);
+        }
+        log.info("bounty {} of citizen {} ({}) paid {} meso to {} (party share {}%)", need.id(), need.citizenId(),
+                need.detail(), pay, player.getName(), Math.round(share * 100.0d));
+        String name = population.citizen(need.citizenId()) == null ? "Someone" : population.citizen(need.citizenId()).name();
+        player.dropMessage(5, name + " paid you " + Market.formatPrice(pay) + " mesos for the bounty on " + what + ".");
+        if (session == null || citizen == null) {
+            return;
+        }
+        session.journal.add("needs", "paid " + player.getName() + " the bounty on " + what);
+        ChatterEngine.Event event = ChatterEngine.Event.of("need.bounty.paid", session.mapId, session.channel)
+                .self(session).subject(player);
+        bounties.slots(need, event);
+        String line = population.chatter().compose(event);
+        if (line != null) {
+            population.chatter().whisper(session, player, line);
+        }
+    }
+
     // ---- market ----------------------------------------------------------------------------------------
 
     /**
@@ -989,6 +1102,7 @@ public final class NeedLedger {
         try {
             start(nowMs);
             expire(nowMs);
+            bounties.minute(nowMs); // which held bounties the kill checks look for (N6.2)
             for (CitizenSession session : population.presence().sessions()) {
                 Character agent = session.agent();
                 if (session.virtual || agent == null) {

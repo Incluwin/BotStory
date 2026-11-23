@@ -79,6 +79,8 @@ public final class Population {
     private final Hearsay hearsay;
     private final KillSteals killSteals;
     private final NeedLedger needs;
+    private final server.living.population.records.FieldBossKills fieldBossKills;
+    private final FieldBossCamps camps;
     private final ClearLog clears;
     private final RivalCrews rivals;
     private final Coliseum coliseum;
@@ -130,6 +132,9 @@ public final class Population {
         this.killSteals = new KillSteals(this); // and of who took their kills (N2.4)
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
+        this.fieldBossKills = new server.living.population.records.FieldBossKills(this); // field bosses (WORLD_SYSTEMS_PLAN N6)
+        this.fieldBossKills.onKill(needs.bounties()::bossKilled); // and the bounties on them (N6.2)
+        this.camps = new FieldBossCamps(this); // and citizens camping them (N6.3)
         this.rivals = new RivalCrews(this);
         this.clears.listen(rivals); // a booked clear may be a crew's, or beat one (F7)
         this.clears.onBooked(ties::cleared); // and its citizens grow closer (N2.1)
@@ -148,6 +153,7 @@ public final class Population {
         }, chatter::speakTo, memories);
         this.whispers = new CitizenWhispers(this);
         this.whispers.onReply("rival", rivals::replied); // a player answering a crew's whisper (F7)
+        this.whispers.onReply(FieldBossCamps.TOPIC, camps::replied); // "want a hand?" at a field boss (N6.3)
         this.whispers.onReply(CitizenRunInvites.TOPIC, partyQuests.invites()::replied); // a run invitation's answer (N3.1)
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
@@ -218,6 +224,8 @@ public final class Population {
         server.agents.capabilities.combat.AgentGrindManners.install(id -> population.config().KS_MEMORY_ENABLED
                 && population.isCitizen(id));
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
+        // a camping citizen may hit a field boss when its manners allow (docs/WORLD_SYSTEMS_PLAN.md N6.3)
+        server.agents.capabilities.expedition.boss.AgentFieldBossSeats.install(population.camps::allows);
         AgentUseRoomLoot.install(population.useRoomLoot()); // loot sold for potion room, cheapest first
         EconomyLedger.onClose(close -> {
             population.controller.onClose(close);
@@ -254,6 +262,7 @@ public final class Population {
             population.coliseum.minute(); // Cesar stands, and citizens play their own ladder (docs/PVP_PLAN.md V4)
             population.paper.minute(System.currentTimeMillis()); // the Sunday paper (docs/WORLD_SYSTEMS_PLAN.md N1)
             population.guildGoals.minute(System.currentTimeMillis()); // bot guilds' weekly goals (N5.2)
+            population.camps.minute(System.currentTimeMillis()); // citizens at field bosses (N6.3)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -288,6 +297,7 @@ public final class Population {
         AgentLootPolicy.installSelectivity(null);
         server.agents.capabilities.combat.AgentGrindManners.install(null);
         AgentEtcRoomPlan.installKeepsFree(null);
+        server.agents.capabilities.expedition.boss.AgentFieldBossSeats.install(null);
         AgentUseRoomLoot.install(null);
         EconomyLedger.onClose(null);
         PaperDesk.install(null);
@@ -440,6 +450,16 @@ public final class Population {
     }
 
     /** Every party quest and boss clear, and the records page's firsts and fastest (docs/BOT_CONCEPT_PLAN.md F7.1). */
+    /** Field-boss deaths: records and whoever listens (docs/WORLD_SYSTEMS_PLAN.md N6). */
+    public server.living.population.records.FieldBossKills fieldBossKills() {
+        return fieldBossKills;
+    }
+
+    /** Citizens at field-boss spawns (N6.3). */
+    public FieldBossCamps camps() {
+        return camps;
+    }
+
     public ClearLog clears() {
         return clears;
     }

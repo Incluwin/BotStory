@@ -136,12 +136,21 @@ public final class PopulationHooks {
                     self.avoidUntilMs = System.currentTimeMillis() + avoidMs;
                     self.avoidMapId = chr.getMapId();
                 }
+                if (population.needs() != null && AgentBossField.near(chr.getMap())) { // it pins a bounty on it (N6.2)
+                    population.needs().bounties().diedBeside(self, chr.getMap(), System.currentTimeMillis());
+                }
                 population.chatter().event(ChatterEngine.Event.of("death.self", chr.getMapId(), channelOf(chr)).self(self).subject(chr));
             }
             population.chatter().event(ChatterEngine.Event.of("death.other", chr.getMapId(), channelOf(chr)).subject(chr));
         } catch (RuntimeException failure) {
             log.debug("population died hook failed", failure);
         }
+    }
+
+    /** N6.3: the human who owns a field boss's drops when a citizen invited into their fight topped it; else null. */
+    public static Character fieldBossDropOwner(Monster monster, Character candidate) {
+        Population population = Population.get();
+        return population == null || population.camps() == null ? null : population.camps().dropOwner(monster, candidate);
     }
 
     public static void mobKilled(Monster monster, Set<Integer> attackerIds, MapleMap map) {
@@ -159,6 +168,12 @@ public final class PopulationHooks {
             }
             if (population.killSteals() != null) {
                 population.killSteals().killed(monster, attackerIds, map); // who took whose kill (N2.4)
+            }
+            if (population.fieldBossKills() != null) { // a field boss's record and bounties (WORLD_SYSTEMS_PLAN N6)
+                population.fieldBossKills().killed(monster, map, attackerIds, System.currentTimeMillis());
+            }
+            if (population.needs() != null) { // a hunt bounty's kill (N6.2): one map read for a monster none names
+                population.needs().bounties().mobKilled(monster, System.currentTimeMillis());
             }
             if (monster.isBoss() && monster.getStats().getLevel() >= 30) {
                 int channel = map.getChannelServer() == null ? 1 : map.getChannelServer().getId();

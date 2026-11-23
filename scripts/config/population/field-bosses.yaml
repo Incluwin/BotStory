@@ -1,0 +1,52 @@
+# Field bosses (docs/WORLD_SYSTEMS_PLAN.md N6): the bosses that stand on ordinary maps, with no event instance. Their
+# kills are records (living_clear, quest = key) while population.FIELD_BOSS_RECORDS_ENABLED is on, citizens post
+# bounties on them (BOUNTIES_ENABLED) and citizen parties camp them (CITIZEN_FIELD_BOSS_ENABLED).
+#
+# key: the records' quest name (living_clear.quest, at most 32 characters; never an event script's name).
+# label / aliases: as in rivals.yaml (the records page, "@records mano").
+# mobs: every mob id that is this boss (a boss with two forms or two halves lists both).
+# maps: where it spawns. levels: [lowest, highest] level of a citizen that hunts it or posts a bounty on it.
+# respawn: how it comes back here, settled in N6.0 from the code (not changed by N6):
+#   script  - scripts/event/AreaBoss<name>.js: every channel checks every 3 h from its boot and spawns the boss only
+#             when it is not on the map, so it is back 0 to 3 h after a death, even on an empty map.
+#   life    - map life with a WZ mobTime. config.yaml server.MOB_RESPAWN_TIME_OVERRIDE_SECONDS (10) replaces every
+#             mobTime, and SpawnPoint waits mobTime / 5 after its last mob died, so it is back about 2 to 4 s after
+#             a death, but only while a player is on the map (MapleMap.respawn skips empty maps). The WZ mobTime
+#             (1800 to 129600 s) does not apply.
+# COMPANION_BOSSING_P13.md decision 20 ("about 10 s") is the config value, not the delay; its "every 3 hours" holds for
+# the script bosses only. Sources: the AreaBoss scripts, Map.wz life, boss-rules.json fieldBosses, P13 and P16.
+bosses:
+  - { key: field.mano, label: "Mano", mobs: [2220000], maps: [104000400], level: 20, levels: [18, 45], respawn: script, aliases: [mano] }
+  - { key: field.stumpy, label: "Stumpy", mobs: [3220000], maps: [101030404], level: 35, levels: [30, 60], respawn: script, aliases: [stumpy] }
+  - { key: field.deo, label: "Deo", mobs: [3220001], maps: [260010201], level: 38, levels: [33, 63], respawn: script, aliases: [deo] }
+  - { key: field.seruf, label: "Seruf", mobs: [4220001], maps: [230020100], level: 45, levels: [40, 70], respawn: script, aliases: [seruf] }
+  - { key: field.faust, label: "Faust", mobs: [5220002], maps: [100040105, 100040106], level: 50, levels: [45, 75], respawn: script, aliases: [faust] }
+  - { key: field.centipede, label: "Giant Centipede", mobs: [5220004], maps: [251010102], level: 50, levels: [45, 75], respawn: script, aliases: [centipede] }
+  - { key: field.king_clang, label: "King Clang", mobs: [5220001], maps: [110040000], level: 55, levels: [50, 80], respawn: script, aliases: [kingclang, clang] }
+  - { key: field.timer, label: "Timer", mobs: [5220003], maps: [220050100, 220050000, 220050200], level: 59, levels: [54, 84], respawn: script, aliases: [timer] }
+  - { key: field.mushmom, label: "Mushmom", mobs: [6130101], maps: [100000005], level: 60, levels: [55, 85], respawn: life, aliases: [mushmom] }
+  - { key: field.dyle, label: "Dyle", mobs: [6220000], maps: [107000300], level: 65, levels: [60, 90], respawn: script, aliases: [dyle] }
+  - { key: field.zombie_mushmom, label: "Zombie Mushmom", mobs: [6300005], maps: [105070002], level: 65, levels: [60, 90], respawn: life, aliases: [zmm, zombiemushmom] }
+  - { key: field.zeno, label: "Zeno", mobs: [6220001], maps: [221040301], level: 65, levels: [60, 90], respawn: script, aliases: [zeno] }
+  - { key: field.bamboo, label: "Bamboo Warrior", mobs: [6090002], maps: [800020120], level: 68, levels: [63, 93], respawn: script, aliases: [bamboo, bamboowarrior] }
+  - { key: field.nine_tails, label: "Nine-Tailed Fox", mobs: [7220001], maps: [222010310], level: 70, levels: [65, 95], respawn: script, aliases: [ninetails, fox] }
+  - { key: field.tae_roon, label: "Tae Roon", mobs: [7220000], maps: [250010304], level: 71, levels: [66, 96], respawn: script, aliases: [taeroon] }
+  - { key: field.sage_cat, label: "King Sage Cat", mobs: [7220002], maps: [250010504], level: 77, levels: [72, 102], respawn: script, aliases: [sagecat, kingsagecat] }
+  - { key: field.jr_balrog, label: "Jr. Balrog", mobs: [8130100], maps: [105090900], level: 80, levels: [75, 105], respawn: life, aliases: [jrbalrog, jrbal] }
+  - { key: field.eliza, label: "Eliza", mobs: [8220000], maps: [200010300], level: 83, levels: [78, 108], respawn: script, aliases: [eliza] }
+  - { key: field.snack_bar, label: "Snack Bar", mobs: [8220008, 8220009], maps: [105090310], level: 85, levels: [80, 110], respawn: script, aliases: [snackbar] }
+  - { key: field.kimera, label: "Kimera", mobs: [8220002], maps: [261030000], level: 85, levels: [80, 110], respawn: script, aliases: [kimera, chimera] }
+  - { key: field.snowman, label: "Snowman", mobs: [8220001], maps: [211040101], level: 90, levels: [85, 115], respawn: life, aliases: [snowman] }
+  - { key: field.blue_mushmom, label: "Blue Mushmom", mobs: [9400205], maps: [800010100], level: 90, levels: [85, 115], respawn: life, aliases: [bluemushmom] }
+  - { key: field.male_boss, label: "Male Boss", mobs: [9400120, 9400122], maps: [801030000, 801040100, 801040004], level: 95, levels: [90, 120], respawn: life, aliases: [maleboss] }
+  - { key: field.horseman, label: "Headless Horseman", mobs: [9400549], maps: [610010200, 610010201, 610010202, 610010005, 682000001, 610010013, 610010011, 610010010], level: 101, levels: [96, 130], respawn: life, aliases: [horseman, hh] }
+  - { key: field.manon, label: "Manon", mobs: [8180000], maps: [240020401, 240020402], level: 105, levels: [100, 135], respawn: life, aliases: [manon] }
+  - { key: field.griffey, label: "Griffey", mobs: [8180001], maps: [240020101, 240020102], level: 105, levels: [100, 135], respawn: life, aliases: [griffey] }
+  - { key: field.pianus, label: "Pianus", mobs: [8510000, 8520000], maps: [230040420], level: 110, levels: [105, 140], respawn: life, aliases: [pianus] }
+  - { key: field.bigfoot, label: "Bigfoot", mobs: [9400575], maps: [610010005, 610010013, 610010100, 610010101, 610010102, 610010103, 610010104, 610010012], level: 110, levels: [105, 140], respawn: life, aliases: [bigfoot] }
+  - { key: field.black_crow, label: "Black Crow", mobs: [9400014], maps: [800020130], level: 115, levels: [110, 145], respawn: life, aliases: [blackcrow, crow] }
+  - { key: field.leviathan, label: "Leviathan", mobs: [8220003], maps: [240040401], level: 120, levels: [115, 150], respawn: script, aliases: [leviathan, levi] }
+  - { key: field.dodo, label: "Dodo", mobs: [8220004], maps: [270010500], level: 121, levels: [116, 150], respawn: life, aliases: [dodo] }
+  - { key: field.female_boss, label: "Female Boss", mobs: [9400121], maps: [801040003], level: 130, levels: [125, 160], respawn: life, aliases: [femaleboss] }
+  - { key: field.lilynouch, label: "Lilynouch", mobs: [8220005], maps: [270020500], level: 131, levels: [126, 160], respawn: life, aliases: [lilynouch] }
+  - { key: field.lyka, label: "Lyka", mobs: [8220006], maps: [270030500], level: 141, levels: [136, 170], respawn: life, aliases: [lyka] }

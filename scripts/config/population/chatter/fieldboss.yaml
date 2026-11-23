@@ -1,0 +1,54 @@
+# Citizens at field-boss spawns (docs/WORLD_SYSTEMS_PLAN.md N6.3, population.FieldBossCamps). {item} is the boss,
+# {name} the human. "whisper" lines are only ever composed, never picked.
+intents:
+  # a human party started on the boss first: one camper asks before any citizen joins
+  - id: fieldboss.ask
+    trigger: fieldboss.ask
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey {name} want a hand with {item}?"
+      - "{name} need help on {item}? we can jump in"
+      - "yo {name}, mind if we help with {item}?"
+    styles:
+      quiet-practical-v1:
+        - "{name}, want help with {item}?"
+  # the human said yes
+  - id: fieldboss.join
+    trigger: fieldboss.join
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ok coming!"
+      - "cool, on it"
+      - "nice, lets do this"
+  # the human said no
+  - id: fieldboss.stay
+    trigger: fieldboss.stay
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "np, its all urs. gl"
+      - "kk, we'll wait for the next one"
+      - "all good, have fun"
+  # campers started first; a human arrives: they say so, and the human is welcome to hit it too (no party: campers
+  # form none, so no line promises a seat or a share)
+  - id: fieldboss.seat
+    trigger: fieldboss.seat
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey {name}, we were on {item} first but feel free to join in"
+      - "{name} we got here first lol, ur welcome to hit {item} too"
+      - "oh hi {name}. we've been on {item} a bit, jump in if u want"
+    styles:
+      quiet-practical-v1:
+        - "{name}, we were here first. join in if u like"

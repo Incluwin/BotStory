@@ -133,6 +133,8 @@ public class Monster extends AbstractLoadedLife {
     private final HashMap<Integer, AtomicLong> takenDamage = new HashMap<>();
     /** Who landed the killing blow (killBy), 0 before or without one: the living world's kill-steal reading (N2.4). */
     private volatile int killerId;
+    /** When it first took damage, epoch ms (0 before): a field boss's fight time on the records (N6.1). */
+    private volatile long firstHitAtMs;
     private ScheduledFuture<?> monsterItemDrop = null;
     private Runnable removeAfterAction = null;
     private boolean availablePuppetUpdate = true;
@@ -529,6 +531,9 @@ public class Monster extends AbstractLoadedLife {
             dispatchMonsterDamaged(from, trueDamage.intValue());
         }
 
+        if (firstHitAtMs == 0L) {
+            firstHitAtMs = System.currentTimeMillis();
+        }
         if (!takenDamage.containsKey(from.getId())) {
             takenDamage.put(from.getId(), new AtomicLong(trueDamage));
         } else {
@@ -573,6 +578,20 @@ public class Monster extends AbstractLoadedLife {
     /** Who landed the killing blow; 0 while it lives or when it died without a killer. */
     public int killerId() {
         return killerId;
+    }
+
+    /** When it first took damage (epoch ms), 0 while untouched. */
+    public long firstHitAtMs() {
+        return firstHitAtMs;
+    }
+
+    /** All damage taken so far, summed over its damagers. */
+    public long totalDamageTaken() {
+        long sum = 0L;
+        for (AtomicLong damage : takenDamage.values()) {
+            sum += damage.get();
+        }
+        return sum;
     }
 
     public long damageBy(int characterId) {
