@@ -1670,6 +1670,20 @@ population:
     BOUNTY_SHARE_PERCENT: 30
     # Technical: how long a claim on a bounty holds, minutes (longer than NEEDS_CLAIM_MINUTES: a script boss can be 3 h away); a bounty is up for NEEDS_EXPIRE_MIN_HOURS..MAX like other requests.
     BOUNTY_CLAIM_MINUTES: 180
+    # CITIZEN_FIELD_BOSS_ENABLED (decision D9): citizens whose level fits a catalogued field boss sometimes train on its
+    # map and camp it. With a human on the map the fight is real; with none, the campers roll for it on their level and
+    # number every FIELD_BOSS_ROLL_MINUTES and a win is booked like any kill (a loss costs nothing, nobody dies of it).
+    # Manners: citizens never start on a boss a human hit first; one whispers "want a hand?" and they join only on a
+    # yes. Citizens that started first tell a human who arrives and offer a seat. false = the kill switch: no camping
+    # picks, no citizen ever hits a field boss (decision 19 as before), no rolls.
+    # Technical: population.FieldBossCamps on the 60 s social lane; AgentBossTargetGate's P13 field rule gains one allow through AgentFieldBossSeats; PresenceScheduler.mapFor TRAIN asks FieldBossCamps.pick first.
+    CITIZEN_FIELD_BOSS_ENABLED: false
+    # Technical: the chance a TRAIN plan of a citizen whose level fits a catalogued boss on its home continent picks that boss's map (one with ordinary monsters too, so campers never idle), 0..1.
+    FIELD_BOSS_CAMP_CHANCE: 0.1
+    # Technical: HP potions a camper must carry to fight a field boss (AgentPotionService.countPotions); under it the gate refuses it and it fights the ordinary monsters until its supply rules send it to restock.
+    FIELD_BOSS_POTION_FLOOR: 50
+    # Technical: minutes between two rolls of the campers at one unwatched boss; the chance is 20 % for one camper at the boss's level, +12 % a camper more, +2 % a level above, held to 5..90 %.
+    FIELD_BOSS_ROLL_MINUTES: 5
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

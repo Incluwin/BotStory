@@ -805,6 +805,10 @@ public final class PresenceScheduler {
         switch (activity) {
             case TRAIN -> {
                 long now = System.currentTimeMillis();
+                int camp = campFor(session, level, now); // a field boss to camp (N6.3), 0 for none
+                if (camp > 0) {
+                    return camp;
+                }
                 Field field = population.fields().trainingField(citizen, level, jobOf(session), random, true,
                         mapId -> avoiding(session, mapId, now));
                 return field == null ? population.fields().homeTown(citizen, random) : field.mapId();
@@ -1188,6 +1192,17 @@ public final class PresenceScheduler {
     private static int jobOf(CitizenSession session) {
         Character agent = session.agent();
         return agent == null || agent.getJob() == null ? -1 : agent.getJob().getId();
+    }
+
+    /** A catalogued field boss's map to camp (FieldBossCamps.pick, N6.3), with monsters to grind meanwhile; 0 for none. */
+    private int campFor(CitizenSession session, int level, long now) {
+        FieldBossCamps camps = population.camps();
+        server.knowledge.WorldKnowledge k = camps == null || !camps.on() ? null : server.knowledge.WorldKnowledge.current();
+        if (k == null) {
+            return 0;
+        }
+        return camps.pick(session, level, population.fields().homeTown(session.citizen, random),
+                mapId -> k.fieldCapacity(mapId) > 0, mapId -> avoiding(session, mapId, now));
     }
 
     /** True while {@code session} avoids {@code mapId}: it died there beside a field boss that still stands. */
