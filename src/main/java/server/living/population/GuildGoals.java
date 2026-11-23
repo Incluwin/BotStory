@@ -110,6 +110,9 @@ public final class GuildGoals {
 
         /** An online citizen of the guild (its master first) says {@code trigger} with {goal}. */
         void announce(int guildId, String trigger, String goalText);
+
+        /** The guild's citizen master posts the week's goal on the guild BBS (N5.5); nothing when a player leads it. */
+        void notice(int guildId, String goalText);
     }
 
     private final Population population;
@@ -233,6 +236,7 @@ public final class GuildGoals {
                 return null; // not written (no database): nothing is counted or paid
             }
             guilds.announce(meta.guildId(), "guild.goal.new", text(goal));
+            guilds.notice(meta.guildId(), text(goal));
             log.info("guild goals: {} sets {} for week {}", guilds.name(meta.guildId()), text(goal), weekOf);
         }
         goals.put(key, goal);
@@ -338,11 +342,11 @@ public final class GuildGoals {
         log.info("guild goals: {} met {} ({} of {}), +{} GP", name, text(goal), goal.progress(), goal.target(), gp);
     }
 
-    /** How the goal is said: "6 KPQ clears", "4 needs met", "4 coliseum wins". */
+    /** How the goal is said, short enough for a BBS title after "Goal: ": "6 KPQ clears", "4 needs met", "4 coliseum wins". */
     String text(Goal goal) {
         return switch (goal.kind()) {
             case PQ_CLEARS -> goal.target() + " " + label(goal.detail()) + " clears";
-            case NEEDS_MET -> goal.target() + " needs met on the board";
+            case NEEDS_MET -> goal.target() + " needs met";
             case COLISEUM_WINS -> goal.target() + " coliseum wins";
         };
     }
@@ -434,6 +438,25 @@ public final class GuildGoals {
         public void gainGp(int guildId, int gp) {
             if (guild(guildId) != null) { // loaded into the server's cache, where gainGP finds it
                 Server.getInstance().gainGP(guildId, gp);
+            }
+        }
+
+        @Override
+        public void notice(int guildId, String goalText) {
+            Guild guild = guild(guildId);
+            if (guild == null || !population.isCitizen(guild.getLeaderId())) {
+                return; // a player's guild board is the player's
+            }
+            int leaderId = guild.getLeaderId();
+            String text = "Our goal this week is " + goalText + ". Every clear, hand-in or win by a member counts, so"
+                    + " bring a friend along. If we make it the guild gets GP and climbs the board in the guild hall.";
+            var executor = population.world().executor();
+            Runnable post = () -> GuildGoalStore.postNotice(guildId, leaderId, GuildGoalStore.NOTICE_PREFIX + goalText, text,
+                    Server.getInstance().getCurrentTime());
+            if (executor == null) {
+                post.run();
+            } else {
+                executor.submit("guild.notice " + guildId, post);
             }
         }
 

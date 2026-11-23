@@ -103,6 +103,7 @@ class GuildGoalsTest {
         assertTrue(Set.of("hpq", "kpq").contains(goal.detail()), "a quest of its band 18-33: " + goal.detail());
         assertEquals(config.GUILD_GOAL_CLEARS, goal.target());
         assertEquals(List.of(GUILD + " guild.goal.new " + goals().text(goal)), guilds.said);
+        assertEquals(List.of(GUILD + " " + goals().text(goal)), guilds.notices, "and once on the guild BBS");
 
         GuildGoals.Goal again = goals().pick(guilds.metas.get(0), WEEK);
         assertEquals(goal.kind(), again.kind());
@@ -245,6 +246,18 @@ class GuildGoalsTest {
     }
 
     @Test
+    void everyGoalFitsTheGuildBoardsTitleLimit() {
+        GuildGoals goals = goals();
+        for (GuildGoals.Kind kind : GuildGoals.Kind.values()) {
+            for (String detail : List.of("kpq", "hpq", "balrog")) {
+                String title = GuildGoalStore.NOTICE_PREFIX + goals.text(new GuildGoals.Goal(GUILD, WEEK, kind, detail, 99, 0,
+                        false));
+                assertTrue(title.length() <= 25, title);
+            }
+        }
+    }
+
+    @Test
     void balrogBattlesCountForABalrogGoal() {
         assertEquals("balrog", GuildGoals.questOf("BalrogBattle_Easy"));
         assertEquals("kpq", GuildGoals.questOf("KerningPQ"));
@@ -309,6 +322,7 @@ class GuildGoalsTest {
         final Set<Integer> player = new HashSet<>(Set.of(GUILD));
         final Map<Integer, List<Integer>> gp = new HashMap<>();
         final List<String> said = new ArrayList<>();
+        final List<String> notices = new ArrayList<>();
 
         @Override
         public Collection<GuildMeta> bots() {
@@ -338,6 +352,11 @@ class GuildGoalsTest {
         @Override
         public void announce(int guildId, String trigger, String goalText) {
             said.add(guildId + " " + trigger + " " + goalText);
+        }
+
+        @Override
+        public void notice(int guildId, String goalText) {
+            notices.add(guildId + " " + goalText);
         }
     }
 }

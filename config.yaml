@@ -1327,7 +1327,8 @@ population:
     # requests met by members or GUILD_GOAL_WINS coliseum wins) and counts its members' real deeds, the player's
     # included. Meeting it pays GUILD_GOAL_GP guild points (decision D11: GP only, no meso), a guild chat line and a
     # story in the town paper, and moves the guild on the rank board (Guild Headquarters). false = the kill switch:
-    # no goal is set, counted or paid. Off until live check U2 passes. !citizens goals [check] shows them.
+    # no goal is set, counted or paid. A citizen guild master also posts the week's goal on the guild board (BBS),
+    # taking down its last week's. Off until live check U2 passes. !citizens goals [check] shows them.
     # Technical: GuildGoals rides the social minute (a count every GUILD_GOAL_CHECK_MINUTES), reads ClearStore.between, NeedStore.endedSince and pvp_match wins once a count, and pays through the conditional living_guild_goal UPDATE (done = 0 -> 1), so a restart never pays twice.
     GUILD_GOALS_ENABLED: false
     # Technical: Server.gainGP on the guild loaded in the server cache (Guild.gainGP writes guilds.GP); GPQ pays 15-30 a stage, so 300 is about one guild quest. 0 = no GP (line and paper only).

@@ -121,6 +121,52 @@ class GuildGoalStore implements GuildGoals.Store {
         return out;
     }
 
+    /** The title a week's goal notice starts with, so the master's last one is taken down when it posts the next. */
+    static final String NOTICE_PREFIX = "Goal: ";
+
+    /**
+     * The guild master's thread of the week's goal on the stock guild BBS (N5.5), as BBSOperationHandler.newBBSThread
+     * writes one (the next local id, server time, icon 0, the client's 25 / 600 character limits); its notice of an
+     * earlier week is deleted first, as a master tidies the board. The client shows the poster's name from its guild
+     * list, so a citizen master's thread reads like any member's.
+     */
+    static void postNotice(int guildId, int posterId, String title, String text, long serverTimeMs) {
+        if (!DatabaseConnection.isInitialized()) {
+            return;
+        }
+        String shortTitle = title.length() > 25 ? title.substring(0, 25) : title;
+        String shortText = text.length() > 600 ? text.substring(0, 600) : text;
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM bbs_threads WHERE guildid = ? AND postercid = ?"
+                    + " AND localthreadid > 0 AND name LIKE ?")) {
+                ps.setInt(1, guildId);
+                ps.setInt(2, posterId);
+                ps.setString(3, NOTICE_PREFIX + "%");
+                ps.executeUpdate();
+            }
+            int next;
+            try (PreparedStatement ps = con.prepareStatement("SELECT COALESCE(MAX(localthreadid), 0) + 1 FROM bbs_threads"
+                    + " WHERE guildid = ?")) {
+                ps.setInt(1, guildId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    next = rs.next() ? rs.getInt(1) : 1;
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO bbs_threads (postercid, name, timestamp, icon,"
+                    + " startpost, guildid, localthreadid) VALUES (?, ?, ?, 0, ?, ?, ?)")) {
+                ps.setInt(1, posterId);
+                ps.setString(2, shortTitle);
+                ps.setLong(3, serverTimeMs);
+                ps.setString(4, shortText);
+                ps.setInt(5, guildId);
+                ps.setInt(6, next);
+                ps.executeUpdate();
+            }
+        } catch (SQLException failure) {
+            log.warn("bbs_threads goal notice failed for guild {}", guildId, failure);
+        }
+    }
+
     /** The goals of {@code weekOf}, for the status line (!citizens status). */
     List<GuildGoals.Goal> week(int weekOf) {
         List<GuildGoals.Goal> out = new ArrayList<>();
