@@ -12,8 +12,8 @@ import java.util.Map;
  * invitation, the hour (four bands, UTC), what the human is doing (training on a field, or in a town or the FM), their
  * standing rung with the citizen asking, and how long since they last ran this quest with citizens. Each context keeps
  * how often it was asked and how often the answer was yes; a context is asked while its optimistic accept rate, the
- * mean plus the UCB bonus {@code explore x sqrt(ln(1 + N) / (1 + n))} (the arithmetic of CitizenSpots, copied, not
- * shared: another wave extracts that class), reaches {@code floor}. A context never asked is always asked, and one
+ * mean plus the UCB bonus {@code explore x sqrt(ln(1 + N) / (1 + n))} (the shared Ucb arithmetic, as CitizenSpots),
+ * reaches {@code floor}. A context never asked is always asked, and one
  * where people never say yes is tried less and less until it stops. In memory since boot: no schema change (N3).
  */
 final class InviteBandit {
@@ -65,7 +65,7 @@ final class InviteBandit {
     /** Mean accept rate plus the UCB bonus, as CitizenSpots scores a field: explore x sqrt(ln(1 + N) / (1 + n)). */
     static double optimistic(int asked, int yes, int total, double explore) {
         double mean = asked == 0 ? 0.0d : yes / (double) asked;
-        return mean + explore * Math.sqrt(Math.log(1.0d + total) / (1.0d + asked));
+        return mean + Ucb.bonus(explore, total, asked);
     }
 
     /** {asked, yes} for {@code context}, for status lines and tests. */

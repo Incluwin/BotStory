@@ -94,7 +94,7 @@ public final class CitizenSpots {
             double exp = measured == null ? fit : BenchYieldModel.shrink(n, measured.expPerHour() / base, fit, priorSlices);
             double deaths = measured == null ? deathPrior
                     : BenchYieldModel.shrink(n, measured.deathsPerHour(), deathPrior, priorSlices);
-            double bonus = explore * Math.sqrt(Math.log(1.0d + total) / (1.0d + n));
+            double bonus = Ucb.bonus(explore, total, n);
             double crowd = crowding * Math.min(1.0d, occupancy.applyAsInt(field.mapId()) / (double) Math.max(1, field.capacity()));
             arms.add(new Arm(field, exp - deathCost * deaths, bonus, crowd));
         }
@@ -103,39 +103,19 @@ public final class CitizenSpots {
 
     /** A weighted draw: each arm with weight exp((ucb - best) / temperature); the best arm when temperature is 0. */
     static Field draw(List<Arm> arms, double temperature, Random random) {
-        Arm best = null;
-        for (Arm arm : arms) {
-            if (best == null || arm.ucb() > best.ucb()) {
-                best = arm;
-            }
-        }
-        if (best == null || temperature <= 0.0d) {
-            return best == null ? null : best.field();
-        }
-        double[] weights = weights(arms, temperature);
-        double total = 0.0d;
-        for (double weight : weights) {
-            total += weight;
-        }
-        double roll = random.nextDouble() * total;
-        for (int i = 0; i < arms.size(); i++) {
-            roll -= weights[i];
-            if (roll < 0.0d) {
-                return arms.get(i).field();
-            }
-        }
-        return best.field();
+        int picked = Ucb.draw(ucbs(arms), temperature, random);
+        return picked < 0 ? null : arms.get(picked).field();
     }
 
     /** exp((ucb - best) / temperature) for each arm, in order: the best weighs 1, the rest less. */
     static double[] weights(List<Arm> arms, double temperature) {
-        double best = Double.NEGATIVE_INFINITY;
-        for (Arm arm : arms) {
-            best = Math.max(best, arm.ucb());
-        }
+        return Ucb.weights(ucbs(arms), temperature);
+    }
+
+    private static double[] ucbs(List<Arm> arms) {
         double[] out = new double[arms.size()];
-        for (int i = 0; i < arms.size(); i++) {
-            out[i] = Math.exp((arms.get(i).ucb() - best) / temperature);
+        for (int i = 0; i < out.length; i++) {
+            out[i] = arms.get(i).ucb();
         }
         return out;
     }
