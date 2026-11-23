@@ -175,6 +175,7 @@ import net.server.handlers.LoginRequiringNoOpHandler;
 import net.server.handlers.login.AcceptToSHandler;
 import net.server.handlers.login.AfterLoginHandler;
 import net.server.handlers.login.CharSelectedHandler;
+import net.server.handlers.login.ClientStartErrorHandler;
 import net.server.handlers.login.CharSelectedWithPicHandler;
 import net.server.handlers.login.CharlistRequestHandler;
 import net.server.handlers.login.CheckCharNameHandler;
@@ -288,6 +289,7 @@ public final class PacketProcessor {
         registerHandler(RecvOpcode.CHARLIST_REQUEST, new CharlistRequestHandler());
         registerHandler(RecvOpcode.CHAR_SELECT, new CharSelectedHandler());
         registerHandler(RecvOpcode.LOGIN_PASSWORD, new LoginPasswordHandler());
+        registerHandler(RecvOpcode.CLIENT_START_ERROR, new ClientStartErrorHandler());
         registerHandler(RecvOpcode.RELOG, new RelogRequestHandler());
         registerHandler(RecvOpcode.SERVERLIST_REQUEST, new ServerlistRequestHandler());
         registerHandler(RecvOpcode.SERVERSTATUS_REQUEST, new ServerStatusRequestHandler());

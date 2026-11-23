@@ -3606,6 +3606,16 @@ public class Character extends AbstractCharacterObject {
         sendPacket(PacketCreator.modifyInventory(true, mods));
     }
 
+    /**
+     * Shows the client an item it does not have yet, at the item's own slot. Never {@link #forceUpdateItem} for
+     * that: it removes the item first, and a v83 client told to remove an equipped slot it holds nothing in
+     * dereferences the empty slot and closes seconds later (ACCESS_VIOLATION at MapleStory.exe 0x00428743 with
+     * EDI = the slot; found 2026-11-23 when the seeded Admin character was granted its quest ring at login).
+     */
+    void showNewItem(Item item) {
+        sendPacket(PacketCreator.modifyInventory(true, List.of(new ModifyInventory(0, item))));
+    }
+
     // ------------------------------------------------------------------
     // Growing Quest Ring helpers.
     // findQuestRing() locates the ring in either equipped or equip inventories.
@@ -3740,7 +3750,7 @@ public class Character extends AbstractCharacterObject {
                 equippedItem((Equip) ring);
             }
             equipped.addItemFromDB(ring);
-            forceUpdateItem(ring);
+            showNewItem(ring);
             equipChanged();
             log.info("ensureQuestRing: granted quest ring to chr {}", getName());
         } catch (Exception e) {
@@ -3899,7 +3909,7 @@ public class Character extends AbstractCharacterObject {
                 equippedItem((Equip) medal);
             }
             equipped.addItemFromDB(medal);
-            forceUpdateItem(medal);
+            showNewItem(medal);
             equipChanged();
             applyMonsterBookMedalBoost();
             dropMessage(6, "You've received the Hunter's Codex! It grows as you fill your monster book.");
@@ -3958,7 +3968,7 @@ public class Character extends AbstractCharacterObject {
                 equippedItem((Equip) ring);
             }
             equipped.addItemFromDB(ring);
-            forceUpdateItem(ring);
+            showNewItem(ring);
             equipChanged();
             dropMessage(6, "You've received an Evolving Ring I! It will grow as you do.");
             log.info("ensureEvolvingRing: granted Evolving Ring I to chr {}", getName());
