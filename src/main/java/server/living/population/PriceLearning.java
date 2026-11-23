@@ -46,8 +46,24 @@ public final class PriceLearning {
     private final PriceArms offers;
     private final PriceArms bench;
     private final Random random;
-    /** citizenId:itemId -> the OFFER arm its open SUPPLY request was priced at. */
-    private final Map<String, Integer> offerArms = new ConcurrentHashMap<>();
+    /** citizenId:itemId -> {OFFER arm, when it was picked} of the SUPPLY request it priced (open, or about to be). */
+    private final Map<String, long[]> offerArms = new ConcurrentHashMap<>();
+    /** Ended requests written inside a transaction, by need id: booked once the ledger shows the end held. */
+    private final Map<Integer, Pending> pending = new ConcurrentHashMap<>();
+    /** Need ids already booked (the last BOOKED_IDS): a later write of the same ended row books nothing. */
+    private final Map<Integer, Boolean> booked = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<>(256, 0.75f, false) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<Integer, Boolean> eldest) {
+                    return size() > BOOKED_IDS;
+                }
+            });
+    static final int BOOKED_IDS = 10_000;
+    /** A request created this long before its arm was picked is an older one (an arm picked after a restart). */
+    static final long PICK_SLACK_MS = 60_000L;
+
+    /** An ended request waiting for its transaction's outcome, with the arm it took off {@link #offerArms}. */
+    private record Pending(Need closed, long nowMs, String key, long[] arm) { }
     private volatile boolean loaded;
     private volatile long lastReadFailMs;
 
@@ -149,9 +165,9 @@ public final class PriceLearning {
         if (!ready()) {
             return fixed;
         }
-        Integer open = offerArms.get(citizenId + ":" + itemId);
+        long[] open = offerArms.get(citizenId + ":" + itemId);
         if (open != null) {
-            return offers.multiplier(open); // its open request keeps the offer it was posted at (NeedLedger.reconcile)
+            return offers.multiplier((int) open[0]); // its open request keeps the offer it was posted at (reconcile)
         }
         int arm;
         synchronized (random) {
@@ -160,17 +176,55 @@ public final class PriceLearning {
         if (arm < 0) {
             return fixed;
         }
-        offerArms.put(citizenId + ":" + itemId, arm);
+        offerArms.put(citizenId + ":" + itemId, new long[]{arm, System.currentTimeMillis()});
         return offers.multiplier(arm);
     }
 
-    /** A request ended: a SUPPLY one priced by an arm is rewarded by how (and how fast) it ended. */
-    void offerClosed(Need closed, long nowMs) {
-        if (closed == null || closed.kind() != NeedKind.SUPPLY) {
+    /**
+     * A request's ended row was written (NeedStore.update). {@code committed}: on an autocommit connection, so the end
+     * holds; else inside a transaction that may still roll back, so it waits in {@link #pending} for
+     * {@link #confirmPending}. A SUPPLY request priced by an arm is booked exactly once per need id, and only by the
+     * request the arm was picked for (one created before the pick, an older request, books nothing).
+     */
+    void offerClosed(Need closed, long nowMs, boolean committed) {
+        if (closed == null || closed.kind() != NeedKind.SUPPLY || booked.containsKey(closed.id())) {
             return;
         }
-        Integer arm = offerArms.remove(closed.citizenId() + ":" + closed.itemId());
-        if (arm == null || !ready()) {
+        String key = closed.citizenId() + ":" + closed.itemId();
+        long[] arm = offerArms.get(key);
+        if (arm == null || closed.createdAtMs() < arm[1] - PICK_SLACK_MS || !offerArms.remove(key, arm)) {
+            return;
+        }
+        if (committed) {
+            book(closed, nowMs, (int) arm[0]);
+        } else {
+            pending.put(closed.id(), new Pending(closed, nowMs, key, arm));
+        }
+    }
+
+    /**
+     * Once a minute or so (the market's tick): each pending end is booked if the ledger shows it held (the request is no
+     * longer live, or live in an ended state), and dropped if the request is still open there (its transaction rolled
+     * back; its arm goes back for its real end). {@code live}: the ledger's request by id, null when it is not live.
+     */
+    void confirmPending(java.util.function.IntFunction<Need> live) {
+        for (Pending wait : List.copyOf(pending.values())) {
+            Need now = live.apply(wait.closed().id());
+            if (now != null && (now.state() == Need.State.OPEN || now.state() == Need.State.ESCROW)) {
+                offerArms.putIfAbsent(wait.key(), wait.arm());
+            } else {
+                book(wait.closed(), wait.nowMs(), (int) wait.arm()[0]);
+            }
+            pending.remove(wait.closed().id(), wait);
+        }
+    }
+
+    int pendingOffers() {
+        return pending.size();
+    }
+
+    private void book(Need closed, long nowMs, int arm) {
+        if (!ready() || booked.putIfAbsent(closed.id(), Boolean.TRUE) != null) {
             return;
         }
         PopulationConfig config = population.config();
@@ -266,8 +320,8 @@ public final class PriceLearning {
             }
 
             @Override
-            public void closed(Need closed, long nowMs) {
-                offerClosed(closed, nowMs);
+            public void closed(Need closed, long nowMs, boolean committed) {
+                offerClosed(closed, nowMs, committed);
             }
         });
     }

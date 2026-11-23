@@ -73,11 +73,13 @@ final class NeedDerivation {
     }
 
     /**
-     * A request ended (NeedStore.update of an ended one, so every path that ends one): told to the learned board offers (NeedOffers; I2.2), which reward the premium
-     * a SUPPLY request was priced at by how and how fast it ended. Nothing when no learner is installed or it is off.
+     * A request's ended row was written (NeedStore.update, so every path that ends one): told to the learned board
+     * offers (NeedOffers; I2.2), which reward the premium a SUPPLY request was priced at by how and how fast it ended.
+     * {@code committed}: false when written inside a transaction that may still roll back. Never throws; nothing when
+     * no learner is installed or it is off.
      */
-    static void closed(Need closed, long nowMs) {
-        NeedOffers.closed(closed, nowMs);
+    static void closed(Need closed, long nowMs, boolean committed) {
+        NeedOffers.closed(closed, nowMs, committed);
     }
 
     /** A shop good's offer: its NPC price times the premium, rounded up; at least 1. */

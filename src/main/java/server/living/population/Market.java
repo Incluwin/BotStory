@@ -782,6 +782,9 @@ public final class Market {
             return;
         }
         learnSales();
+        if (prices.pendingOffers() > 0 && population.needs() != null) {
+            prices.confirmPending(population.needs()::need); // board ends written in a transaction that held (I2.2)
+        }
         long now = System.currentTimeMillis();
         for (CitizenSession session : population.presence().sessions()) {
             Character agent = session.agent();
