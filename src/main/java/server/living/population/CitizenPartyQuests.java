@@ -984,7 +984,8 @@ public final class CitizenPartyQuests {
                 continue;
             }
             boolean mate = leader.citizen.circleId() != 0 && session.citizen.circleId() == leader.citizen.circleId()
-                    || leaderChr.getGuildId() > 0 && agent.getGuildId() == leaderChr.getGuildId();
+                    || leaderChr.getGuildId() > 0 && agent.getGuildId() == leaderChr.getGuildId()
+                    || population.ties() != null && population.ties().friends(leader, session); // a friend (N2.2)
             if (mate && (session.activity == Activity.TRAIN || session.activity == Activity.TOWN) && fits(agent, lobby)) {
                 mates.add(session);
             } else if (session.activity == Activity.TOWN && population.fields().lobbiesFor(session.citizen,
@@ -997,7 +998,12 @@ public final class CitizenPartyQuests {
         if (pool.isEmpty()) {
             return;
         }
-        CitizenSession called = pool.get(random.nextInt(pool.size()));
+        // its strongest friend first, never a rival (docs/WORLD_SYSTEMS_PLAN.md N2.2); off, the random pick
+        CitizenSession called = population.ties() == null ? pool.get(random.nextInt(pool.size()))
+                : population.ties().call(leader, pool, random);
+        if (called == null) {
+            return; // only rivals are free: it waits for someone else
+        }
         party.calls++;
         party.lastCallAtMs = nowMs;
         party.coming.put(called.characterId, nowMs);
@@ -1120,6 +1126,7 @@ public final class CitizenPartyQuests {
                 + (cleared ? "" : " (" + reason + ")"));
         if (!rerolled) {
             rememberHumans(run, cleared);
+            if (population.ties() != null) population.ties().runEnded(run.citizens.keySet(), cleared); // N2.1
         }
         if (run.boss()) {
             log.info("citizen boss run: boss={} session={} outcome={} minutes={} members={} reason={}", run.bossKey,

@@ -346,6 +346,25 @@ public class PopulationConfig {
     /** One reunion greeting per player from all citizens this often. */
     public int MEMORY_GREET_GAP_MS = 300000;
 
+    // Word of mouth (docs/WORLD_SYSTEMS_PLAN.md N2): citizen ties, hearsay, kill-stealing
+    /** Kill switch: false = no tie grown, read or written; party calls, town talk and Resident lines as before. */
+    public boolean CITIZEN_TIES_ENABLED = false;
+    /** Ties one citizen holds; a stronger new one pushes out its weakest. */
+    public int TIES_PER_CITIZEN_MAX = 6;
+    /** Kill switch: false = no episode about a human passed from one citizen to another. */
+    public boolean HEARSAY_ENABLED = false;
+    /** Tellings server-wide a minute, at most. */
+    public int HEARSAY_TELLINGS_PER_MINUTE = 20;
+    /** Hearsay alone keeps warmth within plus or minus this (decision D3). */
+    public int HEARSAY_WARMTH_MAX = 10;
+    /** Kill switch: false = citizens keep to their old targets and no kill-steal episode is written. */
+    public boolean KS_MEMORY_ENABLED = false;
+    /** Kills inside KS_WINDOW_MS that make one KS episode. */
+    public int KS_KILLS = 8;
+    public int KS_WINDOW_MS = 300000;
+    /** The citizen's least share of each such kill's damage, in percent. */
+    public int KS_SHARE_PERCENT = 60;
+
     // Citizens learn where to train (docs/BOT_CONCEPT_PLAN.md F2.1, CitizenSpots)
     /** Kill switch: false = no stint booked and the uniform random pick among the fitting training fields, as before. */
     public boolean CITIZEN_SPOT_LEARNING_ENABLED = false;
@@ -568,6 +587,13 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.MEMORY_PEOPLE_MAX, MEMORY_TOTAL_MAX and MEMORY_FORGET_DAYS must be"
                     + " >= 1, MEMORY_EPISODES_MAX 1..8 (the episodes column holds 8), the MEMORY_*_HALF_LIFE_DAYS > 0,"
                     + " MEMORY_RETURN_AFTER_MINUTES and MEMORY_GREET_GAP_MS >= 0");
+        }
+        if (TIES_PER_CITIZEN_MAX < 1 || HEARSAY_TELLINGS_PER_MINUTE < 0 || HEARSAY_WARMTH_MAX < 0
+                || HEARSAY_WARMTH_MAX > 10 || KS_KILLS < 1 || KS_WINDOW_MS < 60000
+                || KS_SHARE_PERCENT < 50 || KS_SHARE_PERCENT > 100) {
+            throw new IllegalArgumentException("population.TIES_PER_CITIZEN_MAX and KS_KILLS must be >= 1,"
+                    + " HEARSAY_TELLINGS_PER_MINUTE >= 0, HEARSAY_WARMTH_MAX 0..10 (hearsay alone never makes a"
+                    + " grudge), KS_WINDOW_MS >= 60000 and KS_SHARE_PERCENT 50..100");
         }
         if (BOSS_RUNS_MAX < 0 || BOSS_RUN_SEATS < 3 || BOSS_RUN_SEATS > 6 || BOSS_NORMAL_MIN_LEVEL < 1
                 || BOSS_RUN_COOLDOWN_MS < 0 || BOSS_SIGNUP_WAIT_MS < 0) {

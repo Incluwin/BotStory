@@ -259,6 +259,7 @@ public final class LivingWorldHooks {
             if (world.mentors() != null) {
                 world.mentors().mapEntered(chr, map.getId()); // a newcomer reaching Victoria (F4.2)
             }
+            server.living.population.KillSteals.entered(chr.getId(), map.getId()); // who was here first (N2.4)
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
         }

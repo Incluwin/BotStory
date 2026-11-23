@@ -1,0 +1,120 @@
+# Citizen ties (docs/WORLD_SYSTEMS_PLAN.md N2.2, server.living.population.TieTalk): two citizens who share a tie
+# (living_tie, grown from parties, circles, clears and coliseum matches) trade a call and an answer on map chat when
+# they meet on a town map, in place of an idle line. Said only while population.CITIZEN_TIES_ENABLED is on. Not a
+# chatter catalog (no intents:), the shape of scripts/config/living-world/banter.yaml. ASCII, lower-case player voice,
+# no digits. The empty intents: keeps every reader of chatter/*.yaml (the chatter loader, the corpus tests) whole.
+#
+# exchanges: one theme each, so any answer fits any call of it.
+#   ties:        friend or rival (crew/TieKind keys; a citizen tie is one of the two).
+#   minStrength: the tie's felt strength from which it is said (default 10, where a tie starts to count). weight: 10.
+# Slots: {caller} {answerer} the two citizens' names.
+#
+# residents: lines a Resident says about another Resident of its own home town it has an authored relationship with,
+# read through crew/TieKind.of (no line is written per pair). idle: now and then in town, in place of its own idle line.
+# about: its answer to "tell me about <name>" when it has no line of its own about them. Keys: the TieKind seen from
+# the speaker (spouse, rival, owes = the speaker owes them, owed = they owe the speaker, blames, blamed, friend).
+# Slot: {other} the other Resident's name.
+intents: []
+
+exchanges:
+  - id: friend.hi
+    ties: [friend]
+    call:
+      - "{answerer}! didnt see u there"
+      - "oh hey {answerer}"
+      - "yo {answerer} whats up"
+      - "{answerer} hiii"
+    answer:
+      - "hey {caller}!"
+      - "oh hi {caller} :)"
+      - "sup {caller}"
+      - "{caller}! been a while"
+  - id: friend.plans
+    ties: [friend]
+    minStrength: 20
+    call:
+      - "{answerer} party later? same as last time"
+      - "{answerer} u free to grind in a bit?"
+      - "hey {answerer} wanna run something tonight"
+    answer:
+      - "ya sure, just gotta restock"
+      - "maybe in a bit, almost out of pots"
+      - "always. ping me"
+      - "ok but im not tanking again lol"
+  - id: friend.tease
+    ties: [friend]
+    minStrength: 35
+    call:
+      - "{answerer} still using that weapon? lol"
+      - "{answerer} u ever gonna level or what"
+      - "look who finally showed up"
+    answer:
+      - "says u lol"
+      - "at least i dont die to snails"
+      - "hey i was busy ok"
+  - id: rival.cold
+    ties: [rival]
+    call:
+      - "oh. {answerer}"
+      - "{answerer}. figures ud be here"
+      - "of course its {answerer}"
+    answer:
+      - "{caller}."
+      - "dont start"
+      - "what do u want"
+      - "wow hi to u too"
+  - id: rival.bout
+    ties: [rival]
+    minStrength: 20
+    call:
+      - "{answerer} rematch at the coliseum? or u scared"
+      - "still think u got lucky last time {answerer}"
+      - "{answerer} i want another round"
+    answer:
+      - "anytime {caller}"
+      - "lucky? sure lol"
+      - "u say that every time"
+      - "go practice first"
+
+residents:
+  idle:
+    spouse:
+      - "{other} would know, ask them"
+      - "dont tell {other} i said this but im proud of them"
+    rival:
+      - "if {other} says theyre the best around here, they're lying"
+      - "{other} and i have a score to settle"
+      - "dont listen to {other}. ever"
+    owes:
+      - "i still owe {other} one. dont tell them i said that"
+      - "{other} pulled me out of a bad spot once"
+    owed:
+      - "ask {other}, they still owe me"
+      - "{other} owes me and they know it"
+    blames:
+      - "ask {other} what went wrong. i know whose fault it was"
+      - "i havent forgotten what {other} did"
+    blamed:
+      - "{other} still thinks it was my fault"
+      - "if {other} brings it up again im leaving"
+    friend:
+      - "{other} and i go way back"
+      - "if u see {other} around, say hi for me"
+      - "{other} is good people"
+  about:
+    spouse:
+      - "{other}? my better half. dont tell them i said so"
+    rival:
+      - "{other}? dont get me started"
+      - "{other} thinks theyre better than me. theyre not"
+    owes:
+      - "{other}? i owe them more than i can say"
+    owed:
+      - "{other}? ask them about the favour they owe me"
+    blames:
+      - "{other}... we dont talk about that"
+    blamed:
+      - "{other} still blames me. maybe they're right"
+    friend:
+      - "{other}? one of the good ones. we go way back"
+      - "{other}! tell them i said hi"

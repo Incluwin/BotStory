@@ -1446,6 +1446,32 @@ population:
     MEMORY_WARMTH_HALF_LIFE_DAYS: 14.0
     MEMORY_RETURN_AFTER_MINUTES: 180
     MEMORY_GREET_GAP_MS: 300000
+    # Word of mouth (docs/WORLD_SYSTEMS_PLAN.md N2). Ties: two citizens become friends from minutes in one party, a
+    # circle met on one map and party quests cleared together; rivals from coliseum matches between them. A tie fades
+    # like warmth; a citizen holds at most TIES_PER_CITIZEN_MAX. Friends are called first to a forming party and a rival
+    # is never called; tied citizens trade a line in town (chatter/ties.yaml); Residents speak of the Residents of
+    # their town they are tied to. !ties <citizen> lists them. false = the kill switch: nothing grown, read or said.
+    # Technical: CitizenTies keeps every living_tie row in memory (at most 6 per citizen), grows ties on SocialFabric's minute tick from the party and circle groups it already builds, and writes the changed rows in one batch.
+    CITIZEN_TIES_ENABLED: false
+    TIES_PER_CITIZEN_MAX: 6
+    # Hearsay: a citizen that saw a human do something that matters (needs fulfilled, a run cleared or left, a fame or
+    # defame, a ladder win, kill-stealing) tells a tied, circle or guild mate on the same town map or in its party, who
+    # remembers "heard from Ann" and greets the human by name. Hearsay alone keeps warmth within +/-HEARSAY_WARMTH_MAX
+    # (decision D3: a stranger who heard well of you is friendlier, never a friend), travels at most two tellings from the
+    # one who saw it, and never moves warmth that rests on the listener's own experience of them. false = the kill switch.
+    # Technical: SocialFabric's minute tick draws at most HEARSAY_TELLINGS_PER_MINUTE tellings server-wide; a teller's remembered deeds are read from living_acquaintance at most once each 30 minutes, so the database work is bounded by the same cap.
+    HEARSAY_ENABLED: false
+    HEARSAY_TELLINGS_PER_MINUTE: 20
+    HEARSAY_WARMTH_MAX: 10
+    # Kill-stealing (decision D4). First citizens' manners: a citizen in the grind loop leaves alone a mob a human outside
+    # its party is fighting. Then the episode: a human who finishes KS_KILLS mobs inside KS_WINDOW_MS that one citizen
+    # on the map before them had done at least KS_SHARE_PERCENT of each leaves that citizen a KS memory (a cold one: a
+    # reserved or easygoing citizen turns down their invite). false = the kill switch: old targeting, no KS episode.
+    # Technical: LivingWorldHooks.mobKilled reads the killer and Monster.damageBy for the few attackers of a kill in memory on the killing thread; only a KS episode itself reaches PersonMemories, whose minute flush writes it.
+    KS_MEMORY_ENABLED: false
+    KS_KILLS: 8
+    KS_WINDOW_MS: 300000
+    KS_SHARE_PERCENT: 60
     # Citizens learn where to train (docs/BOT_CONCEPT_PLAN.md F2.1). A loaded citizen's TRAIN stint on a field is booked
     # (EXP and deaths an hour per class line, level band and field) when it moves on, goes AFK, logs off or dies; one
     # shorter than SPOT_MIN_MS, one it left another way (its own shop trip) or an abstract one is not. Among the fields

@@ -160,6 +160,12 @@ public final class BenchRestForm implements BenchDutyDispatcher.Form {
         List<String> lines = persona.lines("rest");
         if (lines.isEmpty() && slice.mapId() == ResidentSpots.townMapId(persona.homeTown())) {
             lines = persona.lines("idle");
+            // now and then, a word about a Resident of its town it is tied to (docs/WORLD_SYSTEMS_PLAN.md N2.2)
+            String tied = ThreadLocalRandom.current().nextInt(3) == 0
+                    ? server.living.resident.ResidentTieLines.idle(world.content(), persona) : null;
+            if (tied != null) {
+                lines = List.of(tied);
+            }
         }
         if (lines.isEmpty()) {
             return;

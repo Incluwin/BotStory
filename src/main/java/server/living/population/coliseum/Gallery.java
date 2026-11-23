@@ -335,6 +335,7 @@ final class Gallery {
     private void finish(Bout bout, Character watcher, int winnerSide, long now) {
         double scoreA = winnerSide == 0 ? 1d : winnerSide == 1 ? 0d : 0.5d;
         LadderBook.Change[] changes = coliseum.book().record(bout.aId, bout.bId, bout.bracket, scoreA, now);
+        coliseum.matched(bout.aId, bout.bId, winnerSide);
         String verdict = winnerSide == 0 ? bout.aName + " beat " + bout.bName
                 : winnerSide == 1 ? bout.bName + " beat " + bout.aName : bout.aName + " and " + bout.bName + " drew";
         watcher.dropMessage(5, "Ladder: " + verdict + " (" + bout.score + "). " + bout.aName + " "

@@ -16,6 +16,7 @@ import server.economy.ledger.MesoFlows;
 import server.living.population.ChatterEngine;
 import server.living.population.Citizen;
 import server.living.population.CitizenSession;
+import server.living.population.PersonMemory;
 import server.living.population.Population;
 import server.living.population.PresenceScheduler;
 import server.living.resident.LivingTalk;
@@ -165,6 +166,13 @@ public final class Coliseum {
         this.tournament = new Tournament(this, new TournamentStore(), store);
         this.teams = new TeamLadder(this, store, new LadderStore(LadderStore.TEAM_PREFIX));
         this.board.tournament(tournament::boardText);
+    }
+
+    /** Two citizens' decided match edges them toward rivalry (docs/WORLD_SYSTEMS_PLAN.md N2.1); a draw is none. */
+    void matched(int aId, int bId, int winnerSide) {
+        if (winnerSide >= 0 && population.ties() != null) {
+            population.ties().matched(winnerSide == 0 ? aId : bId, winnerSide == 0 ? bId : aId);
+        }
     }
 
     Population population() {
@@ -745,6 +753,9 @@ public final class Coliseum {
         } catch (RuntimeException failure) {
             log.warn("Coliseum: booking {} against {} failed", match.humanName, match.citizenName, failure);
         }
+        if (human != null && winnerSide == 0 && !forfeited && population.memories() != null) {
+            population.memories().witnessed(human, PersonMemory.Kind.WON, "ladder"); // seen by the citizens there (N2.4)
+        }
         CitizenSession session = population.presence().session(match.citizenId);
         if (session != null && !forfeited) {
             LadderBook.Row theirs = changes[1].after();
@@ -892,6 +903,7 @@ public final class Coliseum {
                 int winner = simulatedMatch(DuelSim.fighterOf(a, reference, pvp), DuelSim.fighterOf(b, reference, pvp),
                         pvp, random);
                 book.record(a.getId(), b.getId(), bracket, winner == 0 ? 1d : winner == 1 ? 0d : 0.5d, now);
+                matched(a.getId(), b.getId(), winner);
                 used.add(a.getId());
                 used.add(b.getId());
                 simmed.put(pairKey(a.getId(), b.getId()), now);

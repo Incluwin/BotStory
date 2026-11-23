@@ -1,0 +1,63 @@
+# Word of mouth (docs/WORLD_SYSTEMS_PLAN.md N2.3, Hearsay + PersonMemories): a citizen that never met a player but
+# heard of them from another citizen greets them the first time they meet. memory.greet.heard: it heard something good;
+# memory.greet.heardbad: something bad. Said only while population.HEARSAY_ENABLED is on (nothing else writes the
+# hearsay a greeting needs). Slots: {name} = the player; {witness} = the citizen it was done to; {teller} = who told
+# this citizen (the witness, or one telling further on); {deed} = what they did, naming the witness ("helped Ann out",
+# "cleared KPQ with Ann", "left Ann's KPQ run halfway", "kept taking Ann's kills"); {when} = when it heard it.
+# Self = the citizen speaking. These repeat per person (no recent-intent memory), so cooldownMs stays short.
+intents:
+  - id: memory.greet.heard.map
+    trigger: memory.greet.heard
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "oh ur {name}? the one who {deed}!"
+      - "wait ur {name} right? {teller} told me u {deed}"
+      - "{name}! heard u {deed}. nice"
+      - "hey {name}, {teller} says good things about u"
+    styles:
+      quiet-practical-v1:
+        - "{name}. heard u {deed}. good"
+        - "ur {name}? {teller} mentioned u"
+      playful-social-v1:
+        - "omg ur {name}!! {teller} told me u {deed} :D"
+        - "{name}!!! the one who {deed}! hi hi"
+  - id: memory.greet.heardbad.map
+    trigger: memory.greet.heardbad
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "ur {name}? heard u {deed}"
+      - "oh. {name}. {teller} told me about u"
+      - "so ur {name}. {witness} wasnt happy"
+    styles:
+      quiet-practical-v1:
+        - "{name}. heard about u"
+      playful-social-v1:
+        - "ooh ur {name}... {teller} told me stuff lol"
+  # First-hand deeds a citizen saw (N2.4), greeted the next time they meet: a ladder or tournament win it watched
+  # (memory.greet.won, {what} = ladder or tournament) and a rival crew's time they beat (memory.greet.race, {pq}).
+  - id: memory.greet.won.map
+    trigger: memory.greet.won
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}! saw ur {what} match, nice"
+      - "hey {name}, gg at the coliseum"
+      - "{name} the champ lol. good fight {when}"
+  - id: memory.greet.race.map
+    trigger: memory.greet.race
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}... u beat our {pq} time. we'll get it back"
+      - "oh its {name}. enjoy that {pq} record while it lasts"
+      - "{name}! still salty about that {pq} time lol"

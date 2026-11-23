@@ -207,6 +207,7 @@ import client.command.commands.gm5.SetCommand;
 import client.command.commands.gm5.TypeSafeUsageCommand;
 import client.command.commands.gm5.LivingWorldCommand;
 import client.command.commands.gm5.CitizensCommand;
+import client.command.commands.gm5.TiesCommand;
 import client.command.commands.gm5.StandingCommand;
 import client.command.commands.gm5.NeedsCommand;
 import client.command.commands.gm5.PvpCommand;
@@ -728,6 +729,7 @@ public class CommandsExecutor {
         addCommand("typesafe", 5, TypeSafeUsageCommand.class);
         addCommand("world", 5, LivingWorldCommand.class);
         addCommand("citizens", 5, CitizensCommand.class);
+        addCommand("ties", 5, TiesCommand.class);
         addCommand("standing", 5, StandingCommand.class);
         addCommand("needs", 5, NeedsCommand.class);
         addCommand("rivals", 5, RivalsCommand.class);
