@@ -111,6 +111,8 @@ public final class Market {
     private volatile double buyBudgetScale = 1.0d;
     private final GearErrands gearErrands;
     private final CitizenScrolling scrolling;
+    /** Learned asks, board offers and bench stall asks (I2); answers as the fixed rule while PRICE_LEARNING_ENABLED is off. */
+    private final PriceLearning prices;
 
     Market(Population population) {
         this(population, itemId -> ItemInformationProvider.getInstance().getWholePrice(itemId),
@@ -131,6 +133,8 @@ public final class Market {
         this.scrolling = new CitizenScrolling(population, this::quote);
         this.random = new Random(population.config().SEED ^ 0x3a44e7L);
         this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX);
+        this.prices = new PriceLearning(population);
+        this.prices.install();
         for (int[] row : population.store().prices()) {
             index.put(row[0], new long[]{row[1], row[2]});
         }
@@ -145,7 +149,12 @@ public final class Market {
     public String statsJson() {
         return "{\"ok\":true,\"index_items\":" + index.size() + ",\"stalls_open\":" + stallsOpen + ",\"stalls_max\":"
                 + population.config().MARKET_STALLS_MAX + ",\"purchases\":" + purchases + ",\"gear_errands\":"
-                + gearErrands.json() + ",\"scrolls\":" + scrolling.json() + "}";
+                + gearErrands.json() + ",\"scrolls\":" + scrolling.json() + ",\"prices\":" + prices.json() + "}";
+    }
+
+    /** The learned price levers (I2): the bench stall's form asks them for its starting asks. */
+    public PriceLearning prices() {
+        return prices;
     }
 
     // ---- price index ---------------------------------------------------------------------
@@ -590,6 +599,7 @@ public final class Market {
                 session.stallSpot = null; // the open stall holds the spot now; closeStall lets it go
                 session.stallOpen = true;
                 session.stallSalesSeen = 0;
+                session.stallAsks = stock.asks();
                 stallsOpen++;
                 session.journal.add("market", "opened a shop selling " + listings.get(0).name());
                 log.info("citizen {} opened a stall in room {} at spot #{} with {} listings, {} for gear errands",
@@ -644,8 +654,12 @@ public final class Market {
         return stacks.subList(0, Math.min(STALL_MAX_LISTINGS, stacks.size()));
     }
 
-    /** {@code forErrands}: the equips listed that an open gear errand would buy. */
-    private record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings, int forErrands) {
+    /**
+     * {@code forErrands}: the equips listed that an open gear errand would buy. {@code asks}: the learned asks (I2), item
+     * id -> {arm, price over index, bundles}; null while price learning is off.
+     */
+    private record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings, int forErrands,
+                         Map<Integer, double[]> asks) {
         boolean isEmpty() {
             return shopListings.isEmpty();
         }
@@ -657,6 +671,7 @@ public final class Market {
         Map<Integer, Integer> demand = new HashMap<>();
         IntUnaryOperator wanted = itemId -> demand.computeIfAbsent(itemId, id -> gearErrands.demand(agent.getId(), id));
         int forErrands = 0;
+        Map<Integer, double[]> asks = newAsks();
         for (Item item : stallStacks(agent, this::price, item -> scrolling.keeps(agent, item), wanted)) {
             InventoryType type = item.getInventoryType();
             if (type == InventoryType.EQUIP && wanted.applyAsInt(item.getItemId()) > 0) {
@@ -665,13 +680,34 @@ public final class Market {
             long unit = price(item.getItemId());
             short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
             short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
-            long bundlePrice = Math.max(Math.max(1L, npcPays(item.getItemId(), perBundle)),
-                    Math.round(unit * perBundle * (0.9d + random.nextDouble() * 0.3d)));
+            long bundlePrice = ask(item.getItemId(), unit, perBundle, bundles, asks);
             shopListings.add(new AgentFreeMarketStallService.Listing(type, item.getPosition(), perBundle, bundles,
                     (int) Math.min(Integer.MAX_VALUE, bundlePrice)));
             listings.add(new Listing(item.getItemId(), itemName(item.getItemId()), unit));
         }
-        return new Stock(listings, shopListings, forErrands);
+        return new Stock(listings, shopListings, forErrands, asks);
+    }
+
+    /**
+     * A stall line's bundle price: the index value of the bundle times {@code 0.9 + rand x 0.3} (the fixed rule), or,
+     * while {@code asks} is kept (price learning on, I2), times the multiplier of the item's ASK arm, one arm per item
+     * on a stall, booked into {@code asks} as {arm, price over index, bundles}. Never under what an NPC pays for it.
+     */
+    long ask(int itemId, long unit, short perBundle, short bundles, Map<Integer, double[]> asks) {
+        double[] known = asks == null ? null : asks.get(itemId);
+        int arm = asks == null ? -1 : known != null ? (int) known[0] : prices.askArm(itemId, random);
+        double share = arm >= 0 ? prices.asks().multiplier(arm) : 0.9d + random.nextDouble() * 0.3d;
+        long bundlePrice = Math.max(Math.max(1L, npcPays(itemId, perBundle)), Math.round(unit * perBundle * share));
+        if (arm >= 0) { // its bundles add up across stacks of the same item
+            double ratio = unit > 0L ? bundlePrice / (double) (unit * perBundle) : share;
+            asks.put(itemId, new double[]{arm, ratio, (known == null ? 0 : known[2]) + bundles});
+        }
+        return bundlePrice;
+    }
+
+    /** A new stall's learned asks: kept while price learning is on and its arms are read, else null (the fixed rule). */
+    Map<Integer, double[]> newAsks() {
+        return prices.ready() ? new HashMap<>() : null;
     }
 
     /** Lets go of the spot it was walking to (or opening on), by its character id: its character may be gone. */
@@ -690,6 +726,8 @@ public final class Market {
         Character agent = session.agent();
         session.stallOpen = false;
         stallsOpen = Math.max(0, stallsOpen - 1);
+        Map<Integer, double[]> asks = session.stallAsks;
+        session.stallAsks = null;
         if (agent == null) {
             return;
         }
@@ -697,16 +735,34 @@ public final class Market {
             PlayerShop shop = agent.getPlayerShop();
             if (shop != null && shop.isOwner(agent)) {
                 rememberSales(session, shop);
+                Map<Integer, Integer> left = new HashMap<>();
                 for (PlayerShop.ListingView view : shop.listingSnapshot()) {
                     if (view.bundles() > 0) { // unsold at close: asked too much (its sales were learned as they happened)
                         unsold(view.itemId(), Math.round(view.bundlePrice() / (double) Math.max(1, view.perBundle())));
+                        left.merge(view.itemId(), (int) view.bundles(), Integer::sum);
                     }
                 }
+                settleAsks(asks, left);
                 agent.closePlayerShop(reason);
             }
             FreeMarketStorePlacementService.release(agent);
         } catch (RuntimeException failure) {
             log.debug("citizen {} stall close failed", session.name(), failure);
+        }
+    }
+
+    /**
+     * The learned asks of a stall closing with {@code left} bundles unsold per item: each line's arm is rewarded per
+     * bundle listed, its price over the index for each one sold while it was open, 0 for each left (I2).
+     */
+    void settleAsks(Map<Integer, double[]> asks, Map<Integer, Integer> left) {
+        if (asks == null) {
+            return;
+        }
+        for (Map.Entry<Integer, double[]> line : asks.entrySet()) {
+            double[] ask = line.getValue();
+            int listed = (int) ask[2];
+            prices.askSettled(line.getKey(), (int) ask[0], ask[1], listed, listed - left.getOrDefault(line.getKey(), 0));
         }
     }
 

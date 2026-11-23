@@ -1485,6 +1485,21 @@ population:
     CITIZEN_SPOT_CROWDING: 0.5
     CITIZEN_SPOT_TEMPERATURE: 0.15
     CITIZEN_SPOT_MIN_MS: 300000
+    # Learned prices (docs/WORLD_SYSTEMS_PLAN.md I2): citizens learn what to ask at their stalls (per item class:
+    # potion, ore, scroll, equip, other; 0.85 to 1.30 of the index), what premium over the shop price to offer on the
+    # needs board for Balrog potions (1.00 to 1.30), and benched companions what to start their live stall at (0.85 to
+    # 1.30 of the index, before their own markdown). Each starts from the fixed rule; the buy side (0.9 x index) stays
+    # fixed (D16). Asks only move meso between holders. false = the kill switch: the fixed prices, nothing booked.
+    # Technical: PriceLearning holds three PriceArms bandits on the shared Ucb arithmetic (estimate shrunk to a prior by PRIOR_SAMPLES, plus EXPLORE x sqrt(ln(1+N)/(1+n)), softmax at TEMPERATURE); arm stats live in companion_yield rows of source 'price', no schema change; /runtime/stats/market shows them.
+    PRICE_LEARNING_ENABLED: false
+    PRICE_EXPLORE: 0.6
+    PRICE_TEMPERATURE: 0.03
+    PRICE_PRIOR_SAMPLES: 3
+    PRICE_PRIOR_SELL_RATE: 0.3
+    # Technical: an offer arm's reward when its SUPPLY request ends is filled share x (1 / (1 + hours / OFFER_HALF_HOURS) - OFFER_COST x (premium - 1)); the arms within 0.05 of NEEDS_SUPPLY_PREMIUM start at OFFER_PRIOR_REWARD.
+    PRICE_OFFER_PRIOR_REWARD: 0.4
+    PRICE_OFFER_HALF_HOURS: 6
+    PRICE_OFFER_COST: 1.0
     # The needs board (docs/BOT_CONCEPT_PLAN.md F1): citizens ask for real things they lack and pay from their own
     # purse. SUPPLY: the potion it would buy for Balrog, short of the standard; SCROLL: a basket scroll for a piece it
     # wears, when it can pay the index price; GEAR (decision D4): GEAR_WANT_SHARE of its free gear upgrades become a want,

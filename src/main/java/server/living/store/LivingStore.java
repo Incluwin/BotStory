@@ -974,6 +974,13 @@ public final class LivingStore {
     /** companion_yield.source (changeset 52): the live bench slices' rows, and the loaded citizens' TRAIN stints'. */
     public static final String YIELD_COMPANION = "companion";
     public static final String YIELD_CITIZEN = "citizen";
+    /**
+     * companion_yield rows of the learned price levers (docs/WORLD_SYSTEMS_PLAN.md I2, PriceLearning), in the same
+     * table as the citizens' spot learning with no schema change: job_branch is the lever and key ("ASK_EQUIP"),
+     * level_band the arm's index, camp_map_id 0, samples the rewards counted, exp_per_hour their mean and
+     * meso_per_hour the arm's multiplier (for reading only).
+     */
+    public static final String YIELD_PRICE = "price";
 
     /**
      * Every companion_yield row the live bench slices measured (one per job branch, level band and camp: a small table).
@@ -991,6 +998,15 @@ public final class LivingStore {
      */
     public List<YieldRow> citizenYields() {
         return yields(YIELD_CITIZEN);
+    }
+
+    /**
+     * Every companion_yield row of the learned price levers (source 'price', I2).
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public List<YieldRow> priceArms() {
+        return yields(YIELD_PRICE);
     }
 
     private List<YieldRow> yields(String source) {
@@ -1439,6 +1455,11 @@ public final class LivingStore {
     /** Upserts one companion_yield row a loaded citizen's TRAIN stints measured (source 'citizen'). */
     public boolean saveCitizenYield(YieldRow row) {
         return saveYield(row, YIELD_CITIZEN);
+    }
+
+    /** Upserts one arm of a learned price lever (source 'price', I2). */
+    public boolean savePriceArm(YieldRow row) {
+        return saveYield(row, YIELD_PRICE);
     }
 
     private boolean saveYield(YieldRow row, String source) {

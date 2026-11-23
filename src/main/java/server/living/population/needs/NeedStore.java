@@ -147,6 +147,9 @@ public class NeedStore {
             ps.setInt(13, need.id());
             ps.executeUpdate();
         }
+        if (need.state() != Need.State.OPEN && need.state() != Need.State.ESCROW) {
+            NeedDerivation.closed(need, need.closedAtMs()); // the learned board offers hear how it ended (I2.2)
+        }
     }
 
     /** delivered, offer, detail, map, state, claimed_by, claimed_until, fulfilled_by, thanked from {@code first}. */

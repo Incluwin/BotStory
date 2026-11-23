@@ -38,7 +38,8 @@ final class NeedDerivation {
     /**
      * The potions {@code agent} lacks for {@code bossKey}, as requests (HP first, then MP): each the pick its store would
      * sell it ({@code shop}), as many as the standard lacks (points turned into that potion's count), at its shop price
-     * times {@code premium}, and no more than {@code purse} pays for. Empty when it carries enough.
+     * times {@code premium} (or the learned premium, NeedOffers, while PRICE_LEARNING_ENABLED is on), and no more than
+     * {@code purse} pays for. Empty when it carries enough.
      */
     static List<Proposal> supply(Character agent, String bossKey, List<ShopItem> shop, long purse, double premium) {
         List<Proposal> out = new ArrayList<>();
@@ -60,7 +61,8 @@ final class NeedDerivation {
                 continue;
             }
             int want = points ? AgentSupplyReadiness.potionsFor(lacking, pick.recovery().primary()) : lacking;
-            long unit = unitOffer(pick.shopItem().getPrice(), premium);
+            long unit = unitOffer(pick.shopItem().getPrice(),
+                    NeedOffers.premium(agent.getId(), pick.shopItem().getItemId(), premium));
             int count = affordable(want, unit, left);
             if (count > 0) {
                 out.add(new Proposal(NeedKind.SUPPLY, pick.shopItem().getItemId(), count, unit, bossKey));
@@ -68,6 +70,14 @@ final class NeedDerivation {
             }
         }
         return out;
+    }
+
+    /**
+     * A request ended (NeedStore.update of an ended one, so every path that ends one): told to the learned board offers (NeedOffers; I2.2), which reward the premium
+     * a SUPPLY request was priced at by how and how fast it ended. Nothing when no learner is installed or it is off.
+     */
+    static void closed(Need closed, long nowMs) {
+        NeedOffers.closed(closed, nowMs);
     }
 
     /** A shop good's offer: its NPC price times the premium, rounded up; at least 1. */
