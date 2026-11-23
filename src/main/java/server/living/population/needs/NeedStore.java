@@ -147,6 +147,18 @@ public class NeedStore {
             ps.setInt(13, need.id());
             ps.executeUpdate();
         }
+        if (need.state() != Need.State.OPEN && need.state() != Need.State.ESCROW) {
+            NeedDerivation.closed(need, need.closedAtMs(), autoCommit(con)); // the learned board offers hear it (I2.2)
+        }
+    }
+
+    /** Whether {@code con} commits each statement (an end written on it holds); false when unsure. */
+    private static boolean autoCommit(Connection con) {
+        try {
+            return con.getAutoCommit();
+        } catch (SQLException | RuntimeException failure) {
+            return false;
+        }
     }
 
     /** delivered, offer, detail, map, state, claimed_by, claimed_until, fulfilled_by, thanked from {@code first}. */

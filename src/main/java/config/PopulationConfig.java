@@ -395,6 +395,24 @@ public class PopulationConfig {
     /** A TRAIN stint shorter than this is not booked: too short to say what the field pays. */
     public int CITIZEN_SPOT_MIN_MS = 300000;
 
+    // Learned prices (docs/WORLD_SYSTEMS_PLAN.md I2, PriceLearning): stall asks, board SUPPLY offers, bench stall asks
+    /** Kill switch: false = the fixed prices (ask 0.9 + rand x 0.3, NEEDS_SUPPLY_PREMIUM, bench STALL at the index). */
+    public boolean PRICE_LEARNING_ENABLED = false;
+    /** The UCB weight on a price arm tried less often (0 = never explore). */
+    public double PRICE_EXPLORE = 1.0;
+    /** How sharp the weighted draw over price arms is (0 = always the best). */
+    public double PRICE_TEMPERATURE = 0.03;
+    /** How many rewards the prior (the fixed rule) weighs in an arm's estimate. */
+    public double PRICE_PRIOR_SAMPLES = 30;
+    /** The sell rate the prior believes today's asks earn (an ask arm inside 0.9..1.2 starts at multiplier x this). */
+    public double PRICE_PRIOR_SELL_RATE = 0.3;
+    /** The reward the prior believes the offer arms within 0.05 of NEEDS_SUPPLY_PREMIUM earn. */
+    public double PRICE_OFFER_PRIOR_REWARD = 0.4;
+    /** Hours after which a filled SUPPLY request's speed reward is half. */
+    public double PRICE_OFFER_HALF_HOURS = 6;
+    /** What one unit of premium over the shop price costs an offer's reward. */
+    public double PRICE_OFFER_COST = 1.0;
+
     // The needs board: citizens ask for real things they lack (docs/BOT_CONCEPT_PLAN.md F1, server.living.population.needs)
     /** Kill switch: false = no need derived, posted or listed, no board spawned, "B>" chatter and gear as before. */
     public boolean NEEDS_ENABLED = false;
@@ -633,6 +651,11 @@ public class PopulationConfig {
         if (CITIZEN_SPOT_EXPLORE < 0 || CITIZEN_SPOT_CROWDING < 0 || CITIZEN_SPOT_TEMPERATURE < 0 || CITIZEN_SPOT_MIN_MS < 0) {
             throw new IllegalArgumentException("population.CITIZEN_SPOT_EXPLORE, CITIZEN_SPOT_CROWDING,"
                     + " CITIZEN_SPOT_TEMPERATURE and CITIZEN_SPOT_MIN_MS must be >= 0");
+        }
+        if (PRICE_EXPLORE < 0 || PRICE_TEMPERATURE < 0 || PRICE_PRIOR_SAMPLES < 0 || PRICE_PRIOR_SELL_RATE < 0
+                || PRICE_PRIOR_SELL_RATE > 1 || PRICE_OFFER_HALF_HOURS <= 0 || PRICE_OFFER_COST < 0) {
+            throw new IllegalArgumentException("population.PRICE_EXPLORE, PRICE_TEMPERATURE, PRICE_PRIOR_SAMPLES and"
+                    + " PRICE_OFFER_COST must be >= 0, PRICE_PRIOR_SELL_RATE 0..1 and PRICE_OFFER_HALF_HOURS > 0");
         }
         if (NEEDS_PER_CITIZEN < 1 || NEEDS_EXPIRE_MIN_HOURS < 1 || NEEDS_EXPIRE_MAX_HOURS < NEEDS_EXPIRE_MIN_HOURS
                 || NEEDS_GEAR_DEADLINE_HOURS < 1 || NEEDS_GEAR_WANT_SHARE < 0 || NEEDS_GEAR_WANT_SHARE > 1
