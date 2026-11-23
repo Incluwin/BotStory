@@ -657,3 +657,64 @@ the server restarted. Changeset 63 created `living_luxury_roll` at boot. In the 
 6 face, 1 skin), 0 left without a new look, 0 errors. They included Singapore's own surgeon and Ariant's own skin-care
 shop. Rolls are being stored for all three looks. The 11-21 close (19:01) is the first with the new sink, for part of
 the day; 11-22 is the first full day.
+
+## 10. The price index ratchets down (found 2026-11-23 by WORLD_SYSTEMS_PLAN I2; nothing changed)
+
+### 10.1 Mechanism
+Each `living_price_index` row moves 8 % (`Market.INDEX_STEP`) toward one of two observations:
+- **A sale:** the median of the item's last 7 sale prices, within 3x of the index.
+- **A line still unsold when its stall closes:** `0.9 x min(ask, index)` (`UNSOLD_STEP_DOWN`). Each such close takes
+  the index down about 0.8 %.
+
+Nothing pulls the index back up except sales above it. Browsing citizens buy only under `0.9 x` the **current** index
+(`BUY_BELOW_INDEX`). So:
+- Stalls whose buyers are mostly browsers sell at or under 0.9 x index, or not at all.
+- Both observations then sit under the index, and it falls geometrically.
+- It stops only at the hard floor, what an NPC pays for one (`nudge` never goes under `npcUnit`).
+
+Only buyers who value an item in absolute terms (humans, needs-board wants, gear errands up to 1.3x) hold it up.
+
+### 10.2 Measured
+`PriceIndexTrajectoryTest` runs the real Market paths: ask, then `sold` + `learnSales` or `unsold`. Setup: one item,
+seed index 1000, NPC price 400. A share b of buyers are browsers (up to 0.9 x the current index); the rest pay a fixed
+1100. 4000 stall rounds x 5 seeds. The table gives the settled mean index (rounds 3000-4000) under the fixed ask rule
+(`0.9 + rand x 0.3`) and under I2's learned asks:
+
+| b (browsers) | fixed rule | learned asks |
+|---|---|---|
+| 0 | 960 | 1029 |
+| 0.1 | 946 | 944 |
+| 0.3 | 742 | 703 |
+| 0.5 | 405 (the floor) | 476 |
+| 0.7 | 401 (the floor) | ~415 |
+
+The fall to the floor at b >= 0.5 is today's rule, not the learner's.
+
+### 10.3 Live, read-only (`/runtime/stats/cpi`, 11-23)
+- **Trend:** CPI 100 (10-28) -> 67.5 (11-07) -> 58.1 (11-17) -> 54.8 (11-22). The 10-29 close read 941, the repaired
+  10-minimum rows. That fits the 0.56 ratio over 30 closes.
+- **Source:** 32 of 33 basket items are priced from the INDEX (one from listings, none from sales), so the CPI is the
+  index itself.
+- **Against the NPC price (WZ `price`):**
+  - 1452022 sits on the floor (1.00x).
+  - 2020014 is near it (1.48x).
+  - The potions 2000004/5/6 and 2002004 are at 4-6x, their seed: they never moved.
+  - Equips are at 2.5-500x.
+  - Scrolls cannot reach a floor: their NPC price is 1.
+- **Reading:** most of the basket is still falling toward the floor, not on it. The decline is this mechanism in
+  progress. With scrolls (NPC price 1) it has no practical floor.
+
+### 10.4 Candidate fixes (not decided)
+1. **Learn the index only from sales at or above 1.0 x index, and drop the unsold step-down,** or step it toward the
+   index rather than under it.
+   - Changes: an unsold line no longer lowers the index, so stalls that never sell no longer drag it down.
+   - Cost: an item nobody wants stays priced high. Today's way back to the shop for unwanted gear (E3 list-or-vendor)
+     then needs another signal, such as the listing's age.
+2. **Score against a stable anchor:** the item's seed price (`PriceSeeds`/`ScrollSeeds`/4x NPC), not the moving
+   index. Browsing citizens would buy under 0.9 x seed, and the unsold step-down would be capped at some share of the
+   seed.
+   - Changes: the index can still move, but buyers no longer follow it down, so it cannot chase itself.
+   - Cost: real price discovery away from the seed is slower, and the seeds have to be right.
+
+**Test first:** candidate 1. It is one rule in `Market.nudge`/`unsold`, and `PriceIndexTrajectoryTest` already
+measures it.
