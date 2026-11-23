@@ -1638,6 +1638,38 @@ population:
     PAPER_HOUR: 0
     # Technical: living_event_log rows older than this many days are deleted in batches of 500 at the daily economy close (decision D1), keeping the kinds read as state (paper.EventLogSweep.KEPT); 0 = never, else >= 30.
     PAPER_RETENTION_DAYS: 90
+    # Field bosses and bounties (docs/WORLD_SYSTEMS_PLAN.md N6; the catalogue is population/field-bosses.yaml, which
+    # also says how each boss respawns here). FIELD_BOSS_RECORDS_ENABLED: a catalogued field boss's kill is a clear
+    # record like a party quest's: the top damager's party, first hit to death, on the records page, in the paper and
+    # in the rival crews' races. false = the kill switch: no field-boss rows are written (old ones stay on the page).
+    # Technical: PopulationHooks.mobKilled -> records.FieldBossKills (memory only on the killing thread) -> ClearLog.cleared with quest = the boss key (needs CLEAR_RECORDS_ENABLED too); QuestLabels lists the catalogue's keys after rivals.yaml.
+    FIELD_BOSS_RECORDS_ENABLED: false
+    # BOUNTIES_ENABLED (needs NEEDS_ENABLED): citizens pin bounties on the needs board, paid from their own purse. A boss
+    # bounty comes from a citizen that died beside a field boss or trains where one stands; it pays its claimant when
+    # the boss dies with the claimant's party at BOUNTY_SHARE_PERCENT of its damage or more. A hunt bounty asks for
+    # BOUNTY_HUNT_KILLS kills of a monster that drops what the citizen sells and is too strong for it; only kills where
+    # the claimant dealt the most damage count. false = the kill switch: no new bounties, none counted or paid; open
+    # ones run out at their deadline.
+    # Technical: needs.Bounties; kind BOUNTY in living_need (item_id = the mob, quantity = kills, delivered = counted, offer = the whole price, detail "boss:<key>" or "hunt:<item>"); payment is one NEED_FULFILLED transaction, purse to player (MesoAccount.NEEDS), so no new meso.
+    BOUNTIES_ENABLED: false
+    # Technical: the chance a citizen that qualifies pins a bounty at one of its need derivations (load and every NEEDS_REFRESH_MINUTES), 0..1; at most one open bounty per citizen.
+    BOUNTY_CHANCE: 0.2
+    # Technical: open bounties on the whole board at most (boss and hunt together), so the board is not all bounties; a citizen that would post one more posts nothing.
+    BOUNTIES_OPEN_MAX: 12
+    # Technical: a bounty offers at most this share of the citizen's purse when it posts (and nothing below BOUNTY_MIN_OFFER), so it can still pay when the boss dies; the price is the boss's level times BOUNTY_BOSS_PER_LEVEL, or kills times the mob level times BOUNTY_HUNT_PER_LEVEL.
+    BOUNTY_PURSE_SHARE: 0.1
+    # Technical: the smallest bounty worth pinning, in meso; a citizen whose purse share falls below it posts no bounty at all.
+    BOUNTY_MIN_OFFER: 5000
+    # Technical: meso a boss bounty offers per level of the boss (Stumpy at 35: 52,500), before the purse share caps it.
+    BOUNTY_BOSS_PER_LEVEL: 1500
+    # Technical: meso a hunt bounty offers per kill per level of the monster (40 kills of a level 50 monster: 40,000), before the purse share caps it.
+    BOUNTY_HUNT_PER_LEVEL: 20
+    # Technical: kills a hunt bounty asks for; each counts only when the claimant dealt the most damage to that monster.
+    BOUNTY_HUNT_KILLS: 40
+    # Technical: percent of a field boss's damage the claimant's party (on the map at its death) must have dealt for a boss bounty to pay, 1..100.
+    BOUNTY_SHARE_PERCENT: 30
+    # Technical: how long a claim on a bounty holds, minutes (longer than NEEDS_CLAIM_MINUTES: a script boss can be 3 h away); a bounty is up for NEEDS_EXPIRE_MIN_HOURS..MAX like other requests.
+    BOUNTY_CLAIM_MINUTES: 180
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

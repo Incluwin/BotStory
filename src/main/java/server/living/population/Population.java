@@ -79,6 +79,7 @@ public final class Population {
     private final Hearsay hearsay;
     private final KillSteals killSteals;
     private final NeedLedger needs;
+    private final server.living.population.records.FieldBossKills fieldBossKills;
     private final ClearLog clears;
     private final RivalCrews rivals;
     private final Coliseum coliseum;
@@ -128,6 +129,7 @@ public final class Population {
         this.killSteals = new KillSteals(this); // and of who took their kills (N2.4)
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
+        this.fieldBossKills = new server.living.population.records.FieldBossKills(this); // field bosses (WORLD_SYSTEMS_PLAN N6)
         this.rivals = new RivalCrews(this);
         this.clears.listen(rivals); // a booked clear may be a crew's, or beat one (F7)
         this.clears.onBooked(ties::cleared); // and its citizens grow closer (N2.1)
@@ -427,6 +429,11 @@ public final class Population {
     }
 
     /** Every party quest and boss clear, and the records page's firsts and fastest (docs/BOT_CONCEPT_PLAN.md F7.1). */
+    /** Field-boss deaths: records and whoever listens (docs/WORLD_SYSTEMS_PLAN.md N6). */
+    public server.living.population.records.FieldBossKills fieldBossKills() {
+        return fieldBossKills;
+    }
+
     public ClearLog clears() {
         return clears;
     }

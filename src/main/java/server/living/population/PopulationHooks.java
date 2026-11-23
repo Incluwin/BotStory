@@ -159,6 +159,9 @@ public final class PopulationHooks {
             if (population.killSteals() != null) {
                 population.killSteals().killed(monster, attackerIds, map); // who took whose kill (N2.4)
             }
+            if (population.fieldBossKills() != null) { // a field boss's record and bounties (WORLD_SYSTEMS_PLAN N6)
+                population.fieldBossKills().killed(monster, map, attackerIds, System.currentTimeMillis());
+            }
             if (monster.isBoss() && monster.getStats().getLevel() >= 30) {
                 int channel = map.getChannelServer() == null ? 1 : map.getChannelServer().getId();
                 population.chatter().event(ChatterEngine.Event.of("boss", map.getId(), channel).subject(monster.getName(), monster.getLevel()));

@@ -504,6 +504,19 @@ public class PopulationConfig {
     public int PAPER_HOUR = 0;
     /** living_event_log rows older than this many days are swept at the daily economy close (decision D1); 0 = never. */
     public int PAPER_RETENTION_DAYS = 90;
+    /** Field-boss kills on the records (docs/WORLD_SYSTEMS_PLAN.md N6.1). */
+    public boolean FIELD_BOSS_RECORDS_ENABLED = false;
+    /** Citizens' bounties on the needs board (N6.2), paid from their purse. */
+    public boolean BOUNTIES_ENABLED = false;
+    public double BOUNTY_CHANCE = 0.2;
+    public int BOUNTIES_OPEN_MAX = 12;
+    public double BOUNTY_PURSE_SHARE = 0.1;
+    public long BOUNTY_MIN_OFFER = 5000L;
+    public long BOUNTY_BOSS_PER_LEVEL = 1500L;
+    public long BOUNTY_HUNT_PER_LEVEL = 20L;
+    public int BOUNTY_HUNT_KILLS = 40;
+    public int BOUNTY_SHARE_PERCENT = 30;
+    public int BOUNTY_CLAIM_MINUTES = 180;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
@@ -640,6 +653,14 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.CASINO_BLACKJACK_TABLES must be 0..5, CASINO_MAX_BET >= 10000,"
                     + " CASINO_SHIFT_MIN_MS..MAX_MS a range from 60000, CASINO_COOLDOWN_MS and GACHA_BOX_PRICE >= 0,"
                     + " GACHA_BOX_GAP_MS >= 30000, NX_CODE_PRICE and NX_CODE_AMOUNT >= 1, CONVERSATION_GAP_MS >= 10000");
+        }
+        if (BOUNTY_CHANCE < 0.0d || BOUNTY_CHANCE > 1.0d || BOUNTIES_OPEN_MAX < 0 || BOUNTY_PURSE_SHARE <= 0.0d
+                || BOUNTY_PURSE_SHARE > 1.0d || BOUNTY_MIN_OFFER < 0L || BOUNTY_BOSS_PER_LEVEL < 0L
+                || BOUNTY_HUNT_PER_LEVEL < 0L || BOUNTY_HUNT_KILLS < 1 || BOUNTY_SHARE_PERCENT < 1
+                || BOUNTY_SHARE_PERCENT > 100 || BOUNTY_CLAIM_MINUTES < 1) {
+            throw new IllegalArgumentException("population.BOUNTY_CHANCE must be 0..1, BOUNTY_PURSE_SHARE over 0 up to 1,"
+                    + " BOUNTY_HUNT_KILLS and BOUNTY_CLAIM_MINUTES at least 1, BOUNTY_SHARE_PERCENT 1..100 and the rest"
+                    + " not negative");
         }
         if (PAPER_HOUR < 0 || PAPER_HOUR > 23 || PAPER_RETENTION_DAYS < 0 || (PAPER_RETENTION_DAYS > 0 && PAPER_RETENTION_DAYS < 30)
                 || !dayOfWeek(PAPER_DAY)) {
