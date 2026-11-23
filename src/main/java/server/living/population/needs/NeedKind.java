@@ -11,11 +11,16 @@ public enum NeedKind {
     /** Its forming party is short; no item, and no hold on it. */
     PARTY,
     /** A beginner looking for someone to show it around (F4.5): answered by adopting it as an apprentice. */
-    MENTOR;
+    MENTOR,
+    /**
+     * A price on a field boss or a count of a monster (docs/WORLD_SYSTEMS_PLAN.md N6.2, {@link Bounties}): claimed at a
+     * board, paid from the citizen's purse when the claimant's kills meet it; no item changes hands.
+     */
+    BOUNTY;
 
-    /** Whether a player hands something over for it (everything but PARTY and MENTOR). */
+    /** Whether a player hands something over for it (everything but PARTY, MENTOR and BOUNTY). */
     public boolean item() {
-        return this != PARTY && this != MENTOR;
+        return this != PARTY && this != MENTOR && this != BOUNTY;
     }
 
     static NeedKind parse(String name) {

@@ -135,6 +135,9 @@ public final class PopulationHooks {
                     self.avoidUntilMs = System.currentTimeMillis() + avoidMs;
                     self.avoidMapId = chr.getMapId();
                 }
+                if (population.needs() != null && AgentBossField.near(chr.getMap())) { // it pins a bounty on it (N6.2)
+                    population.needs().bounties().diedBeside(self, chr.getMap(), System.currentTimeMillis());
+                }
                 population.chatter().event(ChatterEngine.Event.of("death.self", chr.getMapId(), channelOf(chr)).self(self).subject(chr));
             }
             population.chatter().event(ChatterEngine.Event.of("death.other", chr.getMapId(), channelOf(chr)).subject(chr));
@@ -161,6 +164,9 @@ public final class PopulationHooks {
             }
             if (population.fieldBossKills() != null) { // a field boss's record and bounties (WORLD_SYSTEMS_PLAN N6)
                 population.fieldBossKills().killed(monster, map, attackerIds, System.currentTimeMillis());
+            }
+            if (population.needs() != null) { // a hunt bounty's kill (N6.2): one map read for a monster none names
+                population.needs().bounties().mobKilled(monster, System.currentTimeMillis());
             }
             if (monster.isBoss() && monster.getStats().getLevel() >= 30) {
                 int channel = map.getChannelServer() == null ? 1 : map.getChannelServer().getId();

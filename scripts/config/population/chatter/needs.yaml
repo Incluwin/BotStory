@@ -117,6 +117,47 @@ intents:
     styles:
       quiet-practical-v1:
         - "{name}, got {what}? {price} ea"
+  # a bounty pinned at the board (docs/WORLD_SYSTEMS_PLAN.md N6.2, needs.Bounties): said on its map when it posts one
+  - id: needs.bounty.boss
+    trigger: need.bounty.boss
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ugh {item} again. im putting {total} on it at the board"
+      - "{item} keeps killing me lol. {total} bounty on it, anyone?"
+      - "ok thats it, {total} to whoever takes down {item}"
+    styles:
+      quiet-practical-v1:
+        - "{total} bounty on {item}. its on the board"
+  - id: needs.bounty.hunt
+    trigger: need.bounty.hunt
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "need someone to hunt {count} {item} for me, {total} at the board"
+      - "{item} are too strong for me rn. {total} if someone clears {count}"
+      - "pinned a bounty: {count} {item}, {total}"
+    styles:
+      quiet-practical-v1:
+        - "{count} {item}, {total}. on the board"
+  # a bounty met: whispered to its claimant when it pays, while the citizen is about
+  - id: needs.bounty.paid
+    trigger: need.bounty.paid
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} u did it!! {total} sent, thx so much"
+      - "ty {name}, {item} had it coming lol. sent u {total}"
+      - "{name} saw that, gg. bounty's yours"
+    styles:
+      quiet-practical-v1:
+        - "thx {name}. {total} sent"
   # thanks for a hand-in left at a board, whispered once it picked it up and both are online
   - id: needs.thanks
     trigger: need.thanks

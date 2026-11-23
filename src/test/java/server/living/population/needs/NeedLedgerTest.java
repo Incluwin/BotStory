@@ -597,5 +597,215 @@ class NeedLedgerTest {
         public boolean room(Character citizen, int itemId, int count) {
             return !fullBags.contains(citizen.getId());
         }
+
+        @Override
+        public String payBounty(Character player, Character citizen, Need need, Need after, long pay) {
+            purse.merge(need.citizenId(), -pay, Long::sum);
+            paid.merge(player.getId(), pay, Long::sum);
+            store.update(after);
+            return null;
+        }
+    }
+
+    // ---- N6.2: bounties (population.BOUNTIES_ENABLED) ---------------------------------------------------
+
+    private static final int STUMPY_MOB = 3220000;
+    private static final int STUMPY_MAP = 101030404;
+    private static final int JR_NECKI = 2130103;
+    private static final int NECKI_SKIN = 4000018;
+    private static final int PARTNER = 12;
+    private final server.living.population.records.FieldBosses.Boss stumpy =
+            new server.living.population.records.FieldBosses.Boss("field.stumpy", "Stumpy", List.of(STUMPY_MOB),
+                    List.of(STUMPY_MAP), 35, 30, 60, "script", List.of("stumpy"));
+    private final Map<Integer, Character> onlineNow = new HashMap<>();
+
+    private Bounties bounties() {
+        config.BOUNTIES_ENABLED = true;
+        online();
+        onlineNow.put(ANN, ann);
+        onlineNow.put(BO, bo);
+        Bounties bounties = ledger.bounties();
+        bounties.world(new Bounties.World() {
+            @Override
+            public server.living.population.records.FieldBosses bosses() {
+                return new server.living.population.records.FieldBosses(List.of(stumpy));
+            }
+
+            @Override
+            public Bounties.Hunt huntFor(int level, java.util.Random random) {
+                return new Bounties.Hunt(NECKI_SKIN, JR_NECKI, 40, 103000101);
+            }
+
+            @Override
+            public String mobName(int mobId) {
+                return mobId == STUMPY_MOB ? "Stumpy" : mobId == JR_NECKI ? "Jr. Necki" : null;
+            }
+
+            @Override
+            public void later(String what, Runnable work) {
+                work.run();
+            }
+
+            @Override
+            public Character online(int characterId) {
+                return onlineNow.get(characterId);
+            }
+        });
+        return bounties;
+    }
+
+    private server.maps.MapleMap stumpyMap() {
+        server.life.Monster boss = mock(server.life.Monster.class);
+        when(boss.getId()).thenReturn(STUMPY_MOB);
+        when(boss.isAlive()).thenReturn(true);
+        server.maps.MapleMap map = mock(server.maps.MapleMap.class);
+        when(map.getAllMonsters()).thenReturn(List.of(boss));
+        return map;
+    }
+
+    private static server.living.population.records.FieldBossKills.Kill stumpyDies(
+            server.living.population.records.FieldBosses.Boss boss, Map<Integer, Long> damage) {
+        return new server.living.population.records.FieldBossKills.Kill(boss, STUMPY_MOB, STUMPY_MAP, 1, NOW - 60_000L,
+                NOW + 1_000L, damage, 0, List.of());
+    }
+
+    private Need onlyBounty() {
+        for (Need need : ledger.of(CITIZEN)) {
+            if (need.kind() == NeedKind.BOUNTY) {
+                return need;
+            }
+        }
+        return null;
+    }
+
+    private void annInParty() {
+        net.server.world.Party party = mock(net.server.world.Party.class);
+        net.server.world.PartyCharacter one = mock(net.server.world.PartyCharacter.class);
+        net.server.world.PartyCharacter two = mock(net.server.world.PartyCharacter.class);
+        when(one.getId()).thenReturn(ANN);
+        when(two.getId()).thenReturn(PARTNER);
+        when(party.getMembers()).thenReturn(List.of(one, two));
+        when(ann.getParty()).thenReturn(party);
+    }
+
+    @Test
+    void aCitizenThatDiedBesideStumpyPinsABountyOnItFromItsPurse() {
+        bounties().diedBeside(session, stumpyMap(), NOW);
+
+        Need need = onlyBounty();
+        assertNotNull(need);
+        assertEquals("boss:field.stumpy", need.detail());
+        assertEquals(STUMPY_MOB, need.itemId());
+        assertEquals(STUMPY_MAP, need.mapId());
+        assertEquals(1, need.quantity());
+        assertEquals(35 * 1_500L, need.offer(), "the boss's level times BOUNTY_BOSS_PER_LEVEL, under the purse share");
+        assertEquals("a bounty on stumpy", ledger.what(need));
+        bounties().diedBeside(session, stumpyMap(), NOW + 1_000L);
+        assertEquals(1, ledger.of(CITIZEN).stream().filter(one -> one.kind() == NeedKind.BOUNTY).count(), "one open at a time");
+    }
+
+    @Test
+    void aBountyOffersNoMoreThanItsPurseShareAndNothingBelowTheFloor() {
+        hands.purse.put(CITIZEN, 40_000L); // 10 % is 4,000: under BOUNTY_MIN_OFFER
+        bounties().diedBeside(session, stumpyMap(), NOW);
+        assertNull(onlyBounty());
+
+        hands.purse.put(CITIZEN, 100_000L);
+        bounties().diedBeside(session, stumpyMap(), NOW);
+        assertEquals(10_000L, onlyBounty().offer());
+    }
+
+    @Test
+    void offTheSwitchNoBountyIsPinned() {
+        bounties();
+        config.BOUNTIES_ENABLED = false;
+        ledger.bounties().diedBeside(session, stumpyMap(), NOW);
+        assertNull(onlyBounty());
+    }
+
+    @Test
+    void aBossBountyIsClaimedAtTheBoardAndPaysOnlyAtThirtyPercentOfTheDamage() {
+        Bounties bounties = bounties();
+        bounties.diedBeside(session, stumpyMap(), NOW);
+        Need need = onlyBounty();
+        assertEquals(NeedLedger.Claim.OK, ledger.claim(ANN, need.id(), NOW));
+        assertEquals(ANN, ledger.need(need.id()).holder(NOW + 179 * 60_000L), "a bounty holds BOUNTY_CLAIM_MINUTES");
+        annInParty();
+
+        bounties.bossKilled(stumpyDies(stumpy, Map.of(ANN, 1_500L, PARTNER, 1_400L, 77, 7_100L))); // 29 %
+        assertNull(hands.paid.get(ANN));
+        assertTrue(ledger.need(need.id()).isOpen());
+
+        long before = hands.purse.get(CITIZEN);
+        bounties.bossKilled(stumpyDies(stumpy, Map.of(ANN, 1_500L, PARTNER, 1_500L, 77, 7_000L))); // 30 %
+        assertEquals(35 * 1_500L, hands.paid.get(ANN));
+        assertEquals(before - 35 * 1_500L, hands.purse.get(CITIZEN), "the citizen's purse pays: no new meso");
+        assertEquals(Need.State.MET, store.rows.get(need.id()).state());
+        assertEquals(ANN, store.rows.get(need.id()).fulfilledBy());
+        assertNull(ledger.need(need.id()));
+        verify(memories).record(eq(CITIZEN), eq(ANN), eq(PersonMemory.Kind.FULFILLED_BOARD), eq(STUMPY_MAP), eq("stumpy"),
+                eq(1));
+    }
+
+    @Test
+    void aBossBountyNobodyHoldsPaysNobody() {
+        Bounties bounties = bounties();
+        bounties.diedBeside(session, stumpyMap(), NOW);
+        bounties.minute(NOW);
+        bounties.bossKilled(stumpyDies(stumpy, Map.of(ANN, 10_000L)));
+        assertTrue(hands.paid.isEmpty());
+        assertTrue(onlyBounty().isOpen());
+    }
+
+    @Test
+    void aHuntBountyCountsOnlyTheClaimantsKillsAndPaysAtTheLast() {
+        config.BOUNTY_HUNT_KILLS = 3;
+        config.BOUNTY_HUNT_PER_LEVEL = 100L;
+        Bounties bounties = bounties();
+        Need need = bounties.postHunt(session, citizenChr, new Bounties.Hunt(NECKI_SKIN, JR_NECKI, 40, 103000101), NOW);
+        assertEquals("hunt:" + NECKI_SKIN, need.detail());
+        assertEquals(4_000L, need.offer(), "3 kills x level 40 x 100, a kill");
+        server.life.Monster byAnn = mock(server.life.Monster.class);
+        when(byAnn.getId()).thenReturn(JR_NECKI);
+        when(byAnn.getHighestDamagerId()).thenReturn(ANN);
+        server.life.Monster byBo = mock(server.life.Monster.class);
+        when(byBo.getId()).thenReturn(JR_NECKI);
+        when(byBo.getHighestDamagerId()).thenReturn(BO);
+
+        bounties.mobKilled(byAnn, NOW); // before the claim: not counted
+        assertEquals(0, ledger.need(need.id()).delivered());
+        assertEquals(NeedLedger.Claim.OK, ledger.claim(ANN, need.id(), NOW));
+        bounties.mobKilled(byAnn, NOW);
+        bounties.mobKilled(byBo, NOW); // Bo's kill is not Ann's
+        bounties.mobKilled(byAnn, NOW);
+        assertEquals(2, ledger.need(need.id()).delivered());
+        assertTrue(hands.paid.isEmpty());
+
+        long before = hands.purse.get(CITIZEN);
+        bounties.mobKilled(byAnn, NOW);
+        assertEquals(12_000L, hands.paid.get(ANN));
+        assertNull(hands.paid.get(BO));
+        assertEquals(before - 12_000L, hands.purse.get(CITIZEN));
+        assertEquals(Need.State.MET, store.rows.get(need.id()).state());
+    }
+
+    @Test
+    void aShortPurseKeepsTheCountAndPaysAtTheNextKill() {
+        config.BOUNTY_HUNT_KILLS = 1;
+        config.BOUNTY_HUNT_PER_LEVEL = 200L;
+        Bounties bounties = bounties();
+        Need need = bounties.postHunt(session, citizenChr, new Bounties.Hunt(NECKI_SKIN, JR_NECKI, 40, 103000101), NOW);
+        ledger.claim(ANN, need.id(), NOW);
+        hands.purse.put(CITIZEN, 10L);
+        server.life.Monster byAnn = mock(server.life.Monster.class);
+        when(byAnn.getId()).thenReturn(JR_NECKI);
+        when(byAnn.getHighestDamagerId()).thenReturn(ANN);
+
+        bounties.mobKilled(byAnn, NOW);
+        assertTrue(hands.paid.isEmpty());
+        assertEquals(1, ledger.need(need.id()).delivered());
+        hands.purse.put(CITIZEN, 1_000_000L);
+        bounties.mobKilled(byAnn, NOW);
+        assertEquals(8_000L, hands.paid.get(ANN));
     }
 }

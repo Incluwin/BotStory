@@ -1650,7 +1650,7 @@ population:
     # BOUNTY_HUNT_KILLS kills of a monster that drops what the citizen sells and is too strong for it; only kills where
     # the claimant dealt the most damage count. false = the kill switch: no new bounties, none counted or paid; open
     # ones run out at their deadline.
-    # Technical: needs.Bounties; kind BOUNTY in living_need (item_id = the mob, quantity = kills, delivered = counted, offer = the whole price, detail "boss:<key>" or "hunt:<item>"); payment is one NEED_FULFILLED transaction, purse to player (MesoAccount.NEEDS), so no new meso.
+    # Technical: needs.Bounties; kind BOUNTY in living_need (item_id = the mob, quantity = kills, delivered = counted, offer = the price a kill, so a boss bounty (quantity 1) offers its whole price; detail "boss:<key>" or "hunt:<item>"); payment is one NEED_FULFILLED transaction, purse to player (MesoAccount.NEEDS), so no new meso.
     BOUNTIES_ENABLED: false
     # Technical: the chance a citizen that qualifies pins a bounty at one of its need derivations (load and every NEEDS_REFRESH_MINUTES), 0..1; at most one open bounty per citizen.
     BOUNTY_CHANCE: 0.2

@@ -129,6 +129,41 @@ final class LiveNeedHands implements NeedLedger.Hands {
         return refused.get();
     }
 
+    @Override
+    public String payBounty(Character player, Character citizen, Need need, Need after, long pay) {
+        String name = population.citizen(need.citizenId()) == null ? "They" : population.citizen(need.citizenId()).name();
+        if (pay > Integer.MAX_VALUE || !player.canHoldMeso((int) pay)) {
+            return "You can't hold that many mesos.";
+        }
+        AtomicReference<String> refused = new AtomicReference<>();
+        String summary = "citizen " + need.citizenId() + " pays " + player.getName() + " bounty " + need.id() + " ("
+                + need.detail() + ")" + (citizen == null ? " (away)" : "");
+        try {
+            // the same NEED_FULFILLED move as a hand-in, with no item: the purse to the player, and the row, in one commit
+            EconomyTransactionCoordinator.execute(player, citizen, EconomyOperationKind.NEED_FULFILLED, summary, context -> {
+                if (citizen != null && citizen.getMeso() < pay) {
+                    refused.set(name + " can't pay that right now.");
+                    return;
+                }
+                try (var ledgerScope = MesoFlows.as(MesoAccount.NEEDS)) { player.gainMeso((int) pay, true); }
+                if (citizen != null) {
+                    try (var ledgerScope = MesoFlows.as(MesoAccount.NEEDS)) { citizen.gainMeso((int) -pay, false); }
+                    context.enlist(con -> store.update(con, after), () -> { });
+                } else {
+                    context.enlist(con -> {
+                        store.debit(con, need.citizenId(), pay);
+                        MesoFlows.record(MesoAccount.NEEDS, MesoHolder.CITIZEN, -pay);
+                        store.update(con, after);
+                    }, () -> { });
+                }
+            });
+        } catch (RuntimeException failure) {
+            log.warn("bounty {} for {} rolled back", need.id(), player.getName(), failure);
+            return name + " cannot be reached right now.";
+        }
+        return refused.get();
+    }
+
     /** The items (split from a stack) making up {@code count} units, or null when the player carries fewer now. */
     private List<Item> moving(Character player, Need need, int count) {
         List<Item> out = new ArrayList<>();
@@ -204,7 +239,7 @@ final class LiveNeedHands implements NeedLedger.Hands {
                     AgentPotionService.setupAutopotForBot(citizen);
                     yield null;
                 }
-                case PARTY, MENTOR -> null;
+                case PARTY, MENTOR, BOUNTY -> null;
             };
         } catch (RuntimeException failure) {
             log.warn("citizen {} could not use its {}", citizen.getName(), need.itemId(), failure);

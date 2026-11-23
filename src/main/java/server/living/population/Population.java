@@ -130,6 +130,7 @@ public final class Population {
         this.needs = new NeedLedger(this);
         this.clears = new ClearLog(this);
         this.fieldBossKills = new server.living.population.records.FieldBossKills(this); // field bosses (WORLD_SYSTEMS_PLAN N6)
+        this.fieldBossKills.onKill(needs.bounties()::bossKilled); // and the bounties on them (N6.2)
         this.rivals = new RivalCrews(this);
         this.clears.listen(rivals); // a booked clear may be a crew's, or beat one (F7)
         this.clears.onBooked(ties::cleared); // and its citizens grow closer (N2.1)

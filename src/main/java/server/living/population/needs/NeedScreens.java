@@ -118,6 +118,10 @@ public final class NeedScreens {
             options.add(new LivingTalk.Option("Claim it (hold it " + population.config().NEEDS_CLAIM_MINUTES + " min)",
                     () -> claim(player, needId, boardMapId)));
         }
+        if (need.kind() == NeedKind.BOUNTY && holder == 0) { // N6.2: a bounty is claimed here and paid at the kill
+            options.add(new LivingTalk.Option("Take the bounty (" + population.config().BOUNTY_CLAIM_MINUTES / 60
+                    + " hours)", () -> claim(player, needId, boardMapId)));
+        }
         if (carried > 0 && need.takesFrom(player.getId(), nowMs)) {
             options.add(new LivingTalk.Option("Hand it over here", () -> give(player, needId, carried, true)));
         }
@@ -146,13 +150,26 @@ public final class NeedScreens {
     private void claim(Character player, int needId, int boardMapId) {
         NeedLedger.Claim claim = ledger.claim(player.getId(), needId, System.currentTimeMillis());
         String text = switch (claim) {
-            case OK -> "It's yours for " + population.config().NEEDS_CLAIM_MINUTES + " minutes. Bring it to them, or back"
+            case OK -> claimedText(ledger.need(needId)) != null ? claimedText(ledger.need(needId))
+                    : "It's yours for " + population.config().NEEDS_CLAIM_MINUTES + " minutes. Bring it to them, or back"
                     + " here if they are away.";
             case HELD -> "Someone else is already bringing that.";
             case LIMIT -> "You already hold " + population.config().NEEDS_CLAIMS_PER_PLAYER + " requests.";
             case GONE -> "That one was taken down.";
         };
         LivingTalk.open(player, NeedBoards.BOARD_NPC).back(() -> details(player, needId, boardMapId)).ok(text).show();
+    }
+
+    /** What a taken bounty says (N6.2); null for any other request. */
+    private String claimedText(Need need) {
+        if (need == null || need.kind() != NeedKind.BOUNTY) {
+            return null;
+        }
+        int hours = population.config().BOUNTY_CLAIM_MINUTES / 60;
+        return Bounties.boss(need)
+                ? "It's yours for " + hours + " hours. Bring it down with your party doing at least "
+                + population.config().BOUNTY_SHARE_PERCENT + "% of the damage, and they pay you on the spot."
+                : "It's yours for " + hours + " hours. Only kills where you deal the most damage count.";
     }
 
     // ---- in person ----------------------------------------------------------------------------
@@ -313,6 +330,11 @@ public final class NeedScreens {
         if (need.kind() == NeedKind.MENTOR) {
             return name + knows + ": looking for a mentor, at " + mapName(where(need));
         }
+        if (need.kind() == NeedKind.BOUNTY) {
+            return name + knows + ": bounty, " + (Bounties.boss(need) ? "#o" + need.itemId() + "#"
+                    : need.remaining() + " #o" + need.itemId() + "#") + " @ "
+                    + Market.formatPrice(need.pay(need.quantity())) + held;
+        }
         return name + knows + ": " + amount(need) + " @ " + Market.formatPrice(need.offer()) + held;
     }
 
@@ -350,6 +372,9 @@ public final class NeedScreens {
             return who + (crew == null ? "" : " and the #e" + crew.name() + "#n") + " want " + ledger.what(need)
                     + ". They can't do it without you. Meet them at #b" + mapName(where(need)) + "#k.";
         }
+        if (need.kind() == NeedKind.BOUNTY) {
+            return bountyPage(who, need, nowMs);
+        }
         if (need.kind() == NeedKind.PARTY) {
             boolean whispers = population.config().CITIZEN_WHISPERS_ENABLED && citizen != null; // F5c: whispers reach it
             return partyPage(who, mapName(where(need)), ledger.what(need), whispers ? citizen.name() : null);
@@ -361,6 +386,20 @@ public final class NeedScreens {
                 + "\r\n" + (about ? "Now at #b" + mapName(session.mapId) + "#k: hand it over in person (double-click them)."
                 : "Away right now: leave it here and they pick it up when they're back.")
                 + (need.kind() == NeedKind.GEAR ? "\r\nA plain one is fine, better is welcome." : "");
+    }
+
+    /** A bounty's page (N6.2), in short lines: who, on what, where, the price and the rule it pays by. */
+    private String bountyPage(String who, Need need, long nowMs) {
+        String left = need.deadlineMs() <= 0L ? "" : "\r\nUp for " + duration(need.deadlineMs() - nowMs) + " more.";
+        if (Bounties.boss(need)) {
+            return who + " put a bounty on #e#o" + need.itemId() + "##n.\r\nIt stands at #b" + mapName(need.mapId())
+                    + "#k.\r\nPays #b" + Market.formatPrice(need.pay(1)) + "#k when it falls with your party\r\n"
+                    + "doing " + population.config().BOUNTY_SHARE_PERCENT + "% of its damage or more." + left;
+        }
+        return who + " wants #e" + need.quantity() + " #o" + need.itemId() + "##n hunted.\r\nThey live at #b"
+                + mapName(need.mapId()) + "#k.\r\nPays #b" + Market.formatPrice(need.pay(need.quantity())) + "#k in all"
+                + (need.delivered() > 0 ? ", " + need.delivered() + " done" : "") + ".\r\n"
+                + "Only kills where you deal the most damage count." + left;
     }
 
     /** A PARTY request's page; {@code whisperTo} (null while whispers do not reach citizens) is the leader to whisper. */
