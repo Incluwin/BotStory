@@ -69,7 +69,7 @@ public final class Crew {
         return banter;
     }
 
-    BanterCatalog catalog() {
+    public BanterCatalog catalog() {
         BanterCatalog loaded = catalog;
         if (loaded == null) {
             loaded = BanterCatalog.load(Path.of(world.config().CONTENT_DIR));
@@ -324,6 +324,12 @@ public final class Crew {
         @Override
         public String questLabel(String script) {
             return Crew.this.questLabel(script);
+        }
+
+        @Override
+        public java.util.Set<String> traits(int ownerId, CrewBanter.Speaker speaker) {
+            server.living.roster.CompanionTraits traits = world.traits();
+            return traits == null ? java.util.Set.of() : traits.kinds(ownerId, speaker.personaId());
         }
 
         /** No hostile living mob within {@code range} of {@code here} (AgentFumbles.calmTown's test, on any map). */

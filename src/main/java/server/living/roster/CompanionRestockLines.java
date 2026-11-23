@@ -191,6 +191,19 @@ final class CompanionRestockLines {
     }
 
     /**
+     * On companion-ops: {@code bot} says {@code line} as written (a companion trait's earned or lost line, N9.2), where
+     * its other lines go, and it is logged. False when it could say it nowhere.
+     */
+    static boolean sayLine(LivingWorld world, Character bot, String intent, String line) {
+        if (bot == null) {
+            return false;
+        }
+        String heard = heard(world, bot, world.residents().personaOfCharacterId(bot.getId()), line);
+        logSaid(bot, intent, heard, line);
+        return heard != null;
+    }
+
+    /**
      * Logs that {@code bot} said {@code line} for {@code intent} and where it went ({@code heard}: party, map, whisper;
      * null for nowhere): bots' party chat is logged nowhere else. Also for a boss run's lines (BossRunLines.say: its
      * go line from a boss's entrance) and the desk's low-on-potions reminders.

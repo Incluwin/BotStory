@@ -1186,6 +1186,12 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      */
     @Override
     public void entered(Seat seat) {
+        CompanionTraits traits = world.traits();
+        if (traits != null && traits.on()) { // N9: its HP is watched for its record; a wary one drinks earlier, says so
+            world.executor().submit("boss.traits " + seat.agentCharacterId(), () -> traits.entering(
+                    seat.agentCharacterId(), seat.enlistedBy(), personaId(runs.get(key(seat)), seat.agentCharacterId()),
+                    seat.bossKey()));
+        }
         if (quota.counts(seat)) {
             world.executor().submit("boss.entered " + seat.agentCharacterId(), () -> quota.entered(seat));
         }

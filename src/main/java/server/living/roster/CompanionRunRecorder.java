@@ -92,12 +92,17 @@ public final class CompanionRunRecorder {
      * party quest's run end, and a boss run's (CompanionBossRuns, P12 G12).
      */
     boolean save(CompanionRunRow row) {
+        CompanionTraits traits = world.traits();
+        row = traits == null ? row : traits.measured(row); // N9.1: its lowest HP and close calls in the run
         if (!world.store().saveCompanionRun(row)) {
             return false;
         }
         stats.computeIfAbsent(row.activity(), key -> new ConcurrentHashMap<>()).merge(row.companionCharacterId(),
                 new CompanionRunStats(1, row.outcome().equals("cleared") ? 1 : 0), (known, added) ->
                         new CompanionRunStats(known.runs() + added.runs(), known.clears() + added.clears()));
+        if (traits != null) {
+            traits.recorded(row); // its traits are read again from its runs (N9.1)
+        }
         return true;
     }
 
@@ -148,13 +153,21 @@ public final class CompanionRunRecorder {
     public List<String> recordLines(int companionId) {
         List<String> lines = new ArrayList<>();
         for (String pqKey : PqEntrance.keys()) {
-            line(lines, pqKey.toUpperCase(Locale.ROOT), stats(pqKey, companionId));
+            line(lines, label(pqKey), stats(pqKey, companionId));
         }
         for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
-            AgentBossRules.Boss rules = AgentBossRules.of(definition.key());
-            line(lines, rules == null ? definition.key() : rules.label(), stats(definition.key(), companionId));
+            line(lines, label(definition.key()), stats(definition.key(), companionId));
         }
         return lines;
+    }
+
+    /** What players call an activity: a quest's key in capitals ("KPQ"), a boss by its rules' label ("Zakum"). */
+    static String label(String activity) {
+        if (PqEntrance.keys().contains(activity)) {
+            return activity.toUpperCase(Locale.ROOT);
+        }
+        AgentBossRules.Boss rules = AgentBossRules.of(activity);
+        return rules == null ? activity : rules.label();
     }
 
     private static void line(List<String> lines, String label, CompanionRunStats record) {

@@ -38,6 +38,7 @@ import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionLoans;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionPartyQuestService;
+import server.living.roster.CompanionTraits;
 import server.living.roster.CompanionSettings;
 import server.living.roster.CompanionSettings.Support;
 import server.living.roster.CompanionView;
@@ -265,7 +266,7 @@ public final class CompanionCardScreens {
             default -> errand == null ? "" : errand + "\r\n";
         };
         String text = note(note) + cardHeader(view, bot) + status + (committed ? "in a run with you\r\n" : "")
-                + friendship(owner, persona) + records(persona) + terms(persona);
+                + friendship(owner, persona) + records(owner, persona) + terms(persona);
         LivingTalk.open(owner, portrait(persona)).menu(text, options).back(crewBack(owner)).show();
     }
 
@@ -282,16 +283,24 @@ public final class CompanionCardScreens {
                 : "Friendship " + world.friendship().describe(bond.points()) + "\r\n";
     }
 
-    /** Its party-quest records, a line each ("KPQ: cleared 4 of 5"; CompanionRunRecorder.recordLines), or nothing. */
-    private String records(Persona persona) {
+    /**
+     * Its party-quest records, a line each ("KPQ: cleared 4 of 5"; CompanionRunRecorder.recordLines), then its traits
+     * with this owner, a line each ("Wary of Zakum since going down there"; CompanionTraits.cardLines, N9.1), or nothing.
+     */
+    String records(Character owner, Persona persona) {
+        StringBuilder lines = new StringBuilder();
         CompanionPartyQuestService quests = world.partyQuests();
         int characterId = quests == null ? 0 : world.residents().characterIdOf(persona.id());
-        if (characterId == 0) {
-            return "";
+        if (characterId != 0) {
+            for (String line : quests.records().recordLines(characterId)) {
+                lines.append(line).append("\r\n");
+            }
         }
-        StringBuilder lines = new StringBuilder();
-        for (String line : quests.records().recordLines(characterId)) {
-            lines.append(line).append("\r\n");
+        CompanionTraits traits = world.traits();
+        if (traits != null) {
+            for (String line : traits.cardLines(owner.getId(), persona.id())) {
+                lines.append(line).append("\r\n");
+            }
         }
         return lines.toString();
     }
@@ -360,7 +369,7 @@ public final class CompanionCardScreens {
         String progress = view.progress().isEmpty() ? "" : view.progress() + (marker ? " " + live : "") + "\r\n";
         String more = (marker || live.isEmpty() ? "" : live + "\r\n") + progress
                 + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n") + friendship(owner, persona)
-                + records(persona) + terms(persona);
+                + records(owner, persona) + terms(persona);
         String statusLine = status + (marker && view.progress().isEmpty() ? " " + live : "");
         LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + statusLine + "\r\n" + more, options)
                 .back(crewBack(owner)).show();

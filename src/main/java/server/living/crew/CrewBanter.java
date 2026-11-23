@@ -120,6 +120,11 @@ public final class CrewBanter {
 
         /** What players call a quest's event script ("kpq"). */
         String questLabel(String script);
+
+        /** The kinds of the companion traits the speaker holds with this owner ("veteran"), for trait exchanges. */
+        default Set<String> traits(int ownerId, Speaker speaker) {
+            return Set.of();
+        }
     }
 
     /** What one owner's ticks keep (companion-ops; read by !banter on companion-ops too). */
@@ -277,6 +282,7 @@ public final class CrewBanter {
         List<Double> weights = new ArrayList<>();
         Map<String, Fact> factCache = new HashMap<>();
         for (Speaker caller : scene.speakers()) {
+            Set<String> callerTraits = null; // read once per caller, and only when an exchange asks for traits
             for (Speaker answerer : scene.speakers()) {
                 if (caller == answerer || moment == Moment.CLEAR && state.pending != null
                         && !(state.pending.companionIds().contains(caller.characterId())
@@ -287,6 +293,14 @@ public final class CrewBanter {
                 for (Exchange exchange : lines.exchanges()) {
                     if (!fits(exchange, moment, caller, answerer, tie)) {
                         continue;
+                    }
+                    if (!exchange.traits().isEmpty()) {
+                        if (callerTraits == null) {
+                            callerTraits = ports.traits(scene.ownerId(), caller);
+                        }
+                        if (Collections.disjoint(exchange.traits(), callerTraits)) {
+                            continue;
+                        }
                     }
                     Map<String, String> values = new HashMap<>();
                     values.put("caller", caller.name());

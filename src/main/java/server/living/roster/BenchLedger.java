@@ -88,6 +88,10 @@ public final class BenchLedger {
             }
         }
         flushReports(0); // the letters' rows: what this tick and the harvests since the last one gained
+        CompanionTraits traits = world.traits();
+        if (traits != null) {
+            traits.benched(benched, now); // N9: a long bench spell or the stall's takings, read once a day
+        }
         CompanionLetters letters = world.roster() == null ? null : world.roster().letters();
         if (letters != null) {
             letters.mailGifts(benched, now);

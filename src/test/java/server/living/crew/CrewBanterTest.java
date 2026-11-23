@@ -305,6 +305,20 @@ class CrewBanterTest {
         assertTrue(banter.force(OWNER).startsWith("the owner asked for quiet"));
     }
 
+    @Test
+    void aTraitExchangeIsCalledOnlyByACompanionHoldingTheTrait() {
+        catalog = only("trait.veteran.teaches");
+        play(11);
+        assertTrue(ports.said.isEmpty(), "nobody holds VETERAN: " + ports.said);
+
+        ports.traits.put(DORRAN, java.util.Set.of("veteran"));
+        play(1);
+
+        assertEquals(2, ports.said.size(), "" + ports.said);
+        assertEquals(DORRAN, ports.said.getFirst().speaker(), "the veteran calls, the other answers");
+        assertEquals(FENNA, ports.said.get(1).speaker());
+    }
+
     private BanterCatalog only(String id) {
         BanterCatalog full = BanterCatalog.load(Path.of("scripts", "config", "living-world"));
         return new BanterCatalog(full.seeds(), Map.of(BanterCatalog.MUTE_OK, full.lines(BanterCatalog.MUTE_OK),
@@ -343,6 +357,13 @@ class CrewBanterTest {
         int ownerX;
         int scenes;
         final List<Speaker> speakers = new ArrayList<>();
+        /** Speaker id -> the traits it holds (N9.2). */
+        final Map<Integer, java.util.Set<String>> traits = new java.util.HashMap<>();
+
+        @Override
+        public java.util.Set<String> traits(int ownerId, Speaker speaker) {
+            return traits.getOrDefault(speaker.characterId(), java.util.Set.of());
+        }
         final List<Said> said = new ArrayList<>();
         final List<Boolean> persisted = new ArrayList<>();
         final List<Integer> rendered = new ArrayList<>();

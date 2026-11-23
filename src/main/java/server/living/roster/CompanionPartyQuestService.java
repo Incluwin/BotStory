@@ -1267,6 +1267,11 @@ public final class CompanionPartyQuestService {
         }
         records.damage().start(run.key, run.memberIds); // its members' kills count toward its damage shares (F6.4)
         run.started = true;
+        CompanionTraits traits = world.traits();
+        if (traits != null) { // N9: its HP is watched for its record; a wary one drinks earlier and says so
+            run.ownerByCompanion.forEach((companionId, ownerId) ->
+                    traits.entering(companionId, ownerId, run.personaByCompanion.get(companionId), run.pqKey));
+        }
     }
 
     /** Stops the session {@code admitted} registered, if any, before any run of it was ({@code why}: the log's). */
