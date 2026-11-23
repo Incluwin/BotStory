@@ -291,6 +291,24 @@ class GuildChatTest {
     }
 
     @Test
+    void theFreeMateGoesWhenTheOthersAreBusy() {
+        for (int id = 1; id <= 4; id++) {
+            Character busy = mate(id, "Busy" + id, 25, GUILD);
+            lobby.session(busy).activity = Activity.JOB; // on a job errand: not free to go
+        }
+        mate(5, "Pip", 26, GUILD);
+        Character ann = human(10, "Ann", 24, GUILD);
+
+        for (int i = 0; i < 5; i++) { // whatever the draw, the one free mate is found
+            lobby.asked.clear();
+            GuildChat fresh = new GuildChat(lobby.population, new Random(i), guildId -> new ArrayList<>(lobby.sessions.values()),
+                    guildId -> true);
+            assertTrue(fresh.heard(ann, "anyone up for kpq", T0));
+            assertTrue(lobby.asked.contains("travel Pip PQ " + CitizenLobbyFixture.KPQ.mapId()), lobby.asked.toString());
+        }
+    }
+
+    @Test
     void anLfgLineFromAHumanOutsideTheBandIsToldSo() {
         mate(1, "Lia", 25, GUILD);
         Character high = human(10, "High", 45, GUILD);

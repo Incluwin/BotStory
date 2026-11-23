@@ -298,7 +298,9 @@ public final class GuildChat {
         }
         Lobby lobby = null;
         CitizenSession free = null;
-        for (CitizenSession mate : pick(mates, human, mates.size(), now)) {
+        List<CitizenSession> shuffled = new ArrayList<>(mates); // every mate may be the one free to go
+        Collections.shuffle(shuffled, random);
+        for (CitizenSession mate : shuffled) {
             Lobby fits = lobbyOf(mate, questId);
             if (fits != null && lobby == null) {
                 lobby = fits;
