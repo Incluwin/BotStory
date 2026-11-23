@@ -20,7 +20,9 @@ import server.economy.ledger.MesoAccount;
 import server.economy.ledger.MesoFlows;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.population.Market;
 import server.living.population.Population;
+import server.living.population.PriceLearning;
 import server.living.quest.QuestLedger;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
@@ -75,6 +77,8 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
     static final double QUICK_SALE = 0.85d;
     /** The end of a stall slice that ran its whole length (BenchDutyDispatcher.timeUp): only those teach it a price. */
     static final String FULL_SLICE = "slice elapsed";
+    /** The end of a stall slice whose shop sold everything. */
+    static final String SOLD_OUT = "sold out";
     /** The events a stall's own record is read from (each slice's stocking and its close), and how many of them. */
     static final List<String> STALL_HISTORY_KINDS = List.of("bench.stall", "bench.stall-close");
     static final int STALL_HISTORY_EVENTS = 60;
@@ -85,13 +89,15 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
     private static final int STALL_CLEARANCE_PX = 80;
 
     /** One live stall: what reached its bag from the haul, how it is bundled, and what has sold. */
-    private static final class Stall {
+    static final class Stall {
         /** item id -> units moved from the haul into its bag. */
         final Map<Integer, Integer> stocked = new LinkedHashMap<>();
         /** item id -> units per listed bundle. */
         final Map<Integer, Integer> perBundle = new HashMap<>();
         /** item id -> units sold. */
         final Map<Integer, Integer> sold = new HashMap<>();
+        /** item id -> {BENCH arm, ask over index} of a STALL priced by the learned starting asks (I2.2). */
+        final Map<Integer, double[]> learned = new HashMap<>();
         /** Its shop once opened (companion-ops writes it; the card may read it from elsewhere). */
         volatile PlayerShop shop;
         int salesSeen;
@@ -246,7 +252,7 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         if (!stall.stocked.isEmpty()) {
             agent.saveCharToDB(true); // the bag as the haul gave it up, before anything else can happen to it
         }
-        Map<Integer, Double> asks = asks(slice, stall.stocked.keySet());
+        Map<Integer, Double> asks = asks(slice, stall.stocked.keySet(), learner(population), stall);
         List<AgentFreeMarketStallService.Listing> listings = listings(stall, agent, population, asks);
         int permit = population.content().permitItemId();
         if (!listings.isEmpty() && agent.getInventory(InventoryType.CASH).countById(permit) == 0) {
@@ -282,7 +288,7 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
             world.store().event(slice.ownerId(), slice.personaId(), "bench.stall-open", "room " + slice.mapId());
         }
         sales(slice, agent, stall);
-        return stall.shop.isOpen() ? null : "sold out";
+        return stall.shop.isOpen() ? null : SOLD_OUT;
     }
 
     @Override
@@ -317,6 +323,7 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
             sales(slice, agent, stall);
         }
         unstock(slice, agent, stall);
+        settleLearned(stall, reason, learner(Population.get()));
         world.store().event(slice.ownerId(), slice.personaId(), "bench.stall-close", reason + "; sold " + stall.sold);
     }
 
@@ -445,11 +452,13 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
 
     /**
      * Its price per item against the market index. SELL: QUICK_SALE, where browsing citizens buy. STALL (user,
-     * 2026-10-25: it learns its price, as a seller marks down what does not move): the index less BENCH_STALL_MARKDOWN_STEP
-     * for each of its own last stall slices in a row that listed the item for their whole length and sold none of it
-     * ({@link #unsoldSlices}), never under QUICK_SALE; back at the index once a slice sold some.
+     * 2026-10-25: it learns its price, as a seller marks down what does not move): its start, less
+     * BENCH_STALL_MARKDOWN_STEP for each of its own last stall slices in a row that listed the item for their whole length
+     * and sold none of it ({@link #unsoldSlices}), never under QUICK_SALE; back at its start once a slice sold some. The
+     * start is the index, or with price learning on (I2.2, {@code learner}) the multiplier of the item class's BENCH arm,
+     * kept on {@code stall} for {@link #settleLearned}.
      */
-    private Map<Integer, Double> asks(BenchDutyDispatcher.Slice slice, Set<Integer> items) {
+    private Map<Integer, Double> asks(BenchDutyDispatcher.Slice slice, Set<Integer> items, PriceLearning learner, Stall stall) {
         double step = world.config().BENCH_STALL_MARKDOWN_STEP;
         boolean sell = slice.duty() == Assignment.SELL;
         Map<Integer, Integer> unsold = sell || step <= 0.0d || items.isEmpty() ? Map.of() : unsoldSlices(
@@ -457,9 +466,38 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
                 items);
         Map<Integer, Double> asks = new LinkedHashMap<>();
         for (int itemId : items) {
-            asks.put(itemId, sell ? QUICK_SALE : Math.max(QUICK_SALE, 1.0d - step * unsold.getOrDefault(itemId, 0)));
+            int arm = sell || learner == null ? -1 : learner.benchArm(itemId);
+            double start = arm >= 0 ? learner.benchMultiplier(arm) : 1.0d;
+            double ask = sell ? QUICK_SALE : Math.max(QUICK_SALE, start - step * unsold.getOrDefault(itemId, 0));
+            asks.put(itemId, ask);
+            if (arm >= 0) {
+                stall.learned.put(itemId, new double[]{arm, ask});
+            }
         }
         return asks;
+    }
+
+    /** The population market's learned prices, or null (no population, or a market without them). */
+    private static PriceLearning learner(Population population) {
+        Market market = population == null ? null : population.market();
+        return market == null ? null : market.prices();
+    }
+
+    /**
+     * A STALL slice priced by learned starting asks ended: one that ran its whole length or sold out rewards each item's
+     * arm per bundle listed, its ask over the index for each bundle sold, 0 for each left; one cut short teaches nothing.
+     */
+    static void settleLearned(Stall stall, String reason, PriceLearning learner) {
+        if (learner == null || stall.learned.isEmpty() || !(FULL_SLICE.equals(reason) || SOLD_OUT.equals(reason))) {
+            return;
+        }
+        for (Map.Entry<Integer, double[]> line : stall.learned.entrySet()) {
+            int itemId = line.getKey();
+            int per = Math.max(1, stall.perBundle.getOrDefault(itemId, 1));
+            int listed = stall.stocked.getOrDefault(itemId, 0) / per;
+            int sold = stall.sold.getOrDefault(itemId, 0) / per;
+            learner.benchSettled(itemId, (int) line.getValue()[0], line.getValue()[1], listed, sold);
+        }
     }
 
     /**
