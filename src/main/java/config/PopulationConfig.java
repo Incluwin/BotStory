@@ -381,11 +381,11 @@ public class PopulationConfig {
     /** Kill switch: false = the fixed prices (ask 0.9 + rand x 0.3, NEEDS_SUPPLY_PREMIUM, bench STALL at the index). */
     public boolean PRICE_LEARNING_ENABLED = false;
     /** The UCB weight on a price arm tried less often (0 = never explore). */
-    public double PRICE_EXPLORE = 0.6;
+    public double PRICE_EXPLORE = 1.0;
     /** How sharp the weighted draw over price arms is (0 = always the best). */
     public double PRICE_TEMPERATURE = 0.03;
     /** How many rewards the prior (the fixed rule) weighs in an arm's estimate. */
-    public double PRICE_PRIOR_SAMPLES = 3;
+    public double PRICE_PRIOR_SAMPLES = 30;
     /** The sell rate the prior believes today's asks earn (an ask arm inside 0.9..1.2 starts at multiplier x this). */
     public double PRICE_PRIOR_SELL_RATE = 0.3;
     /** The reward the prior believes the offer arms within 0.05 of NEEDS_SUPPLY_PREMIUM earn. */

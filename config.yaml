@@ -1492,9 +1492,9 @@ population:
     # fixed (D16). Asks only move meso between holders. false = the kill switch: the fixed prices, nothing booked.
     # Technical: PriceLearning holds three PriceArms bandits on the shared Ucb arithmetic (estimate shrunk to a prior by PRIOR_SAMPLES, plus EXPLORE x sqrt(ln(1+N)/(1+n)), softmax at TEMPERATURE); arm stats live in companion_yield rows of source 'price', no schema change; /runtime/stats/market shows them.
     PRICE_LEARNING_ENABLED: false
-    PRICE_EXPLORE: 0.6
+    PRICE_EXPLORE: 1.0
     PRICE_TEMPERATURE: 0.03
-    PRICE_PRIOR_SAMPLES: 3
+    PRICE_PRIOR_SAMPLES: 30
     PRICE_PRIOR_SELL_RATE: 0.3
     # Technical: an offer arm's reward when its SUPPLY request ends is filled share x (1 / (1 + hours / OFFER_HALF_HOURS) - OFFER_COST x (premium - 1)); the arms within 0.05 of NEEDS_SUPPLY_PREMIUM start at OFFER_PRIOR_REWARD.
     PRICE_OFFER_PRIOR_REWARD: 0.4
