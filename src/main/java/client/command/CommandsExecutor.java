@@ -215,6 +215,7 @@ import client.command.commands.gm5.PaperCommand;
 import client.command.commands.gm5.RivalsCommand;
 import client.command.commands.gm5.BanterCommand;
 import client.command.commands.gm5.TraitsCommand;
+import client.command.commands.gm5.CampCommand;
 import client.command.commands.gm5.MentorCommand;
 import client.command.commands.gm5.StoryCommand;
 import client.command.commands.gm5.KnowledgeCommand;
@@ -739,6 +740,7 @@ public class CommandsExecutor {
         addCommand("story", 5, StoryCommand.class);
         addCommand("banter", 5, BanterCommand.class);
         addCommand("traits", 5, TraitsCommand.class);
+        addCommand("camp", 5, CampCommand.class);
         addCommand("knowledge", 5, KnowledgeCommand.class);
         addCommand("heapdump", 5, HeapDumpCommand.class);
         addCommand("spawnallpnpcs", 5, SpawnAllPNpcsCommand.class);

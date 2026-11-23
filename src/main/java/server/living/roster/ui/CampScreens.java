@@ -61,7 +61,7 @@ public final class CampScreens {
             if (camp != null) {
                 camp.release(personaId);
             }
-            world.roster().call(owner, persona);
+            owner.dropMessage(5, server.living.roster.RosterVoice.line(persona, world.roster().call(owner, persona)));
         })));
         RosterEntry entry = world.store().rosterEntry(owner.getId(), personaId);
         if (entry != null) {

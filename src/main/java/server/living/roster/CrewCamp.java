@@ -196,7 +196,7 @@ public final class CrewCamp {
     }
 
     /** The Free Market entrance and its rooms. */
-    static boolean freeMarket(int mapId) {
+    public static boolean freeMarket(int mapId) {
         return mapId >= 910000000 && mapId <= 910000022;
     }
 
@@ -251,6 +251,7 @@ public final class CrewCamp {
         visit.nextBanterAtMs = ports.now() + FIRST_BANTER_MS;
         ports.tell(owner, arrival(visit));
         world.store().event(ownerId, null, "camp.entered", visit.seats.size() + " here, " + visit.away.size() + " away");
+        log.info("crew camp: {} entered, {} here, {} away", owner.getName(), visit.seats.size(), visit.away.size());
     }
 
     /** The owner asks to leave: everyone back to their spot, the camp companions unloaded, the copy let go. */
@@ -290,6 +291,7 @@ public final class CrewCamp {
             }
         }
         world.store().event(visit.ownerId, null, "camp.left", why);
+        log.info("crew camp: owner {} {}, {} still to unload", visit.ownerId, why, stranded.size());
     }
 
     /** The server stops: every camp torn down, every camp companion unloaded (on companion-ops, waited for). */

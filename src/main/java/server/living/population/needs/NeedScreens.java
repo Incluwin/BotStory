@@ -57,7 +57,7 @@ public final class NeedScreens {
                     () -> population.coliseum().board(player, NeedBoards.BOARD_NPC, () -> board(player, boardMapId))));
         }
         server.living.LivingWorld living = server.living.LivingWorld.get();
-        if (living != null && living.crewCamp() != null && living.crewCamp().on()
+        if (living != null && living.crewCamp() != null && living.crewCamp().on() && !server.living.roster.CrewCamp.freeMarket(boardMapId)
                 && living.roster().isOwner(player.getId())) { // the crew camp (docs/WORLD_SYSTEMS_PLAN.md N7.1)
             options.add(new LivingTalk.Option("#bCrew camp#k", () -> living.executor().submit(
                     "board.camp " + player.getId(), () -> living.crewCamp().enter(player))));
