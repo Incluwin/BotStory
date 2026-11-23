@@ -98,6 +98,11 @@ public final class CitizenPartyQuests {
         int megaphones;
         /** Human id -> when the leader invited them because they whispered for a seat (CitizenWhispers, F5c). */
         final Map<Integer, Long> whisperedIn = new HashMap<>();
+        /** Invitations its citizens whispered to humans they know (CitizenRunInvites, N3.1), and the last one's time. */
+        int invitations;
+        long lastInvitationAtMs;
+        /** Humans who said yes to such an invitation and took the invite: the leader says at the lobby they are coming. */
+        final Set<Integer> invitedFar = new HashSet<>();
 
         Forming(String questKey, int channel, int mapId, int leaderId, long formedAtMs) {
             this.questKey = questKey;
@@ -195,6 +200,8 @@ public final class CitizenPartyQuests {
     private final Map<String, int[]> tally = new ConcurrentHashMap<>();
     private final Deque<String> recent = new ArrayDeque<>();
     private final PartyMegaphones megaphones;
+    /** Whispered invitations to humans the party's citizens know (N3.1); tests swap their own in. */
+    private CitizenRunInvites invites;
 
     CitizenPartyQuests(Population population) {
         this(population, shippedDoors(population.config()), new Random(population.config().SEED ^ 0x9a27e5L));
@@ -213,6 +220,16 @@ public final class CitizenPartyQuests {
         this.doors = doors;
         this.random = random;
         this.megaphones = new PartyMegaphones(population);
+        this.invites = new CitizenRunInvites(population, this);
+    }
+
+    /** The whispered invitations (CitizenWhispers topic "run" answers them). */
+    CitizenRunInvites invites() {
+        return invites;
+    }
+
+    void useInvites(CitizenRunInvites invites) {
+        this.invites = invites;
     }
 
     /** The quests {@code PQ_RUN_QUESTS} lets citizen parties go into, lower case; none while the switch is off. */
@@ -318,6 +335,8 @@ public final class CitizenPartyQuests {
             goBackToDay(nowMs);
             coolUntil.values().removeIf(until -> nowMs >= until);
             humanInvitedAt.values().removeIf(at -> nowMs - at >= HUMAN_INVITE_EVERY_MS);
+            invites.expire(nowMs);
+            invites.followUp(nowMs);
             advanceBossRuns(nowMs);
             if (!population.config().PQ_RUNS_ENABLED && !population.config().BOSS_RUNS_ENABLED) {
                 forming.clear();
@@ -384,7 +403,7 @@ public final class CitizenPartyQuests {
         Character leaderChr = leader.agent();
         MapleMap map = leaderChr.getMap();
         List<Character> humansHere = humansWithoutParty(map, lobby);
-        boolean held = holdingSeat(party, nowMs);
+        boolean held = holdingSeat(party, nowMs) || invites.holdsSeat(party.leaderId, nowMs);
         int size = members(leaderChr).size();
         if (!held && size < door.preferredSeats()) {
             held = inviteHuman(party, leader, lobby, humansHere, nowMs);
@@ -416,6 +435,9 @@ public final class CitizenPartyQuests {
             }
         }
         tellWhisperedWhere(party, leader, members, map);
+        if (!held && size < door.preferredSeats()) { // still short: a citizen of the party asks a human it knows (N3.1)
+            invites.ask(party, leader, citizensIn(members, leader, here), lobby, door.preferredSeats() - size, nowMs);
+        }
         if (size < door.minSeats()) {
             party.minReachedAtMs = -1L;
             if (outOfPatience(party, members, nowMs)) {
@@ -482,6 +504,12 @@ public final class CitizenPartyQuests {
             Character human = memberCharacter(member.id(), null);
             population.chatter().event(ChatterEngine.Event.of("pq.where", leader.mapId, leader.channel).self(leader)
                     .subject(human).slot("ch", String.valueOf(leader.channel)));
+            if (party.invitedFar.contains(member.id())) { // asked along from afar: the lobby hears why they wait
+                population.chatter().event(ChatterEngine.Event.of(trigger(doors.get(party.questKey), "coming"),
+                        leader.mapId, leader.channel).self(leader).subject(human));
+                log.info("citizen {} party at map {} waits for {} (asked along, on the way)", leader.name(), party.mapId,
+                        human == null ? member.name() : human.getName());
+            }
         }
     }
 
@@ -536,6 +564,69 @@ public final class CitizenPartyQuests {
         leader.journal.add("social", "invited " + human.getName() + " to " + lobby.name() + " (they whispered)");
         log.info("citizen {} party at {} invites {} who whispered for a seat", leader.name(), lobby.name(), human.getName());
         return JoinAnswer.INVITED;
+    }
+
+    /**
+     * A human said yes to a citizen's whispered invitation (CitizenRunInvites): the party {@code leaderId} leads invites
+     * them by a whispered seat request's rules, and the seat waits while they walk over. NOT_FORMING once it went in,
+     * gave up or broke up meanwhile.
+     */
+    synchronized JoinAnswer acceptRunInvite(Character human, int leaderId, long nowMs) {
+        CitizenSession leader = population.presence().session(leaderId);
+        if (leader == null || leader.virtual) {
+            return JoinAnswer.NOT_FORMING;
+        }
+        JoinAnswer answer = whisperJoin(human, leader, nowMs);
+        if (answer == JoinAnswer.INVITED) {
+            for (Forming party : forming.values()) {
+                if (party.leaderId == leaderId) {
+                    party.invitedFar.add(human.getId());
+                }
+            }
+        }
+        return answer;
+    }
+
+    /**
+     * The needs board's "Ask to join" on a PARTY request (N3.1): the leader {@code leaderId} invites the player as for
+     * a whispered seat request, and whispers them where to come; the board's window text says what happened.
+     */
+    public String askToJoin(Character human, int leaderId, long nowMs) {
+        CitizenSession leader = population.presence().session(leaderId);
+        if (leader == null || leader.virtual || leader.agent() == null) {
+            return "They are away right now.";
+        }
+        JoinAnswer answer = whisperJoin(human, leader, nowMs);
+        CitizenWhispers whispers = population.whispers();
+        if (whispers != null && answer != JoinAnswer.NOT_FORMING) {
+            whispers.answerJoin(leader, human, answer, this, nowMs);
+        }
+        String map = population.fields().name(leader.mapId);
+        return switch (answer) {
+            case INVITED -> "#e" + leader.name() + "#n sent you a party invite. They wait for you at #b" + map + "#k, channel "
+                    + leader.channel + ".";
+            case FULL -> "Their party is full now.";
+            case LEVEL -> "Your level does not fit that party quest.";
+            case IN_PARTY -> "Leave your party first.";
+            case INVITE_OUT -> "They are waiting on someone else's answer. Try again in a minute.";
+            case MEMBER -> "Someone else leads that party now.";
+            case BUSY -> "You can't join from where you are.";
+            case NOT_FORMING -> "That party is not forming any more.";
+        };
+    }
+
+    /** The citizens of the forming party standing at the lobby, its leader first (who may ask a human along). */
+    private static List<CitizenSession> citizensIn(List<AgentPartyMemberSnapshot> members, CitizenSession leader,
+                                                   Map<Integer, CitizenSession> here) {
+        List<CitizenSession> citizens = new ArrayList<>();
+        citizens.add(leader);
+        for (AgentPartyMemberSnapshot member : members) {
+            CitizenSession session = here.get(member.id());
+            if (session != null && session != leader) {
+                citizens.add(session);
+            }
+        }
+        return citizens;
     }
 
     /** The name of the citizen leading the party {@code memberId} is in, or null when no citizen leads it. */
@@ -715,6 +806,10 @@ public final class CitizenPartyQuests {
             }
             boolean human = !AgentPresence.isAgent(chr);
             if (!human && !here.containsKey(chr.getId())) {
+                Character owner = ownerIn(chr.getId(), members, map);
+                if (owner != null && party.toldProblem.add(-owner.getId() - 1_000_000_000)) {
+                    tellHuman(leader, owner, "crew", lobby); // their crew followed them in: once, nobody moves it (N3.2)
+                }
                 return chr.getName() + " is an Agent that is not waiting here";
             }
             if (human && !door.atEntry(map, chr.getPosition())) {
@@ -743,6 +838,16 @@ public final class CitizenPartyQuests {
         return "";
     }
 
+    /** The human of the party whose companion {@code agentId} is, standing on {@code map}; null when none. */
+    private Character ownerIn(int agentId, List<AgentPartyMemberSnapshot> members, MapleMap map) {
+        int owner = invites.ownerOf(agentId);
+        if (owner == 0 || members.stream().noneMatch(member -> member.id() == owner)) {
+            return null;
+        }
+        Character chr = memberCharacter(owner, null);
+        return chr == null || AgentPresence.isAgent(chr) ? null : chr;
+    }
+
     /** NORMAL load shedding on every scheduler shard. */
     static boolean schedulerCalm() {
         for (AgentLoadSheddingState state : AgentSchedulerMetrics.loadSheddingSnapshot().shardStates().values()) {
@@ -769,6 +874,7 @@ public final class CitizenPartyQuests {
                 population.presence().holdForRun(session);
             } else {
                 humans.put(member.id(), chr.getName()); // the blocker let no other Agent through
+                invites.ran(member.id(), lobby.id(), nowMs);
             }
         }
         CitizenPqDoor.Entered entered = door.admit(leaderChr, characters, random.nextLong(), nowMs);
@@ -945,6 +1051,8 @@ public final class CitizenPartyQuests {
             line = "{name} make some room in ur use and etc first";
         } else if (problem.contains("entrance")) {
             line = "{name} come over by the npc";
+        } else if (problem.contains("crew")) {
+            line = "{name} ur crew has to sit this one out, bench them n we go";
         } else {
             return;
         }
@@ -1342,6 +1450,9 @@ public final class CitizenPartyQuests {
     public String status() {
         StringBuilder out = new StringBuilder("pq runs: ")
                 .append(new HashSet<>(inRun.values()).size()).append(" in, ").append(forming.size()).append(" forming");
+        if (invites.on()) {
+            out.append("; ").append(invites.status());
+        }
         tally.forEach((quest, counts) -> out.append("; ").append(quest).append(' ').append(counts[0]).append(" runs ")
                 .append(counts[1]).append(" cleared ").append(counts[2]).append(" failed"));
         return out.toString();

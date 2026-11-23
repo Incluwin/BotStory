@@ -137,6 +137,7 @@ public final class Population {
         }, chatter::speakTo, memories);
         this.whispers = new CitizenWhispers(this);
         this.whispers.onReply("rival", rivals::replied); // a player answering a crew's whisper (F7)
+        this.whispers.onReply(CitizenRunInvites.TOPIC, partyQuests.invites()::replied); // a run invitation's answer (N3.1)
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
     }

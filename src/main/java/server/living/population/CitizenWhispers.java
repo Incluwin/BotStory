@@ -138,7 +138,8 @@ public final class CitizenWhispers {
         return true;
     }
 
-    private void answerJoin(CitizenSession leader, Character human, CitizenPartyQuests.JoinAnswer answer,
+    /** The leader's whispered answer to a seat request (also the needs board's "Ask to join", N3.1). */
+    void answerJoin(CitizenSession leader, Character human, CitizenPartyQuests.JoinAnswer answer,
                             CitizenPartyQuests partyQuests, long nowMs) {
         String trigger = switch (answer) {
             case INVITED -> human.getMapId() == leader.mapId && human.getClient() != null

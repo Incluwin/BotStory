@@ -185,8 +185,18 @@ final class CitizenLobbyFixture implements AutoCloseable {
         when(chr.getMapId()).thenReturn(here.mapId());
         onLobby.add(chr);
         CitizenSession session = session(chr);
+        if (session == null) {
+            return; // a human walked over
+        }
         session.activity = Activity.PQ;
         session.mapId = here.mapId();
+    }
+
+    /** An Agent that is no citizen (a player's companion), at Lakelis. */
+    Character companion(int id, String name, int level) {
+        Character chr = character(id, name, level);
+        agents.add(id);
+        return chr;
     }
 
     /** A human at Lakelis with no party. */
