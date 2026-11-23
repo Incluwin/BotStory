@@ -80,6 +80,67 @@ final class TeamRules {
         return Optional.of(best != null ? best : team(near, size, nearest, PICKUP));
     }
 
+    /**
+     * A guild match's side for a player of {@code guildId} (docs/WORLD_SYSTEMS_PLAN.md N5.3): the player, then its free
+     * guild mates within {@link LadderRules#LEVEL_WINDOW} levels (nearest the player's level first), then its own
+     * {@code companions}, {@code size} in all; empty when they leave a seat open. Never a citizen of another guild.
+     */
+    static Optional<List<Integer>> guildSide(int humanId, int level, int guildId, int size, List<Member> free,
+                                             List<Integer> companions) {
+        if (guildId <= 0 || size < MIN_SIZE || size > MAX_SIZE) {
+            return Optional.empty();
+        }
+        List<Member> mates = new ArrayList<>();
+        for (Member member : free) {
+            if (member.guildId() == guildId && member.characterId() != humanId
+                    && Math.abs(member.level() - level) <= LadderRules.LEVEL_WINDOW) {
+                mates.add(member);
+            }
+        }
+        mates.sort(Comparator.comparingInt(m -> Math.abs(m.level() - level)));
+        List<Integer> side = new ArrayList<>();
+        side.add(humanId);
+        for (Member mate : mates) {
+            if (side.size() < size) {
+                side.add(mate.characterId());
+            }
+        }
+        for (int companion : companions) {
+            if (side.size() < size && !side.contains(companion)) {
+                side.add(companion);
+            }
+        }
+        return side.size() == size ? Optional.of(side) : Optional.empty();
+    }
+
+    /**
+     * A guild match's foe: {@code size} free members of one guild other than {@code ownGuildId} within the level
+     * window, the guild team rated nearest {@code target}; never a pickup team, so empty when no other guild has as many.
+     */
+    static Optional<Team> guildFoe(int level, Glicko2.Rating target, int size, int ownGuildId, List<Member> free) {
+        List<Member> others = new ArrayList<>();
+        for (Member member : free) {
+            if (member.guildId() > 0 && member.guildId() != ownGuildId) {
+                others.add(member);
+            }
+        }
+        Optional<Team> team = pick(level, target, size, others);
+        return team.filter(t -> !PICKUP.equals(t.name()) && oneGuild(t, others));
+    }
+
+    private static boolean oneGuild(Team team, List<Member> members) {
+        int guildId = 0;
+        for (Member member : members) {
+            if (team.members().contains(member.characterId())) {
+                if (guildId != 0 && member.guildId() != guildId) {
+                    return false;
+                }
+                guildId = member.guildId();
+            }
+        }
+        return guildId > 0;
+    }
+
     private static Team team(List<Member> pool, int size, Comparator<Member> nearest, String name) {
         List<Member> sorted = new ArrayList<>(pool);
         sorted.sort(nearest);

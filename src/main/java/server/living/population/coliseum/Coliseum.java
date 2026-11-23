@@ -198,6 +198,28 @@ public final class Coliseum {
         teams.request(human, size, crewWar ? TeamLadder.Kind.CREW_WAR : TeamLadder.Kind.TEAM, forced);
     }
 
+    /**
+     * N5.3: queues a guild match of {@code size} for {@code human}: it fights for its guild, guild mates filling its
+     * side before its companions, against another guild's team, rated in the guild book. {@code forced}: a GM's.
+     */
+    public void guildRequest(Character human, int size, boolean forced) {
+        teams.request(human, size, TeamLadder.Kind.GUILD, forced);
+    }
+
+    /** N5.3: the guild book's top {@code limit} of {@code human}'s bracket (or Veteran), for {@code !pvp coliseum guildtop}. */
+    public List<String> guildTop(Character human, int limit) {
+        LadderRules.Bracket bracket = LadderRules.Bracket.of(human == null ? 60 : human.getLevel())
+                .orElse(LadderRules.Bracket.VETERAN);
+        List<String> lines = new ArrayList<>();
+        lines.add("Guild book, " + bracket.label + ":");
+        int place = 1;
+        for (LadderBook.Ranked ranked : teams.guildBook().top(bracket, limit)) {
+            lines.add(place++ + ". " + ranked.name() + " " + Math.round(ranked.row().rating().rating()) + " ("
+                    + ranked.row().wins() + "-" + ranked.row().losses() + ")");
+        }
+        return lines;
+    }
+
     /** V6: the team matches being fought, for {@code !pvp coliseum status}. */
     public List<String> teamStatus() {
         return teams.status();
@@ -364,6 +386,17 @@ public final class Coliseum {
                             + " mesos#k, win or lose. Fight now?", () -> teamRequest(player, chosen, false, false),
                             () -> teamTalk(player)).show()));
         }
+        if (population.config().GUILD_LADDER_ENABLED && player.getGuild() != null) { // N5.3: fight for its guild
+            String guild = player.getGuild().getName();
+            for (int size = TeamRules.MIN_SIZE; size <= TeamRules.MAX_SIZE; size++) {
+                int chosen = size;
+                options.add(new LivingTalk.Option("#bA " + size + "v" + size + " for " + guild + "#k (" + mesos(fee)
+                        + " mesos)", () -> LivingTalk.open(player, CESAR).yesNo("Your guild mates fill your side first,"
+                        + " then your companions, against another guild. It costs #b" + mesos(fee) + " mesos#k. Fight"
+                        + " for " + guild + "?", () -> guildRequest(player, chosen, false), () -> teamTalk(player))
+                        .show()));
+            }
+        }
         if (population.rivals() != null && population.rivals().crewOfMain(player.getId()) != null
                 && fieldable >= TeamRules.MIN_SIZE) {
             options.add(new LivingTalk.Option("#bA Crew War#k against "
@@ -373,7 +406,10 @@ public final class Coliseum {
         String head = "Bring your companions and fight as a team, " + TeamRules.MIN_SIZE + " or " + TeamRules.MAX_SIZE
                 + " a side, under ladder rules. Pick one target together and it falls fast.\r\n\r\nYour team rating: #b"
                 + Math.round(teams.book().teamRating(List.of(player.getId()), bracket.get(), now).rating()) + "#k, "
-                + row.wins() + "-" + row.losses() + ".";
+                + row.wins() + "-" + row.losses() + "."
+                + (population.config().GUILD_LADDER_ENABLED && player.getGuild() != null ? " " + player.getGuild().getName()
+                + "'s guild rating: #b" + Math.round(teams.guildBook().rating(player.getGuildId(), bracket.get(), now)
+                .rating()) + "#k." : "");
         if (options.isEmpty()) {
             LivingTalk.open(player, CESAR).ok(head + "\r\n\r\n#rNone of your companions is standing with you.#k")
                     .back(() -> talk(player)).show();

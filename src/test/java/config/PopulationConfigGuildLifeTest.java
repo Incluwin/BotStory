@@ -39,7 +39,7 @@ class PopulationConfigGuildLifeTest {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII).replace("\r\n", "\n");
         for (String key : new String[]{"GUILD_CHAT_ENABLED: false", "GUILD_GOALS_ENABLED: false",
                 "GUILD_GOAL_GP: 300", "GUILD_GOAL_CLEARS: 6", "GUILD_GOAL_NEEDS: 4", "GUILD_GOAL_WINS: 4",
-                "GUILD_GOAL_CHECK_MINUTES: 10"}) {
+                "GUILD_GOAL_CHECK_MINUTES: 10", "GUILD_LADDER_ENABLED: false"}) {
             int at = yaml.indexOf("\n    " + key + "\n");
             assertTrue(at > 0, key);
             String before = yaml.substring(yaml.lastIndexOf('\n', at - 1) + 1, at);

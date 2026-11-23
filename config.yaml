@@ -1340,6 +1340,12 @@ population:
     GUILD_GOAL_WINS: 4
     # Technical: minutes between counts on the 60 s social tick (>= 1); each count is three window reads for all guilds, not one per guild.
     GUILD_GOAL_CHECK_MINUTES: 10
+    # The guild ladder (docs/WORLD_SYSTEMS_PLAN.md N5.3): Cesar offers a player in a guild a 2v2 or 3v3 for it, guild
+    # mates filling the side before the player's companions, against another guild's team; the result is rated as a
+    # guild in the guild book, as are citizen guild teams' background team matches. false = the kill switch: no guild
+    # matches and no guild book; the team ladder is as before. Off until live check U3 passes.
+    # Technical: TeamLadder.Kind.GUILD (TeamRules.guildSide / guildFoe) and LadderStore.guildBook() over pvp_guild_rating (changeset 67); booked in pvp_match as kind GUILD, so the coliseum's 1v1 and team ratings never see a guild id.
+    GUILD_LADDER_ENABLED: false
     BUDDIES_ENABLED: true
     BUDDY_REQUEST_AFTER_MINUTES: 30
     MARKET_ENABLED: true

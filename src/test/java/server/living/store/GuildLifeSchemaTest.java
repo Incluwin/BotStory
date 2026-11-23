@@ -84,6 +84,6 @@ class GuildLifeSchemaTest {
             }
         }
         assertEquals(Set.of("src/main/java/server/living/population/GuildGoalStore.java"), goalFiles);
-        assertEquals(Set.of(), ratingFiles, "the guild book comes with N5.3");
+        assertEquals(Set.of("src/main/java/server/living/population/coliseum/LadderStore.java"), ratingFiles);
     }
 }
