@@ -108,6 +108,39 @@ public class ClearStore {
         return out;
     }
 
+    /** The clears in {@code [fromMs, toMs)}, oldest first (the town paper's Records, docs/WORLD_SYSTEMS_PLAN.md N1). */
+    public List<Clear> between(long fromMs, long toMs) {
+        List<Clear> out = new ArrayList<>();
+        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_clear WHERE cleared_at >= ? AND cleared_at < ?"
+                + " ORDER BY id");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            SqlTime.set(ps, 1, fromMs);
+            SqlTime.set(ps, 2, toMs);
+            readAll(ps, out);
+        } catch (SQLException failure) {
+            log.warn("living_clear window read failed", failure);
+        }
+        return out;
+    }
+
+    /** Quest -> its fastest timed clear before {@code beforeMs}; a quest with any clear before then is a key (0 untimed). */
+    public Map<String, Long> bestsBefore(long beforeMs) {
+        Map<String, Long> out = new HashMap<>();
+        String sql = SqlTime.utc("SELECT quest, COALESCE(MIN(NULLIF(duration_ms, 0)), 0) FROM living_clear"
+                + " WHERE cleared_at < ? GROUP BY quest");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            SqlTime.set(ps, 1, beforeMs);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getString(1), rs.getLong(2));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_clear bests read failed", failure);
+        }
+        return out;
+    }
+
     /** Character id -> quest -> its fastest timed clear, for players only. */
     public Map<Integer, Map<String, Long>> playerBests() {
         Map<Integer, Map<String, Long>> out = new HashMap<>();

@@ -2,6 +2,8 @@ package server.living.population.paper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.living.population.records.Clear;
+import server.living.population.records.ClearStore;
 import server.living.store.SqlTime;
 import tools.DatabaseConnection;
 
@@ -23,8 +25,9 @@ import java.util.function.UnaryOperator;
 
 /**
  * JDBC for the paper (changeset 64): living_paper, the paper.item and letters.paper rows of living_event_log, and the
- * existing tables the issue reads (pvp_tournament and its seats, pvp_rating's weekly climb, living_clear,
- * economy_cpi_daily, rival.news rows). Every read degrades to empty and every write logs on failure.
+ * existing tables the issue reads (pvp_tournament and its seats, pvp_rating's weekly climb, economy_cpi_daily,
+ * rival.news rows; living_clear through ClearStore, its one owner). Every read degrades to empty and every write logs
+ * on failure.
  */
 final class PaperStore implements PaperDesk.Store, PaperCompose.Sources {
     private static final Logger log = LoggerFactory.getLogger(PaperStore.class);
@@ -33,6 +36,7 @@ final class PaperStore implements PaperDesk.Store, PaperCompose.Sources {
 
     private final UnaryOperator<String> questLabels;
     private final IntFunction<String> itemNames;
+    private final ClearStore clears = new ClearStore();
 
     /** {@code questLabels}: the records page's name of a quest script (null for no record); {@code itemNames}: an item's. */
     PaperStore(UnaryOperator<String> questLabels, IntFunction<String> itemNames) {
@@ -277,77 +281,32 @@ final class PaperStore implements PaperDesk.Store, PaperCompose.Sources {
         if (!DatabaseConnection.isInitialized()) {
             return out;
         }
-        String sql = SqlTime.utc("SELECT quest, duration_ms, cleared_at, members FROM living_clear"
-                + " WHERE cleared_at >= ? AND cleared_at < ? ORDER BY id");
-        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            SqlTime.set(ps, 1, fromMs);
-            SqlTime.set(ps, 2, toMs);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    out.add(new PaperCompose.ClearRow(rs.getString(1), rs.getLong(2), SqlTime.get(rs, 3),
-                            memberNames(rs.getString(4))));
-                }
-            }
-        } catch (SQLException failure) {
-            log.warn("living_clear window read failed", failure);
+        for (Clear clear : clears.between(fromMs, toMs)) {
+            out.add(new PaperCompose.ClearRow(clear.quest(), clear.durationMs(), clear.clearedAtMs(),
+                    clear.members().stream().map(Clear.Member::name).toList()));
         }
         return out;
     }
 
-    /** The names of a living_clear members string ("id:K:name,..."). */
-    static List<String> memberNames(String members) {
-        List<String> out = new ArrayList<>();
-        if (members == null || members.isBlank()) {
-            return out;
-        }
-        for (String one : members.split(",")) {
-            String[] parts = one.split(":", 3);
-            if (parts.length == 3 && !parts[2].isBlank()) {
-                out.add(parts[2]);
-            }
-        }
-        return out;
+    /** Each quest cleared before {@code beforeMs}, with its fastest timed clear (0 when none was timed). */
+    private Map<String, Long> bestsBefore(long beforeMs) {
+        return DatabaseConnection.isInitialized() ? clears.bestsBefore(beforeMs) : Map.of();
     }
 
     @Override
     public Map<String, Long> fastestBefore(long beforeMs) {
         Map<String, Long> out = new HashMap<>();
-        if (!DatabaseConnection.isInitialized()) {
-            return out;
-        }
-        String sql = SqlTime.utc("SELECT quest, MIN(duration_ms) FROM living_clear WHERE duration_ms > 0"
-                + " AND cleared_at < ? GROUP BY quest");
-        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            SqlTime.set(ps, 1, beforeMs);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    out.put(rs.getString(1), rs.getLong(2));
-                }
+        bestsBefore(beforeMs).forEach((quest, best) -> {
+            if (best > 0) {
+                out.put(quest, best);
             }
-        } catch (SQLException failure) {
-            log.warn("living_clear bests read failed", failure);
-        }
+        });
         return out;
     }
 
     @Override
     public Set<String> clearedBefore(long beforeMs) {
-        Set<String> out = new HashSet<>();
-        if (!DatabaseConnection.isInitialized()) {
-            return out;
-        }
-        String sql = SqlTime.utc("SELECT DISTINCT quest FROM living_clear WHERE cleared_at < ?");
-        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            SqlTime.set(ps, 1, beforeMs);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    out.add(rs.getString(1));
-                }
-            }
-        } catch (SQLException failure) {
-            log.warn("living_clear quests read failed", failure);
-        }
-        return out;
+        return new HashSet<>(bestsBefore(beforeMs).keySet());
     }
 
     @Override
