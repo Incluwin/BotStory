@@ -273,8 +273,30 @@ public final class CitizenTies {
         long nowMs = System.currentTimeMillis();
         for (int i = 0; i < citizens.size(); i++) {
             for (int j = i + 1; j < citizens.size(); j++) {
+                int before = felt(citizens.get(i), citizens.get(j), Kind.FRIEND, nowMs);
                 grow(citizens.get(i), citizens.get(j), CLEAR_POINTS, nowMs);
+                if (before < PAPER_FRIENDS && felt(citizens.get(i), citizens.get(j), Kind.FRIEND, nowMs) >= PAPER_FRIENDS) {
+                    paper("town.friends", 25, citizens.get(i), citizens.get(j)); // a friendship made in a run (N2 -> N1)
+                }
             }
+        }
+    }
+
+    /** A FRIEND tie this strong, crossed in a clear, is news; a RIVAL tie this strong, crossed in a match. */
+    static final int PAPER_FRIENDS = 40;
+    static final int PAPER_GRUDGE = 20;
+
+    /** The pair's tie strength now if it is of {@code kind}, else 0. */
+    private synchronized int felt(int x, int y, Kind kind, long nowMs) {
+        Tie tie = ties.get(key(x, y));
+        return tie == null || tie.kind() != kind ? 0 : (int) Math.round(tie.felt(nowMs, halfLife()));
+    }
+
+    private void paper(String key, int weight, int x, int y) {
+        server.living.population.Citizen one = population.citizen(x);
+        server.living.population.Citizen two = population.citizen(y);
+        if (one != null && two != null) {
+            server.living.population.paper.PaperDesk.file(key, weight, Map.of("name", one.name(), "partner", two.name()));
         }
     }
 
@@ -312,7 +334,12 @@ public final class CitizenTies {
     /** A decided coliseum match between two citizens (a draw is none): the two edge toward rivalry. */
     public void matched(int winnerId, int loserId) {
         if (on() && population.isCitizen(winnerId) && population.isCitizen(loserId)) {
-            grow(winnerId, loserId, -MATCH_POINTS, System.currentTimeMillis());
+            long nowMs = System.currentTimeMillis();
+            int before = felt(winnerId, loserId, Kind.RIVAL, nowMs);
+            grow(winnerId, loserId, -MATCH_POINTS, nowMs);
+            if (before < PAPER_GRUDGE && felt(winnerId, loserId, Kind.RIVAL, nowMs) >= PAPER_GRUDGE) {
+                paper("town.grudge", 30, winnerId, loserId); // a grudge match (N2 -> N1): the winner first
+            }
         }
     }
 

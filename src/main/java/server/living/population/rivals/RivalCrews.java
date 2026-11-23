@@ -630,6 +630,9 @@ public final class RivalCrews implements ClearLog.Listener {
             return;
         }
         Owed debt = new Owed(clear.quest(), clear.durationMs(), crewBest, clear.clearedAtMs());
+        server.living.population.paper.PaperDesk.fileNaming("records.race", 60, Map.of("crew", crew.name(), "quest",
+                population.clears().labels().label(clear.quest()), "time", ClearLog.time(clear.durationMs())), "name",
+                crew.mainId()); // a player beat their rival crew's time (N2 RACE_WON -> N1)
         if (population.memories() != null && population.config().HEARSAY_ENABLED) { // a race they won (N2.4)
             for (int memberId : crew.members()) {
                 population.memories().record(memberId, crew.mainId(), server.living.population.PersonMemory.Kind.RACE_WON, 0,

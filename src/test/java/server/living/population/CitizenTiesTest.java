@@ -253,4 +253,46 @@ class CitizenTiesTest {
                 0, 1, new LinkedHashSet<>(), Citizen.State.ACTIVE, 0L, 0L, 0L, 0L, 0L, 0, "");
         return new CitizenSession(citizen, 0L, 3_600_000L, false);
     }
+
+    // ---- the paper's stories from ties (N2 items filed by N6, docs/WORLD_SYSTEMS_PLAN.md) ------------------------
+
+    private final List<String> filed = new ArrayList<>();
+
+    private void paperOn() {
+        config.PAPER_ENABLED = true;
+        for (int id = 1; id <= 3; id++) {
+            when(population.citizen(id)).thenReturn(new Citizen(id, "C" + id, "evening", 0, 0, "victoria", "hunter",
+                    "relaxed-v1", "default", 1.0d, 0, 1, new java.util.LinkedHashSet<>(), Citizen.State.ACTIVE, 0L, 0L, 0L,
+                    0L, 0L, 0, ""));
+        }
+        server.living.population.paper.PaperDesk.install(new server.living.population.paper.PaperDesk(
+                new server.living.population.paper.PaperDesk.Store() {
+                    public boolean file(String detail) { return filed.add(detail); }
+                    public java.util.Optional<server.living.population.paper.PaperDesk.Stored> issue(int weekOf) { return java.util.Optional.empty(); }
+                    public boolean insert(int weekOf, long issuedAtMs, String body) { return false; }
+                    public java.util.Optional<server.living.population.paper.PaperDesk.Stored> latestAtOrBefore(int weekOf) { return java.util.Optional.empty(); }
+                    public Integer lastSeen(int characterId) { return -1; }
+                    public void seen(int characterId, int weekOf) { }
+                    public String name(int characterId) { return null; }
+                }, null, () -> null, () -> config, Runnable::run, java.time.ZoneOffset.UTC));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void paperOff() {
+        server.living.population.paper.PaperDesk.install(null);
+    }
+
+    @Test
+    void aRivalryCrossingTwentyInAMatchIsAGrudgeStoryOnce() {
+        paperOn();
+        for (int match = 0; match < 4; match++) {
+            ties.matched(1, 2);
+        }
+        assertTrue(filed.isEmpty(), "16 is no grudge yet");
+        ties.matched(1, 2);
+        ties.matched(1, 2);
+        assertEquals(1, filed.size());
+        assertTrue(filed.get(0).contains("town.grudge") && filed.get(0).contains("C1") && filed.get(0).contains("C2"),
+                filed.get(0));
+    }
 }

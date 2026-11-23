@@ -32,6 +32,9 @@ class PaperCatalogTest {
         FILED.put("records.record", Map.of("quest", "Kerning PQ", "time", "12:00", "names", "Ann, Ben"));
         FILED.put("records.fastest", Map.of("quest", "Kerning PQ", "time", "12:00", "names", "Ann, Ben"));
         FILED.put("records.rival", Map.of("crew", "Night Owls", "quest", "Kerning PQ", "time", "12:00"));
+        FILED.put("records.race", Map.of("name", "Ann", "crew", "Night Owls", "quest", "Stumpy", "time", "1:35"));
+        FILED.put("town.friends", Map.of("name", "Ann", "partner", "Ben"));
+        FILED.put("town.grudge", Map.of("name", "Ann", "partner", "Ben"));
         FILED.put("market.riser", Map.of("item", "Mithril Ore", "percent", "18"));
         FILED.put("market.faller", Map.of("item", "Mithril Ore", "percent", "18"));
         FILED.put("town.wedding", Map.of("name", "Ann", "partner", "Ben"));

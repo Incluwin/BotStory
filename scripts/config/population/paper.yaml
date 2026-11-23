@@ -10,6 +10,9 @@
 #   arena.champion.alone  bracket, champion (no final played)
 #   records.first         quest, names                        records.record / records.fastest   quest, time, names
 #   records.rival         crew, quest, time
+#   records.race          name, crew, quest, time (a player beat their rival crew's time)
+#   town.friends          name, partner (two citizens became friends in a run)
+#   town.grudge           name, partner (a coliseum match between rivals; name won)
 #   market.riser / market.faller   item, percent
 #   town.wedding          name, partner                       town.guild     guild, leader
 #   town.alliance         alliance, names (its guilds)        town.job       name, job
@@ -121,6 +124,17 @@ stories:
       - "{crew} beat someones {quest} time"
       - "{crew} did {quest} in {time}"
 
+  - key: records.race
+    headlines:
+      - "{name} beat the {crew} at {quest}"
+      - "{name} is ahead of the {crew}"
+    bodies:
+      - "{name} cleared {quest} in {time}, faster than their rivals the {crew} have managed."
+      - "The {crew} have a time to chase: {name} did {quest} in {time}."
+    gists:
+      - "{name} beat the {crew} at {quest}"
+      - "{name} did {quest} in {time}, faster than the {crew}"
+
   - key: market.riser
     headlines:
       - "{item} is dear this week"
@@ -158,6 +172,28 @@ stories:
     gists:
       - "{name} and {partner} got married"
       - "{name} married {partner}"
+
+  - key: town.friends
+    headlines:
+      - "{name} and {partner}, friends for life"
+      - "A party that stuck: {name} and {partner}"
+    bodies:
+      - "{name} and {partner} have run so many quests together that they are fast friends now."
+      - "One more clear together and {name} and {partner} are firm friends."
+    gists:
+      - "{name} and {partner} are good friends now"
+      - "{name} and {partner} are always partying together"
+
+  - key: town.grudge
+    headlines:
+      - "Bad blood at the coliseum: {name} and {partner}"
+      - "{name} beats {partner} again"
+    bodies:
+      - "{name} and {partner} met in the coliseum once more. {name} won, and neither is letting it go."
+      - "The rivalry between {name} and {partner} is the talk of Ariant after another match."
+    gists:
+      - "{name} and {partner} really dont like each other"
+      - "{name} beat {partner} at the coliseum again"
 
   - key: town.guild
     headlines:
