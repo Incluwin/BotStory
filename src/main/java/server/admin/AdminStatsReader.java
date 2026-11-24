@@ -179,6 +179,12 @@ final class AdminStatsReader {
         return population == null ? "{\"ok\":false,\"error\":\"population_off\"}" : population.market().statsJson();
     }
 
+    /** What the price index's one-time reseed would change now (docs/ECONOMY_PLAN.md section 10.9); changes nothing. */
+    static String priceReseed() {
+        Population population = Population.get();
+        return population == null ? "{\"ok\":false,\"error\":\"population_off\"}" : population.market().reseedDryRunJson();
+    }
+
     /** The E4 controller's levers in force and its last {@code days} daily settings (docs/ECONOMY_PLAN.md E4). */
     static String controller(int days) {
         Population population = Population.get();

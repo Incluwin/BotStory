@@ -266,6 +266,61 @@ public final class CitizenStore {
         }
     }
 
+    /** Whether the one-time price reseed ran (PriceIndexReseed); true when it cannot tell, so it never runs unsure. */
+    boolean priceReseedRan() {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT 1 FROM living_price_reseed LIMIT 1");
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        } catch (SQLException failure) {
+            log.error("living_price_reseed unreadable; the price index reseed does not run", failure);
+            return true;
+        }
+    }
+
+    /** The reseed's prices, the old ones kept beside them, and the marker (item 0), in one transaction; false = none. */
+    boolean reseedPrices(List<PriceIndexReseed.Move> moves) {
+        try (Connection con = DatabaseConnection.getConnection()) {
+            con.setAutoCommit(false);
+            try (PreparedStatement backup = con.prepareStatement("INSERT INTO living_price_reseed"
+                    + " (item_id, seed, old_price, new_price, samples) VALUES (?, ?, ?, ?, ?)");
+                 PreparedStatement price = con.prepareStatement("UPDATE living_price_index SET price = ?"
+                         + " WHERE item_id = ? AND price = ?")) {
+                backup.setInt(1, 0);
+                backup.setLong(2, 0L);
+                backup.setLong(3, 0L);
+                backup.setLong(4, 0L);
+                backup.setInt(5, 0);
+                backup.addBatch();
+                for (PriceIndexReseed.Move move : moves) {
+                    backup.setInt(1, move.itemId());
+                    backup.setLong(2, move.seed());
+                    backup.setLong(3, move.oldPrice());
+                    backup.setLong(4, move.newPrice());
+                    backup.setInt(5, move.samples());
+                    backup.addBatch();
+                    price.setLong(1, move.newPrice());
+                    price.setInt(2, move.itemId());
+                    price.setLong(3, move.oldPrice());
+                    if (price.executeUpdate() != 1) {
+                        throw new SQLException("item " + move.itemId() + " is not at " + move.oldPrice());
+                    }
+                }
+                backup.executeBatch();
+                con.commit();
+                return true;
+            } catch (SQLException failure) {
+                con.rollback();
+                throw failure;
+            } finally {
+                con.setAutoCommit(true);
+            }
+        } catch (SQLException failure) {
+            log.error("price index reseed not written", failure);
+            return false;
+        }
+    }
+
     public List<int[]> prices() {
         List<int[]> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection();

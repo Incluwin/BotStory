@@ -416,6 +416,10 @@ public class PopulationConfig {
     public boolean PRICE_INDEX_DRIFT_GUARD_ENABLED = false;
     /** The share of the way (in log terms) each index update pulls an item's price back to its seed price. */
     public double PRICE_INDEX_ANCHOR_PULL = 0.04;
+    /** Once, at the next start with the drift guard on: rows under BELOW x their seed go to TO x it (PriceIndexReseed). */
+    public boolean PRICE_INDEX_RESEED_ENABLED = false;
+    public double PRICE_INDEX_RESEED_BELOW = 0.5;
+    public double PRICE_INDEX_RESEED_TO = 0.8;
 
     // The needs board: citizens ask for real things they lack (docs/BOT_CONCEPT_PLAN.md F1, server.living.population.needs)
     /** Kill switch: false = no need derived, posted or listed, no board spawned, "B>" chatter and gear as before. */
@@ -682,6 +686,10 @@ public class PopulationConfig {
         }
         if (PRICE_INDEX_ANCHOR_PULL <= 0 || PRICE_INDEX_ANCHOR_PULL > 1) {
             throw new IllegalArgumentException("population.PRICE_INDEX_ANCHOR_PULL must be over 0 and at most 1");
+        }
+        if (PRICE_INDEX_RESEED_BELOW <= 0 || PRICE_INDEX_RESEED_BELOW > PRICE_INDEX_RESEED_TO || PRICE_INDEX_RESEED_TO > 1) {
+            throw new IllegalArgumentException("population.PRICE_INDEX_RESEED_BELOW must be over 0 and at most"
+                    + " PRICE_INDEX_RESEED_TO, and that at most 1");
         }
         if (NEEDS_PER_CITIZEN < 1 || NEEDS_EXPIRE_MIN_HOURS < 1 || NEEDS_EXPIRE_MAX_HOURS < NEEDS_EXPIRE_MIN_HOURS
                 || NEEDS_GEAR_DEADLINE_HOURS < 1 || NEEDS_GEAR_WANT_SHARE < 0 || NEEDS_GEAR_WANT_SHARE > 1

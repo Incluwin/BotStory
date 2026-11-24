@@ -204,6 +204,7 @@ public final class Population {
             log.info("price index: {} rows take a fresh seed (unmoved, or under the NPC price; docs/ECONOMY_PLAN.md E2-E3)",
                     reseeded);
         }
+        PriceIndexReseed.runOnce(population.market, population.store, config); // once, before any citizen loads (section 10)
         population.social.installSeams();
         population.conversation.installSeams();
         // the boss runs of the expeditions citizens lead report to the population (docs/CITIZEN_EXPEDITIONS_PLAN.md)
