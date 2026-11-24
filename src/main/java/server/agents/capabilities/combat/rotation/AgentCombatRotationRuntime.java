@@ -6,6 +6,8 @@ import server.life.Monster;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Applies a measured {@link AgentCombatRotationProfile} to live decisions. It never invents a
@@ -16,6 +18,8 @@ import java.util.Optional;
  */
 public final class AgentCombatRotationRuntime {
     private static volatile boolean enabled = true;
+    /** Characters whose profile is left out (an arena run measuring them raw). */
+    private static final Set<Integer> OFF = ConcurrentHashMap.newKeySet();
 
     private AgentCombatRotationRuntime() {
     }
@@ -29,8 +33,17 @@ public final class AgentCombatRotationRuntime {
         return enabled;
     }
 
+    /** Leaves one character's profile out, or (false) lets it count again. */
+    public static void setOff(int characterId, boolean off) {
+        if (off) {
+            OFF.add(characterId);
+        } else {
+            OFF.remove(characterId);
+        }
+    }
+
     public static Optional<AgentCombatRotationProfile> profileFor(Character bot) {
-        if (!enabled || bot == null || bot.getJob() == null) {
+        if (!enabled || bot == null || bot.getJob() == null || OFF.contains(bot.getId())) {
             return Optional.empty();
         }
         return AgentCombatRotationProfileRepository.defaultRepository().find(bot.getJob().getId());

@@ -96,7 +96,7 @@ public final class AgentCombatCandidates {
      * Writes each job whose table changed since it was last read or written, split by scenario and every scenario
      * marked not adopted. Off the Agent tick. Returns the files written.
      */
-    public int flush() {
+    public synchronized int flush() {
         int saved = 0;
         for (Map.Entry<Integer, AgentCombatPolicyTable> job : tables.entrySet()) {
             Map<String, Map<Integer, AgentCombatPolicyTable.Cell>> now = job.getValue().snapshot();
@@ -136,6 +136,21 @@ public final class AgentCombatCandidates {
                     .map(AgentCombatPolicy.Scenario::table).orElse(Map.of());
         }
         return rows.isEmpty() ? Optional.empty() : Optional.of(AgentCombatPolicyTable.of(rows));
+    }
+
+    /** Puts a table learned in the arena (policy=learn adopt=off) in place of the job's candidate for that scenario. */
+    public synchronized void replace(int jobId, String scenario, AgentCombatPolicyTable learned) {
+        Map<String, Map<Integer, AgentCombatPolicyTable.Cell>> rows = new TreeMap<>();
+        AgentCombatPolicyTable before = tables.get(jobId);
+        if (before == null) {
+            repository.find(jobId).ifPresent(loaded ->
+                    loaded.policy().scenarios().values().forEach(old -> rows.putAll(old.table())));
+        } else {
+            rows.putAll(before.snapshot());
+        }
+        rows.keySet().removeIf(context -> scenarioOf(context).equals(scenario));
+        rows.putAll(rowsOf(learned.snapshot(), scenario));
+        tables.put(jobId, AgentCombatPolicyTable.of(rows));
     }
 
     /** Visits recorded over a table's cells (priors alone count none). */
