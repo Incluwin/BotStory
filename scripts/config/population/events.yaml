@@ -90,7 +90,6 @@ prizes:
     fame: 1
     items:
       - { item: 2022117, count: 5 }   # Maple Syrup
-      - { item: 2022179, count: 1 }   # Onyx Apple
       - { item: 2022002, count: 20 }  # Cider
   festival:
     fame: 2
