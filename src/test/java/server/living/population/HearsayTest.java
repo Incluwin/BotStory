@@ -150,6 +150,9 @@ class HearsayTest {
         assertNull(Hearsay.story("Ann", HUMAN, chat, 0, now, config), "a chat is not news");
         assertEquals("left-kpq", Hearsay.story("Ann", HUMAN, left, -30, now, config).deed());
         assertNull(Hearsay.story("Ann", HUMAN, left, 20, now, config), "made up since: not told");
+        Episode held = new Episode(Kind.DEFENDED, now, TOWN, 1, "Henesys"); // an invasion held beside them (N4.3)
+        assertEquals("def", Hearsay.story("Ann", HUMAN, held, 6, now, config).deed());
+        assertEquals("held the line with Ann", PersonMemory.deedWords("def", "Ann"));
         assertNull(Hearsay.story("Ann", HUMAN, oldFame, 5, now, config), "faded under STRONG");
     }
 

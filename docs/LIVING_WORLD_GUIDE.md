@@ -339,6 +339,27 @@ switches, all off until their live checks pass (`tools/checks/checks/n5-guild-li
   sims between two citizen guild teams move the guild book too. `!pvp coliseum guild [2|3]` (GM, no fee) and
   `!pvp coliseum guildtop`.
 
+### World events
+
+Off by default: `population.WORLD_EVENTS_ENABLED` plus a switch a kind (docs/WORLD_SYSTEMS_PLAN.md N4,
+`server.living.population.events`). `events.yaml` lists the calendar; `WorldEvents` keeps one `living_world_event` row an
+occurrence (changeset 68, `(event_id, occurrence)` unique), so a restart neither repeats nor loses one: a RUNNING row is
+resumed until its end (or closed when that is past), a PLANNED one missed by under 3 hours starts late in full. Six hours
+before the paper each event due next week takes the hour of the week with the most players online over the last four
+weeks (`HourPicker`, `admin_player_samples`), skipping the tournament and the week's other events; with under 7 sampled
+days its fallback slot. The paper's Notices announce it, citizens in town mention it from the day before. Everything a
+running event changes goes through one `WorldModifier` (plan weights, target maps, stall cap, asks, the festival town,
+avoided fields), cleared as it ends. Prizes are fame and an item of the fixed table, never meso.
+
+- **Market day** (`WORLD_EVENT_MARKET_DAY_ENABLED`, fortnightly, 3 h): twice the stalls, asks at 85 %, MARKET plans three
+  times as likely. The price index and the learned asks take nothing from it, nor for the hour after.
+- **Invasion** (`WORLD_EVENT_INVASION_ENABLED`, weekly, 20 min): the field outside a town's gate, one site a week in turn.
+  With a player there it is fought in waves; with nobody there a roll settles it, news only.
+- **Festival** (`WORLD_EVENT_FESTIVAL_ENABLED`, four dates a year, 2 h): a town has the minigame tables, the drop game and
+  a jump-quest meet.
+
+`!worldevent list|start <id> [site]|stop <id>` (GM 5).
+
 ### Habits and learned spots
 
 Companions pick up how their owner plays (`living_world.OWNER_HABITS_ENABLED`, off until its live checks pass; plan
