@@ -394,16 +394,22 @@ live server's ports and database.
    - walks three towns (`tools\cua\takes\public-smoke-client.take`);
    - asks the Coke Town gate, where a stock-file player must be kept out of the Repack map.
 
-   It fails when `MapleStory.exe` exits, then runs the same log check. It backs up
-   `HKCU\Software\Wizet\MapleStory` first and restores it afterwards. `-Phase stop` stops the smoke server.
+   It fails when `MapleStory.exe` exits, then runs the same log check. The client shares
+   `HKCU\Software\Wizet\MapleStory` with any other v83 client, so the driver puts back only the login and
+   last-place values it wrote, and none at all if another client ran meanwhile. `-Phase stop` stops the smoke server.
 
 The log line comes from `server.mods.StockClientAudit`. It is on only with
-`-Dbotstory.stockClientAudit=true` and never on a normal server. It covers the packet builders that name an
-NPC (spawn, controller, NPC window, the login's scriptable list) or a map (`SET_FIELD`). It flags an NPC
-that is not in the server's `wz/Npc.wz` or that is on the Repack-only list (`mods/repack-npcs.txt`), and a
-map that is on `mods/repack-maps.txt`. The switch is read once into a `static final boolean`, so with it off
-each of those calls is one boolean read: no allocation and no lookup.
+`-Dbotstory.stockClientAudit=true` and never on a normal server. `Client.sendPacket` shows it every packet it
+writes to a real client, so a packet that is built and not sent (a warp the Repack gate refuses, anything for a
+bot) is not reported. It reads the packets that name an NPC (spawn, controller, NPC window, the login's
+scriptable list) or a map (`SET_FIELD`). It flags an NPC that is not in the server's `wz/Npc.wz` or that is on
+the Repack-only list (`mods/repack-npcs.txt`), and a map that is on `mods/repack-maps.txt`. With it off, a sent
+packet costs one boolean read.
 
-To check that the test still catches the 11-22 crash, run `public-smoke.ps1 -FlipResidentFiles`. It sets
-`resident_files: on` in the exported copy only, which is the state before the fix, and it must FAIL on the
-quest-marker hitbox NPC 9970999.
+To check that the test still catches the 11-22 crashes, run `public-smoke.ps1 -Red <half>`. Each one undoes one
+half of the fix in the exported copy only, and the run succeeds only if the log check catches exactly that half:
+
+- `-Red hitbox`: `resident_files: on`, caught as NPC 9970999 in `SPAWN_NPC` (GitHub #3)
+- `-Red talk`: `resident_files: on` with the hitbox off, caught as a Resident's own portrait (9970000+) in
+  `NPC_TALK` (GitHub #1)
+- `-Red cobie`: the login list unfiltered, caught as NPC 2142112 in `SET_NPC_SCRIPTABLE` (GitHub #3)
