@@ -134,6 +134,21 @@ public class PvpConfig {
     /** Days the champion's medal lasts. */
     public int TOURNAMENT_MEDAL_DAYS = 7;
 
+    // The duel learner (docs/WORLD_SYSTEMS_PLAN.md I1.2, docs/PVP_PLAN.md V2.3): DuelLearner, DuelPolicies, SelfPlay
+    /** Kill switch: false = no self-play, and every bot fights by the prior brain. */
+    public boolean DUEL_LEARNING_ENABLED = false;
+    /** Self-play runs from this hour (UTC) up to the other, past midnight too; equal = never. */
+    public int DUEL_SELFPLAY_FROM_HOUR = 8;
+    public int DUEL_SELFPLAY_TO_HOUR = 12;
+    /** Self-play bouts under way at once. */
+    public int DUEL_SELFPLAY_BOUTS = 2;
+    /** Decisions a job learns from before it is measured against the prior brain. */
+    public int DUEL_LEARN_DECISIONS = 4000;
+    /** How often a learning fighter tries something else. */
+    public double DUEL_LEARN_EPSILON = 0.15d;
+    /** Measuring pairs (a bout with the learned table, one with the prior brain) a job's verdict needs. */
+    public int DUEL_EVAL_PAIRS = 40;
+
     public void validate() {
         if (PVP_TTK_SECONDS <= 0d || PVP_GEAR_EXPONENT <= 0d || PVP_GEAR_EXPONENT > 1d) {
             throw new IllegalArgumentException("pvp.PVP_TTK_SECONDS must be > 0 and PVP_GEAR_EXPONENT in (0, 1]");

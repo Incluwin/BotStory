@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Compares combat-policy candidates with live play on a check stack (docs/WORLD_SYSTEMS_PLAN.md I1.1).
 
-  compare_policies.py run   --stack <stack.json> [--jobs 100,110] [--parallel 6] [--learn 300]
+  compare_policies.py run   --stack <stack.json> [--jobs 100,110] [--parallel 6] [--learn 300] [--fresh]
   compare_policies.py table --stack-tree <worktree the stack ran from> --out docs/COMBAT_POLICY_RESULTS.md \
                             --staging docs/combat-policy-staging
 
-run    For each job: gives it arena learning time where it has fewer than MIN_DECISIONS candidate decisions
-       (policy=learn adopt=off), then measures candidate against live play in alternating pairs
+run    For each job: gives it arena learning time (policy=learn adopt=off) where it has fewer than MIN_DECISIONS
+       candidate decisions, or with --fresh for every scenario not measured yet (what bench grinders learned is replaced
+       on the stack); --learn 0 gives none and skips what has too few. Then measures candidate against live play in alternating pairs
        (policy=candidate adopt=off) until the verdict is settled or MAX_LOOKS batches are spent. Every reading is a
        line of <stack tree>/logs/arena-comparisons.jsonl, so a stopped run goes on where it was.
 table  Judges the readings, writes the Markdown table and puts the winners' policy files in --staging.
@@ -150,8 +151,8 @@ class Stack:
         time.sleep(wait)
 
 
-def compare_job(stack: Stack, job: int, learn_seconds: int, maps: Queue, only_candidates: bool) -> str:
-    scenarios = [s for s in SCENARIOS if not only_candidates or decisions_of(stack.tree, job, s) > 0]
+def compare_job(stack: Stack, job: int, learn_seconds: int, fresh: bool, maps: Queue) -> str:
+    scenarios = [s for s in SCENARIOS if learn_seconds > 0 or decisions_of(stack.tree, job, s) >= MIN_DECISIONS]
     if not scenarios:
         return f"{job}: no candidate"
     arena_map = maps.get()
@@ -162,7 +163,7 @@ def compare_job(stack: Stack, job: int, learn_seconds: int, maps: Queue, only_ca
         stack.gm(f"spawnbot {agent} confirm noparty{line}")
         time.sleep(5)
         for scenario in scenarios:
-            if decisions_of(stack.tree, job, scenario) < MIN_DECISIONS:
+            if decisions_of(stack.tree, job, scenario) < MIN_DECISIONS or fresh and (job, scenario) not in readings(stack.tree):
                 stack.arena(f"{base} scenario={scenario} policy=learn learn={learn_seconds}", learn_seconds + 60)
             for _ in range(MAX_LOOKS):
                 got = readings(stack.tree).get((job, scenario))
@@ -193,7 +194,7 @@ def run(args) -> None:
         maps.put(m)
     jobs = [int(j) for j in args.jobs.split(",")] if args.jobs else JOBS
     with ThreadPoolExecutor(args.parallel) as pool:
-        for result in pool.map(lambda j: compare_job(stack, j, args.learn, maps, args.only_candidates), jobs):
+        for result in pool.map(lambda j: compare_job(stack, j, args.learn, args.fresh, maps), jobs):
             print(result, flush=True)
 
 
@@ -263,7 +264,7 @@ def main() -> None:
     r.add_argument("--jobs", default="")
     r.add_argument("--parallel", type=int, default=6, choices=range(1, len(MAPS) + 1))
     r.add_argument("--learn", type=int, default=300)
-    r.add_argument("--only-candidates", action="store_true")
+    r.add_argument("--fresh", action="store_true")
     r.set_defaults(go=run)
     t = sub.add_parser("table")
     t.add_argument("--stack-tree", required=True)

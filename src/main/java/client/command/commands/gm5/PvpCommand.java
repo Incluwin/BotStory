@@ -51,7 +51,7 @@ public class PvpCommand extends Command {
 
     {
         setDescription("PvP V0 probes. Usage: !pvp probe self|remote <name>|move|attacks|ownhit ..., !pvp meter start|stop|status,"
-                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|team [2|3]|guild [2|3]|guildtop|crewwar|teamsim [n]|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
+                + " !pvp calibrate, !pvp duel <foe>|<a> <b>|<a..> vs <b..>|stop [id]|ko <name>,!pvp duels, !pvp sim <a> <b> <level> [n]|matrix <level> [n], !pvp practice [n] [span], !pvp selfplay [n]|status, !pvp rates, !pvp learned [reset|replay <file.csv>], !pvp challenge [status|rematch], !pvp coliseum [<citizen>|status|team [2|3]|guild [2|3]|guildtop|crewwar|teamsim [n]|shop|board|watch [bracket]|sim [n]|rating [name]], !pvp tournament [status|signup|watch [bracket]|start <bracket> [seats] [minutes] [me]]");
     }
 
     @Override
@@ -69,6 +69,7 @@ public class PvpCommand extends Command {
             case "duels" -> duels(gm);
             case "sim" -> sim(gm, params);
             case "practice" -> practice(gm, params);
+            case "selfplay" -> selfPlay(gm, params);
             case "rates" -> rates(gm);
             case "learned" -> learned(gm, params);
             case "challenge" -> challenge(gm, params);
@@ -531,6 +532,21 @@ public class PvpCommand extends Command {
             gm.yellowMessage(pair);
             log.info("PvP practice {}", pair);
         }
+    }
+
+    /** {@code !pvp selfplay [n]|status} (I1.2): training bouts between free citizens on closed floors, and what they taught. */
+    private static void selfPlay(Character gm, String[] params) {
+        server.living.population.Population population = server.living.population.Population.get();
+        if (population == null) {
+            gm.yellowMessage("PvP self-play needs the population running.");
+            return;
+        }
+        if (params.length > 1 && "status".equalsIgnoreCase(params[1])) {
+            population.coliseum().selfPlayStatus().forEach(gm::yellowMessage);
+            return;
+        }
+        int begun = population.coliseum().selfPlayNow(Math.max(1, Math.min(20, number(params, 1, 2))));
+        gm.yellowMessage("PvP self-play: " + begun + " bout(s) began.");
     }
 
     private static boolean practiceReady(Character chr, server.living.population.Population population) {

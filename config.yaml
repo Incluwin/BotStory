@@ -2040,3 +2040,17 @@ pvp:
     TOURNAMENT_ROUND_MINUTES: 6
     TOURNAMENT_FEE_PER_LEVEL: 200
     TOURNAMENT_MEDAL_DAYS: 7
+    # The duel learner (docs/WORLD_SYSTEMS_PLAN.md I1.2): off-peak (FROM_HOUR to TO_HOUR UTC, decision D17) up to BOUTS
+    # pairs of free citizens on maps with no human fight in closed coliseum floors and learn, per job, when to swing
+    # what, close in, back off, jump, change level, buff and drink. A job's learned brain fights real duels only once it
+    # beat the fixed brain over EVAL_PAIRS measured pairs. Self-play leaves no rating, record, rate, paper line or memory,
+    # and each fighter gets back what it spent. false = the kill switch: no self-play, every bot the fixed brain.
+    # Technical: SelfPlay rides the coliseum's minute and step (no timer of its own); DuelLearner is semi-Markov Q-learning over DuelLearner.Situation keys, reward (dealt - taken) in victim max-HP shares plus 1 or minus 1 at the end; tables and measured pairs per job live in logs/pvp/duel-policies, no schema change.
+    DUEL_LEARNING_ENABLED: false
+    DUEL_SELFPLAY_FROM_HOUR: 8
+    DUEL_SELFPLAY_TO_HOUR: 12
+    DUEL_SELFPLAY_BOUTS: 2
+    # Technical: a job learns DUEL_LEARN_DECISIONS thinks (exploring EPSILON of them), then is measured: EVAL_PAIRS pairs over at least three foe classes, adopted when the mean paired margin less 2.33 standard errors is above 0; a job the prior brain beat learns half as much again and is measured anew.
+    DUEL_LEARN_DECISIONS: 4000
+    DUEL_LEARN_EPSILON: 0.15
+    DUEL_EVAL_PAIRS: 40
