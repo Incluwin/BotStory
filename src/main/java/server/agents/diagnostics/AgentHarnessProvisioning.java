@@ -79,6 +79,27 @@ public final class AgentHarnessProvisioning {
         };
     }
 
+    /** Plain weapons of each arena family for the levels its best one is out of reach at: about Lv 100, 50 and 20. */
+    private static final Map<Integer, List<Integer>> ARENA_WEAPON_LADDER = Map.of(
+            140, List.of(1402035, 1402003, 1402008),
+            143, List.of(1432030, 1432004, 1432008),
+            138, List.of(1382035, 1382006, 1382002),
+            145, List.of(1452019, 1452008, 1452000),
+            146, List.of(1462015, 1462007, 1462003),
+            147, List.of(1472053, 1472054, 1472007),
+            133, List.of(1332052, 1332024, 1332013),
+            148, List.of(1482012, 1482007, 1482003),
+            149, List.of(1492012, 1492007, 1492003),
+            144, List.of(1442044, 1442046, 1442007));
+
+    /** {@link #arenaWeaponFor}, then its family's lesser ones, best first: what an Agent of a lower level can hold. */
+    public static List<Integer> arenaWeaponsFor(Job job) {
+        int best = arenaWeaponFor(job);
+        List<Integer> weapons = new ArrayList<>(List.of(best));
+        weapons.addAll(ARENA_WEAPON_LADDER.getOrDefault(best / 10_000, List.of()));
+        return weapons;
+    }
+
     public static int defaultAmmoFor(WeaponType weaponType) {
         if (weaponType == null) {
             return 0;

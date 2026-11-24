@@ -452,6 +452,7 @@ The server sees a human only through movement packets. Ties go to the human both
 - **V2.2** Leading targets and dodging telegraphs.
 - **V2.3** Learner state, actions and reward; self-play runs per job pair at three bands.
 - **V2.4** The `PVP_JOB_SCALE` bandit on the self-play matrix.
+- **Status of V2.3 and V2.4:** `docs/WORLD_SYSTEMS_PLAN_I1_REPORT.md` (the duel learner, off; V2.4 superseded).
 - **Status (2026-11-09, started at the user's "Yes, start V2"):** measuring first, because the per-job rate the model
   divides by applies to humans too: calibrating from bots held back by a bot gap would make human players of that job
   far too strong.

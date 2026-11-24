@@ -1563,6 +1563,21 @@ population:
     PRICE_INDEX_RESEED_BELOW: 0.5
     PRICE_INDEX_RESEED_TO: 0.8
     PRICE_INDEX_RESEED_FORMULA_TO: 0.5
+    # Learned support points (docs/WORLD_SYSTEMS_PLAN.md I1.4): citizens learn, per job, under what HP share to heal (0.80
+    # to 0.95, today 0.90) and how far through its duration to recast a buff (0.86 to 0.95, today 0.90), by how much of
+    # the time their party was dealing damage less a heavy cost per death in it. Companions never explore: they play the
+    # best arm once MIN_EPISODES say it is. Never in event instances, party quests or near a boss (the F8 exclusions),
+    # never past the F8 floors. false = the kill switch: the fixed points, nothing booked.
+    # Technical: SupportLearning picks one arm per lever (PriceArms on the shared Ucb) for each SUPPORT_EPISODE_MS of one Agent; AgentSupportPoints clamps heal points to 0.80..0.95 and keeps survival buffs at or before today's recast; arm stats live in companion_yield rows of source 'support', no schema change.
+    SUPPORT_LEARNING_ENABLED: false
+    SUPPORT_EXPLORE: 0.15
+    SUPPORT_TEMPERATURE: 0.02
+    SUPPORT_PRIOR_SAMPLES: 10
+    SUPPORT_PRIOR_UPTIME: 0.5
+    # Technical: an episode's reward is party damage uptime (0..1: each attacking member's time with no gap over 3 s between attacks, averaged over the members) minus SUPPORT_DEATH_PENALTY per death of a party member, human or Agent; a death ends the episode.
+    SUPPORT_DEATH_PENALTY: 5.0
+    SUPPORT_EPISODE_MS: 240000
+    SUPPORT_MIN_EPISODES: 30
     # The needs board (docs/BOT_CONCEPT_PLAN.md F1): citizens ask for real things they lack and pay from their own
     # purse. SUPPLY: the potion it would buy for Balrog, short of the standard; SCROLL: a basket scroll for a piece it
     # wears, when it can pay the index price; GEAR (decision D4): GEAR_WANT_SHARE of its free gear upgrades become a want,
@@ -2103,3 +2118,17 @@ pvp:
     TOURNAMENT_ROUND_MINUTES: 6
     TOURNAMENT_FEE_PER_LEVEL: 200
     TOURNAMENT_MEDAL_DAYS: 7
+    # The duel learner (docs/WORLD_SYSTEMS_PLAN.md I1.2): off-peak (FROM_HOUR to TO_HOUR UTC, decision D17) up to BOUTS
+    # pairs of free citizens on maps with no human fight in closed coliseum floors and learn, per job, when to swing
+    # what, close in, back off, jump, change level, buff and drink. A job's learned brain fights real duels only once it
+    # beat the fixed brain over EVAL_PAIRS measured pairs. Self-play leaves no rating, record, rate, paper line or memory,
+    # and each fighter gets back what it spent. false = the kill switch: no self-play, every bot the fixed brain.
+    # Technical: SelfPlay rides the coliseum's minute and step (no timer of its own); DuelLearner is semi-Markov Q-learning over DuelLearner.Situation keys, reward (dealt - taken) in victim max-HP shares plus 1 or minus 1 at the end; tables and measured pairs per job live in logs/pvp/duel-policies, no schema change.
+    DUEL_LEARNING_ENABLED: false
+    DUEL_SELFPLAY_FROM_HOUR: 8
+    DUEL_SELFPLAY_TO_HOUR: 12
+    DUEL_SELFPLAY_BOUTS: 2
+    # Technical: a job learns DUEL_LEARN_DECISIONS thinks (exploring EPSILON of them), then is measured: EVAL_PAIRS pairs over at least three foe classes, adopted when the mean paired margin less 2.33 standard errors is above 0; a job the prior brain beat learns half as much again and is measured anew.
+    DUEL_LEARN_DECISIONS: 4000
+    DUEL_LEARN_EPSILON: 0.15
+    DUEL_EVAL_PAIRS: 40

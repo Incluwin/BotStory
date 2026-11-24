@@ -134,6 +134,8 @@ public final class DuelField {
     private ScheduledFuture<?> ticker;
     /** V6: more than one fighter on a side, so each side's bots pick their target together (TeamTactics). */
     private final boolean teamFight;
+    /** Self-play (I1.2): the fighters' learner seats (one without plays the prior brain); null in every real duel. */
+    private final Map<Integer, DuelLearner.Seat> selfPlay;
     private final TeamTactics.Call[] calls = {TeamTactics.Call.NONE, TeamTactics.Call.NONE};
     private final long[] calledAtMs = new long[2];
     /** The foe a player on each side last landed a hit on, and when: its bot teammates assist it. */
@@ -148,6 +150,12 @@ public final class DuelField {
     }
 
     DuelField(long id, MapleMap map, List<Character> sideA, List<Character> sideB, Rules rules) {
+        this(id, map, sideA, sideB, rules, null);
+    }
+
+    DuelField(long id, MapleMap map, List<Character> sideA, List<Character> sideB, Rules rules,
+              Map<Integer, DuelLearner.Seat> selfPlay) {
+        this.selfPlay = selfPlay;
         this.id = id;
         this.map = map;
         this.config = YamlConfig.config.pvp;
@@ -198,6 +206,8 @@ public final class DuelField {
         for (Fighter fighter : fighters.values()) {
             fighter.track.record(fighter.chr.getPosition(), now);
             if (!fighter.human) {
+                fighter.mind.seat = selfPlay != null ? selfPlay.get(fighter.chr.getId())
+                        : teamFight ? null : DuelPolicies.get().liveSeat(fighter.chr.getJob().getId());
                 DuelBrain.enter(fighter);
             }
         }
@@ -854,13 +864,30 @@ public final class DuelField {
                     fighter.stats.engagedSeconds(endMs), fighter.neutralShare, fighter.bareShare,
                     fighter.neutralSpellShare, fighter.bareSpellShare, fighter.paceShare));
         }
-        PvpPairings.played().noteDuel(rows, endMs);   // practice keeps these two apart for a while
-        rowSink.accept(rows);
+        if (selfPlay == null) {
+            PvpPairings.played().noteDuel(rows, endMs);   // practice keeps these two apart for a while
+            rowSink.accept(rows);
+        } else {
+            endSeats(winnerSide, why, endMs);   // self-play leaves nothing behind but what the seats learned
+        }
         DuelRegistry.release(this);
         Result done = new Result(winnerSide, why, List.copyOf(rows));
         this.result = done;
         for (java.util.function.Consumer<Result> listener : endListeners) {
             tellListener(listener, done);
+        }
+    }
+
+    private void endSeats(int winnerSide, String why, long now) {
+        if ("it was stopped".equals(why) || fighters.values().stream().anyMatch(f -> f.forfeited)) {
+            return;   // cut short: no outcome to learn from
+        }
+        for (Fighter fighter : fighters.values()) {
+            Fighter foe = fighters.values().stream().filter(f -> f.side != fighter.side).findFirst().orElse(null);
+            if (fighter.mind.seat != null && foe != null) {
+                fighter.mind.seat.end(DuelLearnedBrain.score(fighter, foe),
+                        winnerSide < 0 ? 0 : winnerSide == fighter.side ? 1 : -1, now);
+            }
         }
     }
 

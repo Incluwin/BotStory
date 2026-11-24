@@ -67,6 +67,7 @@ public final class Population {
     private final SocialFabric social;
     private final Conversation conversation;
     private final Market market;
+    private final SupportLearning support;
     private final EconomyController controller;
     private final CitizenPartyQuests partyQuests;
     private final CitizenMiniGames miniGames;
@@ -124,6 +125,7 @@ public final class Population {
         this.social = new SocialFabric(this);
         this.conversation = new Conversation(this);
         this.market = new Market(this);
+        this.support = new SupportLearning(this);
         this.controller = new EconomyController(this, YamlConfig.config.economy);
         this.partyQuests = new CitizenPartyQuests(this);
         this.miniGames = new CitizenMiniGames(this);
@@ -235,6 +237,7 @@ public final class Population {
         // citizens leave alone a mob a human is fighting, while kill-steal memory is on (docs/WORLD_SYSTEMS_PLAN.md N2.4)
         server.agents.capabilities.combat.AgentGrindManners.install(id -> population.config().KS_MEMORY_ENABLED
                 && population.isCitizen(id) && !population.worldEvents().defends(id)); // an invasion's are everyone's (N4.3)
+        population.support.install(); // learned heal and buff points (docs/WORLD_SYSTEMS_PLAN.md I1.4)
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
         // a camping citizen may hit a field boss when its manners allow (docs/WORLD_SYSTEMS_PLAN.md N6.3)
         server.agents.capabilities.expedition.boss.AgentFieldBossSeats.install(population.camps::allows);
@@ -291,6 +294,11 @@ public final class Population {
                 content.census(), config.TARGET_CITIZENS, config.ONLINE_MAX, population.channels);
     }
 
+    /** The learned heal and buff points (I1.4). */
+    SupportLearning support() {
+        return support;
+    }
+
     /** Who holds a character's meso for the economy ledger: a hired citizen is a player's companion now. */
     static MesoHolder mesoHolder(Character chr) {
         Population current = instance;
@@ -311,6 +319,7 @@ public final class Population {
         AgentStallHolds.install(null);
         AgentLootPolicy.installSelectivity(null);
         server.agents.capabilities.combat.AgentGrindManners.install(null);
+        SupportLearning.uninstall();
         AgentEtcRoomPlan.installKeepsFree(null);
         server.agents.capabilities.expedition.boss.AgentFieldBossSeats.install(null);
         AgentUseRoomLoot.install(null);

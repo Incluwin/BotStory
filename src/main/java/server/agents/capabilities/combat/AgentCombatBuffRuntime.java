@@ -365,7 +365,8 @@ public final class AgentCombatBuffRuntime {
         AgentSkillShowcase.used(entry, bot, skill.getId());
         long dur = fx.getDuration();
         if (dur > 0) {
-            AgentCombatBuffStateRuntime.setNextBuffAt(entry, skill.getId(), refreshAt(bot, skill.getId(), fx, now, dur));
+            AgentCombatBuffStateRuntime.setNextBuffAt(entry, skill.getId(), AgentSupportPoints.refreshAt(bot, now, dur,
+                    refreshAt(bot, skill.getId(), fx, now, dur), survivalBuff(skill.getId(), fx)));
         }
         AgentAttackExecutionProvider.BasicAttackData fallbackAttackData =
                 AgentAttackExecutionProvider.buildBasicAttackData(bot, bot.getPosition());
@@ -394,10 +395,15 @@ public final class AgentCombatBuffRuntime {
         if (!AgentImperfections.calibrated(bot)) {
             return AgentCombatSupportPolicy.nextSupportBuffRefreshAt(now, dur);
         }
-        boolean survival = CRITICAL_SURVIVAL_BUFFS.contains(skillId) || !AgentImperfectionPolicy.lapsable(fx);
+        boolean survival = survivalBuff(skillId, fx);
         boolean lapse = !survival && AgentImperfections.slips(bot, AgentImperfections.Slip.BUFF_LAPSE);
         return AgentImperfectionPolicy.refreshAt(now, dur, survival, lapse,
                 java.util.concurrent.ThreadLocalRandom.current().nextDouble());
+    }
+
+    /** Magic Guard, or a buff carrying any stat that may not lapse (AgentImperfectionPolicy.LAPSABLE). */
+    private static boolean survivalBuff(int skillId, StatEffect fx) {
+        return CRITICAL_SURVIVAL_BUFFS.contains(skillId) || !AgentImperfectionPolicy.lapsable(fx);
     }
 
     /** How far through its duration the bot's own running cast of this buff is, in percent (the tell audit); else -1. */

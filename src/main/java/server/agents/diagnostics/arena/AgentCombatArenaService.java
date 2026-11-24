@@ -70,6 +70,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AgentCombatArenaService {
     private static final Logger log = LoggerFactory.getLogger(AgentCombatArenaService.class);
     private static final Map<Integer, Thread> RUNNING = new ConcurrentHashMap<>();
+    /** Runs that may write a policy file or profile under way: 0 or 1. */
+    private static final java.util.concurrent.atomic.AtomicInteger EXCLUSIVE = new java.util.concurrent.atomic.AtomicInteger();
     private static final Map<Integer, ArenaReport> LAST_REPORT = new ConcurrentHashMap<>();
     private static final int TOP_CANDIDATES = config.AgentTuning.intValue("server.agents.diagnostics.arena.AgentCombatArenaService.TOP_CANDIDATES");
     private static final long SETTLE_MS = config.AgentTuning.longValue("server.agents.diagnostics.arena.AgentCombatArenaService.SETTLE_MS");
@@ -83,8 +85,8 @@ public final class AgentCombatArenaService {
     private static final int LEARN_EPISODE_SECONDS = config.AgentTuning.intValue("server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EPISODE_SECONDS");
     private static final double LEARN_EPSILON = config.AgentTuning.doubleValue("server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EPSILON");
     private static final int POLICY_ROWS = config.AgentTuning.intValue("server.agents.diagnostics.arena.AgentCombatArenaService.POLICY_ROWS");
-    private static final int LEARN_EVAL_REPEATS = config.AgentTuning.intValue("server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EVAL_REPEATS");
-    private static final int LEARN_EVAL_SECONDS = config.AgentTuning.intValue("server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EVAL_SECONDS");
+    static final int LEARN_EVAL_REPEATS = config.AgentTuning.intValue("server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EVAL_REPEATS");
+    static final int LEARN_EVAL_SECONDS = config.AgentTuning.intValue("server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EVAL_SECONDS");
     /** The value the server parks a full Energy Charge bar at (Character.handleEnergyChargeGain). */
     private static final int ENERGY_BAR_FULL = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentSkillAttackPlanRuntime.ENERGY_BAR_FULL");
     /** Trial labels: the learned policy played greedily, and the learner's exploring episodes. */
@@ -108,13 +110,16 @@ public final class AgentCombatArenaService {
         } catch (IllegalArgumentException invalid) {
             return List.of(invalid.getMessage());
         }
-        if (RUNNING.containsKey(operator.getId())) {
-            return List.of("An arena run is already in progress for you; wait for it to finish.");
-        }
         AgentRuntimeEntry entry = resolveEntry(operator, options.agentName());
         if (entry == null || entry.bot() == null) {
             return List.of("Agent " + options.agentName() + " is not an active Agent.");
         }
+        int agentId = entry.bot().getId();
+        // Comparisons (adopt=off) of different Agents may run side by side on maps of their own; any other run is alone.
+        if (options.adopt() ? !RUNNING.isEmpty() : RUNNING.containsKey(agentId) || EXCLUSIVE.get() != 0) {
+            return List.of("An arena run is already in progress; wait for it to finish.");
+        }
+        EXCLUSIVE.addAndGet(options.adopt() ? 1 : 0);
         Thread worker = new Thread(() -> {
             try {
                 ArenaReport report = run(operator, entry, options);
@@ -124,11 +129,12 @@ public final class AgentCombatArenaService {
                 log.warn("Combat arena for {} failed", options.agentName(), failure);
                 operator.yellowMessage("Combat arena failed: " + failure);
             } finally {
-                RUNNING.remove(operator.getId());
+                RUNNING.remove(agentId);
+                EXCLUSIVE.addAndGet(options.adopt() ? -1 : 0);
             }
-        }, "combat-arena-" + operator.getId());
+        }, "combat-arena-" + agentId);
         worker.setDaemon(true);
-        RUNNING.put(operator.getId(), worker);
+        RUNNING.put(agentId, worker);
         worker.start();
         return List.of("Combat arena started for " + entry.bot().getName() + " (" + String.join(",", options.scenarios())
                 + "); results follow in chat and in " + ArenaReportWriter.REPORT_DIR + ".");
@@ -167,6 +173,8 @@ public final class AgentCombatArenaService {
         final Set<Trial> cappedTrials = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         /** The learner's trials lift the hand-written priors: priors=off, or, for policy=candidate, as live play does. */
         boolean relaxPriors;
+        /** Times the Agent was found dead during a trial. */
+        int deaths;
 
         Session(AgentRuntimeEntry entry, Character bot, MapleMap map, ArenaOptions options) {
             this.entry = entry;
@@ -194,7 +202,14 @@ public final class AgentCombatArenaService {
             notes.add("Max build: learned/maxed " + AgentHarnessProvisioning.learnFullTree(bot) + " skills.");
         }
         if (AgentAttackExecutionProvider.getEquippedWeaponType(bot) == null || options.wantsShaping()) {
-            String note = AgentHarnessProvisioning.provisionWeapon(bot, AgentHarnessProvisioning.arenaWeaponFor(bot.getJob()));
+            // The best weapon of its family the Agent can hold: a starter weapon at Lv 100 measures the weapon.
+            String note = null;
+            for (int weapon : AgentHarnessProvisioning.arenaWeaponsFor(bot.getJob())) {
+                note = AgentHarnessProvisioning.provisionWeapon(bot, weapon);
+                if (note == null) {
+                    break;
+                }
+            }
             if (note != null) {
                 notes.add("WARNING: " + note);
             }
@@ -203,7 +218,7 @@ public final class AgentCombatArenaService {
         AgentHarnessProvisioning.topUpPotions(bot);
         AgentHarnessProvisioning.topUpSkillConsumables(bot, 50);
 
-        MapleMap map = warpToArena(operator, bot, options.mapId(), notes);
+        MapleMap map = warpToArena(operator, bot, options, notes);
         Thread.sleep(SETTLE_MS);
         AgentCombatSkillCacheRuntime.rebuildSkillCacheIfNeeded(entry, bot);
         List<Integer> candidates = new ArrayList<>(AgentCombatSkillCacheStateRuntime.attackSkillIds(entry));
@@ -240,11 +255,11 @@ public final class AgentCombatArenaService {
                     + unrankable.stream().map(AgentCombatArenaService::skillLabel).toList());
         }
         Map<String, Choice> choices = new LinkedHashMap<>();
-        boolean rotationWas = AgentCombatRotationRuntime.enabled();
         boolean specialWas = AgentCombatSpecialMoveTickRuntime.enabled();
         boolean wasFollowing = AgentModeStateRuntime.following(entry);
         boolean wasGrinding = AgentModeStateRuntime.grinding(entry);
-        AgentCombatRotationRuntime.setEnabled(false);  // measure candidates raw, not through an older profile
+        // Measure candidates raw, not through an older profile; a comparison (adopt=off) measures what live play would do.
+        AgentCombatRotationRuntime.setOff(bot.getId(), options.adopt());
         AgentModeStateRuntime.setFollowing(entry, false);
         // No real player observes the arena (the operator is headless), so the simulation policy
         // would schedule the Agent at background cadence and every reading would be of a bot
@@ -284,7 +299,7 @@ public final class AgentCombatArenaService {
             AgentModeStateRuntime.setGrinding(entry, wasGrinding);
             AgentModeStateRuntime.setFollowing(entry, wasFollowing);
             AgentCombatSpecialMoveTickRuntime.setEnabled(specialWas);
-            AgentCombatRotationRuntime.setEnabled(rotationWas);
+            AgentCombatRotationRuntime.setOff(bot.getId(), false);
             clearPack(session);
             bot.healHpMp();
         }
@@ -341,9 +356,13 @@ public final class AgentCombatArenaService {
                 session.trials);
         String savedTo;
         try {
+            if (options.learn() && !options.adopt()) {
+                AgentCombatCandidates.defaultCandidates().flush();
+            }
             // A learning run leaves the tournament profile alone; its result is the policy file. A candidate check
             // that adopted nothing leaves the policy file as it was.
-            savedTo = options.candidate() && session.learned.isEmpty() ? "nothing adopted; policy file unchanged"
+            savedTo = !options.adopt() ? "comparison only (adopt=off); readings in " + ArenaComparisonLog.FILE
+                    : options.candidate() && session.learned.isEmpty() ? "nothing adopted; policy file unchanged"
                     : options.learn() || options.candidate() ? savePolicy(session).toString()
                     : AgentCombatRotationProfileRepository.defaultRepository().save(profile).toString();
         } catch (Exception failure) {
@@ -488,6 +507,13 @@ public final class AgentCombatArenaService {
                 + (charges ? ", episodes and pairs cycling between an empty and a full Energy Charge" : "")
                 + "; damage per second by episode (exploration included): " + curve + ".");
 
+        if (!session.options.adopt()) {
+            // The learned table becomes the job's candidate, to be compared (as often as it takes) by policy=candidate.
+            AgentCombatCandidates.defaultCandidates().replace(session.bot.getJob().getId(), scenario, table);
+            session.learned.put(scenario, new AgentCombatPolicy.Scenario(false, 0, 0, decisions, table.snapshot()));
+            session.notes.add("LEARNED " + scenario + ": kept as the job's candidate; nothing adopted.");
+            return new Choice(LEARNED, skillLabel(LEARNED), 0, true, 0);
+        }
         Evaluation evaluation = evaluate(session, scenario, targets, table, AgentCombatLearner.Mode.OFF, transforms, charges);
         ArenaOptimizer.PairedComparison comparison = evaluation.comparison();
         double learnedDps = comparison.learnedMean();
@@ -496,7 +522,7 @@ public final class AgentCombatArenaService {
         boolean adopted = evaluation.adoptable();
         double change = priorDps <= 0 ? 0 : 100.0 * (learnedDps - priorDps) / priorDps;
         session.notes.add("LEARNED " + scenario + ": learned policy " + fmt(learnedDps) + " vs prior scorer "
-                + fmt(priorDps) + ", means of " + LEARN_EVAL_REPEATS + " pairs x " + LEARN_EVAL_SECONDS + "s: "
+                + fmt(priorDps) + ", means of " + session.options.pairs() + " pairs x " + session.options.evalSeconds() + "s: "
                 + String.format(java.util.Locale.ROOT, "%+.1f%%", change) + " (paired difference "
                 + fmt(comparison.meanDifference()) + " +/- " + fmt(comparison.standardError()) + "), "
                 + (comparison.decisive() ? "outside the noise" : "inside the noise") + " - "
@@ -527,19 +553,29 @@ public final class AgentCombatArenaService {
     /**
      * The table played greedily ({@code FROZEN}) against {@code baseline} ({@code OFF}: the prior scorer; {@code LIVE}:
      * what live play has now, an adopted table where it has the evidence, else the prior scorer) in alternating runs of
-     * {@code LEARN_EVAL_SECONDS}, {@code LEARN_EVAL_REPEATS} pairs.
+     * {@code evalseconds}, {@code pairs} of them (LEARN_EVAL_SECONDS and LEARN_EVAL_REPEATS by default). A comparison
+     * (adopt=off) plays the table as an adopted one is played ({@code LIVE}: where it has the evidence, else as before).
      */
     private static Evaluation evaluate(Session session, String scenario, int targets, AgentCombatPolicyTable table,
                                        AgentCombatLearner.Mode baseline, boolean transforms, boolean charges)
             throws InterruptedException {
         List<Trial> evaluation = new ArrayList<>();
-        for (int repeat = 0; repeat < LEARN_EVAL_REPEATS; repeat++) {
+        for (int repeat = 0; repeat < session.options.pairs(); repeat++) {
             // Alternate, so a drift over the run (buff expiry, map state) hits both sides alike; both
             // sides of a pair fight in the same form.
             setCondition(session, repeat, transforms, charges);
-            evaluation.add(runTrial(session, scenario, LEARNED, targets, true, LEARN_EVAL_SECONDS,
-                    AgentCombatLearner.Mode.FROZEN, table));
-            evaluation.add(runTrial(session, scenario, 0, targets, true, LEARN_EVAL_SECONDS, baseline, null));
+            AgentCombatLearner.Mode played = session.options.adopt()
+                    ? AgentCombatLearner.Mode.FROZEN : AgentCombatLearner.Mode.LIVE;
+            int seconds = session.options.evalSeconds();
+            // A comparison switches who goes first every other pair, so being second favors nobody.
+            boolean baselineFirst = !session.options.adopt() && repeat % 2 == 1;
+            if (baselineFirst) {
+                evaluation.add(runTrial(session, scenario, 0, targets, true, seconds, baseline, null));
+            }
+            evaluation.add(runTrial(session, scenario, LEARNED, targets, true, seconds, played, table));
+            if (!baselineFirst) {
+                evaluation.add(runTrial(session, scenario, 0, targets, true, seconds, baseline, null));
+            }
         }
         setCondition(session, 0, false, false);
         // Runs come in pairs fought under the same conditions (form, buff timing), so compare pair by pair.
@@ -564,8 +600,12 @@ public final class AgentCombatArenaService {
             return null;
         }
         int targets = "multi".equals(scenario) ? session.options.packSize() : 1;
+        int deathsBefore = session.deaths;
         Evaluation evaluation = evaluate(session, scenario, targets, candidate, AgentCombatLearner.Mode.LIVE,
                 knowsTransformation(session.bot), knowsEnergyCharge(session.bot));
+        if (!session.options.adopt()) {
+            return compareOnly(session, scenario, candidate, evaluation, session.deaths - deathsBefore);
+        }
         ArenaOptimizer.PairedComparison comparison = evaluation.comparison();
         AgentCombatPolicy.Scenario current = AgentCombatPolicyRepository.defaultRepository().find(jobId)
                 .map(loaded -> loaded.policy().scenarios().get(scenario)).orElse(null);
@@ -575,7 +615,7 @@ public final class AgentCombatArenaService {
                 : 100.0 * (comparison.learnedMean() - comparison.priorMean()) / comparison.priorMean();
         session.notes.add("CANDIDATE " + scenario + ": bench-learned policy (" + decisions + " decisions) "
                 + fmt(comparison.learnedMean()) + " vs live play " + fmt(comparison.priorMean()) + ", means of "
-                + LEARN_EVAL_REPEATS + " pairs x " + LEARN_EVAL_SECONDS + "s: "
+                + session.options.pairs() + " pairs x " + session.options.evalSeconds() + "s: "
                 + String.format(java.util.Locale.ROOT, "%+.1f%%", change) + " (paired difference "
                 + fmt(comparison.meanDifference()) + " +/- " + fmt(comparison.standardError()) + ") - "
                 + (evaluation.candidateAdoptable() ? "adopted for live play."
@@ -585,6 +625,25 @@ public final class AgentCombatArenaService {
             describePolicy(session, scenario, candidate);
             session.learned.put(scenario, kept);
         }
+        return new Choice(LEARNED, skillLabel(LEARNED), comparison.learnedMean(), true, 0);
+    }
+
+    /** adopt=off: the readings go to the comparison log for tools/combat-policy to judge; no policy file changes. */
+    private static Choice compareOnly(Session session, String scenario, AgentCombatPolicyTable candidate,
+                                      Evaluation evaluation, int deaths) {
+        Character bot = session.bot;
+        List<Trial> trials = session.trials.stream().filter(t -> scenario.equals(t.scenario())).toList();
+        ArenaComparisonLog.append(new ArenaComparisonLog.Line(Instant.now().toString(), bot.getJob().getId(),
+                bot.getJob().name(), bot.getLevel(), bot.getName(), scenario, session.options.evalSeconds(),
+                AgentCombatCandidates.visits(candidate.snapshot()), evaluation.capped(), deaths,
+                trials.stream().filter(t -> t.skillId() == LEARNED).map(ArenaOptimizer::dps).toList(),
+                trials.stream().filter(t -> t.skillId() == 0).map(ArenaOptimizer::dps).toList(),
+                weaponSummary(bot)));
+        ArenaOptimizer.PairedComparison comparison = evaluation.comparison();
+        session.notes.add("COMPARED " + scenario + ": candidate " + fmt(comparison.learnedMean()) + " vs live play "
+                + fmt(comparison.priorMean()) + ", paired difference " + fmt(comparison.meanDifference()) + " +/- "
+                + fmt(comparison.standardError()) + "; nothing adopted (adopt=off).");
+        describePolicy(session, scenario, candidate);
         return new Choice(LEARNED, skillLabel(LEARNED), comparison.learnedMean(), true, 0);
     }
 
@@ -821,6 +880,9 @@ public final class AgentCombatArenaService {
                             + " pos=" + bot.getPosition() + " pack=" + session.pack.stream().filter(Monster::isAlive).count()
                             + " lastBuff=" + server.agents.capabilities.combat.AgentSkillBuffDebugStateRuntime.lastActionSummary(entry));
                 }
+                if (!bot.isAlive()) {
+                    session.deaths++;
+                }
                 int mp = bot.getMp();
                 if (mp < lastMp) {
                     mpSpent += lastMp - mp;
@@ -836,7 +898,7 @@ public final class AgentCombatArenaService {
         if (skillId <= 0 && mode != AgentCombatLearner.Mode.LEARN) {
             // Only the unconstrained trials describe a rotation; a forced trial is one skill by fiat,
             // and an exploring episode is the learner trying things on purpose.
-            String key = scenario + (mode == AgentCombatLearner.Mode.FROZEN ? " (learned)"
+            String key = scenario + (skillId == LEARNED ? " (learned)"
                     : session.options.candidate() ? " (live)" : session.options.learn() ? " (prior)" : "");
             Map<Integer, long[]> mix = session.rotationMix.computeIfAbsent(key, ignored -> new LinkedHashMap<>());
             AgentCombatSkillUsageStateRuntime.snapshot(entry).forEach((usedSkillId, acc) -> {
@@ -1099,7 +1161,8 @@ public final class AgentCombatArenaService {
         session.pack.clear();
     }
 
-    private static MapleMap warpToArena(Character operator, Character bot, int mapId, List<String> notes) {
+    private static MapleMap warpToArena(Character operator, Character bot, ArenaOptions options, List<String> notes) {
+        int mapId = options.mapId();
         MapleMap map = AgentMapGatewayRuntime.map().resolveMap(
                 AgentClientGatewayRuntime.clients().world(operator),
                 AgentClientGatewayRuntime.clients().channel(operator), mapId);
@@ -1108,7 +1171,7 @@ public final class AgentCombatArenaService {
             return bot.getMap();
         }
         Point spawn = map.getPortal(0) == null ? new Point(0, 0) : map.getPortal(0).getPosition();
-        if (operator.getMapId() != mapId) {
+        if (options.adopt() && operator.getMapId() != mapId) { // comparisons side by side leave the operator where it is
             operator.changeMap(map, map.getPortal(0));
         }
         if (bot.getMapId() != mapId) {

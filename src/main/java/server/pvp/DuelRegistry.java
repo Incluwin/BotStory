@@ -43,6 +43,12 @@ public final class DuelRegistry {
 
     /** As {@link #start(MapleMap, List, List)} under {@code rules} (a coliseum round); null is a field duel's. */
     public static DuelField start(MapleMap map, List<Character> sideA, List<Character> sideB, DuelField.Rules rules) {
+        return start(map, sideA, sideB, rules, null);
+    }
+
+    /** As above; {@code selfPlay} (not null) makes it a self-play bout, which leaves no row, rate or pairing behind. */
+    static DuelField start(MapleMap map, List<Character> sideA, List<Character> sideB, DuelField.Rules rules,
+                           Map<Integer, DuelLearner.Seat> selfPlay) {
         if (map == null || sideA.isEmpty() || sideB.isEmpty()) {
             throw new IllegalStateException("a duel needs two sides on one map");
         }
@@ -61,7 +67,7 @@ public final class DuelRegistry {
                 }
             }
         }
-        DuelField field = new DuelField(IDS.incrementAndGet(), map, sideA, sideB, rules);
+        DuelField field = new DuelField(IDS.incrementAndGet(), map, sideA, sideB, rules, selfPlay);
         for (Character fighter : field.characters()) {
             if (BY_FIGHTER.putIfAbsent(fighter.getId(), field) != null) {
                 field.characters().forEach(other -> BY_FIGHTER.remove(other.getId(), field));

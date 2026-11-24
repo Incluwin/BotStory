@@ -1,0 +1,87 @@
+{
+  "jobId": 121,
+  "jobName": "WHITEKNIGHT",
+  "level": 0,
+  "build": "bench",
+  "learnedAt": "2026-11-24T03:36:01.628502100Z",
+  "gammaPerSecond": 0.9,
+  "priorsRelaxed": false,
+  "actionNames": {},
+  "scenarios": {
+    "single": {
+      "adopted": true,
+      "learnedDps": 8289.725,
+      "priorDps": 4776.20625,
+      "decisions": 140,
+      "table": {
+        "1 target": {
+          "1001004": {
+            "visits": 68,
+            "value": 83856.37180213207,
+            "seeded": true,
+            "meanReward": 9689.95838973292,
+            "meanSeconds": 1.1746470588235294
+          },
+          "1001005": {
+            "visits": 5,
+            "value": 82334.96234190915,
+            "seeded": true,
+            "meanReward": 7339.375780248948,
+            "meanSeconds": 1.043
+          },
+          "1211002": {
+            "visits": 6,
+            "value": 79922.72220648472,
+            "seeded": true,
+            "meanReward": 6588.957568241944,
+            "meanSeconds": 1.6671666666666667
+          },
+          "0": {
+            "visits": 6,
+            "value": 80225.82663318982,
+            "seeded": true,
+            "meanReward": 2514.4310332854975,
+            "meanSeconds": 0.8261666666666667
+          },
+          "1201006": {
+            "visits": 3,
+            "value": 71491.17265701266,
+            "seeded": true,
+            "meanReward": 0.0,
+            "meanSeconds": 1.798
+          }
+        },
+        "1 target|target debuffed": {
+          "1001004": {
+            "visits": 43,
+            "value": 83645.71413141322,
+            "seeded": true,
+            "meanReward": 9856.984968479803,
+            "meanSeconds": 1.2361395348837212
+          },
+          "1001005": {
+            "visits": 2,
+            "value": 80005.19845840971,
+            "seeded": true,
+            "meanReward": 8255.113310141764,
+            "meanSeconds": 1.895
+          },
+          "1211002": {
+            "visits": 4,
+            "value": 81998.40215333723,
+            "seeded": true,
+            "meanReward": 6426.932356086373,
+            "meanSeconds": 1.32975
+          },
+          "0": {
+            "visits": 3,
+            "value": 79960.47834406007,
+            "seeded": true,
+            "meanReward": 2609.590939153439,
+            "meanSeconds": 0.861
+          }
+        }
+      }
+    }
+  }
+}

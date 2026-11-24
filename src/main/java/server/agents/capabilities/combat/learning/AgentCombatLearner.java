@@ -352,10 +352,10 @@ public final class AgentCombatLearner {
         return state.mode();
     }
 
-    private static AgentCombatPolicyTable tableFor(AgentCombatLearningState state, Mode mode, Character bot,
+    static AgentCombatPolicyTable tableFor(AgentCombatLearningState state, Mode mode, Character bot,
                                                    Monster target, int reach) {
-        if (mode != Mode.LIVE) {
-            return state.table();
+        if (mode != Mode.LIVE || state.table() != null) {
+            return state.table(); // LIVE with a table: an arena comparison playing a candidate as an adopted table is played
         }
         if (!liveEnabled || bot.getJob() == null) {
             return null;

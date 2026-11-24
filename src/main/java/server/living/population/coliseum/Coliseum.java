@@ -142,6 +142,7 @@ public final class Coliseum {
     private final ColiseumBoard board;
     private final Tournament tournament;
     private final TeamLadder teams;
+    private final SelfPlay selfPlay;
     private final Random random = new Random();
     private final Queue<Request> requests = new ConcurrentLinkedQueue<>();
     private final Map<Integer, Match> byHuman = new ConcurrentHashMap<>();
@@ -165,6 +166,7 @@ public final class Coliseum {
         this.npcs = new ColiseumNpcs(population);
         this.tournament = new Tournament(this, new TournamentStore(), store);
         this.teams = new TeamLadder(this, store, new LadderStore(LadderStore.TEAM_PREFIX));
+        this.selfPlay = new SelfPlay(this);
         this.board.tournament(tournament::boardText);
     }
 
@@ -277,6 +279,7 @@ public final class Coliseum {
     public void minute() {
         try {
             tournament.minute(System.currentTimeMillis()); // cancels a restart's leftover run even when off
+            selfPlay.minute(System.currentTimeMillis()); // off-peak training bouts (docs/WORLD_SYSTEMS_PLAN.md I1.2)
             if (!on()) {
                 if (npcs.any()) {
                     npcs.removeAll();
@@ -297,6 +300,7 @@ public final class Coliseum {
 
     /** The population stops. */
     public void stop() {
+        selfPlay.stop();
         tournament.stop();
         teams.stop();
         npcs.removeAll();
@@ -561,7 +565,7 @@ public final class Coliseum {
                 || agent.getMap() == null || agent.getEventInstance() != null || agent.getParty() != null
                 || DuelRegistry.inDuel(agent.getId()) || population.presence().held(session)
                 || gallery.fighting(session.characterId) || tournament.busy(session.characterId)
-                || teams.fighting(session.characterId)
+                || teams.fighting(session.characterId) || selfPlay.fighting(session.characterId)
                 || !(agent.getClient() instanceof BotClient) || agent.getId() == humanId) {
             return false;
         }
@@ -586,7 +590,7 @@ public final class Coliseum {
     private void stopTickerIfIdle() {
         synchronized (tickerLock) {
             if (byHuman.isEmpty() && requests.isEmpty() && gallery.idle() && tournament.idle() && teams.idle()
-                    && ticker != null) {
+                    && selfPlay.idle() && ticker != null) {
                 ticker.cancel(false);
                 ticker = null;
             }
@@ -620,6 +624,7 @@ public final class Coliseum {
         gallery.step(now);
         tournament.step(now);
         teams.step(now);
+        selfPlay.step(now);
         stopTickerIfIdle();
     }
 
@@ -1036,6 +1041,16 @@ public final class Coliseum {
         Glicko2.Rating now = book.rating(chr.getId(), bracket.get(), System.currentTimeMillis());
         return chr.getName() + " (" + bracket.get().label + "): " + Math.round(now.rating()) + " +/- "
                 + Math.round(now.deviation()) + ", " + row.wins() + "-" + row.losses();
+    }
+
+    /** {@code !pvp selfplay [n]}: up to {@code n} training bouts now, whatever the hour and the switch; how many began. */
+    public int selfPlayNow(int n) {
+        return selfPlay.begin(n, System.currentTimeMillis());
+    }
+
+    /** {@code !pvp selfplay status}. */
+    public List<String> selfPlayStatus() {
+        return selfPlay.status();
     }
 
     /** {@code !pvp coliseum sim [n]}: plays n citizen matches now; how many were played. */

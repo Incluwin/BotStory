@@ -38,7 +38,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * A bot's side of a duel (docs/PVP_PLAN.md sections 4-5): priors only, no learning yet. While the duel
+ * A bot's side of a duel (docs/PVP_PLAN.md sections 4-5): the priors, and for a fighter with a learner's seat
+ * ({@link DuelLearner}: self-play, or a job whose learned brain beat this one) the learner's choice. While the duel
  * holds it, its own following and grinding are off; it thinks every 300-600 ms (a person's reaction, not a tick's),
  * swings its strongest attack skill whose box reaches the opponent, and otherwise walks to that skill's reach; in reach
  * it steps or hops every few seconds instead of a swing. Every action runs on the Agent's own thread through its mailbox.
@@ -132,6 +133,8 @@ final class DuelBrain {
         volatile long nextFootworkMs;
         /** When it last reached for a potion. */
         volatile long lastDrinkTryMs;
+        /** Its learner's seat, or null: the prior brain alone. */
+        volatile DuelLearner.Seat seat;
     }
 
     static void enter(DuelField.Fighter fighter) {
@@ -249,19 +252,21 @@ final class DuelBrain {
         if (entry == null) {
             return;
         }
-        Character bot = self.chr;
-        Character target = foe.chr;
         AgentMailboxRuntime.dispatch(entry, e -> {
             try {
-                act(e, bot, target, mind, self.stats);
+                act(e, self, foe);
             } catch (RuntimeException failure) {
-                log.warn("PvP duel brain {} against {} failed", bot.getName(), target.getName(), failure);
+                log.warn("PvP duel brain {} against {} failed", self.chr.getName(), foe.chr.getName(), failure);
             }
             return null;
         });
     }
 
-    private static void act(AgentRuntimeEntry entry, Character bot, Character target, Mind mind, DuelStats stats) {
+    private static void act(AgentRuntimeEntry entry, DuelField.Fighter self, DuelField.Fighter foe) {
+        Character bot = self.chr;
+        Character target = foe.chr;
+        Mind mind = self.mind;
+        DuelStats stats = self.stats;
         Point aim = target.getPosition();
         Point at = bot.getPosition();
         if (aim == null || at == null || bot.getMap() != target.getMap()) {
@@ -269,8 +274,11 @@ final class DuelBrain {
         }
         stats.thinks.incrementAndGet();
         long now = System.currentTimeMillis();
-        drinkIfDue(bot, mind, stats, now);   // a potion costs no action: it still swings this think
-        if (buffUp(entry, bot, mind, stats, now)) {
+        boolean learned = mind.seat != null;
+        if (!learned || !tonicsOnly(bot)) { // a seat decides on arena tonics and on buffs; own potions stay the prior's
+            drinkIfDue(bot, mind, stats, now);   // a potion costs no action: it still swings this think
+        }
+        if (!learned && buffUp(entry, bot, mind, stats, now)) {
             return;
         }
         var gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
@@ -284,9 +292,13 @@ final class DuelBrain {
                 && footwork(entry, bot, at, aim, mind, stats, now)) {
             return;
         }
-        boolean orbsFirst = orbsFirst(bot, mind.skills);
-        for (int rank = 0; rank < mind.skills.size(); rank++) {
-            int skillId = mind.skills.get(rank);
+        List<Integer> skills = learned ? DuelLearnedBrain.decide(entry, self, foe, now) : mind.skills;
+        if (skills == null) {
+            return;   // the learner did something other than swing
+        }
+        boolean orbsFirst = orbsFirst(bot, skills);
+        for (int rank = 0; rank < skills.size(); rank++) {
+            int skillId = skills.get(rank);
             if (holdsShout(skillId, orbsFirst)) {
                 stats.refused("hold:shout-for-orbs");
                 continue;   // its walk and footwork follow the swings that build orbs, so it closes in
@@ -364,6 +376,11 @@ final class DuelBrain {
     /** Whether a coliseum fighter at {@code hp} of {@code maxHp} drinks a tonic now (one being ready). */
     static boolean wantsTonic(int hp, int maxHp) {
         return maxHp > 0 && hp > 0 && hp <= maxHp * TONIC_AT_HP_SHARE;
+    }
+
+    private static boolean tonicsOnly(Character bot) {
+        DuelField field = DuelRegistry.of(bot.getId());
+        return field != null && field.rules().tonicsOnly();
     }
 
     private static void drinkIfDue(Character bot, Mind mind, DuelStats stats, long now) {
@@ -534,7 +551,7 @@ final class DuelBrain {
         return aim;
     }
 
-    private static StatEffect effectOf(Character bot, int skillId) {
+    static StatEffect effectOf(Character bot, int skillId) {
         Skill skill = SkillFactory.getSkill(skillId);
         int level = skill == null ? 0 : bot.getSkillLevel(skill);
         return level <= 0 ? null : skill.getEffect(level);
