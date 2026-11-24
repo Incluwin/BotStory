@@ -1718,6 +1718,9 @@ public class Client extends ChannelInboundHandlerAdapter {
             } catch (RuntimeException captureFailure) {
                 log.warn("Mob reaction capture could not retain an outbound packet", captureFailure);
             }
+            if (server.mods.StockClientAudit.enabled()) {
+                server.mods.StockClientAudit.sent(this, packet);
+            }
             ioChannel.writeAndFlush(packet);
         } finally {
             announcerLock.unlock();
