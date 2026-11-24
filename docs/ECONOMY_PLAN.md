@@ -901,8 +901,8 @@ anew. It holds no goods or meso, so nothing is refunded.
 - *Not reused:* the gear errand's table and deadline hand-over. An errand only lasts while the goods are on sale and
   hands nothing over, so a restart forgets it and the next tick reopens what still holds. No changeset is taken.
 - *Found while building:* live since 11-09, 66 % of scroll stacks were listed as one bundle of 2 to 10, and a citizen
-  buys only singles. With the errands on, citizens' stalls list scrolls one by one (players can then buy one too). Half
-  of the gain may be this, not the walking; it goes off with the same switch.
+  buys only singles. With the errands on, citizens' stalls list scrolls one by one (players can then buy one too). How much
+  of any gain is this and how much the walking is not measured; both go off with the same switch.
 
 **Cap** (`Market.capScrolls`): at most `MARKET_STALL_SCROLL_LINES` (2) scroll stacks a citizen's stall. The dearest by
 the stall's own ranking stays whatever it is, so cursed and chaos scrolls still reach players; the other is the kind
@@ -922,7 +922,7 @@ the errands there are no seekers and usefulness decides. Players' and bench stal
 
 The index holds 0.6 to 1.6 of seed up to 300 a day. At a buyer for every line the learner reaches 1.8 x seed; the cap
 of 12 out and the 12 h rest do not let that many out. It is a closed model, not a sales forecast, and has no CPI of its
-own: 8 of the 33 basket items are scrolls, so the CPI moves by their share of the column.
+own: 17 of the 33 basket items are scrolls (live 11-23), so the CPI follows the column by about half.
 
 **Free Market head-count** (live read 2026-11-24, 245 online): 45 in the Free Market, the busiest room 16. With the
 errands on at most 12 more, 57, if all 12 are out and none would have been there. An open errand also needs a plan
