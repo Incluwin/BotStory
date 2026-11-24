@@ -918,18 +918,18 @@ junk scroll at 100 k or more; that is a floor of the tables', not evidence of de
 
 **Live effect** (read-only, after the reseed). 166 of the 210 live formula rows have no sale: the next start sets them to
 their new seed by itself (`reseedUnmoved`), 55 of them suspects. 24 suspects have sales and walk: the guard takes them to
-about 0.8 x the new seed at about 4 % a stall close. Nine attack 10 % rows are within about 10 closes. At the listing rates
-since 11-09 the six accuracy 60 % rows need 8 to 62 days, the four accuracy 10 % rows 9 to 103, the two pet rows 17 to 18,
-two attack 10 % rows 93 and 109, and 2043702 is not listed at all. 2043002 is the one basket item: the CPI loses about 1 %.
+about 0.8 x the new seed at about 4 % a stall close. Eight attack 10 % rows are within about 10 closes. At the listing rates
+since 11-09 the six accuracy 60 % rows need 8 to 62 days, the five accuracy 10 % rows 9 to 103, the two pet rows 17 to 18,
+two attack 10 % rows 93 and 109 (hardly listed), and 2043702 is not listed at all. 2043002 is the one basket item: the CPI loses about 1 %.
 
 **Options** (a user decision; none built): (a) nothing, as above; (b) a second one-shot for the suspects that have sales
-and sit over 1.5 x their new seed, set to the new seed, kept and marked as the first was; (c) sample counts of those rows
+and sit over 1.5 x their new seed (15 rows), set to the new seed, kept and marked as the first was; (c) sample counts of those rows
 to 0, so the next start reseeds them: the same effect with no backup row, so worse. (b) is recommended only because the
 accuracy scrolls would otherwise ask 5 to 10 x too much for weeks; the rest needs nothing.
 
 **With the glut (10.8).** A stall lists its eight dearest stacks (index x quantity), so an overpriced scroll takes a line
 from something that could sell: the suspects are 31 % of the scroll lines since 11-09 (2044112 alone 41 a day, and no sale
-of it ever). Corrected seeds drop them down the list. What the 10.8 options would cut of the 19,270 lines: leaving
+the index learned). Corrected seeds drop them down the list. What the 10.8 options would cut of the 19,270 lines: leaving
 out scrolls no citizen uses or buys (cursed, chaos, flag) 54 %; those and the ones worth under 1 point to any job 73 %; a
 cap of two scroll lines a stall 55 %. A scroll no citizen wants may still be what a player wants, so a full filter
 also takes those out of players' reach; the cap does not. Vendoring surplus scrolls makes 1 meso each. None of these adds
