@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class NeedsContentTest {
     private static final Set<String> SLOTS = Set.of("item", "what", "count", "price", "total", "for", "map", "name", "me");
-    private static final Set<String> KINDS = Set.of("supply", "scroll", "gear");
+    private static final Set<String> KINDS = Set.of("supply", "scroll", "gear", "buy");
     private static final Pattern SLOT = Pattern.compile("\\{([a-z]+)}");
 
     private final PopulationContent content = PopulationLoader.load(Path.of("scripts/config/population"),
@@ -63,7 +63,7 @@ class NeedsContentTest {
                 assertFalse(lower.contains("whisper") || lower.contains("pm me") || lower.contains(" w me"), line);
             }
         }
-        assertEquals(9, postings, "map and megaphone lines for each kind");
+        assertEquals(11, postings, "map and megaphone lines for each kind (a crafter's buy order has no megaphone)");
         for (String trigger : List.of("need.whisper", "need.thanks", "need.got", "need.scroll.pass", "need.scroll.fail",
                 "memory.greet.fulfilled")) {
             assertFalse(content.intents(trigger).isEmpty(), trigger);
