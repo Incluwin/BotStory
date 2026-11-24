@@ -1552,14 +1552,14 @@ population:
     # index ANCHOR_PULL of the way back to its seed price, so unsold stock cannot take it to the shop price and errand
     # buyers (1.3 x the index) cannot run it up. false = the kill switch: the index learns as before.
     # Technical: Market.nudge multiplies the 8 % step's result by (anchorPrice / current) ^ PRICE_INDEX_ANCHOR_PULL; the anchor is Market.seed (basket, PriceSeeds, ScrollSeeds, else a multiple of the NPC price). Off, the factor is exactly 1.
-    PRICE_INDEX_DRIFT_GUARD_ENABLED: false
+    PRICE_INDEX_DRIFT_GUARD_ENABLED: true
     PRICE_INDEX_ANCHOR_PULL: 0.04
     # The index's one-time reseed (docs/ECONOMY_PLAN.md section 10.9): once, at the next start, with the drift guard on,
     # every row under RESEED_BELOW x its seed price goes to RESEED_TO x it (a scroll priced by the formula: FORMULA_TO x),
     # never under what an NPC pays; one whose seed is only a multiple of its NPC price stays (option D, user 2026-11-24).
     # What it would change: admin GET /runtime/stats/price-reseed. false = it does not run; it never runs twice.
     # Technical: PriceIndexReseed.runOnce before any citizen loads; old prices and the ran marker (item 0) live in living_price_reseed (changeset 70), in the same transaction as the new ones.
-    PRICE_INDEX_RESEED_ENABLED: false
+    PRICE_INDEX_RESEED_ENABLED: true
     PRICE_INDEX_RESEED_BELOW: 0.5
     PRICE_INDEX_RESEED_TO: 0.8
     PRICE_INDEX_RESEED_FORMULA_TO: 0.5
