@@ -344,7 +344,8 @@ public final class ChatterEngine {
             if (intent.maxLevel() > 0 && level > intent.maxLevel()) {
                 continue; // "how do i get to orbis" from a level-90 reads scripted
             }
-            if (!channelAvailable(session, intent.channel()) || !needsAllow(session, intent) || !whispersAllow(intent)) {
+            if (!channelAvailable(session, intent.channel()) || !needsAllow(session, intent) || !whispersAllow(intent)
+                    || !tradeAllows(session, intent)) {
                 continue;
             }
             if (!partyQuest && session.recentIntents.contains(intent.id())) {
@@ -528,6 +529,12 @@ public final class ChatterEngine {
      */
     private boolean whispersAllow(Intent intent) {
         return !(LOBBY_RECRUIT_INTENT.equals(intent.id()) && population.config().CITIZEN_WHISPERS_ENABLED);
+    }
+
+    /** A trade's lines ({@code trade.<word>.*}) are a crafter's of that trade (docs/WORLD_SYSTEMS_PLAN.md N8.1). */
+    private boolean tradeAllows(CitizenSession session, Intent intent) {
+        return !intent.id().startsWith(server.living.population.craft.Professions.INTENT) || population.professions() != null
+                && population.professions().says(session.citizen, intent.id());
     }
 
     /**
@@ -815,6 +822,7 @@ public final class ChatterEngine {
                 continue;
             }
             if (session.citizen.has(Citizen.FLAG_RECRUITER) && agent.getGuildId() > 0 || session.citizen.has(Citizen.FLAG_MERCHANT)
+                    || population.professions() != null && population.professions().of(session.citizen) != null
                     || needsOn() && population.needs().posting(session.characterId) != null) { // a share for real requests
                 speakers.add(session);
             }

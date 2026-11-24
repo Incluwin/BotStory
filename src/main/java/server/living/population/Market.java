@@ -594,6 +594,10 @@ public final class Market {
             }
             List<Listing> listings = stock.listings();
             String description = listings.get(0).name() + (listings.size() > 1 ? " and more" : "") + ", fair prices";
+            if (population.professions() != null) { // a crafter's stall names its trade (docs/WORLD_SYSTEMS_PLAN.md N8.1)
+                description = population.professions().stallTitle(session.citizen, description,
+                        listings.get(0).name() + (listings.size() > 1 ? " and more" : ""));
+            }
             AgentFreeMarketStallService.Result result = stalls.open(agent, description, permit, stock.shopListings(), spot);
             if (result.success()) {
                 session.stallSpot = null; // the open stall holds the spot now; closeStall lets it go

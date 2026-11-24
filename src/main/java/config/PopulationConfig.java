@@ -559,6 +559,22 @@ public class PopulationConfig {
     public int FIELD_BOSS_POTION_FLOOR = 50;
     public int FIELD_BOSS_ROLL_MINUTES = 5;
     public int FIELD_BOSS_ROLLED_KILLS_PER_DAY = 2;
+    /** Citizens' trades (docs/WORLD_SYSTEMS_PLAN.md N8.1). */
+    public boolean PROFESSIONS_ENABLED = false;
+    /** Orders with citizen crafters (N8.2). */
+    public boolean COMMISSIONS_ENABLED = false;
+    public int COMMISSIONS_PER_PLAYER = 3;
+    public int COMMISSION_QUEUE_MAX = 5;
+    public double COMMISSION_FRIEND_DISCOUNT = 0.2;
+    public int COMMISSION_SCROLL_FEE_PER_LEVEL = 150;
+    public long COMMISSION_REFUND_HOURS = 48;
+    /** Crafters' and players' buy orders, and the prices page (N8.3, N8.4). */
+    public boolean BUY_ORDERS_ENABLED = false;
+    public double BUY_ORDER_CHANCE = 0.2;
+    public int BUY_ORDERS_OPEN_MAX = 15;
+    public double BUY_ORDER_PURSE_SHARE = 0.1;
+    public int BUY_ORDERS_PER_PLAYER = 3;
+    public int BUY_ORDER_DAYS = 7;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
@@ -715,6 +731,15 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.BOUNTY_CHANCE must be 0..1, BOUNTY_PURSE_SHARE over 0 up to 1,"
                     + " BOUNTY_HUNT_KILLS and BOUNTY_CLAIM_MINUTES at least 1, BOUNTY_SHARE_PERCENT 1..100,"
                     + " FIELD_BOSS_CAMP_CHANCE 0..1, FIELD_BOSS_ROLL_MINUTES at least 1 and the rest not negative");
+        }
+        if (COMMISSIONS_PER_PLAYER < 1 || COMMISSION_QUEUE_MAX < 1 || COMMISSION_FRIEND_DISCOUNT < 0.0d
+                || COMMISSION_FRIEND_DISCOUNT > 0.2d || COMMISSION_SCROLL_FEE_PER_LEVEL < 1 || COMMISSION_REFUND_HOURS < 1
+                || BUY_ORDER_CHANCE < 0.0d || BUY_ORDER_CHANCE > 1.0d || BUY_ORDERS_OPEN_MAX < 0
+                || BUY_ORDER_PURSE_SHARE <= 0.0d || BUY_ORDER_PURSE_SHARE > 1.0d || BUY_ORDERS_PER_PLAYER < 1
+                || BUY_ORDER_DAYS < 1) {
+            throw new IllegalArgumentException("population.COMMISSION_FRIEND_DISCOUNT must be 0..0.2 (recipes.yaml leaves out"
+                    + " what would print meso below that), BUY_ORDER_CHANCE 0..1, BUY_ORDER_PURSE_SHARE over 0 up to 1,"
+                    + " BUY_ORDERS_OPEN_MAX not negative and the other COMMISSION and BUY_ORDER numbers at least 1");
         }
         if (PAPER_HOUR < 0 || PAPER_HOUR > 23 || PAPER_RETENTION_DAYS < 0 || (PAPER_RETENTION_DAYS > 0 && PAPER_RETENTION_DAYS < 30)
                 || !dayOfWeek(PAPER_DAY)) {

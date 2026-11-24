@@ -90,6 +90,9 @@ public final class PopulationLoader {
             "team.intro", "team.win", "team.lose", "crewwar.intro", "crewwar.win", "crewwar.lose",
             // a beginner citizen asking for a mentor as it posts its request (F4.5, NeedLedger.mentor)
             "need.mentor",
+            // crafters (craft.Commissions, docs/WORLD_SYSTEMS_PLAN.md N8): handing an order over, its Duey note, and a note
+            // with what a citizen sold into a player's buy order
+            "trade.deliver", "trade.note", "need.buy.note",
             // party megaphones and players' whispers (F5c, PartyMegaphones / CitizenWhispers)
             "pq.smega", "pq.where", "whisper.join.invited", "whisper.join.where", "whisper.join.full",
             "whisper.join.level", "whisper.join.party", "whisper.join.wait", "whisper.join.leader", "whisper.ack",

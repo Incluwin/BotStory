@@ -1751,6 +1751,42 @@ population:
     FIELD_BOSS_ROLL_MINUTES: 5
     # Technical: rolled (unwatched) kills of one catalogued boss a UTC day at most, all channels together; with 2 a script boss (up to 8 spawns a channel a day) mostly waits for humans, and 0 stops rolled kills entirely.
     FIELD_BOSS_ROLLED_KILLS_PER_DAY: 2
+    # Professions and commissions (docs/WORLD_SYSTEMS_PLAN.md N8). PROFESSIONS_ENABLED: about one citizen in ten has a
+    # trade (smith, tailor, alchemist, scroller) its stall, megaphones and talk mention. false = the kill switch: no
+    # citizen has a trade, whatever its flags say.
+    # Technical: craft.Professions writes one trade-<word> flag to living_citizen.flags (stable per citizen, 20 a minute at most); chatter/trades.yaml intents trade.<word>.* are said only by that trade; recipes.yaml is RecipeTool's output.
+    PROFESSIONS_ENABLED: false
+    # COMMISSIONS_ENABLED (needs PROFESSIONS_ENABLED, and the boards NEEDS_ENABLED): a player leaves materials and a fee
+    # with a crafter, at a board or by double-clicking one in town, and gets the piece in person or by Duey. Crafters
+    # also make pieces citizens ask for on the board. false = the kill switch: nothing is ordered, worked on or given
+    # back; open orders keep what they hold and go on when it is back on.
+    # Technical: craft.Commissions on the 60 s social lane; rows living_commission, held items inventoryitems type 15; every move is one EconomyOperationKind.COMMISSION transaction (MesoAccount.COMMISSION, internal), held fees are in MesoSupply's ESCROW pool, so no new meso.
+    COMMISSIONS_ENABLED: false
+    # Technical: orders a player may have out at once across all crafters, at least 1; an order counts from the moment the materials and fee are held until it is delivered, cancelled or refunded.
+    COMMISSIONS_PER_PLAYER: 3
+    # Technical: orders one crafter holds at once (the one it works on included), at least 1; past it the crafter takes no more and the player is told so.
+    COMMISSION_QUEUE_MAX: 5
+    # Technical: share taken off a crafter's fee for a customer at FRIEND standing (warmth PersonMemory.FOND), 0..0.2; recipes.yaml leaves out recipes that an NPC shop would buy for more than materials plus the fee at 0.2 off.
+    COMMISSION_FRIEND_DISCOUNT: 0.2
+    # Technical: a scroller's fee in meso per required level of the piece (10 at least), since no stock NPC sells that service; the scroll is used up on the roll a player's own would get.
+    COMMISSION_SCROLL_FEE_PER_LEVEL: 150
+    # Technical: hours a waiting order stays with a crafter before everything goes back by Duey (three times that once started), at least 1; a crafter hired, retired or without its trade gives back at once.
+    COMMISSION_REFUND_HOURS: 48
+    # BUY_ORDERS_ENABLED (needs NEEDS_ENABLED; crafters' own orders need PROFESSIONS_ENABLED): crafters post buy orders for
+    # materials, players post their own, citizens sell into them, and the boards show the prices page. false = the kill
+    # switch: none posted or filled, no prices page; players' open orders keep their meso until it is back on.
+    # Technical: needs.BuyOrders (players', living_need rows with poster_character_id, meso held in MesoSupply's ESCROW pool) and needs.CrafterNeeds (NeedKind.BUY requests); the citizen stall-buy rule (0.9 x index) is untouched (decision D16).
+    BUY_ORDERS_ENABLED: false
+    # Technical: the chance a crafter with no buy order open posts one at a need derivation (load and every NEEDS_REFRESH_MINUTES), 0..1.
+    BUY_ORDER_CHANCE: 0.2
+    # Technical: crafters' buy orders on the whole board at most, so the board is not all buy orders; players' own orders are listed on their own page and not counted.
+    BUY_ORDERS_OPEN_MAX: 15
+    # Technical: a crafter's buy order asks for at most what this share of its purse pays for when it posts, over 0 up to 1, so it can still pay at hand-over.
+    BUY_ORDER_PURSE_SHARE: 0.1
+    # Technical: buy orders a player may have up at once, at least 1; the whole price of each is held by the board from the post.
+    BUY_ORDERS_PER_PLAYER: 3
+    # Technical: days a player's buy order stays up before what it still holds goes back to them by Duey, at least 1 (Duey itself keeps a package 30 days).
+    BUY_ORDER_DAYS: 7
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live
