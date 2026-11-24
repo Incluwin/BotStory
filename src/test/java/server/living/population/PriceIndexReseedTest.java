@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,7 +31,7 @@ class PriceIndexReseedTest {
     private static final int ABOVE = 4010001;
     private static final int AT_THRESHOLD = 4010002;
     private static final int FLOORED = 4010003;
-    private static final int NO_SEED = 4010004;
+    private static final int NO_SEED = 4999999;
     private static final int FALLEN_SCROLL = 2040804;
 
     private final Population population = mock(Population.class);
@@ -111,7 +112,7 @@ class PriceIndexReseedTest {
 
     @Test
     void aFailedWriteLeavesTheIndexAsItWas() {
-        when(store.reseedPrices(any())).thenReturn(false);
+        doReturn(false).when(store).reseedPrices(any());
         Market market = market();
         assertEquals(0, PriceIndexReseed.runOnce(market, store, config));
         assertEquals(80L, market.price(FALLEN));
