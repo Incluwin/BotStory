@@ -882,3 +882,55 @@ scroll).
 to the guard. A row over its target is never lowered. The dry run lists every move with its source and multiple, the count
 per source and the skipped items. Dry run on a check stack, dump of 11-24 12:27: 81 + 7 at 0.8, 23 at 0.5, 27 skipped, 111 moves; projected CPI 56.1 ->
 91.9 at the reseed, 91.5 on day 7, 91.8 on day 30 (projected). The 138-row run and the 95.2 above are from before this decision.
+
+### 10.12 The formula's scroll seeds (user 2026-11-24: "fix the suspect scroll seeds"; branch fix/scroll-seeds)
+**Cause.** `ScrollSeeds` priced every scroll no table lists at one rate, the median meso per expected point of all 92 table
+scrolls. Their rates depend on the kind of bonus and the success rate (0.17 M to 10 M a point): the tables put accuracy
+and avoid scrolls at 100 k flat, weapon attack at about 1.1 M a point (60 %) and 0.8 M (10 %), stats at about 2.2 M. A
+weapon accuracy scroll (+3 ACC, +2 DEX, +1 PAD) got 1.68 points x 1.67 M = 2.8 M beside 1.5 M for a 60 % attack scroll.
+
+**Fix (the formula, no hand-set row).** A scroll takes the median rate of its peers: table scrolls of the same kind of
+bonus (its largest), then weapon or armour as it is, then dark or not, then the nearest success rate. The seed stays
+within 2 x of the range those peers' prices span. Judgments, not prices: the stat weights (unchanged), the order of the
+peers, HP and MP counting a tenth in choosing the kind, and the factor 2. Every price comes from the tables themselves.
+
+**Audit** (633 formula scrolls, 210 with a live row). Suspect = the old seed is more than 2 x off the new one: 231, 79 of
+them live. `ScrollSeedAuditTest` holds every formula seed to the 2 x bound with peers worked out apart from the formula;
+it fails on the old one. Full live list: shared notes price-drift/scroll-live-effect.csv.
+
+| Live suspects | Rows | Old seed | New seed | Table peers |
+|---|---|---|---|---|
+| weapon accuracy 60 % | 9 | 2.8 M | 200 k | gloves and shoes DEX 60 %, 100 k each |
+| weapon accuracy 10 % | 9 | 967 k | 200 k | gloves and shoes DEX 10 %, 100 k |
+| weapon accuracy 30 % dark | 6 | 2.9 M | 290 k | dark gloves DEX 30 %, 150 k |
+| weapon accuracy 100 % | 8 | 333 k | 50 k | gloves and shoes DEX 60 % |
+| armour accuracy / avoid | 8 | 333 k - 1 M | 50 k - 133 k | gloves and shoes DEX |
+| weapon attack 10 % | 14 | 1.03 - 1.14 M | 499 - 551 k | dagger 550 k, claw 500 k |
+| weapon attack 30 % dark | 5 | 3.1 - 3.4 M | 1.1 M | dagger and claw 10 % (no dark weapon scroll is listed) |
+| jump / speed (pet, bottom, shoes) | 6 | 333 k - 1.08 M | 83 k - 271 k | shoes and pet speed and jump 60 %, 100 k to 1 M |
+| Balrog defence 5 % and 30 % | 2 | 0.5 - 1.2 M | 200 k | DEF 10 %, 100 k |
+| HP and MP | 12 | 25 - 88 k | 125 - 200 k | HP scrolls 100 k and 150 k |
+
+The other 131 live formula rows change by 0.65 to 2.0 x (median 1.05). The HP seeds go up because the tables price every
+junk scroll at 100 k or more; that is a floor of the tables', not evidence of demand.
+**Left alone:** the basket's hand-set 60 % weapon attack prices (sword 250 k, axe 150 k) sit under the new 10 % ones
+(551 k), which follow the listed dagger and claw. One of the two is off; correcting it means a judgment on the basket.
+
+**Live effect** (read-only, after the reseed). 166 of the 210 live formula rows have no sale: the next start sets them to
+their new seed by itself (`reseedUnmoved`), 55 of them suspects. 24 suspects have sales and walk: the guard takes them to
+about 0.8 x the new seed at about 4 % a stall close. Nine attack 10 % rows are within about 10 closes. At the listing rates
+since 11-09 the six accuracy 60 % rows need 8 to 62 days, the four accuracy 10 % rows 9 to 103, the two pet rows 17 to 18,
+two attack 10 % rows 93 and 109, and 2043702 is not listed at all. 2043002 is the one basket item: the CPI loses about 1 %.
+
+**Options** (a user decision; none built): (a) nothing, as above; (b) a second one-shot for the suspects that have sales
+and sit over 1.5 x their new seed, set to the new seed, kept and marked as the first was; (c) sample counts of those rows
+to 0, so the next start reseeds them: the same effect with no backup row, so worse. (b) is recommended only because the
+accuracy scrolls would otherwise ask 5 to 10 x too much for weeks; the rest needs nothing.
+
+**With the glut (10.8).** A stall lists its eight dearest stacks (index x quantity), so an overpriced scroll takes a line
+from something that could sell: the suspects are 31 % of the scroll lines since 11-09 (2044112 alone 41 a day, and no sale
+of it ever). Corrected seeds drop them down the list. What the 10.8 options would cut of the 19,270 lines: leaving
+out scrolls no citizen uses or buys (cursed, chaos, flag) 54 %; those and the ones worth under 1 point to any job 73 %; a
+cap of two scroll lines a stall 55 %. A scroll no citizen wants may still be what a player wants, so a full filter
+also takes those out of players' reach; the cap does not. Vendoring surplus scrolls makes 1 meso each. None of these adds
+buyers: a citizen buys only for a slot its own bag (about 72 scrolls) cannot fill.
