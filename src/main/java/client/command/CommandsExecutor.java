@@ -200,6 +200,7 @@ import client.command.commands.gm4.SetEqStatCommand;
 import client.command.commands.gm4.TravelRateCommand;
 import client.command.commands.gm4.ZakumCommand;
 import client.command.commands.gm5.DebugCommand;
+import client.command.commands.gm5.WorldEventCommand;
 import client.command.commands.gm5.ClimbCaptureCommand;
 import client.command.commands.gm5.IpListCommand;
 import client.command.commands.gm5.MobCaptureCommand;
@@ -736,6 +737,7 @@ public class CommandsExecutor {
         addCommand("rivals", 5, RivalsCommand.class);
         addCommand("pvp", 5, PvpCommand.class);
         addCommand("paper", 5, PaperCommand.class);
+        addCommand("worldevent", 5, WorldEventCommand.class);
         addCommand("mentor", 5, MentorCommand.class);
         addCommand("story", 5, StoryCommand.class);
         addCommand("banter", 5, BanterCommand.class);

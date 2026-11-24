@@ -126,7 +126,9 @@ public final class PopulationLoader {
             "guild.reply.hi", "guild.reply.bye", "guild.reply.np", "guild.member.hi", "guild.member.bye", "guild.gz",
             "guild.clear.gz", "guild.clear.self", "guild.lfg.invited", "guild.lfg.full", "guild.lfg.level",
             "guild.lfg.party", "guild.lfg.wait", "guild.lfg.none", "guild.lfg.going", "guild.lfg.ready",
-            "guild.goal.new", "guild.goal.met");
+            "guild.goal.new", "guild.goal.met",
+            // world events (docs/WORLD_SYSTEMS_PLAN.md N4; events.WorldEvents): the day before and while they run
+            "event.soon.marketday", "event.now.marketday");
     /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
     static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
             "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",

@@ -559,6 +559,9 @@ public class PopulationConfig {
     public int FIELD_BOSS_POTION_FLOOR = 50;
     public int FIELD_BOSS_ROLL_MINUTES = 5;
     public int FIELD_BOSS_ROLLED_KILLS_PER_DAY = 2;
+    /** The world events calendar (docs/WORLD_SYSTEMS_PLAN.md N4; population/events.yaml). */
+    public boolean WORLD_EVENTS_ENABLED = false;
+    public boolean WORLD_EVENT_MARKET_DAY_ENABLED = false;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {

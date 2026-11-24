@@ -1,0 +1,33 @@
+# World events (docs/WORLD_SYSTEMS_PLAN.md N4, server.living.population.events.WorldEvents). event.soon.<id>: a citizen in
+# town with a player on the map, from the day before ({when} "tomorrow at 8 pm", {place} for an invasion or a festival).
+# event.now.<id>: while it runs. Each at most once a town map an hour. Needs population.WORLD_EVENTS_ENABLED.
+intents:
+  - id: event.soon.marketday
+    trigger: event.soon.marketday
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "market day {when} right?"
+      - "saving up, market day is {when}"
+      - "dont buy stuff yet, market day {when}"
+      - "anyone selling on market day? its {when}"
+    styles:
+      quiet-practical-v1:
+        - "market day {when}"
+        - "waiting for market day to buy. {when}"
+  - id: event.now.marketday
+    trigger: event.now.marketday
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "market day in the fm, go go"
+      - "fm is packed rn, stuff is cheap"
+      - "brb fm, its market day"
+      - "everything is on sale in the fm lol"
+    styles:
+      quiet-practical-v1:
+        - "market day. fm is cheap"

@@ -37,6 +37,8 @@ class PaperCatalogTest {
         FILED.put("town.grudge", Map.of("name", "Ann", "partner", "Ben"));
         FILED.put("market.riser", Map.of("item", "Mithril Ore", "percent", "18"));
         FILED.put("market.faller", Map.of("item", "Mithril Ore", "percent", "18"));
+        FILED.put("market.bargains", Map.of("items", "Cape STR, Work Gloves", "percent", "28"));
+        FILED.put("notices.marketday", Map.of("when", "Sunday at 3 pm"));
         FILED.put("town.wedding", Map.of("name", "Ann", "partner", "Ben"));
         FILED.put("town.guild", Map.of("guild", "Lumen", "leader", "Ann"));
         FILED.put("town.alliance", Map.of("alliance", "Dawn", "names", "Lumen, Ember"));

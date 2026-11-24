@@ -1751,6 +1751,17 @@ population:
     FIELD_BOSS_ROLL_MINUTES: 5
     # Technical: rolled (unwatched) kills of one catalogued boss a UTC day at most, all channels together; with 2 a script boss (up to 8 spawns a channel a day) mostly waits for humans, and 0 stops rolled kills entirely.
     FIELD_BOSS_ROLLED_KILLS_PER_DAY: 2
+    # World events (docs/WORLD_SYSTEMS_PLAN.md N4; the calendar is population/events.yaml). WORLD_EVENTS_ENABLED: each
+    # event starts at the hour with the most players online over the last four weeks (never the tournament's), is
+    # announced in the paper's Notices and by citizens the day before, and leaves one living_world_event row an
+    # occurrence, so a restart neither repeats nor loses one. Each kind has its own switch too. false = the kill switch:
+    # nothing is planned or started and a running event ends with no result. !worldevent start|stop|list.
+    # Technical: events.WorldEvents on the 60 s social lane (running events step on the 20 s chatter tick); one WorldModifier is read by PresenceScheduler.plan/mapFor, Market, CitizenMiniGames and the drop game; the hour comes from admin_player_samples, so the admin port's sampler must be on, else events.yaml's fallback slot.
+    WORLD_EVENTS_ENABLED: false
+    # Market day: the stall cap doubles, stall asks come down 15 % and MARKET plans weigh three times as much for three
+    # hours (events.yaml market). Discounts only move meso between holders. false = the kill switch: no market day.
+    # Technical: WorldModifier stallCap/askShare in Market; the price index and the I2 learned asks take no sale and no unsold line during it and the hour after, so a sale price never becomes the index the paper and the E4 controller read.
+    WORLD_EVENT_MARKET_DAY_ENABLED: false
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live
