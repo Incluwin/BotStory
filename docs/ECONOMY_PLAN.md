@@ -880,5 +880,5 @@ scroll).
 **Decision (user 2026-11-24: "Yes, option D"), built.** Table and basket rows go to 0.8 x seed; formula rows to
 `PRICE_INDEX_RESEED_FORMULA_TO` (0.5) x seed; rows with only an NPC-multiple seed are skipped (not in the backup) and left
 to the guard. A row over its target is never lowered. The dry run lists every move with its source and multiple, the count
-per source and the skipped items. Expected on the 11-24 dump: 81 + 7 at 0.8, 23 at 0.5, 27 skipped, 111 moves, CPI 56.1 ->
+per source and the skipped items. Dry run on a check stack, dump of 11-24 12:27: 81 + 7 at 0.8, 23 at 0.5, 27 skipped, 111 moves; projected CPI 56.1 ->
 91.9 at the reseed, 91.5 on day 7, 91.8 on day 30 (projected). The 138-row run and the 95.2 above are from before this decision.
