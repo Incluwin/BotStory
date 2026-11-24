@@ -18,6 +18,8 @@
 #   town.alliance         alliance, names (its guilds)        town.job       name, job
 #   town.level            name, level                         town.guildgoal guild, goal
 #   market.bargains       items, percent (market day)         notices.marketday  when
+#   town.festival         name, place, count                  town.festival.quiet  place
+#   town.meet             name, place (a festival's climb)    notices.festival   when, place
 # title: the masthead. Players are named like citizens (decision D2, as the records board does). ASCII only, no '#' (NPC window codes).
 
 title: "The Henesys Herald"
@@ -172,6 +174,50 @@ stories:
     gists:
       - "{items} went for cheap on market day"
       - "stuff was {percent}% off on market day"
+
+  - key: town.festival
+    headlines:
+      - "{name} rules the tables at the {place} festival"
+      - "Champion of the {place} festival: {name}"
+    bodies:
+      - "{name} beat {count} people at the game tables in {place} and went home with the prize."
+      - "Nobody at the {place} festival could stop {name}, who beat {count} of them."
+    gists:
+      - "{name} won the tables at the {place} festival"
+      - "{name} beat {count} people at the {place} festival"
+
+  - key: town.festival.quiet
+    headlines:
+      - "Festival in {place}"
+      - "{place} had its festival"
+    bodies:
+      - "Games and music filled {place} for an evening, with nobody far enough ahead at the tables to take the prize."
+      - "The {place} festival came and went. The table prize waits for next season."
+    gists:
+      - "there was a festival in {place}"
+      - "nobody won the tables in {place}"
+
+  - key: town.meet
+    headlines:
+      - "{name} first to the top at {place}"
+      - "{place} festival: {name} wins the climb"
+    bodies:
+      - "{name} was the first up the climb at the {place} festival."
+      - "The climb at the {place} festival went to {name}, who made it look easy."
+    gists:
+      - "{name} won the climb in {place}"
+      - "{name} was first up at the {place} festival"
+
+  - key: notices.festival
+    headlines:
+      - "Festival in {place}: {when}"
+      - "{place} holds its festival {when}"
+    bodies:
+      - "Game tables, the drop game and a climb with a prize, in {place} {when}."
+      - "{place} puts its tables out {when}. There is a prize for the champion and for the first up the climb."
+    gists:
+      - "festival in {place} {when}"
+      - "{place} has a festival {when}"
 
   - key: notices.marketday
     headlines:

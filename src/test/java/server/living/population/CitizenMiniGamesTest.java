@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.ItemInformationProvider;
 import server.living.population.PopulationContent.Region;
+import server.living.population.events.WorldEvents;
+import server.living.population.events.WorldModifier;
 import server.maps.MapleMap;
 import server.maps.MiniGame.MiniGameResult;
 import tools.DatabaseConnection;
@@ -77,6 +79,20 @@ class CitizenMiniGamesTest {
         config.MINIGAMES_ENABLED = true;
         assertTrue(games.plays(citizen, 0L));
         assertEquals(HENESYS, games.townFor(citizen), "Lith Harbor is not a minigame town");
+    }
+
+    @Test
+    void theFestivalTownTakesThePlayersWhileItLasts() {
+        config.MINIGAMES_ENABLED = true;
+        WorldEvents events = mock(WorldEvents.class);
+        when(population.worldEvents()).thenReturn(events);
+        when(events.modifier()).thenReturn(WorldModifier.NONE.with(
+                WorldModifier.Effect.festival("f", "victoria", LITH_HARBOR, 4.0d, Long.MAX_VALUE)));
+        CitizenMiniGames games = new CitizenMiniGames(population, (delay, step) -> { });
+        assertEquals(LITH_HARBOR, games.townFor(citizen));
+        assertTrue(games.plays(citizen, 0L));
+        when(events.modifier()).thenReturn(WorldModifier.NONE);
+        assertEquals(HENESYS, games.townFor(citizen));
     }
 
     @Test

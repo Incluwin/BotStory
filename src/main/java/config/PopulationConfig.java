@@ -562,6 +562,7 @@ public class PopulationConfig {
     /** The world events calendar (docs/WORLD_SYSTEMS_PLAN.md N4; population/events.yaml). */
     public boolean WORLD_EVENTS_ENABLED = false;
     public boolean WORLD_EVENT_MARKET_DAY_ENABLED = false;
+    public boolean WORLD_EVENT_FESTIVAL_ENABLED = false;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {

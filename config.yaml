@@ -1762,6 +1762,11 @@ population:
     # hours (events.yaml market). Discounts only move meso between holders. false = the kill switch: no market day.
     # Technical: WorldModifier stallCap/askShare in Market; the price index and the I2 learned asks take no sale and no unsold line during it and the hour after, so a sale price never becomes the index the paper and the E4 controller read.
     WORLD_EVENT_MARKET_DAY_ENABLED: false
+    # Festival: one town a season has the region's minigame tables, the drop game and a jump-quest meet for an evening
+    # (events.yaml festivals). The table champion and the first up the climb get an item and fame, never meso.
+    # false = the kill switch: no festival. The meet needs JQ_ENABLED, the tables MINIGAMES_ENABLED, the drop game DROP_GAME_ENABLED.
+    # Technical: CitizenMiniGames.towns and the drop game's mapId/spot read WorldModifier.festivalTown; a drop game under way finishes where it started; a player wins the meet when seen at the last leg's top after being seen below it (polled every 20 s).
+    WORLD_EVENT_FESTIVAL_ENABLED: false
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

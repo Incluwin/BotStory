@@ -17,6 +17,7 @@ import server.integration.AgentPresence;
 import server.living.population.ChatterEngine;
 import server.living.population.Citizen;
 import server.living.population.CitizenSession;
+import server.living.population.JumpQuestCourses;
 import server.living.population.Population;
 import server.living.population.paper.PaperDesk;
 import server.maps.MapleMap;
@@ -177,7 +178,8 @@ public final class WorldEvents {
         PopulationConfig config = population.config();
         return on() && switch (kind) {
             case MARKET_DAY -> config.WORLD_EVENT_MARKET_DAY_ENABLED;
-            case INVASION, FESTIVAL -> false;
+            case FESTIVAL -> config.WORLD_EVENT_FESTIVAL_ENABLED;
+            case INVASION -> false;
         };
     }
 
@@ -307,7 +309,8 @@ public final class WorldEvents {
     private Runner runner(Run run) {
         return switch (run.entry.kind()) {
             case MARKET_DAY -> new MarketDay(this, run);
-            case INVASION, FESTIVAL -> throw new IllegalStateException("not built");
+            case FESTIVAL -> new Festival(this, run);
+            case INVASION -> throw new IllegalStateException("not built");
         };
     }
 
@@ -563,6 +566,33 @@ public final class WorldEvents {
         String line = population.chatter().compose(event);
         if (line != null) {
             population.chatter().say(session, line);
+        }
+    }
+
+    // ---- what the running events hear --------------------------------------------------------------------------------
+
+    private <T extends Runner> T runner(Class<T> kind) {
+        for (Run run : runs.values()) {
+            if (kind.isInstance(run.runner)) {
+                return kind.cast(run.runner);
+            }
+        }
+        return null;
+    }
+
+    /** {@code winner} beat {@code loser} at a minigame on {@code mapId} (CitizenMiniGames). */
+    public synchronized void played(Character winner, Character loser, int mapId) {
+        Festival festival = runner(Festival.class);
+        if (festival != null) {
+            festival.played(winner, loser, mapId);
+        }
+    }
+
+    /** A citizen is up a jump quest (CitizenJumpQuests). */
+    public synchronized void climbed(CitizenSession session, JumpQuestCourses.Course course) {
+        Festival festival = runner(Festival.class);
+        if (festival != null) {
+            festival.climbed(session, course);
         }
     }
 

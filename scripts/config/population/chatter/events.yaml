@@ -31,3 +31,31 @@ intents:
     styles:
       quiet-practical-v1:
         - "market day. fm is cheap"
+  - id: event.soon.festival
+    trigger: event.soon.festival
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "festival in {place} {when}, who's going"
+      - "gonna win the tables in {place} {when}"
+      - "{place} festival {when}!"
+      - "u doing the climb at the festival? {when} in {place}"
+    styles:
+      quiet-practical-v1:
+        - "festival {when}, {place}"
+  - id: event.now.festival
+    trigger: event.now.festival
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "festival's on in {place}"
+      - "omok in {place}, come on"
+      - "everyone's at the {place} festival"
+      - "there's a prize for the tables in {place} rn"
+    styles:
+      quiet-practical-v1:
+        - "festival in {place} now"

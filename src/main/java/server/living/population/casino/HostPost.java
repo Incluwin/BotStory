@@ -50,6 +50,11 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
     /** Where the host stands. */
     abstract Point spot();
 
+    /** The map this post is on: the venue's, unless it moved since (the drop game at a festival). */
+    int mapId(P post) {
+        return mapId();
+    }
+
     /** A post for this citizen, or null when it cannot take it (its purse, its bag). */
     abstract P open(CitizenSession session, long until);
 
@@ -109,7 +114,7 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
     public void tick(long now) {
         for (P post : new ArrayList<>(posts.values())) {
             Character agent = post.agent();
-            if (agent == null || agent.getMapId() != mapId() || !enabled()) {
+            if (agent == null || agent.getMapId() != mapId(post) || !enabled()) {
                 leave(post, agent == null ? "logged off" : "left the map");
                 continue;
             }
@@ -119,7 +124,7 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
             }
             if (post.ready) {
                 step(post, now);
-                if (wantsQuick() && !post.quickRunning && (busy(post) || host.humanOn(post.session.channel, mapId()))) {
+                if (wantsQuick() && !post.quickRunning && (busy(post) || host.humanOn(post.session.channel, mapId(post)))) {
                     post.quickRunning = true;
                     host.after(QUICK_MS, () -> quickLoop(post));
                 }
@@ -129,7 +134,7 @@ abstract class HostPost<P extends HostPost.Post> implements Venue {
 
     /** Fast steps while a player is there, and while a deal is open even after they leave, so its timeouts still run. */
     private void quickLoop(P post) {
-        if (posts.get(post.session.channel) != post || !busy(post) && !host.humanOn(post.session.channel, mapId())) {
+        if (posts.get(post.session.channel) != post || !busy(post) && !host.humanOn(post.session.channel, mapId(post))) {
             post.quickRunning = false;
             return;
         }
