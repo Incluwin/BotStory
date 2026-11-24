@@ -283,7 +283,7 @@ final class PaperStore implements PaperDesk.Store, PaperCompose.Sources {
         }
         for (Clear clear : clears.between(fromMs, toMs)) {
             out.add(new PaperCompose.ClearRow(clear.quest(), clear.durationMs(), clear.clearedAtMs(),
-                    clear.members().stream().map(Clear.Member::name).toList()));
+                    clear.members().stream().map(Clear.Member::name).toList(), clear.rolled()));
         }
         return out;
     }

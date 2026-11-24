@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -182,6 +184,81 @@ class FieldBossKillsTest {
 
         assertTrue(store.rows.isEmpty());
         assertTrue(heard.isEmpty());
+    }
+
+    /** A rolled kill as FieldBossCamps books it: no start, so no time. */
+    private void rolled(int id, String name, long atMs) {
+        clears.cleared(List.of(character(id, name, Clear.AS_CITIZEN, true)), STUMPY, "field:" + STUMPY_MAP, 0L, atMs);
+    }
+
+    private void real(long atMs) {
+        Character ann = character(10, "Ann", Clear.AS_PLAYER, true);
+        kills.killed(boss(STUMPY_MOB, atMs - 30_000L, Map.of(10, 5_000L)), map, Set.of(10), atMs);
+        assertEquals("Ann", ann.getName());
+    }
+
+    @Test
+    void aRealKillAfterARolledOneIsTheFirst() {
+        rolled(600, "Nora", NOW);
+        real(NOW + 60_000L);
+
+        assertEquals("Ann", ClearLog.names(clears.first(STUMPY), 6));
+        assertEquals("First clear: Ann (Jan 15)", new RecordsView(clears).details(null, STUMPY).get(1));
+    }
+
+    @Test
+    void aRolledKillAloneIsOnThePageButNoFirstKill() {
+        rolled(600, "Nora", NOW);
+        rolled(601, "Tan", NOW + 60_000L);
+
+        assertNull(clears.first(STUMPY));
+        assertNull(clears.fastest(STUMPY));
+        assertEquals(List.of(STUMPY), clears.questsWithRecords(), "it still counts as a kill");
+        RecordsView view = new RecordsView(clears);
+        assertEquals("Taken down by: Nora (Jan 15)", view.details(null, STUMPY).get(1));
+        assertEquals(List.of("Stumpy: taken down by Nora"), view.chat(null, null));
+        assertEquals("Taken down by: Nora (Jan 15)", view.chat(null, "stumpy").get(1));
+    }
+
+    @Test
+    void aRolledKillAfterARealOneChangesNothing() {
+        real(NOW);
+        RecordsView view = new RecordsView(clears);
+        List<String> page = view.details(null, STUMPY);
+        List<String> chat = view.chat(null, null);
+        rolled(600, "Nora", NOW + 60_000L);
+
+        assertEquals("Ann", ClearLog.names(clears.first(STUMPY), 6));
+        assertEquals(page, view.details(null, STUMPY));
+        assertEquals(chat, view.chat(null, null));
+    }
+
+    @Test
+    void theStoredRolledRowsAreNoFirstAfterARestartEither() {
+        store.stored.add(new Clear(1, STUMPY, "field:" + STUMPY_MAP, 1, STUMPY_MAP, 0L, NOW, 0L, Clear.Kind.CITIZEN, 0,
+                List.of(new Clear.Member(600, Clear.AS_CITIZEN, "Nora"))));
+        clears.load();
+        assertNull(clears.first(STUMPY));
+
+        store.stored.add(new Clear(2, STUMPY, "field:" + STUMPY_MAP, 1, STUMPY_MAP, NOW, NOW + 30_000L, 30_000L,
+                Clear.Kind.HUMAN, 0, List.of(new Clear.Member(10, Clear.AS_PLAYER, "Ann"))));
+        ClearLog again = new ClearLog(population, store, clearPorts, new QuestLabels(List.of(), bosses));
+        again.load();
+        assertEquals("Ann", ClearLog.names(again.first(STUMPY), 6));
+    }
+
+    @Test
+    void aBossDownedInOneHitIsStillARealTimedKill() {
+        character(10, "Ann", Clear.AS_PLAYER, true);
+        kills.killed(boss(STUMPY_MOB, NOW, Map.of(10, 5_000L)), map, Set.of(10), NOW); // first hit = the death
+
+        assertTrue(store.rows.getFirst().timed(), "under a second would book untimed and read as a rolled kill");
+        assertEquals("Ann", ClearLog.names(clears.first(STUMPY), 6));
+    }
+
+    @Test
+    void anUntimedEventClearIsNoRolledKill() {
+        assertFalse(new Clear(1, "KerningPQ", "Kerning0", 1, 1, 0L, NOW, 0L, Clear.Kind.HUMAN, 0, List.of()).rolled());
     }
 
     @Test

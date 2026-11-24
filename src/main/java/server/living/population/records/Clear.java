@@ -38,6 +38,8 @@ public record Clear(int id, String quest, String instance, int channel, int mapI
     public static final char AS_COMPANION = 'P';
     public static final char AS_CITIZEN = 'C';
     public static final char AS_BOT = 'B';
+    /** A field boss's kill has no event instance: this and its map id stand in. */
+    public static final String FIELD_INSTANCE = "field:";
 
     public Clear {
         quest = quest == null ? "" : quest;
@@ -68,6 +70,14 @@ public record Clear(int id, String quest, String instance, int channel, int mapI
 
     public boolean timed() {
         return durationMs > 0L;
+    }
+
+    /**
+     * A field boss's kill settled by a roll with nobody watching (FieldBossCamps): booked with no time. It counts as a
+     * kill, never as a first (user decision 2026-11-24). An event's untimed clear (its start never seen) is not one.
+     */
+    public boolean rolled() {
+        return !timed() && instance.startsWith(FIELD_INSTANCE);
     }
 
     public boolean has(int characterId) {

@@ -354,7 +354,8 @@ public final class FieldBossCamps {
         countRolledKill(listed.key(), nowMs);
         if (population.config().FIELD_BOSS_RECORDS_ENABLED && population.clears() != null) {
             // untimed (no start): a kill on the records, never a time to rank or race
-            population.clears().cleared(party, listed.key(), "field:" + map.getId(), 0L, nowMs);
+            population.clears().cleared(party, listed.key(),
+                    server.living.population.records.Clear.FIELD_INSTANCE + map.getId(), 0L, nowMs);
         }
         map.killMonster(boss, null, false, (short) 0); // no killer: no drops, EXP or meso; its respawn runs as for any death
         for (CitizenSession session : camp) {

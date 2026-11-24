@@ -10,6 +10,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The issue a week's rows make (docs/WORLD_SYSTEMS_PLAN.md N1.1): each section from its own table, heaviest first. */
@@ -32,6 +33,31 @@ class PaperComposeTest {
 
     private static PaperCompose.ClearRow clear(String quest, long durationMs, long atMs, String... names) {
         return new PaperCompose.ClearRow(quest, durationMs, atMs, List.of(names));
+    }
+
+    private static PaperCompose.ClearRow rolled(String quest, long atMs, String... names) {
+        return new PaperCompose.ClearRow(quest, 0L, atMs, List.of(names), true);
+    }
+
+    @Test
+    void aRolledFieldBossKillIsNeverTheFirstKillStory() {
+        long inWeek = ISSUE_MS - 2 * 24 * HOUR;
+        sources.labels.put("field.stumpy", "Stumpy");
+        sources.clears.add(rolled("field.stumpy", inWeek, "Nora"));
+        assertNull(section(compose(), "records"), "a rolled kill alone is no story");
+
+        sources.clears.add(clear("field.stumpy", 95_000L, inWeek + HOUR, "Ann"));
+        PaperIssue.Section records = section(compose(), "records");
+        assertEquals(List.of("records.first"), records.stories().stream().map(PaperIssue.Story::key).toList());
+        assertTrue(records.stories().get(0).names().contains("Ann"));
+        assertFalse(records.stories().get(0).names().contains("Nora"));
+    }
+
+    @Test
+    void aCrewsUntimedKillIsNoBeatenTime() {
+        sources.labels.put("field.stumpy", "Stumpy");
+        sources.beats.add(new PaperCompose.RivalBeat("Night Owls", "field.stumpy", 0L));
+        assertNull(section(compose(), "records"));
     }
 
     @Test

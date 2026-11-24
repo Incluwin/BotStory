@@ -105,13 +105,15 @@ public final class FieldBossKills {
         }
         int top = topOnMap(map, damage);
         List<Character> members = members(map, top);
-        long first = monster.firstHitAtMs();
+        // downed in one hit: the least time a clear can have, since an untimed one reads as rolled (Clear.rolled)
+        long hit = monster.firstHitAtMs();
+        long first = Math.min(hit > 0L ? hit : nowMs, nowMs - ClearLog.MIN_DURATION_MS);
         int channel = map.getChannelServer() == null ? 0 : map.getChannelServer().getId();
         List<Integer> ids = new ArrayList<>();
         members.forEach(member -> ids.add(member.getId()));
         Kill kill = new Kill(boss, monster.getId(), map.getId(), channel, first, nowMs, damage, top, ids);
         if (ports.recordsOn() && !members.isEmpty()) {
-            ports.book(members, boss.key(), "field:" + map.getId(), first, nowMs);
+            ports.book(members, boss.key(), Clear.FIELD_INSTANCE + map.getId(), first, nowMs);
         }
         for (Consumer<Kill> listener : listeners) {
             try {

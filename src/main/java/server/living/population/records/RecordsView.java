@@ -48,6 +48,10 @@ public final class RecordsView {
         if (first != null) {
             out.add("First clear: " + ClearLog.names(first, 6) + " (" + date(first.clearedAtMs()) + ")");
         }
+        Clear taken = clears.takenDown(quest);
+        if (taken != null) { // only rolled kills so far: a kill, no first
+            out.add("Taken down by: " + ClearLog.names(taken, 6) + " (" + date(taken.clearedAtMs()) + ")");
+        }
         Clear fastest = clears.fastest(quest);
         if (fastest != null) {
             out.add("Fastest: #b" + ClearLog.time(fastest.durationMs()) + "#k by " + ClearLog.names(fastest, 6)
@@ -67,7 +71,7 @@ public final class RecordsView {
                 out.add("No such quest or boss: " + typed + ". Try @records for the list.");
                 return out;
             }
-            if (clears.first(quest) == null) {
+            if (clears.first(quest) == null && clears.takenDown(quest) == null) {
                 out.add(clears.labels().label(quest) + ": no clears recorded yet.");
                 return out;
             }
@@ -83,6 +87,10 @@ public final class RecordsView {
         }
         for (String quest : quests) {
             Clear first = clears.first(quest);
+            if (first == null) { // only rolled kills so far
+                out.add(clears.labels().label(quest) + ": taken down by " + ClearLog.names(clears.takenDown(quest), 2));
+                continue;
+            }
             Clear fastest = clears.fastest(quest);
             long mine = player == null ? 0L : clears.playerBest(player.getId(), quest);
             out.add(clears.labels().label(quest) + ": first " + ClearLog.names(first, 2)
