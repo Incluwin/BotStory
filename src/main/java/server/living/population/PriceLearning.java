@@ -45,9 +45,12 @@ public final class PriceLearning {
     private final PriceArms asks;
     private final PriceArms offers;
     private final PriceArms bench;
+    private final PriceArms buys;
     private final Random random;
     /** citizenId:itemId -> {OFFER arm, when it was picked} of the SUPPLY request it priced (open, or about to be). */
     private final Map<String, long[]> offerArms = new ConcurrentHashMap<>();
+    /** The same of the BUY request (a crafter's buy order, N8.3) it priced. */
+    private final Map<String, long[]> buyArms = new ConcurrentHashMap<>();
     /** Ended requests written inside a transaction, by need id: booked once the ledger shows the end held. */
     private final Map<Integer, Pending> pending = new ConcurrentHashMap<>();
     /** Need ids already booked (the last BOOKED_IDS): a later write of the same ended row books nothing. */
@@ -79,6 +82,8 @@ public final class PriceLearning {
                 m -> Math.abs(m - premium) <= 0.05d + 1e-9 ? offerPrior : 0.0d);
         this.bench = new PriceArms("BENCH", PriceArms.steps(0.85d, 1.30d, 0.05d),
                 m -> Math.abs(m - 1.0d) < 1e-9 ? sellRate : 0.0d);
+        this.buys = new PriceArms("BUY", PriceArms.steps(0.80d, 1.10d, 0.05d),
+                m -> Math.abs(m - 0.9d) <= 0.05d + 1e-9 ? offerPrior : 0.0d);
         this.random = new Random((config == null ? 0L : config.SEED) ^ 0x5eed_1210L);
     }
 
@@ -104,6 +109,10 @@ public final class PriceLearning {
 
     PriceArms offers() {
         return offers;
+    }
+
+    PriceArms buys() {
+        return buys;
     }
 
     PriceArms bench() {
@@ -180,6 +189,26 @@ public final class PriceLearning {
         return offers.multiplier(arm);
     }
 
+    /** The share of the index a crafter's buy order offers for {@code itemId}: the learned arm's, else {@code fixed}. */
+    double buyShare(int citizenId, int itemId, double fixed) {
+        if (!ready()) {
+            return fixed;
+        }
+        int arm;
+        synchronized (random) {
+            arm = buys.pick(PriceArms.ItemClass.of(itemId).name(), tuning(), random);
+        }
+        if (arm < 0) {
+            return fixed;
+        }
+        buyArms.put(citizenId + ":" + itemId, new long[]{arm, System.currentTimeMillis()});
+        return buys.multiplier(arm);
+    }
+
+    private Map<String, long[]> armsOf(Need closed) {
+        return closed.kind() == NeedKind.BUY ? buyArms : offerArms;
+    }
+
     /**
      * A request's ended row was written (NeedStore.update). {@code committed}: on an autocommit connection, so the end
      * holds; else inside a transaction that may still roll back, so it waits in {@link #pending} for
@@ -187,12 +216,13 @@ public final class PriceLearning {
      * request the arm was picked for (one created before the pick, an older request, books nothing).
      */
     void offerClosed(Need closed, long nowMs, boolean committed) {
-        if (closed == null || closed.kind() != NeedKind.SUPPLY || booked.containsKey(closed.id())) {
+        if (closed == null || closed.kind() != NeedKind.SUPPLY && closed.kind() != NeedKind.BUY || booked.containsKey(closed.id())) {
             return;
         }
         String key = closed.citizenId() + ":" + closed.itemId();
-        long[] arm = offerArms.get(key);
-        if (arm == null || closed.createdAtMs() < arm[1] - PICK_SLACK_MS || !offerArms.remove(key, arm)) {
+        Map<String, long[]> arms = armsOf(closed);
+        long[] arm = arms.get(key);
+        if (arm == null || closed.createdAtMs() < arm[1] - PICK_SLACK_MS || !arms.remove(key, arm)) {
             return;
         }
         if (committed) {
@@ -211,7 +241,7 @@ public final class PriceLearning {
         for (Pending wait : List.copyOf(pending.values())) {
             Need now = live.apply(wait.closed().id());
             if (now != null && (now.state() == Need.State.OPEN || now.state() == Need.State.ESCROW)) {
-                offerArms.putIfAbsent(wait.key(), wait.arm());
+                armsOf(wait.closed()).putIfAbsent(wait.key(), wait.arm());
             } else {
                 book(wait.closed(), wait.nowMs(), (int) wait.arm()[0]);
             }
@@ -230,9 +260,11 @@ public final class PriceLearning {
         PopulationConfig config = population.config();
         long ended = closed.closedAtMs() > 0L ? closed.closedAtMs() : nowMs;
         double hours = Math.max(0L, ended - closed.createdAtMs()) / 3_600_000.0d;
-        double reward = offerReward(fulfilled(closed), hours, offers.multiplier(arm), config.PRICE_OFFER_HALF_HOURS,
+        PriceArms lever = closed.kind() == NeedKind.BUY ? buys : offers;
+        double reward = offerReward(fulfilled(closed), hours, lever.multiplier(arm), config.PRICE_OFFER_HALF_HOURS,
                 config.PRICE_OFFER_COST);
-        save(offers, offers.reward(SUPPLY_KEY, arm, reward, 1.0d));
+        save(lever, lever.reward(lever == buys ? PriceArms.ItemClass.of(closed.itemId()).name() : SUPPLY_KEY, arm, reward,
+                1.0d));
     }
 
     /** The share of a request helpers filled: all of a MET one, else what was handed in of what it asked for. */
@@ -278,7 +310,8 @@ public final class PriceLearning {
                 for (LivingStore.YieldRow row : rows) {
                     PriceArms lever = row.jobBranch().startsWith("ASK_") ? asks
                             : row.jobBranch().startsWith("OFFER_") ? offers
-                            : row.jobBranch().startsWith("BENCH_") ? bench : null;
+                            : row.jobBranch().startsWith("BENCH_") ? bench
+                            : row.jobBranch().startsWith("BUY_") ? buys : null;
                     if (lever != null) {
                         lever.load(row.jobBranch().substring(lever.lever().length() + 1), row.levelBand(),
                                 row.samples(), row.expPerHour());
@@ -308,7 +341,7 @@ public final class PriceLearning {
     String json() {
         double k = population.config() == null ? 0.0d : population.config().PRICE_PRIOR_SAMPLES;
         return "{\"on\":" + on() + ",\"loaded\":" + loaded + ",\"ask\":" + asks.json(k) + ",\"offer\":" + offers.json(k)
-                + ",\"bench\":" + bench.json(k) + "}";
+                + ",\"bench\":" + bench.json(k) + ",\"buy\":" + buys.json(k) + "}";
     }
 
     /** Installs this learner behind the needs board's SUPPLY offers (NeedOffers). */
@@ -317,6 +350,11 @@ public final class PriceLearning {
             @Override
             public double premium(int citizenId, int itemId, double fixed) {
                 return offerPremium(citizenId, itemId, fixed);
+            }
+
+            @Override
+            public double buyShare(int citizenId, int itemId, double fixed) {
+                return PriceLearning.this.buyShare(citizenId, itemId, fixed);
             }
 
             @Override

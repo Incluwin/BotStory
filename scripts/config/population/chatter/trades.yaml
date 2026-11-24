@@ -1,0 +1,179 @@
+# Citizen crafters (docs/WORLD_SYSTEMS_PLAN.md N8, server.living.population.craft). An intent id "trade.<word>.*" is said
+# only by a citizen of that trade, and only while population.PROFESSIONS_ENABLED is on. trades.* ids are reactions: handing
+# an order over on its map (trade.deliver), and the note in an order's Duey package (trade.note, composed only). Slots:
+# {item} what was ordered, {name} the customer when they are online, {map}. A player's whisper is not promised an answer,
+# so lines point at the boards. ASCII only.
+intents:
+  - id: trade.smith.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "got ores? i refine em cheaper than the npc, ask at the board"
+      - "smith here, leave me an order on the board"
+      - "taking smithing orders, helmets shields plates"
+      - "dont pay npc prices for plates, put an order in with me"
+  - id: trade.smith.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "S> smithing, bring ores, board orders ok"
+      - "smith taking orders, cheaper than npc"
+      - "refining ores all day, order at the board"
+  - id: trade.smith.smega
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 2
+    cooldownMs: 0
+    lines:
+      - "Smith taking orders, plates helmets shields, find me on the board"
+      - "Refining ores under npc price, leave an order at any board"
+  - id: trade.smith.guild
+    trigger: dwell
+    where: any
+    channel: guild
+    weight: 1
+    cooldownMs: 3600000
+    lines:
+      - "guildies if u need plates made just leave me an order"
+      - "anyone need smithing done"
+  - id: trade.tailor.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "i make gloves and shoes, order at the board"
+      - "tailor here, got leather? ill make u gloves"
+      - "need shoes? bring mats, cheaper than the npc"
+      - "taking orders for gloves n shoes"
+  - id: trade.tailor.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "S> tailoring, gloves shoes mage gear, your mats"
+      - "tailor taking orders, leave em at the board"
+  - id: trade.tailor.smega
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 2
+    cooldownMs: 0
+    lines:
+      - "Tailor taking orders, gloves and shoes, find me on the board"
+      - "Gloves n shoes made to order under npc price, any board"
+  - id: trade.tailor.guild
+    trigger: dwell
+    where: any
+    channel: guild
+    weight: 1
+    cooldownMs: 3600000
+    lines:
+      - "making gloves if anyone in guild needs"
+      - "guildies get me leather n ill do ur shoes"
+  - id: trade.alchemist.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "alchemist here, i brew stuff, order at the board"
+      - "bring herbs n ill make u medicine"
+      - "i cut gems too, cheaper than doing it urself"
+  - id: trade.alchemist.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "S> brewing n gems, your mats, board orders"
+      - "alchemist taking orders"
+  - id: trade.alchemist.smega
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 2
+    cooldownMs: 0
+    lines:
+      - "Alchemist taking orders, medicine and gems, find me on the board"
+      - "Gems cut and potions brewed to order, any board"
+  - id: trade.alchemist.guild
+    trigger: dwell
+    where: any
+    channel: guild
+    weight: 1
+    cooldownMs: 3600000
+    lines:
+      - "if anyone needs gems made put an order in w me"
+      - "got herbs? i can brew"
+  - id: trade.scroller.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "scared to scroll? ill do it for u, order at the board"
+      - "i scroll stuff for ppl, lucky hands"
+      - "scroller here, bring the piece n the scroll"
+  - id: trade.scroller.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "S> scrolling service, your scrolls, leave em at the board"
+      - "scrolling for ppl, no promises lol"
+  - id: trade.scroller.smega
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 2
+    cooldownMs: 0
+    lines:
+      - "Scrolling service, bring piece and scroll, find me on the board"
+      - "Too scared to scroll it urself? leave it with me at any board"
+  - id: trade.scroller.guild
+    trigger: dwell
+    where: any
+    channel: guild
+    weight: 1
+    cooldownMs: 3600000
+    lines:
+      - "anyone want something scrolled, my luck is ok today"
+      - "ill scroll for guildies"
+  - id: trades.deliver
+    trigger: trade.deliver
+    where: any
+    channel: map
+    weight: 1
+    cooldownMs: 0
+    lines:
+      - "here's your {item}, came out nice"
+      - "done, one {item} as ordered"
+      - "there you go {name}, {item}"
+      - "finished your {item} :)"
+  - id: trades.note
+    trigger: trade.note
+    where: any
+    channel: whisper
+    weight: 1
+    cooldownMs: 0
+    lines:
+      - "your {item}, as ordered. come back any time"
+      - "missed you, so here's the {item} by post"
+      - "finished your {item}. hope it does you good"
+      - "{item}, done. thanks for the work!"

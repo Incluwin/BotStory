@@ -27,7 +27,7 @@ import java.util.Set;
 public class NeedStore {
     private static final Logger log = LoggerFactory.getLogger(NeedStore.class);
     private static final String COLUMNS = "id, citizen_id, kind, item_id, quantity, delivered, offer, detail, map_id, state,"
-            + " claimed_by, claimed_until, fulfilled_by, thanked, created_at, deadline_at, closed_at";
+            + " claimed_by, claimed_until, fulfilled_by, thanked, created_at, deadline_at, closed_at, poster_character_id";
     /** A board hand-in's thanks are owed this long at most; older ones are let go at start. */
     private static final long THANKS_KEPT_MS = 7L * 86_400_000L;
 
@@ -38,8 +38,8 @@ public class NeedStore {
     public List<Need> live(long nowMs) {
         List<Need> out = new ArrayList<>();
         String close = SqlTime.utc("UPDATE living_need SET state = 'GONE', closed_at = ? WHERE kind = 'PARTY' AND state = 'OPEN'");
-        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_need WHERE state IN ('OPEN', 'ESCROW')"
-                + " OR (state = 'MET' AND thanked = 0 AND closed_at > ?)");
+        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_need WHERE poster_character_id IS NULL"
+                + " AND (state IN ('OPEN', 'ESCROW') OR (state = 'MET' AND thanked = 0 AND closed_at > ?))");
         try (Connection con = DatabaseConnection.getConnection()) {
             try (PreparedStatement ps = con.prepareStatement(close)) {
                 SqlTime.set(ps, 1, nowMs);
@@ -65,7 +65,8 @@ public class NeedStore {
     /** Requests that ended since {@code sinceMs}, for the repost pause. */
     public List<Need> endedSince(long sinceMs) {
         List<Need> out = new ArrayList<>();
-        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_need WHERE closed_at > ? AND state NOT IN ('OPEN', 'ESCROW')");
+        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_need WHERE closed_at > ? AND state NOT IN ('OPEN', 'ESCROW')"
+                + " AND poster_character_id IS NULL");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             SqlTime.set(ps, 1, sinceMs);
             try (ResultSet rs = ps.executeQuery()) {
@@ -182,6 +183,109 @@ public class NeedStore {
         ps.setInt(first + 8, need.thanked() ? 1 : 0);
     }
 
+    // ---- players' buy orders (N8.3) --------------------------------------------------------
+
+    /** Every open order a player posted; null when the read failed. */
+    public List<Need> posted() {
+        List<Need> out = new ArrayList<>();
+        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_need WHERE state = 'OPEN' AND poster_character_id IS NOT NULL");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Need need = read(rs);
+                if (need != null) {
+                    out.add(need);
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("buy order scan failed", failure);
+            return null;
+        }
+    }
+
+    /** Stores a player's new order on the caller's connection (the commit that takes its meso); its id. */
+    public int insertPosted(Connection con, Need order) throws SQLException {
+        String sql = SqlTime.utc("INSERT INTO living_need (citizen_id, kind, item_id, quantity, offer, map_id, state,"
+                + " created_at, deadline_at, poster_character_id) VALUES (0, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?)");
+        try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, order.kind().name());
+            ps.setInt(2, order.itemId());
+            ps.setInt(3, order.quantity());
+            ps.setLong(4, order.offer());
+            ps.setInt(5, order.mapId());
+            SqlTime.set(ps, 6, order.createdAtMs());
+            SqlTime.set(ps, 7, order.deadlineMs());
+            ps.setInt(8, order.posterId());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (!keys.next()) {
+                    throw new SQLException("no id for a buy order of " + order.posterId());
+                }
+                return keys.getInt(1);
+            }
+        }
+    }
+
+    /**
+     * A player's order filled in part, filled, or ended, on the caller's connection. Only one still open in the table,
+     * with as much delivered as {@code before}, changes: else it fails, so nothing is paid or given back twice.
+     */
+    public void updatePosted(Connection con, Need before, Need after) throws SQLException {
+        String sql = SqlTime.utc("UPDATE living_need SET delivered = ?, state = ?, fulfilled_by = ?, closed_at = ?"
+                + " WHERE id = ? AND state = 'OPEN' AND delivered = ?");
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, after.delivered());
+            ps.setString(2, after.state().name());
+            if (after.fulfilledBy() > 0) {
+                ps.setInt(3, after.fulfilledBy());
+            } else {
+                ps.setNull(3, java.sql.Types.INTEGER);
+            }
+            SqlTime.setNullable(ps, 4, after.closedAtMs());
+            ps.setInt(5, before.id());
+            ps.setInt(6, before.delivered());
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("buy order " + before.id() + " changed meanwhile");
+            }
+        }
+    }
+
+    /** A Duey package on the caller's connection. */
+    public void mail(Connection con, Item item, int meso, String message, String sender, int receiverId) throws SQLException {
+        client.processor.npc.DueyProcessor.dueyCreatePackage(con, item, meso, message, sender, receiverId);
+    }
+
+    /** Runs {@code work} as one transaction (an order's end while its player is away); false: rolled back. */
+    public boolean inTransaction(server.economy.EconomyAtomicPersistence work) {
+        try (Connection con = DatabaseConnection.getConnection()) {
+            con.setAutoCommit(false);
+            try {
+                work.persist(con);
+                con.commit();
+                return true;
+            } catch (SQLException | RuntimeException failure) {
+                con.rollback();
+                log.warn("buy order transaction rolled back", failure);
+                return false;
+            } finally {
+                con.setAutoCommit(true);
+            }
+        } catch (SQLException failure) {
+            log.warn("buy order transaction failed", failure);
+            return false;
+        }
+    }
+
+    /** The meso players' open buy orders hold, for the money supply (MesoSupply). */
+    public static long heldMeso(Connection con) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("SELECT COALESCE(SUM(offer * (quantity - delivered)), 0)"
+                + " FROM living_need WHERE state = 'OPEN' AND poster_character_id IS NOT NULL");
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        }
+    }
+
     // ---- escrow ---------------------------------------------------------------------------
 
     /** The citizens with board hand-ins waiting for their next load. */
@@ -237,6 +341,6 @@ public class NeedStore {
                 rs.getInt("delivered"), rs.getLong("offer"), rs.getString("detail"), rs.getInt("map_id"),
                 Need.State.parse(rs.getString("state")), rs.getInt("claimed_by"), SqlTime.get(rs, "claimed_until"),
                 rs.getInt("fulfilled_by"), rs.getInt("thanked") != 0, SqlTime.get(rs, "created_at"),
-                SqlTime.get(rs, "deadline_at"), SqlTime.get(rs, "closed_at"));
+                SqlTime.get(rs, "deadline_at"), SqlTime.get(rs, "closed_at"), rs.getInt("poster_character_id"));
     }
 }

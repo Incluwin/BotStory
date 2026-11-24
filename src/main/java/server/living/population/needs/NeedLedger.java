@@ -356,6 +356,7 @@ public final class NeedLedger {
             }
             case MENTOR -> "a mentor";
             case BOUNTY -> bounties.forWords(need);
+            case BUY -> "its work";
         };
     }
 
@@ -430,6 +431,7 @@ public final class NeedLedger {
             scroll(session, agent, nowMs);
             mentor(session, agent, nowMs);
             bounties.derive(session, agent, nowMs); // N6.2: a bounty pinned now and then
+            CrafterNeeds.derive(population, this, session, agent, random, nowMs); // N8.3: a crafter's buy order
         }
     }
 
@@ -1037,6 +1039,97 @@ public final class NeedLedger {
         if (line != null) {
             population.chatter().whisper(session, player, line);
         }
+    }
+
+    // ---- crafters (N8) -------------------------------------------------------------------------------
+
+    /** The open BUY requests of citizens, or of one ({@code citizenId} over 0). */
+    List<Need> openBuys(int citizenId) {
+        List<Need> out = open();
+        out.removeIf(need -> need.kind() != NeedKind.BUY || citizenId > 0 && need.citizenId() != citizenId);
+        return out;
+    }
+
+    /** A crafter's buy order ends (it gave up the trade, or bought enough elsewhere). */
+    void closeBuy(Need need, long nowMs) {
+        close(need, Need.State.GONE, nowMs);
+    }
+
+    /**
+     * A citizen crafter makes a piece another citizen's GEAR request asks for, out of its own bag, for the request's
+     * offer (docs/WORLD_SYSTEMS_PLAN.md N8.4): the oldest unclaimed one that has been up as long as the work takes. True
+     * when it made one.
+     */
+    public boolean madeBy(CitizenSession crafterSession, Character crafter, long nowMs) {
+        if (!on()) {
+            return false;
+        }
+        server.living.population.craft.Profession trade = population.professions().of(crafterSession.citizen);
+        server.living.population.craft.CommissionHands craft = population.commissions().hands();
+        for (Need wanted : open()) {
+            if (wanted.kind() != NeedKind.GEAR || wanted.citizenId() == crafterSession.characterId
+                    || wanted.holder(nowMs) != 0) {
+                continue;
+            }
+            for (server.living.population.craft.RecipeBook.Recipe recipe : population.professions().book().making(wanted.itemId())) {
+                if (recipe.profession() == trade && nowMs - wanted.createdAtMs() >= recipe.minutes() * MINUTE_MS
+                        && craft.covers(crafter, recipe.inputs()) > 0
+                        && make(crafterSession, crafter, wanted.id(), recipe, craft, nowMs)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean make(CitizenSession crafterSession, Character crafter, int needId,
+                         server.living.population.craft.RecipeBook.Recipe recipe,
+                         server.living.population.craft.CommissionHands craft, long nowMs) {
+        Need need = live.get(needId);
+        CitizenSession session = need == null ? null : population.presence().session(need.citizenId());
+        Character citizen = session != null && !session.virtual ? session.agent() : null;
+        Need after;
+        synchronized (lock(need == null ? 0 : need.citizenId())) {
+            need = live.get(needId);
+            if (need == null || !need.isOpen() || need.holder(nowMs) != 0) {
+                return false;
+            }
+            long pay = need.pay(1);
+            List<tools.Pair<client.inventory.Item, InventoryType>> escrow = citizen != null ? List.of()
+                    : store.escrow(need.citizenId());
+            if (escrow == null || hands().purse(need.citizenId(), citizen) < pay) {
+                return false;
+            }
+            Need made = need.withDelivery(crafterSession.characterId, 1, false, citizen == null, nowMs);
+            int buyerId = need.citizenId();
+            if (!craft.makeForCitizen(crafter, citizen, buyerId, recipe, pay, (con, item) -> {
+                if (citizen == null) {
+                    store.debit(con, buyerId, pay);
+                    List<tools.Pair<client.inventory.Item, InventoryType>> kept = new ArrayList<>(escrow);
+                    kept.add(new tools.Pair<>(item, InventoryType.EQUIP));
+                    store.saveEscrow(con, buyerId, kept);
+                }
+                store.update(con, made);
+            })) {
+                return false;
+            }
+            after = made;
+            if (after.state() == Need.State.MET) {
+                live.remove(needId);
+                ended.put(key(after.citizenId(), after.kind(), after.itemId()), nowMs);
+            } else {
+                live.put(needId, after);
+                escrowHolders.add(buyerId);
+            }
+        }
+        crafterSession.journal.add("trade", "made " + itemName(after.itemId()) + " for " + after.citizenId());
+        log.info("citizen {} made {} for citizen {} at {}", crafterSession.name(), itemName(after.itemId()),
+                after.citizenId(), after.pay(1));
+        if (session != null && citizen != null) {
+            session.journal.add("needs", "had " + crafterSession.name() + " make its " + itemName(after.itemId()));
+            hands().use(citizen, after);
+        }
+        return true;
     }
 
     // ---- market ----------------------------------------------------------------------------------------

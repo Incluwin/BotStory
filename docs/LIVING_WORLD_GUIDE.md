@@ -673,6 +673,26 @@ by a companion holding it. The only change to how it fights is WARY's drink poin
 (`AgentImperfections.waryHpAlert`). `!traits <companion>` (GM 5) shows the switch, the flags, a fresh read and what it
 is made of.
 
+### Professions, commissions and buy orders
+
+docs/WORLD_SYSTEMS_PLAN.md N8, `server.living.population.craft` and `needs.BuyOrders`; three switches in `population`,
+all off. `PROFESSIONS_ENABLED`: about one citizen in ten takes a trade (smith, tailor, alchemist, scroller), kept as a
+`trade-<word>` flag in `living_citizen.flags`; its stall title, megaphones and talk (`chatter/trades.yaml`) mention it.
+`recipes.yaml` is written by `RecipeTool` from the stock forging NPC scripts and the Maker tables: run the tool again
+rather than edit it (`java -cp target/Cosmic.jar server.living.population.craft.RecipeTool`).
+
+`COMMISSIONS_ENABLED`: at a board ("Commission a crafter"), or by double-clicking a crafter in town while carrying what
+it works with, a player leaves materials and a fee under the stock NPC's (less 20 % for a friend). The crafter works on
+one order at a time while it is online, people it knows first, and hands it over on its map or sends it by Duey with a
+note. A waiting order can be cancelled for everything back. Held items are inventoryitems type 15 keyed by 1,500,000,000
++ the order's id; held fees are in the money supply's ESCROW pool. An idle crafter in town also makes pieces citizens ask
+for on the board, out of its own bag.
+
+`BUY_ORDERS_ENABLED`: crafters post BUY requests for materials (the price share is learned while PRICE_LEARNING_ENABLED
+is on); players post their own orders, held in full, and citizens in town sell into one that beats 0.9 x the index and
+the NPC price. The boards also show the prices page (the CPI basket today, a week and a month ago).
+`!profession` shows and drives all of it.
+
 ### The in-game quest log
 
 Living quests can appear in the client's quest log next to the stock quests (In Progress and

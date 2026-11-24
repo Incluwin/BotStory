@@ -13,7 +13,8 @@
 #   records.race          name, crew, quest, time (a player beat their rival crew's time)
 #   town.friends          name, partner (two citizens became friends in a run)
 #   town.grudge           name, partner (a coliseum match between rivals; name won)
-#   market.riser / market.faller   item, percent
+#   market.riser / market.faller   item, percent           market.month   item, way (up or down), percent
+#   market.commission     name, crafter, item (a citizen crafter's piece for a player)
 #   town.wedding          name, partner                       town.guild     guild, leader
 #   town.alliance         alliance, names (its guilds)        town.job       name, job
 #   town.level            name, level                         town.guildgoal guild, goal
@@ -160,6 +161,28 @@ stories:
       - "{item} dropped {percent}%"
       - "{item} is cheap rn"
       - "{item} prices crashed"
+
+  - key: market.month
+    headlines:
+      - "{item} {way} {percent} percent in a month"
+      - "The month's big mover: {item}"
+    bodies:
+      - "{item} went {way} {percent} percent in a month. No basket good moved more."
+      - "Ask anyone who trades: {item} is {way} {percent} percent on last month."
+    gists:
+      - "{item} went {way} {percent}% this month"
+      - "{item} is {way} {percent}% since last month"
+
+  - key: market.commission
+    headlines:
+      - "{crafter} makes {item} for {name}"
+      - "Made to order: {item}"
+    bodies:
+      - "{name} left the materials with {crafter} and came away with {item}. The town's crafters are taking orders."
+      - "{crafter} finished {item} for {name} this week."
+    gists:
+      - "{crafter} made {name} a {item}"
+      - "{name} had {crafter} make a {item}"
 
   - key: town.wedding
     headlines:

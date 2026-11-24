@@ -103,6 +103,38 @@ intents:
     lines:
       - "B> {item} {price} im at {map}"
       - "B> {item} paying {price}! {map}"
+  # a crafter's buy order (N8.3)
+  - id: need.buy.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 8
+    cooldownMs: 300000
+    lines:
+      - "B> {count} {item} {price} ea"
+      - "buying {item} for my work, {price} each, need {count}"
+      - "B> {item} x{count} @ {price}, crafting stuff"
+  - id: need.buy.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 5
+    cooldownMs: 400000
+    lines:
+      - "B> {count} {item} {price} ea"
+      - "need {count} {item} for an order, paying {price} each"
+      - "anyone farming {item}? ill take {count} at {price}"
+  # the note in a player's buy order package, composed only
+  - id: needs.buy.note
+    trigger: need.buy.note
+    where: any
+    channel: whisper
+    weight: 1
+    cooldownMs: 0
+    lines:
+      - "{count} {item} for your order on the board. pleasure doing business"
+      - "saw your order, had {count} {item} lying around. enjoy"
+      - "here's {count} {item}, like you asked"
   # said to one player it likes, on its map (NeedLedger.whisper); "whisper" lines are only ever composed, never picked
   - id: needs.whisper
     trigger: need.whisper

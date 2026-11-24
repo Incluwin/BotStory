@@ -1,0 +1,353 @@
+# What citizen crafters make (docs/WORLD_SYSTEMS_PLAN.md N8.1, server.living.population.craft.RecipeBook).
+# Generated from the stock forging NPC scripts and the Maker tables by server.living.population.craft.RecipeTool:
+# run it again rather than edit this. trade: whose work it is. level: the result's reqLevel. inputs: item x count.
+# stockFee: the stock NPC's (or Maker's) price; fee: the crafter's, always under it. minutes: of the crafter's
+# time, each. from: the stock NPC script, or maker.
+recipes:
+  - {id: r4005000, trade: smith, result: 4005000, level: 0, inputs: "4004000x10", stockFee: 4500, fee: 3150, minutes: 10, from: "2040016"}
+  - {id: r4005001, trade: smith, result: 4005001, level: 0, inputs: "4004001x10", stockFee: 4500, fee: 3150, minutes: 10, from: "2040016"}
+  - {id: r4005002, trade: smith, result: 4005002, level: 0, inputs: "4004002x10", stockFee: 4500, fee: 3150, minutes: 10, from: "2040016"}
+  - {id: r4005003, trade: smith, result: 4005003, level: 0, inputs: "4004003x10", stockFee: 4500, fee: 3150, minutes: 10, from: "2040016"}
+  - {id: r4005004, trade: smith, result: 4005004, level: 0, inputs: "4004004x10", stockFee: 1000000, fee: 700000, minutes: 10, from: "2020000"}
+  - {id: r4011000, trade: smith, result: 4011000, level: 0, inputs: "4010000x10", stockFee: 270, fee: 189, minutes: 10, from: "2040016"}
+  - {id: r4011001, trade: smith, result: 4011001, level: 0, inputs: "4000039x100", stockFee: 1000, fee: 700, minutes: 10, from: "1052003"}
+  - {id: r4011001-2, trade: smith, result: 4011001, level: 0, inputs: "4010001x10", stockFee: 270, fee: 189, minutes: 10, from: "2040016"}
+  - {id: r4011002, trade: smith, result: 4011002, level: 0, inputs: "4010002x10", stockFee: 270, fee: 189, minutes: 10, from: "2040016"}
+  - {id: r4011003, trade: smith, result: 4011003, level: 0, inputs: "4010003x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4011004, trade: smith, result: 4011004, level: 0, inputs: "4010004x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4011005, trade: smith, result: 4011005, level: 0, inputs: "4010005x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4011006, trade: smith, result: 4011006, level: 0, inputs: "4010006x10", stockFee: 720, fee: 504, minutes: 10, from: "2040016"}
+  - {id: r4011007, trade: smith, result: 4011007, level: 0, inputs: "4011000x1 4011001x1 4011002x1 4011003x1 4011004x1 4011005x1 4011006x1", stockFee: 9000, fee: 6300, minutes: 10, from: "2040016"}
+  - {id: r4011008, trade: smith, result: 4011008, level: 0, inputs: "4010007x10", stockFee: 270, fee: 189, minutes: 10, from: "2100001"}
+  - {id: r4021000, trade: smith, result: 4021000, level: 0, inputs: "4020000x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4021001, trade: smith, result: 4021001, level: 0, inputs: "4020001x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4021002, trade: smith, result: 4021002, level: 0, inputs: "4020002x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4021003, trade: smith, result: 4021003, level: 0, inputs: "4020003x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4021004, trade: smith, result: 4021004, level: 0, inputs: "4020004x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4021005, trade: smith, result: 4021005, level: 0, inputs: "4020005x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4021006, trade: smith, result: 4021006, level: 0, inputs: "4020006x10", stockFee: 450, fee: 315, minutes: 10, from: "2040016"}
+  - {id: r4021007, trade: smith, result: 4021007, level: 0, inputs: "4020007x10", stockFee: 900, fee: 630, minutes: 10, from: "2040016"}
+  - {id: r4021008, trade: smith, result: 4021008, level: 0, inputs: "4020008x10", stockFee: 2700, fee: 1890, minutes: 10, from: "2040016"}
+  - {id: r4021009, trade: smith, result: 4021009, level: 0, inputs: "4021000x1 4021001x1 4021002x1 4021003x1 4021004x1 4021005x1 4021006x1 4021007x1 4021008x1", stockFee: 13500, fee: 9450, minutes: 10, from: "2040016"}
+  - {id: r4080006, trade: smith, result: 4080006, level: 0, inputs: "4030009x1 4030013x99 4030014x99", stockFee: 25000, fee: 17500, minutes: 10, from: "2040014"}
+  - {id: r4080007, trade: smith, result: 4080007, level: 0, inputs: "4030009x1 4030013x99 4030016x99", stockFee: 25000, fee: 17500, minutes: 10, from: "2040014"}
+  - {id: r4080008, trade: smith, result: 4080008, level: 0, inputs: "4030009x1 4030014x99 4030016x99", stockFee: 25000, fee: 17500, minutes: 10, from: "2040014"}
+  - {id: r4080009, trade: smith, result: 4080009, level: 0, inputs: "4030009x1 4030015x99 4030013x99", stockFee: 25000, fee: 17500, minutes: 10, from: "2040014"}
+  - {id: r4080010, trade: smith, result: 4080010, level: 0, inputs: "4030009x1 4030015x99 4030014x99", stockFee: 25000, fee: 17500, minutes: 10, from: "2040014"}
+  - {id: r4080011, trade: smith, result: 4080011, level: 0, inputs: "4030009x1 4030015x99 4030016x99", stockFee: 25000, fee: 17500, minutes: 10, from: "2040014"}
+  - {id: r4080100, trade: smith, result: 4080100, level: 0, inputs: "4030012x99", stockFee: 10000, fee: 7000, minutes: 10, from: "2040014"}
+  - {id: r1002002, trade: smith, result: 1002002, level: 10, inputs: "1002043x1 4011001x1", stockFee: 500, fee: 350, minutes: 30, from: "1022003"}
+  - {id: r1002044, trade: smith, result: 1002044, level: 10, inputs: "1002043x1 4011002x1", stockFee: 800, fee: 560, minutes: 30, from: "1022003"}
+  - {id: r1002007, trade: smith, result: 1002007, level: 15, inputs: "1002051x1 4011001x2", stockFee: 1000, fee: 700, minutes: 45, from: "1022003"}
+  - {id: r1002041, trade: smith, result: 1002041, level: 15, inputs: "1002001x1 4021006x1", stockFee: 300, fee: 210, minutes: 45, from: "1022003"}
+  - {id: r1002042, trade: smith, result: 1002042, level: 15, inputs: "1002001x1 4011002x1", stockFee: 500, fee: 350, minutes: 45, from: "1022003"}
+  - {id: r1002052, trade: smith, result: 1002052, level: 15, inputs: "1002051x1 4011002x2", stockFee: 1500, fee: 1050, minutes: 45, from: "1022003"}
+  - {id: r1002009, trade: smith, result: 1002009, level: 20, inputs: "1002055x1 4011001x3", stockFee: 1500, fee: 1050, minutes: 60, from: "1022003"}
+  - {id: r1002011, trade: smith, result: 1002011, level: 20, inputs: "1002059x1 4011001x3", stockFee: 1500, fee: 1050, minutes: 60, from: "1022003"}
+  - {id: r1002056, trade: smith, result: 1002056, level: 20, inputs: "1002055x1 4011002x3", stockFee: 2000, fee: 1400, minutes: 60, from: "1022003"}
+  - {id: r1002058, trade: smith, result: 1002058, level: 20, inputs: "1002059x1 4011002x3", stockFee: 2000, fee: 1400, minutes: 60, from: "1022003"}
+  - {id: r1002087, trade: smith, result: 1002087, level: 22, inputs: "1002027x1 4011002x4", stockFee: 2000, fee: 1400, minutes: 66, from: "1022003"}
+  - {id: r1002088, trade: smith, result: 1002088, level: 22, inputs: "1002027x1 4011006x4", stockFee: 4000, fee: 2800, minutes: 66, from: "1022003"}
+  - {id: r1002049, trade: smith, result: 1002049, level: 25, inputs: "1002005x1 4011006x5", stockFee: 5000, fee: 3500, minutes: 75, from: "1022003"}
+  - {id: r1002050, trade: smith, result: 1002050, level: 25, inputs: "1002005x1 4011005x5", stockFee: 4000, fee: 2800, minutes: 75, from: "1022003"}
+  - {id: r1302008, trade: smith, result: 1302008, level: 30, inputs: "4131000x1 4011001x2 4011004x2 4003000x30", stockFee: 18000, fee: 12600, minutes: 90, from: "2040022"}
+  - {id: r1312005, trade: smith, result: 1312005, level: 30, inputs: "4131001x1 4011001x2 4021000x2 4003000x30", stockFee: 18000, fee: 12600, minutes: 90, from: "2040022"}
+  - {id: r1322014, trade: smith, result: 1322014, level: 30, inputs: "4131002x1 4011001x2 4011000x2 4003000x30", stockFee: 18000, fee: 12600, minutes: 90, from: "2040022"}
+  - {id: r1332009, trade: smith, result: 1332009, level: 30, inputs: "4131012x1 4021005x2 4011001x3 4003000x30", stockFee: 20000, fee: 14000, minutes: 90, from: "2040022"}
+  - {id: r1412006, trade: smith, result: 1412006, level: 30, inputs: "4131004x1 4021005x2 4011001x2 4003001x5 4003000x35", stockFee: 20000, fee: 14000, minutes: 90, from: "2040022"}
+  - {id: r1422001, trade: smith, result: 1422001, level: 30, inputs: "4131005x1 4011001x2 4011004x3 4003000x35", stockFee: 20000, fee: 14000, minutes: 90, from: "2040022"}
+  - {id: r1432002, trade: smith, result: 1432002, level: 30, inputs: "4131006x1 4011000x2 4011004x3 4003000x40", stockFee: 22000, fee: 15400, minutes: 90, from: "2040022"}
+  - {id: r1442001, trade: smith, result: 1442001, level: 30, inputs: "4131007x1 4011000x2 4011002x3 4003000x40", stockFee: 22000, fee: 15400, minutes: 90, from: "2040022"}
+  - {id: r1002047, trade: smith, result: 1002047, level: 35, inputs: "1002004x1 4021000x3", stockFee: 8000, fee: 5600, minutes: 105, from: "1022003"}
+  - {id: r1002048, trade: smith, result: 1002048, level: 35, inputs: "1002004x1 4021005x3", stockFee: 10000, fee: 7000, minutes: 105, from: "1022003"}
+  - {id: r1312006, trade: smith, result: 1312006, level: 35, inputs: "4131001x1 4011001x5 4021000x5 4011004x3 4003000x35", stockFee: 35000, fee: 24500, minutes: 105, from: "2040022"}
+  - {id: r1002098, trade: smith, result: 1002098, level: 40, inputs: "1002021x1 4011006x6", stockFee: 15000, fee: 10500, minutes: 120, from: "1022003"}
+  - {id: r1002099, trade: smith, result: 1002099, level: 40, inputs: "1002021x1 4011002x5", stockFee: 12000, fee: 8400, minutes: 120, from: "1022003"}
+  - {id: r1092013, trade: smith, result: 1092013, level: 40, inputs: "1092012x1 4011002x10", stockFee: 100000, fee: 70000, minutes: 120, from: "1022003"}
+  - {id: r1092014, trade: smith, result: 1092014, level: 40, inputs: "1092012x1 4011003x10", stockFee: 100000, fee: 70000, minutes: 120, from: "1022003"}
+  - {id: r1002085, trade: smith, result: 1002085, level: 50, inputs: "1002086x1 4011002x5", stockFee: 20000, fee: 14000, minutes: 150, from: "1022003"}
+  - {id: r1302010, trade: smith, result: 1302010, level: 50, inputs: "4131000x1 4005000x1 4021008x2 4011006x4 4021003x10 4003000x50", stockFee: 200000, fee: 140000, minutes: 150, from: "2040022"}
+  - {id: r1312008, trade: smith, result: 1312008, level: 50, inputs: "4131001x1 4005000x1 4021008x2 4011004x8 4011001x10 4003000x50", stockFee: 200000, fee: 140000, minutes: 150, from: "2040022"}
+  - {id: r1322017, trade: smith, result: 1322017, level: 50, inputs: "4131002x1 4005000x1 4021008x2 4011006x4 4011001x10 4003000x50", stockFee: 200000, fee: 140000, minutes: 150, from: "2040022"}
+  - {id: r1412003, trade: smith, result: 1412003, level: 50, inputs: "4131004x1 4005000x1 4021007x2 4011006x5 4021006x7 4003000x55", stockFee: 220000, fee: 154000, minutes: 150, from: "2040022"}
+  - {id: r1422005, trade: smith, result: 1422005, level: 50, inputs: "4131005x1 4005000x1 4021008x2 4021006x7 4011006x5 4003000x55", stockFee: 220000, fee: 154000, minutes: 150, from: "2040022"}
+  - {id: r1432004, trade: smith, result: 1432004, level: 50, inputs: "4131006x1 4005000x1 4021008x2 4011000x7 4021000x5 4003000x60", stockFee: 240000, fee: 168000, minutes: 150, from: "2040022"}
+  - {id: r1442005, trade: smith, result: 1442005, level: 50, inputs: "4131007x1 4005000x1 4021007x2 4011001x7 4011002x5 4003000x60", stockFee: 240000, fee: 168000, minutes: 150, from: "2040022"}
+  - {id: r1002022, trade: smith, result: 1002022, level: 55, inputs: "1002100x1 4011007x1 4011001x7", stockFee: 30000, fee: 21000, minutes: 165, from: "1022003"}
+  - {id: r1002101, trade: smith, result: 1002101, level: 55, inputs: "1002100x1 4011007x1 4011002x7", stockFee: 30000, fee: 21000, minutes: 165, from: "1022003"}
+  - {id: r1092010, trade: smith, result: 1092010, level: 60, inputs: "1092009x1 4011007x1 4011004x15", stockFee: 120000, fee: 84000, minutes: 180, from: "1022003"}
+  - {id: r1092011, trade: smith, result: 1092011, level: 60, inputs: "1092009x1 4011007x1 4011003x15", stockFee: 120000, fee: 84000, minutes: 180, from: "1022003"}
+  - {id: r1302059, trade: smith, result: 1302059, level: 110, inputs: "1302056x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1312031, trade: smith, result: 1312031, level: 110, inputs: "1312030x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1322052, trade: smith, result: 1322052, level: 110, inputs: "1322045x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1332049, trade: smith, result: 1332049, level: 110, inputs: "1332051x1 4000244x20 4000245x25 4005000x5 4005002x3", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1402036, trade: smith, result: 1402036, level: 110, inputs: "1402035x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1412026, trade: smith, result: 1412026, level: 110, inputs: "1412021x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1422028, trade: smith, result: 1422028, level: 110, inputs: "1422027x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1432038, trade: smith, result: 1432038, level: 110, inputs: "1432030x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1442045, trade: smith, result: 1442045, level: 110, inputs: "1442044x1 4000244x20 4000245x25 4005000x8", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1452044, trade: smith, result: 1452044, level: 110, inputs: "1452019x1 4000244x20 4000245x25 4005000x3 4005002x5", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1462039, trade: smith, result: 1462039, level: 110, inputs: "1462015x1 4000244x20 4000245x25 4005000x5 4005002x3", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1482013, trade: smith, result: 1482013, level: 110, inputs: "1482012x1 4000244x20 4000245x25 4005000x5 4005002x3", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1492013, trade: smith, result: 1492013, level: 110, inputs: "1492012x1 4000244x20 4000245x25 4005000x3 4005002x5", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1082002, trade: tailor, result: 1082002, level: 10, inputs: "4000021x15", stockFee: 1000, fee: 700, minutes: 30, from: "1052002"}
+  - {id: r1082003, trade: tailor, result: 1082003, level: 10, inputs: "4000021x15 4011001x1", stockFee: 1000, fee: 700, minutes: 30, from: "1022004"}
+  - {id: r1082019, trade: tailor, result: 1082019, level: 15, inputs: "4000021x15", stockFee: 7000, fee: 4900, minutes: 45, from: "1032002"}
+  - {id: r1082029, trade: tailor, result: 1082029, level: 15, inputs: "4000021x30 4000018x20", stockFee: 7000, fee: 4900, minutes: 45, from: "1052002"}
+  - {id: r1082030, trade: tailor, result: 1082030, level: 15, inputs: "4000021x30 4000015x20", stockFee: 7000, fee: 4900, minutes: 45, from: "1052002"}
+  - {id: r1082031, trade: tailor, result: 1082031, level: 15, inputs: "4000021x30 4000020x20", stockFee: 7000, fee: 4900, minutes: 45, from: "1052002"}
+  - {id: r1472002, trade: tailor, result: 1472002, level: 15, inputs: "1472001x1 4011002x1", stockFee: 1000, fee: 700, minutes: 45, from: "1052002"}
+  - {id: r1472003, trade: tailor, result: 1472003, level: 15, inputs: "1472001x1 4011006x1", stockFee: 2000, fee: 1400, minutes: 45, from: "1052002"}
+  - {id: r1072019, trade: tailor, result: 1072019, level: 20, inputs: "4021005x1 4000021x30 4003000x5", stockFee: 3000, fee: 2100, minutes: 60, from: "1061000"}
+  - {id: r1072020, trade: tailor, result: 1072020, level: 20, inputs: "4021001x1 4000021x30 4003000x5", stockFee: 3000, fee: 2100, minutes: 60, from: "1061000"}
+  - {id: r1072021, trade: tailor, result: 1072021, level: 20, inputs: "4021000x1 4000021x30 4003000x5", stockFee: 3000, fee: 2100, minutes: 60, from: "1061000"}
+  - {id: r1082014, trade: tailor, result: 1082014, level: 20, inputs: "1082013x1 4021000x1", stockFee: 7000, fee: 4900, minutes: 60, from: "1012002"}
+  - {id: r1082015, trade: tailor, result: 1082015, level: 20, inputs: "1082013x1 4021003x2", stockFee: 7000, fee: 4900, minutes: 60, from: "1012002"}
+  - {id: r1082020, trade: tailor, result: 1082020, level: 20, inputs: "4000021x30 4011001x1", stockFee: 15000, fee: 10500, minutes: 60, from: "1032002"}
+  - {id: r1082021, trade: tailor, result: 1082021, level: 20, inputs: "1082020x1 4011001x1", stockFee: 20000, fee: 14000, minutes: 60, from: "1032002"}
+  - {id: r1082022, trade: tailor, result: 1082022, level: 20, inputs: "1082020x1 4021001x2", stockFee: 25000, fee: 17500, minutes: 60, from: "1032002"}
+  - {id: r1082032, trade: tailor, result: 1082032, level: 20, inputs: "4011000x2 4000021x40", stockFee: 10000, fee: 7000, minutes: 60, from: "1052002"}
+  - {id: r1082033, trade: tailor, result: 1082033, level: 20, inputs: "1082032x1 4011002x1", stockFee: 5000, fee: 3500, minutes: 60, from: "1052002"}
+  - {id: r1082034, trade: tailor, result: 1082034, level: 20, inputs: "1082032x1 4021004x1", stockFee: 7000, fee: 4900, minutes: 60, from: "1052002"}
+  - {id: r1472004, trade: tailor, result: 1472004, level: 20, inputs: "4011000x2 4011001x1 4000021x30 4003000x10", stockFee: 3000, fee: 2100, minutes: 60, from: "1052002"}
+  - {id: r1472005, trade: tailor, result: 1472005, level: 20, inputs: "1472004x1 4011001x2", stockFee: 3000, fee: 2100, minutes: 60, from: "1052002"}
+  - {id: r1472006, trade: tailor, result: 1472006, level: 20, inputs: "1472004x1 4011003x2", stockFee: 5000, fee: 3500, minutes: 60, from: "1052002"}
+  - {id: r1372004, trade: tailor, result: 1372004, level: 23, inputs: "4011002x2 4003002x1 4003000x10", stockFee: 12000, fee: 8400, minutes: 69, from: "1032002"}
+  - {id: r1072027, trade: tailor, result: 1072027, level: 25, inputs: "4000021x35 4011000x3 4003000x10", stockFee: 9000, fee: 6300, minutes: 75, from: "1061000"}
+  - {id: r1072034, trade: tailor, result: 1072034, level: 25, inputs: "4000021x35 4021003x1 4003000x10", stockFee: 9000, fee: 6300, minutes: 75, from: "1061000"}
+  - {id: r1072051, trade: tailor, result: 1072051, level: 25, inputs: "4011004x2 4011001x1 4000021x15 4003000x10", stockFee: 10000, fee: 7000, minutes: 75, from: "1061000"}
+  - {id: r1072052, trade: tailor, result: 1072052, level: 25, inputs: "4021008x1 4011001x2 4000021x20 4003000x10", stockFee: 12000, fee: 8400, minutes: 75, from: "1061000"}
+  - {id: r1072053, trade: tailor, result: 1072053, level: 25, inputs: "4011006x2 4011001x1 4000021x15 4003000x10", stockFee: 10000, fee: 7000, minutes: 75, from: "1061000"}
+  - {id: r1072069, trade: tailor, result: 1072069, level: 25, inputs: "4000021x35 4021000x1 4003000x10", stockFee: 9000, fee: 6300, minutes: 75, from: "1061000"}
+  - {id: r1072072, trade: tailor, result: 1072072, level: 25, inputs: "4011004x1 4000021x35 4003000x10", stockFee: 8000, fee: 5600, minutes: 75, from: "1061000"}
+  - {id: r1072073, trade: tailor, result: 1072073, level: 25, inputs: "4021006x1 4000021x35 4003000x10", stockFee: 8000, fee: 5600, minutes: 75, from: "1061000"}
+  - {id: r1072074, trade: tailor, result: 1072074, level: 25, inputs: "4021004x1 4000021x35 4003000x10", stockFee: 8000, fee: 5600, minutes: 75, from: "1061000"}
+  - {id: r1072084, trade: tailor, result: 1072084, level: 25, inputs: "4021005x1 4000021x35 4003000x10", stockFee: 9000, fee: 6300, minutes: 75, from: "1061000"}
+  - {id: r1072085, trade: tailor, result: 1072085, level: 25, inputs: "4021000x1 4000021x35 4003000x10", stockFee: 9000, fee: 6300, minutes: 75, from: "1061000"}
+  - {id: r1072086, trade: tailor, result: 1072086, level: 25, inputs: "4021003x1 4000021x35 4003000x10", stockFee: 9000, fee: 6300, minutes: 75, from: "1061000"}
+  - {id: r1072087, trade: tailor, result: 1072087, level: 25, inputs: "4021004x1 4000021x35 4003000x10", stockFee: 9000, fee: 6300, minutes: 75, from: "1061000"}
+  - {id: r1082016, trade: tailor, result: 1082016, level: 25, inputs: "4000021x40 4000009x50 4011006x2", stockFee: 15000, fee: 10500, minutes: 75, from: "1012002"}
+  - {id: r1082017, trade: tailor, result: 1082017, level: 25, inputs: "1082016x1 4021000x3", stockFee: 10000, fee: 7000, minutes: 75, from: "1012002"}
+  - {id: r1082018, trade: tailor, result: 1082018, level: 25, inputs: "1082016x1 4021008x1", stockFee: 12000, fee: 8400, minutes: 75, from: "1012002"}
+  - {id: r1082026, trade: tailor, result: 1082026, level: 25, inputs: "4000021x50 4011006x2", stockFee: 20000, fee: 14000, minutes: 75, from: "1032002"}
+  - {id: r1082027, trade: tailor, result: 1082027, level: 25, inputs: "1082026x1 4021000x3", stockFee: 30000, fee: 21000, minutes: 75, from: "1032002"}
+  - {id: r1082028, trade: tailor, result: 1082028, level: 25, inputs: "1082026x1 4021008x1", stockFee: 40000, fee: 28000, minutes: 75, from: "1032002"}
+  - {id: r1082038, trade: tailor, result: 1082038, level: 25, inputs: "1082037x1 4011002x2", stockFee: 10000, fee: 7000, minutes: 75, from: "1052002"}
+  - {id: r1082039, trade: tailor, result: 1082039, level: 25, inputs: "1082037x1 4021004x2", stockFee: 12000, fee: 8400, minutes: 75, from: "1052002"}
+  - {id: r1382002, trade: tailor, result: 1382002, level: 25, inputs: "4021006x2 4021001x1 4011001x1 4003000x15", stockFee: 12000, fee: 8400, minutes: 75, from: "1032002"}
+  - {id: r1382002-2, trade: tailor, result: 1382002, level: 25, inputs: "4131009x1 4021006x2 4021001x1 4011001x1 4003000x15", stockFee: 10000, fee: 7000, minutes: 75, from: "2040022"}
+  - {id: r1372003, trade: tailor, result: 1372003, level: 28, inputs: "4011002x3 4021002x1 4003000x10", stockFee: 30000, fee: 21000, minutes: 84, from: "1032002"}
+  - {id: r1372003-2, trade: tailor, result: 1372003, level: 28, inputs: "4131008x1 4011002x3 4021002x1 4003000x10", stockFee: 15000, fee: 10500, minutes: 84, from: "2040022"}
+  - {id: r1002013, trade: tailor, result: 1002013, level: 30, inputs: "1002064x1 4011006x3", stockFee: 50000, fee: 35000, minutes: 90, from: "1032002"}
+  - {id: r1002065, trade: tailor, result: 1002065, level: 30, inputs: "1002064x1 4011001x3", stockFee: 40000, fee: 28000, minutes: 90, from: "1032002"}
+  - {id: r1072003, trade: tailor, result: 1072003, level: 30, inputs: "4021003x4 4011001x2 4000021x45 4003000x15", stockFee: 18000, fee: 12600, minutes: 90, from: "2040021"}
+  - {id: r1072032, trade: tailor, result: 1072032, level: 30, inputs: "4011000x3 4000021x50 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1072033, trade: tailor, result: 1072033, level: 30, inputs: "4011001x3 4000021x50 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1072035, trade: tailor, result: 1072035, level: 30, inputs: "4011004x2 4000021x50 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1072036, trade: tailor, result: 1072036, level: 30, inputs: "4011006x2 4000021x50 4003000x15", stockFee: 18900, fee: 13230, minutes: 90, from: "2040021"}
+  - {id: r1072039, trade: tailor, result: 1072039, level: 30, inputs: "4011002x4 4011001x2 4000021x45 4003000x15", stockFee: 18000, fee: 12600, minutes: 90, from: "2040021"}
+  - {id: r1072040, trade: tailor, result: 1072040, level: 30, inputs: "4011004x4 4011001x2 4000021x45 4003000x15", stockFee: 18000, fee: 12600, minutes: 90, from: "2040021"}
+  - {id: r1072041, trade: tailor, result: 1072041, level: 30, inputs: "4021000x4 4011001x2 4000021x45 4003000x15", stockFee: 18000, fee: 12600, minutes: 90, from: "2040021"}
+  - {id: r1072075, trade: tailor, result: 1072075, level: 30, inputs: "4021000x2 4000021x50 4003000x15", stockFee: 16200, fee: 11340, minutes: 90, from: "2040021"}
+  - {id: r1072076, trade: tailor, result: 1072076, level: 30, inputs: "4021002x2 4000021x50 4003000x15", stockFee: 16200, fee: 11340, minutes: 90, from: "2040021"}
+  - {id: r1072077, trade: tailor, result: 1072077, level: 30, inputs: "4011004x2 4000021x50 4003000x15", stockFee: 16200, fee: 11340, minutes: 90, from: "2040021"}
+  - {id: r1072078, trade: tailor, result: 1072078, level: 30, inputs: "4021008x1 4000021x50 4003000x15", stockFee: 16200, fee: 11340, minutes: 90, from: "2040021"}
+  - {id: r1072079, trade: tailor, result: 1072079, level: 30, inputs: "4000021x50 4021000x2 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1072080, trade: tailor, result: 1072080, level: 30, inputs: "4000021x50 4021005x2 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1072081, trade: tailor, result: 1072081, level: 30, inputs: "4000021x50 4021003x2 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1072082, trade: tailor, result: 1072082, level: 30, inputs: "4000021x50 4021004x2 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1072083, trade: tailor, result: 1072083, level: 30, inputs: "4000021x50 4021006x2 4003000x15", stockFee: 17100, fee: 11970, minutes: 90, from: "2040021"}
+  - {id: r1082005, trade: tailor, result: 1082005, level: 30, inputs: "1082007x1 4011001x1", stockFee: 20000, fee: 14000, minutes: 90, from: "1022004"}
+  - {id: r1082006, trade: tailor, result: 1082006, level: 30, inputs: "1082007x1 4011005x2", stockFee: 25000, fee: 17500, minutes: 90, from: "1022004"}
+  - {id: r1082043, trade: tailor, result: 1082043, level: 30, inputs: "1082042x1 4011004x2", stockFee: 15000, fee: 10500, minutes: 90, from: "1052002"}
+  - {id: r1082044, trade: tailor, result: 1082044, level: 30, inputs: "1082042x1 4011006x1", stockFee: 20000, fee: 14000, minutes: 90, from: "1052002"}
+  - {id: r1082049, trade: tailor, result: 1082049, level: 30, inputs: "1082048x1 4021003x3", stockFee: 15000, fee: 10500, minutes: 90, from: "1012002"}
+  - {id: r1082050, trade: tailor, result: 1082050, level: 30, inputs: "1082048x1 4021008x1", stockFee: 20000, fee: 14000, minutes: 90, from: "1012002"}
+  - {id: r1082052, trade: tailor, result: 1082052, level: 30, inputs: "1082051x1 4021005x3", stockFee: 35000, fee: 24500, minutes: 90, from: "1032002"}
+  - {id: r1082053, trade: tailor, result: 1082053, level: 30, inputs: "1082051x1 4021008x1", stockFee: 40000, fee: 28000, minutes: 90, from: "1032002"}
+  - {id: r1332012, trade: tailor, result: 1332012, level: 30, inputs: "4131012x1 4011002x2 4011001x3 4003000x30", stockFee: 20000, fee: 14000, minutes: 90, from: "2040022"}
+  - {id: r1472008, trade: tailor, result: 1472008, level: 30, inputs: "4131013x1 4011000x3 4011001x2 4000021x50 4003000x20", stockFee: 15000, fee: 10500, minutes: 90, from: "2040022"}
+  - {id: r1472009, trade: tailor, result: 1472009, level: 30, inputs: "1472008x1 4011002x3", stockFee: 10000, fee: 7000, minutes: 90, from: "1052002"}
+  - {id: r1472010, trade: tailor, result: 1472010, level: 30, inputs: "1472008x1 4011003x3", stockFee: 15000, fee: 10500, minutes: 90, from: "1052002"}
+  - {id: r1072002, trade: tailor, result: 1072002, level: 35, inputs: "4011001x3 4021004x1 4000021x30 4000030x20 4003000x25", stockFee: 19800, fee: 13860, minutes: 105, from: "2040021"}
+  - {id: r1072089, trade: tailor, result: 1072089, level: 35, inputs: "4021001x3 4021006x1 4000021x30 4000030x15 4003000x20", stockFee: 18000, fee: 12600, minutes: 105, from: "2040021"}
+  - {id: r1072090, trade: tailor, result: 1072090, level: 35, inputs: "4021000x3 4021006x1 4000021x30 4000030x15 4003000x20", stockFee: 18000, fee: 12600, minutes: 105, from: "2040021"}
+  - {id: r1072091, trade: tailor, result: 1072091, level: 35, inputs: "4021008x2 4021006x1 4000021x40 4000030x25 4003000x20", stockFee: 19800, fee: 13860, minutes: 105, from: "2040021"}
+  - {id: r1072101, trade: tailor, result: 1072101, level: 35, inputs: "4021002x3 4021006x1 4000030x15 4000021x30 4003000x20", stockFee: 17100, fee: 11970, minutes: 105, from: "2040021"}
+  - {id: r1072102, trade: tailor, result: 1072102, level: 35, inputs: "4021003x3 4021006x1 4000030x15 4000021x30 4003000x20", stockFee: 18000, fee: 12600, minutes: 105, from: "2040021"}
+  - {id: r1072103, trade: tailor, result: 1072103, level: 35, inputs: "4021000x3 4021006x1 4000030x15 4000021x30 4003000x20", stockFee: 18000, fee: 12600, minutes: 105, from: "2040021"}
+  - {id: r1072104, trade: tailor, result: 1072104, level: 35, inputs: "4021000x3 4021004x1 4000021x30 4000030x15 4003000x20", stockFee: 18000, fee: 12600, minutes: 105, from: "2040021"}
+  - {id: r1072105, trade: tailor, result: 1072105, level: 35, inputs: "4021003x3 4021004x1 4000021x30 4000030x15 4003000x20", stockFee: 18000, fee: 12600, minutes: 105, from: "2040021"}
+  - {id: r1072106, trade: tailor, result: 1072106, level: 35, inputs: "4021002x3 4021004x1 4000021x30 4000030x15 4003000x20", stockFee: 18000, fee: 12600, minutes: 105, from: "2040021"}
+  - {id: r1072112, trade: tailor, result: 1072112, level: 35, inputs: "4011002x3 4021004x1 4000021x30 4000030x20 4003000x25", stockFee: 19800, fee: 13860, minutes: 105, from: "2040021"}
+  - {id: r1072113, trade: tailor, result: 1072113, level: 35, inputs: "4021008x2 4021004x1 4000021x30 4000030x20 4003000x25", stockFee: 22500, fee: 15750, minutes: 105, from: "2040021"}
+  - {id: r1082035, trade: tailor, result: 1082035, level: 35, inputs: "1082008x1 4021006x3", stockFee: 30000, fee: 21000, minutes: 105, from: "1022004"}
+  - {id: r1082036, trade: tailor, result: 1082036, level: 35, inputs: "1082008x1 4021008x1", stockFee: 40000, fee: 28000, minutes: 105, from: "1022004"}
+  - {id: r1082045, trade: tailor, result: 1082045, level: 35, inputs: "1082046x1 4011006x2", stockFee: 25000, fee: 17500, minutes: 105, from: "1052002"}
+  - {id: r1082047, trade: tailor, result: 1082047, level: 35, inputs: "1082046x1 4011005x3", stockFee: 22000, fee: 15400, minutes: 105, from: "1052002"}
+  - {id: r1082055, trade: tailor, result: 1082055, level: 35, inputs: "1082054x1 4021005x3", stockFee: 40000, fee: 28000, minutes: 105, from: "1032002"}
+  - {id: r1082056, trade: tailor, result: 1082056, level: 35, inputs: "1082054x1 4021008x1", stockFee: 45000, fee: 31500, minutes: 105, from: "1032002"}
+  - {id: r1082069, trade: tailor, result: 1082069, level: 35, inputs: "1082068x1 4011002x4", stockFee: 22000, fee: 15400, minutes: 105, from: "1012002"}
+  - {id: r1082070, trade: tailor, result: 1082070, level: 35, inputs: "1082068x1 4011006x2", stockFee: 25000, fee: 17500, minutes: 105, from: "1012002"}
+  - {id: r1472012, trade: tailor, result: 1472012, level: 35, inputs: "1472011x1 4011004x4", stockFee: 20000, fee: 14000, minutes: 105, from: "1052002"}
+  - {id: r1472013, trade: tailor, result: 1472013, level: 35, inputs: "1472011x1 4021008x1", stockFee: 25000, fee: 17500, minutes: 105, from: "1052002"}
+  - {id: r1072000, trade: tailor, result: 1072000, level: 40, inputs: "4011003x4 4000021x100 4000030x40 4003000x30 4000033x100", stockFee: 38000, fee: 26600, minutes: 120, from: "1061000"}
+  - {id: r1072000-2, trade: tailor, result: 1072000, level: 40, inputs: "4011003x4 4000021x100 4000030x40 4003000x30 4000103x100", stockFee: 34200, fee: 23940, minutes: 120, from: "2040021"}
+  - {id: r1072107, trade: tailor, result: 1072107, level: 40, inputs: "4021000x5 4000030x45 4000033x50 4003000x30", stockFee: 40000, fee: 28000, minutes: 120, from: "1061000"}
+  - {id: r1072107-2, trade: tailor, result: 1072107, level: 40, inputs: "4021000x5 4000030x45 4000113x100 4003000x30", stockFee: 36000, fee: 25200, minutes: 120, from: "2040021"}
+  - {id: r1072109, trade: tailor, result: 1072109, level: 40, inputs: "4021006x4 4000030x45 4000096x100 4003000x30", stockFee: 31500, fee: 22050, minutes: 120, from: "2040021"}
+  - {id: r1072114, trade: tailor, result: 1072114, level: 40, inputs: "4021000x4 4000030x40 4000043x35 4003000x25", stockFee: 30000, fee: 21000, minutes: 120, from: "1061000"}
+  - {id: r1072114-2, trade: tailor, result: 1072114, level: 40, inputs: "4021000x4 4000030x40 4000110x100 4003000x25", stockFee: 27000, fee: 18900, minutes: 120, from: "2040021"}
+  - {id: r1072115, trade: tailor, result: 1072115, level: 40, inputs: "4021005x4 4000030x40 4000037x70 4003000x25", stockFee: 30000, fee: 21000, minutes: 120, from: "1061000"}
+  - {id: r1072115-2, trade: tailor, result: 1072115, level: 40, inputs: "4021005x4 4000030x40 4000111x100 4003000x25", stockFee: 27000, fee: 18900, minutes: 120, from: "2040021"}
+  - {id: r1072116, trade: tailor, result: 1072116, level: 40, inputs: "4011006x2 4021007x1 4000030x40 4000027x20 4003000x25", stockFee: 35000, fee: 24500, minutes: 120, from: "1061000"}
+  - {id: r1072116-2, trade: tailor, result: 1072116, level: 40, inputs: "4011006x2 4021007x1 4000030x40 4000100x100 4003000x25", stockFee: 31500, fee: 22050, minutes: 120, from: "2040021"}
+  - {id: r1072117, trade: tailor, result: 1072117, level: 40, inputs: "4021008x2 4021007x1 4000030x40 4000014x30 4003000x30", stockFee: 40000, fee: 28000, minutes: 120, from: "1061000"}
+  - {id: r1072117-2, trade: tailor, result: 1072117, level: 40, inputs: "4021008x2 4021007x1 4000030x40 4000112x100 4003000x30", stockFee: 36000, fee: 25200, minutes: 120, from: "2040021"}
+  - {id: r1072121, trade: tailor, result: 1072121, level: 40, inputs: "4021002x5 4003000x30 4000030x45 4000009x120", stockFee: 40000, fee: 28000, minutes: 120, from: "1061000"}
+  - {id: r1072121-2, trade: tailor, result: 1072121, level: 40, inputs: "4021002x5 4003000x30 4000030x45 4000099x100", stockFee: 36000, fee: 25200, minutes: 120, from: "2040021"}
+  - {id: r1072126, trade: tailor, result: 1072126, level: 40, inputs: "4011005x4 4021007x1 4000030x40 4003000x30 4000042x250", stockFee: 38000, fee: 26600, minutes: 120, from: "1061000"}
+  - {id: r1072126-2, trade: tailor, result: 1072126, level: 40, inputs: "4011005x4 4021007x1 4000030x40 4003000x30 4000104x100", stockFee: 34200, fee: 23940, minutes: 120, from: "2040021"}
+  - {id: r1072127, trade: tailor, result: 1072127, level: 40, inputs: "4011002x4 4021007x1 4000030x40 4003000x30 4000041x120", stockFee: 38000, fee: 26600, minutes: 120, from: "1061000"}
+  - {id: r1072127-2, trade: tailor, result: 1072127, level: 40, inputs: "4011002x4 4021007x1 4000030x40 4003000x30 4000105x100", stockFee: 34200, fee: 23940, minutes: 120, from: "2040021"}
+  - {id: r1082024, trade: tailor, result: 1082024, level: 40, inputs: "1082023x1 4011003x4", stockFee: 45000, fee: 31500, minutes: 120, from: "1022004"}
+  - {id: r1082025, trade: tailor, result: 1082025, level: 40, inputs: "1082023x1 4021008x2", stockFee: 50000, fee: 35000, minutes: 120, from: "1022004"}
+  - {id: r1082063, trade: tailor, result: 1082063, level: 40, inputs: "1082062x1 4021002x4", stockFee: 45000, fee: 31500, minutes: 120, from: "1032002"}
+  - {id: r1082064, trade: tailor, result: 1082064, level: 40, inputs: "1082062x1 4021008x2", stockFee: 50000, fee: 35000, minutes: 120, from: "1032002"}
+  - {id: r1082072, trade: tailor, result: 1082072, level: 40, inputs: "1082071x1 4011006x4", stockFee: 30000, fee: 21000, minutes: 120, from: "1012002"}
+  - {id: r1082073, trade: tailor, result: 1082073, level: 40, inputs: "1082071x1 4021008x2", stockFee: 40000, fee: 28000, minutes: 120, from: "1012002"}
+  - {id: r1082074, trade: tailor, result: 1082074, level: 40, inputs: "1082075x1 4021008x2", stockFee: 50000, fee: 35000, minutes: 120, from: "1052002"}
+  - {id: r1082076, trade: tailor, result: 1082076, level: 40, inputs: "1082075x1 4011006x4", stockFee: 40000, fee: 28000, minutes: 120, from: "1052002"}
+  - {id: r1472015, trade: tailor, result: 1472015, level: 40, inputs: "1472014x1 4021000x5", stockFee: 30000, fee: 21000, minutes: 120, from: "1052002"}
+  - {id: r1472016, trade: tailor, result: 1472016, level: 40, inputs: "1472014x1 4011003x5", stockFee: 30000, fee: 21000, minutes: 120, from: "1052002"}
+  - {id: r1472017, trade: tailor, result: 1472017, level: 40, inputs: "1472014x1 4021008x2", stockFee: 35000, fee: 24500, minutes: 120, from: "1052002"}
+  - {id: r1382001, trade: tailor, result: 1382001, level: 45, inputs: "4011001x8 4021006x5 4021001x5 4021005x5 4003000x30 4000010x50 4003003x1", stockFee: 180000, fee: 126000, minutes: 135, from: "1032002"}
+  - {id: r1072123, trade: tailor, result: 1072123, level: 50, inputs: "4011001x3 4021006x3 4021008x1 4000030x60 4003000x35 4000032x150", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072124, trade: tailor, result: 1072124, level: 50, inputs: "4011001x3 4021006x3 4021008x1 4000030x60 4003000x35 4000041x100", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072125, trade: tailor, result: 1072125, level: 50, inputs: "4011001x3 4021006x3 4021008x1 4000030x60 4003000x35 4000042x250", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072128, trade: tailor, result: 1072128, level: 50, inputs: "4011007x2 4021005x3 4000030x50 4000037x200 4003000x35", stockFee: 50000, fee: 35000, minutes: 150, from: "1061000"}
+  - {id: r1072128-2, trade: tailor, result: 1072128, level: 50, inputs: "4011007x2 4021005x3 4000030x50 4000114x100 4003000x35", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072129, trade: tailor, result: 1072129, level: 50, inputs: "4011007x2 4021003x3 4000030x50 4000045x80 4003000x35", stockFee: 50000, fee: 35000, minutes: 150, from: "1061000"}
+  - {id: r1072129-2, trade: tailor, result: 1072129, level: 50, inputs: "4011007x2 4021003x3 4000030x50 4000109x100 4003000x35", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072130, trade: tailor, result: 1072130, level: 50, inputs: "4011007x2 4021000x3 4000030x50 4000043x150 4003000x35", stockFee: 50000, fee: 35000, minutes: 150, from: "1061000"}
+  - {id: r1072130-2, trade: tailor, result: 1072130, level: 50, inputs: "4011007x2 4021000x3 4000030x50 4000115x100 4003000x35", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072131, trade: tailor, result: 1072131, level: 50, inputs: "4011007x2 4021001x3 4000030x50 4000036x80 4003000x35", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072140, trade: tailor, result: 1072140, level: 50, inputs: "4021009x1 4011006x3 4021000x3 4000030x60 4003000x40", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072141, trade: tailor, result: 1072141, level: 50, inputs: "4021009x1 4011006x3 4021005x3 4000030x60 4003000x40", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072142, trade: tailor, result: 1072142, level: 50, inputs: "4021009x1 4011006x3 4021001x3 4000030x60 4003000x40", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1072143, trade: tailor, result: 1072143, level: 50, inputs: "4021009x1 4011006x3 4021003x3 4000030x60 4003000x40", stockFee: 45000, fee: 31500, minutes: 150, from: "2040021"}
+  - {id: r1082010, trade: tailor, result: 1082010, level: 50, inputs: "1082009x1 4011002x5", stockFee: 55000, fee: 38500, minutes: 150, from: "1022004"}
+  - {id: r1082011, trade: tailor, result: 1082011, level: 50, inputs: "1082009x1 4011006x4", stockFee: 60000, fee: 42000, minutes: 150, from: "1022004"}
+  - {id: r1082066, trade: tailor, result: 1082066, level: 50, inputs: "1082065x1 4011006x2 4021008x1", stockFee: 60000, fee: 42000, minutes: 150, from: "1052002"}
+  - {id: r1082067, trade: tailor, result: 1082067, level: 50, inputs: "1082065x1 4021000x5", stockFee: 55000, fee: 38500, minutes: 150, from: "1052002"}
+  - {id: r1082080, trade: tailor, result: 1082080, level: 50, inputs: "1082081x1 4021008x3", stockFee: 60000, fee: 42000, minutes: 150, from: "1032002"}
+  - {id: r1082082, trade: tailor, result: 1082082, level: 50, inputs: "1082081x1 4021002x5", stockFee: 55000, fee: 38500, minutes: 150, from: "1032002"}
+  - {id: r1082083, trade: tailor, result: 1082083, level: 50, inputs: "1082084x1 4011006x2 4021008x2", stockFee: 60000, fee: 42000, minutes: 150, from: "1012002"}
+  - {id: r1082085, trade: tailor, result: 1082085, level: 50, inputs: "1082084x1 4011000x1 4021000x5", stockFee: 55000, fee: 38500, minutes: 150, from: "1012002"}
+  - {id: r1472019, trade: tailor, result: 1472019, level: 50, inputs: "1472018x1 4021000x6", stockFee: 40000, fee: 28000, minutes: 150, from: "1052002"}
+  - {id: r1472020, trade: tailor, result: 1472020, level: 50, inputs: "1472018x1 4021005x6", stockFee: 40000, fee: 28000, minutes: 150, from: "1052002"}
+  - {id: r1382006, trade: tailor, result: 1382006, level: 55, inputs: "4131009x1 4005001x2 4021008x2 4011006x5 4011004x10 4003000x40", stockFee: 200000, fee: 140000, minutes: 165, from: "2040022"}
+  - {id: r1072136, trade: tailor, result: 1072136, level: 60, inputs: "4021009x1 4011006x4 4011005x5 4000030x70 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072137, trade: tailor, result: 1072137, level: 60, inputs: "4021009x1 4011006x4 4021003x5 4000030x70 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072138, trade: tailor, result: 1072138, level: 60, inputs: "4021009x1 4011006x4 4011003x5 4000030x70 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072139, trade: tailor, result: 1072139, level: 60, inputs: "4021009x1 4011006x4 4021002x5 4000030x70 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072145, trade: tailor, result: 1072145, level: 60, inputs: "4011006x5 4021005x8 4021007x1 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072146, trade: tailor, result: 1072146, level: 60, inputs: "4011006x5 4021003x8 4021007x1 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072147, trade: tailor, result: 1072147, level: 60, inputs: "4021008x1 4011007x1 4021005x8 4000030x80 4003000x55", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072148, trade: tailor, result: 1072148, level: 60, inputs: "4021008x1 4011007x1 4011005x8 4000030x80 4003000x55", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072149, trade: tailor, result: 1072149, level: 60, inputs: "4021008x1 4011007x1 4021000x8 4000030x80 4003000x55", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072150, trade: tailor, result: 1072150, level: 60, inputs: "4021007x1 4011007x1 4021000x8 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "2020002"}
+  - {id: r1072150-2, trade: tailor, result: 1072150, level: 60, inputs: "4021008x1 4011007x1 4021005x8 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072151, trade: tailor, result: 1072151, level: 60, inputs: "4021007x1 4011007x1 4011006x5 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "2020002"}
+  - {id: r1072151-2, trade: tailor, result: 1072151, level: 60, inputs: "4021008x1 4011007x1 4011005x5 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1072152, trade: tailor, result: 1072152, level: 60, inputs: "4021007x1 4011007x1 4021008x1 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "2020002"}
+  - {id: r1072152-2, trade: tailor, result: 1072152, level: 60, inputs: "4021008x1 4011007x1 4021000x1 4000030x75 4003000x50", stockFee: 60000, fee: 42000, minutes: 180, from: "1061000"}
+  - {id: r1082060, trade: tailor, result: 1082060, level: 60, inputs: "1082059x1 4011002x3 4021005x5", stockFee: 70000, fee: 49000, minutes: 180, from: "1022004"}
+  - {id: r1082061, trade: tailor, result: 1082061, level: 60, inputs: "1082059x1 4021007x2 4021008x2", stockFee: 80000, fee: 56000, minutes: 180, from: "1022004"}
+  - {id: r1082087, trade: tailor, result: 1082087, level: 60, inputs: "1082086x1 4011004x3 4011006x5", stockFee: 70000, fee: 49000, minutes: 180, from: "1032002"}
+  - {id: r1082088, trade: tailor, result: 1082088, level: 60, inputs: "1082086x1 4021008x2 4011006x3", stockFee: 80000, fee: 56000, minutes: 180, from: "1032002"}
+  - {id: r1082090, trade: tailor, result: 1082090, level: 60, inputs: "1082089x1 4021000x5 4021007x1", stockFee: 70000, fee: 49000, minutes: 180, from: "1012002"}
+  - {id: r1082091, trade: tailor, result: 1082091, level: 60, inputs: "1082089x1 4021007x2 4021008x2", stockFee: 80000, fee: 56000, minutes: 180, from: "1012002"}
+  - {id: r1082093, trade: tailor, result: 1082093, level: 60, inputs: "1082092x1 4011001x7 4000014x200", stockFee: 70000, fee: 49000, minutes: 180, from: "1052002"}
+  - {id: r1082094, trade: tailor, result: 1082094, level: 60, inputs: "1082092x1 4011006x7 4000027x150", stockFee: 80000, fee: 56000, minutes: 180, from: "1052002"}
+  - {id: r1472023, trade: tailor, result: 1472023, level: 60, inputs: "1472022x1 4011007x1 4021000x8 2012000x10", stockFee: 80000, fee: 56000, minutes: 180, from: "1052003"}
+  - {id: r1472024, trade: tailor, result: 1472024, level: 60, inputs: "1472022x1 4011007x1 4021005x8 2012002x10", stockFee: 80000, fee: 56000, minutes: 180, from: "1052003"}
+  - {id: r1472025, trade: tailor, result: 1472025, level: 60, inputs: "1472022x1 4011007x1 4021008x3 4000046x5", stockFee: 100000, fee: 70000, minutes: 180, from: "1052003"}
+  - {id: r1072157, trade: tailor, result: 1072157, level: 70, inputs: "4005001x1 4005003x3 4021002x5 4000051x100 4003000x55", stockFee: 70000, fee: 49000, minutes: 210, from: "2020002"}
+  - {id: r1072158, trade: tailor, result: 1072158, level: 70, inputs: "4005001x2 4005003x2 4021000x5 4000051x100 4003000x55", stockFee: 70000, fee: 49000, minutes: 210, from: "2020002"}
+  - {id: r1082096, trade: tailor, result: 1082096, level: 70, inputs: "1082095x1 4011004x6 4021007x2", stockFee: 90000, fee: 63000, minutes: 210, from: "2010003"}
+  - {id: r1082097, trade: tailor, result: 1082097, level: 70, inputs: "1082095x1 4021007x3 4011006x3", stockFee: 100000, fee: 70000, minutes: 210, from: "2010003"}
+  - {id: r1082099, trade: tailor, result: 1082099, level: 70, inputs: "1082098x1 4021002x6 4021007x2", stockFee: 90000, fee: 63000, minutes: 210, from: "2010003"}
+  - {id: r1082100, trade: tailor, result: 1082100, level: 70, inputs: "1082098x1 4021008x3 4011006x3", stockFee: 100000, fee: 70000, minutes: 210, from: "2010003"}
+  - {id: r1082104, trade: tailor, result: 1082104, level: 70, inputs: "1082103x1 4011002x6 4021006x4", stockFee: 90000, fee: 63000, minutes: 210, from: "2010003"}
+  - {id: r1082105, trade: tailor, result: 1082105, level: 70, inputs: "1082103x1 4021006x8 4021008x3", stockFee: 100000, fee: 70000, minutes: 210, from: "2010003"}
+  - {id: r1082107, trade: tailor, result: 1082107, level: 70, inputs: "1082106x1 4021006x5 4011006x3", stockFee: 90000, fee: 63000, minutes: 210, from: "2010003"}
+  - {id: r1082108, trade: tailor, result: 1082108, level: 70, inputs: "1082106x1 4021007x2 4021008x3", stockFee: 100000, fee: 70000, minutes: 210, from: "2010003"}
+  - {id: r1072174, trade: tailor, result: 1072174, level: 80, inputs: "4005003x3 4005002x2 4021008x7 4000030x90 4003000x60", stockFee: 80000, fee: 56000, minutes: 240, from: "2020002"}
+  - {id: r1072177, trade: tailor, result: 1072177, level: 80, inputs: "4005001x2 4005003x3 4021003x7 4000030x85 4003000x60", stockFee: 80000, fee: 56000, minutes: 240, from: "2020002"}
+  - {id: r1072178, trade: tailor, result: 1072178, level: 80, inputs: "4005001x3 4005003x2 4021001x7 4000030x85 4003000x60", stockFee: 80000, fee: 56000, minutes: 240, from: "2020002"}
+  - {id: r1072179, trade: tailor, result: 1072179, level: 80, inputs: "4005001x4 4005003x1 4021008x2 4000030x85 4003000x60", stockFee: 80000, fee: 56000, minutes: 240, from: "2020002"}
+  - {id: r1072185, trade: tailor, result: 1072185, level: 80, inputs: "4005002x5 4021008x2 4000030x90 4003000x60", stockFee: 80000, fee: 56000, minutes: 240, from: "2020002"}
+  - {id: r1072212, trade: tailor, result: 1072212, level: 80, inputs: "4005000x4 4005002x1 4021008x2 4000030x90 4003000x65", stockFee: 80000, fee: 56000, minutes: 240, from: "2020002"}
+  - {id: r1082110, trade: tailor, result: 1082110, level: 80, inputs: "1082109x1 4005002x1 4005000x1 4021005x7", stockFee: 110000, fee: 77000, minutes: 240, from: "2010003"}
+  - {id: r1082111, trade: tailor, result: 1082111, level: 80, inputs: "1082109x1 4005002x1 4005000x1 4021003x7", stockFee: 110000, fee: 77000, minutes: 240, from: "2010003"}
+  - {id: r1082112, trade: tailor, result: 1082112, level: 80, inputs: "1082109x1 4005002x2 4005000x1 4021008x4", stockFee: 120000, fee: 84000, minutes: 240, from: "2010003"}
+  - {id: r1082115, trade: tailor, result: 1082115, level: 80, inputs: "1082114x1 4005000x1 4005002x1 4021003x7", stockFee: 110000, fee: 77000, minutes: 240, from: "2010003"}
+  - {id: r1082116, trade: tailor, result: 1082116, level: 80, inputs: "1082114x1 4005002x3 4021000x8", stockFee: 110000, fee: 77000, minutes: 240, from: "2010003"}
+  - {id: r1082117, trade: tailor, result: 1082117, level: 80, inputs: "1082114x1 4005000x2 4005002x1 4021008x4", stockFee: 120000, fee: 84000, minutes: 240, from: "2010003"}
+  - {id: r1082119, trade: tailor, result: 1082119, level: 80, inputs: "1082118x1 4005003x1 4005002x1 4021001x7", stockFee: 110000, fee: 77000, minutes: 240, from: "2010003"}
+  - {id: r1082120, trade: tailor, result: 1082120, level: 80, inputs: "1082118x1 4005003x2 4005002x1 4021000x8", stockFee: 120000, fee: 84000, minutes: 240, from: "2010003"}
+  - {id: r1082122, trade: tailor, result: 1082122, level: 80, inputs: "1082121x1 4005001x1 4005003x1 4021005x7", stockFee: 110000, fee: 77000, minutes: 240, from: "2010003"}
+  - {id: r1082123, trade: tailor, result: 1082123, level: 80, inputs: "1082121x1 4005001x2 4005003x1 4021008x4", stockFee: 120000, fee: 84000, minutes: 240, from: "2010003"}
+  - {id: r1372032, trade: tailor, result: 1372032, level: 108, inputs: "1372010x1 4000244x20 4000245x25 4005001x6 4005003x2", stockFee: 120000, fee: 84000, minutes: 324, from: "2080000"}
+  - {id: r1332050, trade: tailor, result: 1332050, level: 110, inputs: "1332052x1 4000244x20 4000245x25 4005002x3 4005003x5", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1382036, trade: tailor, result: 1382036, level: 110, inputs: "1382035x1 4000244x20 4000245x25 4005001x6 4005003x2", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r1472051, trade: tailor, result: 1472051, level: 110, inputs: "1472053x1 4000244x20 4000245x25 4005002x2 4005003x6", stockFee: 120000, fee: 84000, minutes: 330, from: "2080000"}
+  - {id: r2022147, trade: alchemist, result: 2022147, level: 0, inputs: "4000281x10 4000293x10", stockFee: 910, fee: 637, minutes: 10, from: "2090004"}
+  - {id: r2022148, trade: alchemist, result: 2022148, level: 0, inputs: "4000276x20 2002005x1", stockFee: 950, fee: 665, minutes: 10, from: "2090004"}
+  - {id: r2022149, trade: alchemist, result: 2022149, level: 0, inputs: "4000288x20 4000292x20", stockFee: 1940, fee: 1358, minutes: 10, from: "2090004"}
+  - {id: r2022150, trade: alchemist, result: 2022150, level: 0, inputs: "4000295x10", stockFee: 600, fee: 420, minutes: 10, from: "2090004"}
+  - {id: r2022284, trade: alchemist, result: 2022284, level: 0, inputs: "4032010x60 4032011x60 4032012x45", stockFee: 75000, fee: 52500, minutes: 10, from: "9201096"}
+  - {id: r2050004, trade: alchemist, result: 2050004, level: 0, inputs: "2022131x1 2022132x1", stockFee: 700, fee: 490, minutes: 10, from: "2090004"}
+  - {id: r4250000, trade: alchemist, result: 4250000, level: 0, inputs: "4021007x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250001, trade: alchemist, result: 4250001, level: 0, inputs: "4250000x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250002, trade: alchemist, result: 4250002, level: 0, inputs: "4250001x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250100, trade: alchemist, result: 4250100, level: 0, inputs: "4021005x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250101, trade: alchemist, result: 4250101, level: 0, inputs: "4250100x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250102, trade: alchemist, result: 4250102, level: 0, inputs: "4250101x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250200, trade: alchemist, result: 4250200, level: 0, inputs: "4021000x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250201, trade: alchemist, result: 4250201, level: 0, inputs: "4250200x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250202, trade: alchemist, result: 4250202, level: 0, inputs: "4250201x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250300, trade: alchemist, result: 4250300, level: 0, inputs: "4021004x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250301, trade: alchemist, result: 4250301, level: 0, inputs: "4250300x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250302, trade: alchemist, result: 4250302, level: 0, inputs: "4250301x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250400, trade: alchemist, result: 4250400, level: 0, inputs: "4021001x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250401, trade: alchemist, result: 4250401, level: 0, inputs: "4250400x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250402, trade: alchemist, result: 4250402, level: 0, inputs: "4250401x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250500, trade: alchemist, result: 4250500, level: 0, inputs: "4021002x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250501, trade: alchemist, result: 4250501, level: 0, inputs: "4250500x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250502, trade: alchemist, result: 4250502, level: 0, inputs: "4250501x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250600, trade: alchemist, result: 4250600, level: 0, inputs: "4021006x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250601, trade: alchemist, result: 4250601, level: 0, inputs: "4250600x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250602, trade: alchemist, result: 4250602, level: 0, inputs: "4250601x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250700, trade: alchemist, result: 4250700, level: 0, inputs: "4021003x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250701, trade: alchemist, result: 4250701, level: 0, inputs: "4250700x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250702, trade: alchemist, result: 4250702, level: 0, inputs: "4250701x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250800, trade: alchemist, result: 4250800, level: 0, inputs: "4005000x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250801, trade: alchemist, result: 4250801, level: 0, inputs: "4250800x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250802, trade: alchemist, result: 4250802, level: 0, inputs: "4250801x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4250900, trade: alchemist, result: 4250900, level: 0, inputs: "4005001x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4250901, trade: alchemist, result: 4250901, level: 0, inputs: "4250900x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4250902, trade: alchemist, result: 4250902, level: 0, inputs: "4250901x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4251000, trade: alchemist, result: 4251000, level: 0, inputs: "4005003x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4251001, trade: alchemist, result: 4251001, level: 0, inputs: "4251000x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4251002, trade: alchemist, result: 4251002, level: 0, inputs: "4251001x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4251100, trade: alchemist, result: 4251100, level: 0, inputs: "4005002x1", stockFee: 110000, fee: 77000, minutes: 10, from: "maker"}
+  - {id: r4251101, trade: alchemist, result: 4251101, level: 0, inputs: "4251100x10", stockFee: 330000, fee: 231000, minutes: 10, from: "maker"}
+  - {id: r4251102, trade: alchemist, result: 4251102, level: 0, inputs: "4251101x10", stockFee: 550000, fee: 385000, minutes: 10, from: "maker"}
+  - {id: r4251300, trade: alchemist, result: 4251300, level: 0, inputs: "4021008x1", stockFee: 165000, fee: 115500, minutes: 10, from: "maker"}
+  - {id: r4251301, trade: alchemist, result: 4251301, level: 0, inputs: "4251300x10", stockFee: 495000, fee: 346500, minutes: 10, from: "maker"}
+  - {id: r4251302, trade: alchemist, result: 4251302, level: 0, inputs: "4251301x10", stockFee: 825000, fee: 577500, minutes: 10, from: "maker"}
+  - {id: r4251400, trade: alchemist, result: 4251400, level: 0, inputs: "4005004x1", stockFee: 165000, fee: 115500, minutes: 10, from: "maker"}
+  - {id: r4251401, trade: alchemist, result: 4251401, level: 0, inputs: "4251400x10", stockFee: 495000, fee: 346500, minutes: 10, from: "maker"}
+  - {id: r4251402, trade: alchemist, result: 4251402, level: 0, inputs: "4251401x10", stockFee: 825000, fee: 577500, minutes: 10, from: "maker"}

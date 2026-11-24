@@ -16,6 +16,11 @@ public final class NeedOffers {
         /** The premium a SUPPLY request of {@code citizenId} for {@code itemId} offers; {@code fixed} when not learned. */
         double premium(int citizenId, int itemId, double fixed);
 
+        /** The share of its index price a crafter's buy order for {@code itemId} offers (N8.3); {@code fixed} when not learned. */
+        default double buyShare(int citizenId, int itemId, double fixed) {
+            return fixed;
+        }
+
         /**
          * A request's ended row was written ({@code closed} as written). {@code committed}: on an autocommit connection;
          * false inside a transaction that may still roll back. Called on the store's thread: in memory only, no I/O.
@@ -44,6 +49,21 @@ public final class NeedOffers {
             return Double.isFinite(premium) && premium > 0.0d ? premium : fixed;
         } catch (RuntimeException failure) {
             log.warn("learned offer failed for citizen {} item {}; the configured premium holds", citizenId, itemId, failure);
+            return fixed;
+        }
+    }
+
+    /** The learner's share for a crafter's buy order, or {@code fixed} with none, or when it failed (logged). */
+    static double buyShare(int citizenId, int itemId, double fixed) {
+        Learner current = learner;
+        if (current == null) {
+            return fixed;
+        }
+        try {
+            double share = current.buyShare(citizenId, itemId, fixed);
+            return Double.isFinite(share) && share > 0.0d ? share : fixed;
+        } catch (RuntimeException failure) {
+            log.warn("learned buy share failed for citizen {} item {}; the fixed share holds", citizenId, itemId, failure);
             return fixed;
         }
     }

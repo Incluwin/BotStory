@@ -124,7 +124,7 @@ class PriceLearningSimulationTest {
                     "round " + round);
         }
         off.settleAsks(null, Map.of()); // nothing booked
-        assertEquals("{\"on\":false,\"loaded\":false,\"ask\":{},\"offer\":{},\"bench\":{}}", off.prices().json());
+        assertEquals("{\"on\":false,\"loaded\":false,\"ask\":{},\"offer\":{},\"bench\":{},\"buy\":{}}", off.prices().json());
     }
 
     @Test

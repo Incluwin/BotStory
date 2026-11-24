@@ -97,7 +97,7 @@ class MesoFlowsTest {
             MesoAccount account = MesoAccount.forOperation(kind);
             boolean transfer = kind == EconomyOperationKind.PLAYER_SHOP_LIST || kind == EconomyOperationKind.PLAYER_SHOP_SALE
                     || kind == EconomyOperationKind.PLAYER_TRADE || kind == EconomyOperationKind.COMPANION_GIFT
-                    || kind == EconomyOperationKind.NEED_FULFILLED;
+                    || kind == EconomyOperationKind.NEED_FULFILLED || kind == EconomyOperationKind.COMMISSION;
             assertEquals(!transfer, account.external(), kind + " -> " + account);
         }
     }
