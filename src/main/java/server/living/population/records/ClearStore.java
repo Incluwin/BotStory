@@ -78,10 +78,17 @@ public class ClearStore {
         }
     }
 
-    /** Each quest's first clear (the lowest id) and its fastest timed one (ties: the earlier), at most two rows a quest. */
+    /** {@link Clear#rolled} in SQL: not a field boss's untimed kill. */
+    private static final String NOT_ROLLED = "(duration_ms > 0 OR instance NOT LIKE '" + Clear.FIELD_INSTANCE + "%')";
+
+    /**
+     * Each quest's first clear (the lowest id that is no rolled kill; the lowest rolled one while there is only such) and
+     * its fastest timed one (ties: the earlier), at most two rows a quest.
+     */
     public List<Clear> records() {
         List<Clear> out = new ArrayList<>();
-        String quests = "SELECT quest, MIN(id) AS first_id FROM living_clear GROUP BY quest";
+        String quests = "SELECT quest, COALESCE(MIN(CASE WHEN " + NOT_ROLLED + " THEN id END), MIN(id)) AS first_id"
+                + " FROM living_clear GROUP BY quest";
         String fastest = SqlTime.utc("SELECT " + COLUMNS + " FROM living_clear WHERE quest = ? AND duration_ms > 0"
                 + " ORDER BY duration_ms, id LIMIT 1");
         String byId = SqlTime.utc("SELECT " + COLUMNS + " FROM living_clear WHERE id = ?");
@@ -123,11 +130,11 @@ public class ClearStore {
         return out;
     }
 
-    /** Quest -> its fastest timed clear before {@code beforeMs}; a quest with any clear before then is a key (0 untimed). */
+    /** Quest -> its fastest timed clear before {@code beforeMs}; a quest with any clear but rolled kills before then is a key (0 untimed). */
     public Map<String, Long> bestsBefore(long beforeMs) {
         Map<String, Long> out = new HashMap<>();
         String sql = SqlTime.utc("SELECT quest, COALESCE(MIN(NULLIF(duration_ms, 0)), 0) FROM living_clear"
-                + " WHERE cleared_at < ? GROUP BY quest");
+                + " WHERE cleared_at < ? AND " + NOT_ROLLED + " GROUP BY quest");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             SqlTime.set(ps, 1, beforeMs);
             try (ResultSet rs = ps.executeQuery()) {

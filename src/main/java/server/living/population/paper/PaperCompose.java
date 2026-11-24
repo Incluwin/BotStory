@@ -44,10 +44,14 @@ public final class PaperCompose {
     public record Climb(String name, String bracket, int points) {
     }
 
-    /** A clear in the window: quest script, how long (0 untimed), and the names in it. */
-    public record ClearRow(String quest, long durationMs, long clearedAtMs, List<String> names) {
+    /** A clear in the window: quest script, how long (0 untimed), the names in it, and whether a roll settled it (Clear.rolled). */
+    public record ClearRow(String quest, long durationMs, long clearedAtMs, List<String> names, boolean rolled) {
         public ClearRow {
             names = List.copyOf(names);
+        }
+
+        public ClearRow(String quest, long durationMs, long clearedAtMs, List<String> names) {
+            this(quest, durationMs, clearedAtMs, names, false);
         }
     }
 
@@ -73,7 +77,7 @@ public final class PaperCompose {
         /** Each recorded quest's fastest timed clear before {@code beforeMs}. */
         Map<String, Long> fastestBefore(long beforeMs);
 
-        /** Quests with any clear before {@code beforeMs}. */
+        /** Quests with any clear before {@code beforeMs} but rolled field-boss kills. */
         Set<String> clearedBefore(long beforeMs);
 
         List<Price> prices(LocalDate from, LocalDate to);
@@ -194,7 +198,7 @@ public final class PaperCompose {
                 if (sources.questLabel(clear.quest()) == null) {
                     continue;
                 }
-                if (!clearedBefore.contains(clear.quest())) {
+                if (!clear.rolled() && !clearedBefore.contains(clear.quest())) { // a rolled kill is never a first
                     firsts.putIfAbsent(clear.quest(), clear);
                 }
                 ClearRow held = fastest.get(clear.quest());
@@ -220,7 +224,7 @@ public final class PaperCompose {
         Set<String> told = new HashSet<>();
         for (RivalBeat beat : sources.rivalBeats(fromMs, toMs)) {
             String label = sources.questLabel(beat.quest());
-            if (label != null && told.add(beat.crew() + "|" + beat.quest())) {
+            if (beat.durationMs() > 0L && label != null && told.add(beat.crew() + "|" + beat.quest())) {
                 add(drafts, "records.rival", W_RIVAL, Map.of("crew", beat.crew(), "quest", label,
                         "time", time(beat.durationMs())));
             }

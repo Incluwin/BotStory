@@ -28,7 +28,7 @@ import java.util.Set;
 public final class ClearLog {
     private static final Logger log = LoggerFactory.getLogger(ClearLog.class);
     /** Below this a clear has no believable time (a start never seen): it is booked untimed. */
-    private static final long MIN_DURATION_MS = 1_000L;
+    static final long MIN_DURATION_MS = 1_000L;
     private static final int RECENT = 20;
 
     /** What the log asks of the world; tests bring their own. */
@@ -56,6 +56,8 @@ public final class ClearLog {
     private final List<java.util.function.Consumer<Clear>> booked = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final Map<String, Clear> firsts = new HashMap<>();
     private final Map<String, Clear> fastest = new HashMap<>();
+    /** Field boss -> its earliest rolled kill ({@link Clear#rolled}): shown until a real fight makes its first kill. */
+    private final Map<String, Clear> rolled = new HashMap<>();
     private final Map<Integer, Map<String, Long>> playerBests = new HashMap<>();
     private final Map<Integer, Map<String, Long>> crewBests = new HashMap<>();
     private final Deque<Clear> recent = new ArrayDeque<>();
@@ -192,6 +194,10 @@ public final class ClearLog {
     }
 
     private void merge(Clear clear) {
+        if (clear.rolled()) { // a kill, never a first (and, untimed, no one's best)
+            rolled.putIfAbsent(clear.quest(), clear);
+            return;
+        }
         Clear first = firsts.get(clear.quest());
         if (first == null || clear.clearedAtMs() < first.clearedAtMs()
                 || clear.clearedAtMs() == first.clearedAtMs() && clear.id() < first.id()) {
@@ -232,6 +238,11 @@ public final class ClearLog {
         return firsts.get(quest);
     }
 
+    /** The field boss's earliest rolled kill while it has no first kill yet; null otherwise. */
+    public synchronized Clear takenDown(String quest) {
+        return firsts.containsKey(quest) ? null : rolled.get(quest);
+    }
+
     public synchronized Clear fastest(String quest) {
         return fastest.get(quest);
     }
@@ -252,11 +263,11 @@ public final class ClearLog {
         return one == null ? Map.of() : Map.copyOf(one);
     }
 
-    /** The listed quests that have a clear, in rivals.yaml order. */
+    /** The listed quests that have a clear (a rolled kill too), in rivals.yaml order. */
     public synchronized List<String> questsWithRecords() {
         List<String> out = new ArrayList<>();
         for (QuestLabels.Quest quest : labels().all()) {
-            if (firsts.containsKey(quest.script())) {
+            if (firsts.containsKey(quest.script()) || rolled.containsKey(quest.script())) {
                 out.add(quest.script());
             }
         }
