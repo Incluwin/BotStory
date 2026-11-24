@@ -16,7 +16,12 @@ public enum NeedKind {
      * A price on a field boss or a count of a monster (docs/WORLD_SYSTEMS_PLAN.md N6.2, {@link Bounties}): claimed at a
      * board, paid from the citizen's purse when the claimant's kills meet it; no item changes hands.
      */
-    BOUNTY;
+    BOUNTY,
+    /**
+     * A standing order for a material (docs/WORLD_SYSTEMS_PLAN.md N8.3): a crafter's, handed over like any other request,
+     * or a player's own ({@link BuyOrders}), which citizens sell into.
+     */
+    BUY;
 
     /** Whether a player hands something over for it (everything but PARTY, MENTOR and BOUNTY). */
     public boolean item() {

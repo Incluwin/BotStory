@@ -66,6 +66,16 @@ public final class NeedScreens {
             options.add(new LivingTalk.Option("#bThe paper#k", () -> server.living.population.paper.PaperView.board(player,
                     NeedBoards.BOARD_NPC, population.paper(), () -> board(player, boardMapId))));
         }
+        if (population.commissions() != null && population.commissions().on()) { // N8.2
+            options.add(new LivingTalk.Option("#bCommission a crafter#k",
+                    () -> population.commissions().screens().board(player, () -> board(player, boardMapId))));
+        }
+        if (population.buyOrders() != null && population.buyOrders().on()) { // N8.3, and the prices page (N8.4)
+            options.add(new LivingTalk.Option("#bBuy orders#k",
+                    () -> population.buyOrders().screens().board(player, () -> board(player, boardMapId))));
+            options.add(new LivingTalk.Option("#bPrices#k",
+                    () -> population.prices().board(player, () -> board(player, boardMapId))));
+        }
         LivingTalk.open(player, NeedBoards.BOARD_NPC)
                 .menu("Townsfolk pin what they need here.\r\nBring it to them, or leave it here if they are away."
                         + " They pay on the spot.", options)
@@ -202,10 +212,17 @@ public final class NeedScreens {
                         () -> offer(player, citizen.getName(), need.id(), carried)));
             }
         }
+        boolean commission = population.commissions() != null && population.commissions().screens().mayTalk(player, citizen);
+        if (commission) { // N8.2: a crafter in town, and the player carries what it works with
+            options.add(new LivingTalk.Option("I'd like to have something made",
+                    () -> population.commissions().screens().crafter(player, citizen.getId(), null)));
+        }
         if (options.isEmpty()) {
             return false;
         }
-        if (options.size() == 1) {
+        if (only == null) {
+            population.commissions().screens().crafter(player, citizen.getId(), null);
+        } else if (options.size() == 1) {
             offer(player, citizen.getName(), only.id(), ledger.carried(player, only));
         } else {
             LivingTalk.open(player, NeedBoards.BOARD_NPC).menu(citizen.getName() + " is looking for a few things.", options)
@@ -239,10 +256,10 @@ public final class NeedScreens {
 
     // ---- the hand-over ---------------------------------------------------------------------------
 
-    /** A board hand-in of a SUPPLY request asks how many first; the rest go at once. */
+    /** A board hand-in of a SUPPLY or BUY request asks how many first; the rest go at once. */
     private void give(Character player, int needId, int count, boolean board) {
         Need need = ledger.need(needId);
-        if (board && need != null && need.kind() == NeedKind.SUPPLY && Math.min(count, need.remaining()) > 1) {
+        if (board && need != null && (need.kind() == NeedKind.SUPPLY || need.kind() == NeedKind.BUY) && Math.min(count, need.remaining()) > 1) {
             int most = Math.min(count, need.remaining());
             LivingTalk.open(player, NeedBoards.BOARD_NPC)
                     .number("How many do you leave? (" + Market.formatPrice(need.offer()) + " each)", most, 1, most,

@@ -4,11 +4,12 @@ package server.living.population.needs;
  * One request of a citizen (a living_need row): {@code quantity} of {@code itemId} at {@code offer} meso a unit, of which
  * {@code delivered} came in; {@code detail} says what for (the boss, the slot, the role). A player's hold is
  * {@code claimedBy} until {@code claimedUntilMs}; {@code fulfilledBy} is the last player who handed something in, and
- * {@code thanked} is false while a board hand-in still waits for its whispered thanks. Times are epoch ms (0: none).
+ * {@code thanked} is false while a board hand-in still waits for its whispered thanks. {@code posterId} is the player
+ * who posted it (a buy order, {@link BuyOrders}; its citizen is 0), or 0. Times are epoch ms (0: none).
  */
 public record Need(int id, int citizenId, NeedKind kind, int itemId, int quantity, int delivered, long offer,
                    String detail, int mapId, State state, int claimedBy, long claimedUntilMs, int fulfilledBy,
-                   boolean thanked, long createdAtMs, long deadlineMs, long closedAtMs) {
+                   boolean thanked, long createdAtMs, long deadlineMs, long closedAtMs, int posterId) {
 
     /** OPEN: anyone may help. ESCROW: handed in at a board, waiting for its next load. The rest are ended. */
     public enum State {
@@ -26,6 +27,14 @@ public record Need(int id, int citizenId, NeedKind kind, int itemId, int quantit
 
     public Need {
         detail = detail == null ? "" : detail;
+    }
+
+    /** A citizen's request. */
+    public Need(int id, int citizenId, NeedKind kind, int itemId, int quantity, int delivered, long offer, String detail,
+                int mapId, State state, int claimedBy, long claimedUntilMs, int fulfilledBy, boolean thanked,
+                long createdAtMs, long deadlineMs, long closedAtMs) {
+        this(id, citizenId, kind, itemId, quantity, delivered, offer, detail, mapId, state, claimedBy, claimedUntilMs,
+                fulfilledBy, thanked, createdAtMs, deadlineMs, closedAtMs, 0);
     }
 
     /** A new open request, not stored yet (id 0). */
@@ -61,17 +70,17 @@ public record Need(int id, int citizenId, NeedKind kind, int itemId, int quantit
 
     Need withId(int newId) {
         return new Need(newId, citizenId, kind, itemId, quantity, delivered, offer, detail, mapId, state, claimedBy,
-                claimedUntilMs, fulfilledBy, thanked, createdAtMs, deadlineMs, closedAtMs);
+                claimedUntilMs, fulfilledBy, thanked, createdAtMs, deadlineMs, closedAtMs, posterId);
     }
 
     Need withQuantity(int newQuantity, long newOffer) {
         return new Need(id, citizenId, kind, itemId, newQuantity, delivered, newOffer, detail, mapId, state, claimedBy,
-                claimedUntilMs, fulfilledBy, thanked, createdAtMs, deadlineMs, closedAtMs);
+                claimedUntilMs, fulfilledBy, thanked, createdAtMs, deadlineMs, closedAtMs, posterId);
     }
 
     Need withClaim(int playerId, long untilMs) {
         return new Need(id, citizenId, kind, itemId, quantity, delivered, offer, detail, mapId, state, playerId, untilMs,
-                fulfilledBy, thanked, createdAtMs, deadlineMs, closedAtMs);
+                fulfilledBy, thanked, createdAtMs, deadlineMs, closedAtMs, posterId);
     }
 
     /**
@@ -84,16 +93,16 @@ public record Need(int id, int citizenId, NeedKind kind, int itemId, int quantit
         State next = !done ? State.OPEN : escrow ? State.ESCROW : State.MET;
         return new Need(id, citizenId, kind, itemId, quantity, now, offer, detail, mapId, next, done ? 0 : claimedBy,
                 done ? 0L : claimedUntilMs, playerId, thanked && !board, createdAtMs, deadlineMs,
-                next == State.MET ? nowMs : closedAtMs);
+                next == State.MET ? nowMs : closedAtMs, posterId);
     }
 
     Need closed(State end, long nowMs) {
         return new Need(id, citizenId, kind, itemId, quantity, delivered, offer, detail, mapId, end, 0, 0L, fulfilledBy,
-                thanked, createdAtMs, deadlineMs, nowMs);
+                thanked, createdAtMs, deadlineMs, nowMs, posterId);
     }
 
     Need thankedNow() {
         return new Need(id, citizenId, kind, itemId, quantity, delivered, offer, detail, mapId, state, claimedBy,
-                claimedUntilMs, fulfilledBy, true, createdAtMs, deadlineMs, closedAtMs);
+                claimedUntilMs, fulfilledBy, true, createdAtMs, deadlineMs, closedAtMs, posterId);
     }
 }

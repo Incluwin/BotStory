@@ -81,6 +81,10 @@ public final class Population {
     private final NeedLedger needs;
     private final server.living.population.records.FieldBossKills fieldBossKills;
     private final FieldBossCamps camps;
+    private final server.living.population.craft.Professions professions;
+    private final server.living.population.craft.Commissions commissions;
+    private final server.living.population.needs.BuyOrders buyOrders;
+    private final server.living.population.craft.PricePages prices;
     private final ClearLog clears;
     private final RivalCrews rivals;
     private final Coliseum coliseum;
@@ -131,6 +135,10 @@ public final class Population {
         this.hearsay = new Hearsay(this, new java.util.Random()); // and of the humans they met (N2.3)
         this.killSteals = new KillSteals(this); // and of who took their kills (N2.4)
         this.needs = new NeedLedger(this);
+        this.professions = new server.living.population.craft.Professions(this); // trades, commissions, buy orders (N8)
+        this.commissions = new server.living.population.craft.Commissions(this, professions);
+        this.buyOrders = new server.living.population.needs.BuyOrders(this);
+        this.prices = new server.living.population.craft.PricePages(this);
         this.clears = new ClearLog(this);
         this.fieldBossKills = new server.living.population.records.FieldBossKills(this); // field bosses (WORLD_SYSTEMS_PLAN N6)
         this.fieldBossKills.onKill(needs.bounties()::bossKilled); // and the bounties on them (N6.2)
@@ -263,6 +271,7 @@ public final class Population {
             population.paper.minute(System.currentTimeMillis()); // the Sunday paper (docs/WORLD_SYSTEMS_PLAN.md N1)
             population.guildGoals.minute(System.currentTimeMillis()); // bot guilds' weekly goals (N5.2)
             population.camps.minute(System.currentTimeMillis()); // citizens at field bosses (N6.3)
+            population.tradesMinute(System.currentTimeMillis()); // crafters and buy orders (N8)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -445,6 +454,33 @@ public final class Population {
     }
 
     /** What citizens ask for on the needs board (docs/BOT_CONCEPT_PLAN.md F1). */
+    /** Citizens' trades (docs/WORLD_SYSTEMS_PLAN.md N8.1). */
+    public server.living.population.craft.Professions professions() {
+        return professions;
+    }
+
+    /** Orders with citizen crafters (N8.2). */
+    public server.living.population.craft.Commissions commissions() {
+        return commissions;
+    }
+
+    /** Players' buy orders (N8.3). */
+    public server.living.population.needs.BuyOrders buyOrders() {
+        return buyOrders;
+    }
+
+    /** The board's prices page (N8.4). */
+    public server.living.population.craft.PricePages prices() {
+        return prices;
+    }
+
+    private void tradesMinute(long nowMs) {
+        professions.minute();
+        commissions.minute(nowMs);
+        buyOrders.minute(nowMs);
+        prices.minute(nowMs);
+    }
+
     public NeedLedger needs() {
         return needs;
     }

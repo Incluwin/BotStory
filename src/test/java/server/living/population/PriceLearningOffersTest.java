@@ -60,6 +60,26 @@ class PriceLearningOffersTest {
         assertTrue(prices.offers().rows().isEmpty());
     }
 
+    /** A crafter's buy order (N8.3) has a lever of its own, by item class; a player's order teaches it nothing. */
+    @Test
+    void aBuyOrdersEndRewardsTheBuyLeverAlone() {
+        PriceLearning prices = new PriceLearning(population);
+        assertEquals(0.9d, prices.buyShare(CITIZEN, 4010000, 0.9d), 0.0d, "off: the fixed share");
+        config.PRICE_LEARNING_ENABLED = true;
+        double share = prices.buyShare(CITIZEN, 4010000, 0.9d);
+        assertTrue(share >= 0.8d - 1e-9 && share <= 1.1d + 1e-9, "a BUY arm: " + share);
+        long posted = System.currentTimeMillis();
+        Need met = new Need(9, CITIZEN, NeedKind.BUY, 4010000, 50, 50, 90L, "r4011000", 100000000, Need.State.MET, 0, 0L, 0,
+                true, posted, posted + 24 * HOUR, posted + HOUR);
+        prices.offerClosed(new Need(8, 0, NeedKind.BUY, 4010000, 50, 50, 90L, "", 100000000, Need.State.MET, 0, 0L, 0, true,
+                posted, posted + 24 * HOUR, posted + HOUR, 10), 0L, true);
+        assertTrue(prices.buys().rows().isEmpty(), "no arm was picked for a player's order");
+        prices.offerClosed(met, 0L, true);
+        prices.offerClosed(met, 0L, true);
+        assertEquals(1.0d, prices.buys().rows().get(0).n(), 0.0d, "once");
+        assertTrue(prices.offers().rows().isEmpty());
+    }
+
     @Test
     void anOpenRequestKeepsItsArmAndItsEndRewardsIt() {
         config.PRICE_LEARNING_ENABLED = true;
