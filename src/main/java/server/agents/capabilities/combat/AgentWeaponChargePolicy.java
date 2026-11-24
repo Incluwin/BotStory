@@ -1,7 +1,11 @@
 package server.agents.capabilities.combat;
 
+import client.BuffStat;
+import client.Character;
+import client.Skill;
 import constants.skills.Paladin;
 import constants.skills.WhiteKnight;
+import server.agents.integration.AgentSkillGatewayRuntime;
 import server.life.Element;
 import server.life.ElementalEffectiveness;
 import server.life.Monster;
@@ -89,6 +93,26 @@ public final class AgentWeaponChargePolicy {
             }
         }
         return best;
+    }
+
+    /** What a swing costs beyond its animation: Charged Blow uses up the charge, and the buff loop casts it again. */
+    static int spentChargeMs(Character bot, int skillId) {
+        if (skillId != WhiteKnight.CHARGE_BLOW) {
+            return 0;
+        }
+        Skill advanced = AgentSkillGatewayRuntime.skills().getSkill(Paladin.ADVANCED_CHARGE);
+        int level = advanced == null ? 0 : bot.getSkillLevel(advanced);
+        return spentChargeMs(skillId, bot.getBuffSource(BuffStat.WK_CHARGE),
+                level > 0 ? advanced.getEffect(level).getX() : 0,
+                chargeId -> AgentCombatSpecialMoveTickRuntime.castLockMs(bot, chargeId));
+    }
+
+    /** @param keepPercent how often Advanced Charge keeps the charge (CloseRangeDamageHandler); 0 without it */
+    static int spentChargeMs(int skillId, int activeChargeSourceId, int keepPercent, IntUnaryOperator castMsOf) {
+        if (skillId != WhiteKnight.CHARGE_BLOW || activeChargeSourceId <= 0 || keepPercent >= 100) {
+            return 0;
+        }
+        return castMsOf.applyAsInt(activeChargeSourceId) * (100 - Math.max(0, keepPercent)) / 100;
     }
 
     /** How well an element suits the living monsters: weak counts for, strong and immune against. */
