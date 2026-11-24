@@ -51,7 +51,8 @@ public enum ItemFactory {
     SCROLL_BAG(11, false),
     CHAIR_BAG(12, false),
     MOUNT_BAG(13, false),
-    NEED_ESCROW(14, false);    // a citizen's needs-board hand-ins while it was away, by its id (server.living.population.needs)
+    NEED_ESCROW(14, false),    // a citizen's needs-board hand-ins while it was away, by its id (server.living.population.needs)
+    COMMISSION(15, false);     // what a customer left with a citizen crafter, by 1,500,000,000 + the order's id (server.living.population.craft)
     private final int value;
     private final boolean account;
 

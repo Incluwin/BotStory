@@ -522,6 +522,28 @@ public class DueyProcessor {
         return packageId != -1 && (item == null || insertPackageItem(packageId, item));
     }
 
+    /** The same package on the caller's connection, inside its transaction (a citizen crafter's delivery or refund). */
+    public static void dueyCreatePackage(Connection con, Item item, int mesos, String message, String sender,
+                                         int recipientCid) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("INSERT INTO `dueypackages` (ReceiverId, SenderName, Mesos, TimeStamp, Message, Type, Checked) VALUES (?, ?, ?, ?, ?, 0, 1)", Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, recipientCid);
+            ps.setString(2, sender);
+            ps.setInt(3, mesos);
+            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            ps.setString(5, message == null || message.length() <= 200 ? message : message.substring(0, 200));
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (!rs.next()) {
+                    throw new SQLException("no id for a Duey package to " + recipientCid);
+                }
+                if (item != null) {
+                    ItemFactory.DUEY.saveItems(Collections.singletonList(new Pair<>(item,
+                            ItemConstants.getInventoryType(item.getItemId()))), rs.getInt(1), con);
+                }
+            }
+        }
+    }
+
     /** The "a package has arrived" notice a player's Duey send gives its recipient while they are online. */
     public static void dueyNotify(Character recipient) {
         Client client = recipient == null ? null : recipient.getClient();

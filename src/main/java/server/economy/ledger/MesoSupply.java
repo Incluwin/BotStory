@@ -3,6 +3,8 @@ package server.economy.ledger;
 import client.Character;
 import net.server.Server;
 import net.server.world.World;
+import server.living.population.craft.CommissionStore;
+import server.living.population.needs.NeedStore;
 import server.living.store.LivingStore;
 import tools.DatabaseConnection;
 
@@ -17,11 +19,12 @@ import java.util.Map;
 /**
  * All the meso there is, by pool and holder (docs/ECONOMY_PLAN.md E0): purses (an online character's from memory, the
  * rest from the DB), storages, Fredrick (characters.MerchantMesos, where hired merchant sales go), Duey packages, and
- * the bench hauls (living_roster.haul_meso, negative when a haul owes upkeep, so its changes match the ledger's).
+ * the bench hauls (living_roster.haul_meso, negative when a haul owes upkeep, so its changes match the ledger's), and
+ * the escrow: crafters' fees and players' buy orders not yet paid out (docs/WORLD_SYSTEMS_PLAN.md N8).
  * A holder is a player, a GM, an active or retired citizen, or a bot (a persona character or a hired citizen).
  */
 public final class MesoSupply {
-    public enum Pool { PURSE, STORAGE, FREDRICK, DUEY, HAUL }
+    public enum Pool { PURSE, STORAGE, FREDRICK, DUEY, HAUL, ESCROW }
 
     /** One snapshot's meso by pool and holder. */
     public static final class Snapshot {
@@ -100,6 +103,7 @@ public final class MesoSupply {
                 }
             }
             snapshot.add(Pool.HAUL, MesoHolder.BOT, LivingStore.totalHaulMeso(con));
+            snapshot.add(Pool.ESCROW, MesoHolder.HUMAN, CommissionStore.heldMeso(con) + NeedStore.heldMeso(con));
         }
         return snapshot;
     }

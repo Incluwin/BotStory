@@ -55,7 +55,9 @@ public enum MesoAccount {
      * Casino chips bought from and cashed at the counter (ChipCashier). Apart from NPC_SALE and NPC_PURCHASE so the
      * controller sizes its pickup lever by vendoring alone; across a day it nets to the house edge (ECONOMY_PLAN 9 R1).
      */
-    CASINO(true);
+    CASINO(true),
+    /** A crafter's fee: from the customer into the order, then to the crafter or back (docs/WORLD_SYSTEMS_PLAN.md N8). */
+    COMMISSION(false);
 
     private final boolean external;
 
@@ -80,6 +82,7 @@ public enum MesoAccount {
             case COMPANION_GIFT -> COMPANION;
             case CASH_SHOP_WINDOW -> CASH_SHOP;
             case NEED_FULFILLED -> NEEDS;
+            case COMMISSION -> COMMISSION;
         };
     }
 }
