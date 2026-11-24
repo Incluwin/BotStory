@@ -11,7 +11,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import server.ItemInformationProvider;
 import server.living.population.CitizenJumpQuests;
 import server.living.population.JumpQuestCourses;
 import server.living.population.Population;
@@ -53,7 +52,6 @@ class FestivalTest {
     private final MapleMap road = mock(MapleMap.class);
     private final List<Character> climbers = new ArrayList<>();
     private MockedStatic<InventoryManipulator> bags;
-    private MockedStatic<ItemInformationProvider> items;
     private WorldEvents events;
 
     @BeforeEach
@@ -72,17 +70,15 @@ class FestivalTest {
         when(population.gameWorld()).thenReturn(world);
         bags = mockStatic(InventoryManipulator.class);
         bags.when(() -> InventoryManipulator.checkSpace(any(), anyInt(), anyInt(), any())).thenReturn(true);
-        items = mockStatic(ItemInformationProvider.class);
-        items.when(ItemInformationProvider::getInstance).thenReturn(mock(ItemInformationProvider.class));
         events = new WorldEvents(population, store, EventCatalog.load(Path.of("scripts/config/population")), ZoneOffset.UTC,
                 new Random(1));
         events.notice = notices::add;
+        events.itemNames = id -> "a chair";
     }
 
     @AfterEach
     void close() {
         bags.close();
-        items.close();
     }
 
     private Character player(int id, String name, boolean bot) {

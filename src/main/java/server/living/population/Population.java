@@ -225,7 +225,7 @@ public final class Population {
         AgentLootPolicy.installSelectivity(population.controller);
         // citizens leave alone a mob a human is fighting, while kill-steal memory is on (docs/WORLD_SYSTEMS_PLAN.md N2.4)
         server.agents.capabilities.combat.AgentGrindManners.install(id -> population.config().KS_MEMORY_ENABLED
-                && population.isCitizen(id));
+                && population.isCitizen(id) && !population.worldEvents().defends(id)); // an invasion's are everyone's (N4.3)
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
         // a camping citizen may hit a field boss when its manners allow (docs/WORLD_SYSTEMS_PLAN.md N6.3)
         server.agents.capabilities.expedition.boss.AgentFieldBossSeats.install(population.camps::allows);

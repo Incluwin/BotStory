@@ -225,6 +225,7 @@ final class Hearsay {
             case WON -> "won";
             case RACE_WON -> "race";
             case KS -> "ks";
+            case DEFENDED -> "def";
             default -> null;
         };
     }

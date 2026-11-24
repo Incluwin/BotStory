@@ -42,6 +42,10 @@ class PaperCatalogTest {
         FILED.put("town.festival.quiet", Map.of("place", "Henesys"));
         FILED.put("town.meet", Map.of("name", "Ann", "place", "Henesys"));
         FILED.put("notices.festival", Map.of("when", "Sunday at 7 pm", "place", "Henesys"));
+        FILED.put("town.invasion.held", Map.of("place", "the Henesys gate", "town", "Henesys"));
+        FILED.put("town.invasion.heroes", Map.of("place", "the Henesys gate", "town", "Henesys", "names", "Ann, Ben"));
+        FILED.put("town.invasion.overrun", Map.of("place", "the Henesys gate", "town", "Henesys"));
+        FILED.put("notices.invasion", Map.of("when", "Sunday at 8 pm", "place", "the Henesys gate"));
         FILED.put("notices.marketday", Map.of("when", "Sunday at 3 pm"));
         FILED.put("town.wedding", Map.of("name", "Ann", "partner", "Ben"));
         FILED.put("town.guild", Map.of("guild", "Lumen", "leader", "Ann"));

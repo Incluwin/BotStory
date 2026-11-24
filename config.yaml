@@ -1767,6 +1767,17 @@ population:
     # false = the kill switch: no festival. The meet needs JQ_ENABLED, the tables MINIGAMES_ENABLED, the drop game DROP_GAME_ENABLED.
     # Technical: CitizenMiniGames.towns and the drop game's mapId/spot read WorldModifier.festivalTown; a drop game under way finishes where it started; a player wins the meet when seen at the last leg's top after being seen below it (polled every 20 s).
     WORLD_EVENT_FESTIVAL_ENABLED: false
+    # Invasion (decision D12): monsters come to the field just outside a town's gate (events.yaml invasions, one a week in
+    # turn). Up to WORLD_EVENT_RALLY_MAX citizens of the region near that level are sent there. With a player on the map
+    # it is a real fight, waves and one stronger monster at the end; held, everyone who dealt real damage gets fame and an
+    # item of the fixed table. With nobody there a roll settles it: the same news, no drops, EXP, meso or prizes. Overrun,
+    # citizens keep off the field for an hour. The monsters drop nothing, so no meso comes of it. false = the kill switch.
+    # Technical: events.Invasion; the monsters stand only while a player is on the map and go with the event, on a stop or on a shutdown; kill-steal memory and grind manners leave them out; citizens under the site's lowest level keep off the field meanwhile.
+    WORLD_EVENT_INVASION_ENABLED: false
+    # Technical: the most citizens one invasion holds and sends (PresenceScheduler.hold and travel, inside MAP_VISIBLE_MAX), lowest level of the site's band first; those training on the field already are on top of it.
+    WORLD_EVENT_RALLY_MAX: 12
+    # Technical: HP potions a citizen must carry to be sent, and under which it is let go to restock (AgentPotionService.countPotions, read on the 20 s step), so an invasion adds no deaths over ordinary training.
+    WORLD_EVENT_POTION_FLOOR: 50
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

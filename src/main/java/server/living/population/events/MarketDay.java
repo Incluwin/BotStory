@@ -71,7 +71,7 @@ final class MarketDay implements WorldEvents.Runner {
                 .sorted(Comparator.comparingDouble(Map.Entry::getValue)).limit(BARGAINS).toList();
         if (!best.isEmpty()) {
             PaperDesk.file("market.bargains", 150, Map.of(
-                    "items", String.join(", ", best.stream().map(one -> WorldEvents.itemName(one.getKey())).toList()),
+                    "items", String.join(", ", best.stream().map(one -> events.itemName(one.getKey())).toList()),
                     "percent", String.valueOf(Math.round((1.0d - best.getFirst().getValue()) * 100.0d))));
         }
         return "at most " + mostStalls + " stalls";

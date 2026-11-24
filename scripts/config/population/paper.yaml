@@ -20,6 +20,8 @@
 #   market.bargains       items, percent (market day)         notices.marketday  when
 #   town.festival         name, place, count                  town.festival.quiet  place
 #   town.meet             name, place (a festival's climb)    notices.festival   when, place
+#   town.invasion.held / .overrun  place, town                town.invasion.heroes  place, town, names
+#   notices.invasion      when, place
 # title: the masthead. Players are named like citizens (decision D2, as the records board does). ASCII only, no '#' (NPC window codes).
 
 title: "The Henesys Herald"
@@ -218,6 +220,50 @@ stories:
     gists:
       - "festival in {place} {when}"
       - "{place} has a festival {when}"
+
+  - key: town.invasion.held
+    headlines:
+      - "{town} holds"
+      - "Invaders beaten at {place}"
+    bodies:
+      - "Monsters massed at {place} and were driven off by those who stood there."
+      - "{town} sleeps soundly: the attack on {place} came to nothing."
+    gists:
+      - "they held {place}"
+      - "{town} beat the invasion"
+
+  - key: town.invasion.heroes
+    headlines:
+      - "{names} hold {place}"
+      - "{town} thanks {names}"
+    bodies:
+      - "Monsters came at {place} in waves. {names} stood in the way, and the line held."
+      - "{town} owes {names} a drink: the attack on {place} broke on them."
+    gists:
+      - "{names} held {place}"
+      - "{names} saved {town}"
+
+  - key: town.invasion.overrun
+    headlines:
+      - "{town} gate overrun"
+      - "The line at {place} breaks"
+    bodies:
+      - "Monsters overran {place}. Travellers from {town} took the long way round."
+      - "Too few stood at {place}, and the monsters walked through."
+    gists:
+      - "{place} got overrun"
+      - "{town} lost the invasion"
+
+  - key: notices.invasion
+    headlines:
+      - "Monsters gather near {place}"
+      - "Warning: {when}"
+    bodies:
+      - "Scouts expect an attack on {place} {when}. Anyone who can fight is welcome."
+      - "Monsters are massing. They will come at {place} {when}; bring potions and friends."
+    gists:
+      - "monsters are coming to {place} {when}"
+      - "invasion at {place} {when}"
 
   - key: notices.marketday
     headlines:

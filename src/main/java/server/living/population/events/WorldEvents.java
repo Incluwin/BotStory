@@ -14,6 +14,8 @@ import server.agents.runtime.AgentForeignWriteRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
+import server.life.LifeFactory;
+import server.life.Monster;
 import server.living.population.ChatterEngine;
 import server.living.population.Citizen;
 import server.living.population.CitizenSession;
@@ -37,9 +39,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 
 /**
  * The world events calendar (docs/WORLD_SYSTEMS_PLAN.md N4; population.WORLD_EVENTS_ENABLED plus a switch a kind).
@@ -154,9 +158,16 @@ public final class WorldEvents {
     private final List<Topic> aftermath = new ArrayList<>();
     private volatile List<Topic> topics = List.of();
     private final Map<String, Long> saidAt = new ConcurrentHashMap<>();
+    /** An invasion's monsters, and the citizens on its field: read by the kill hooks and the Agents' ticks. */
+    private final Set<Monster> invaders = ConcurrentHashMap.newKeySet();
+    private volatile Set<Integer> defenders = Set.of();
     private final AtomicLong deferred = new AtomicLong();
     /** The world notice; tests read it. */
     Consumer<String> notice = WorldEvents::broadcast;
+    /** A fresh monster; tests bring their own. */
+    IntFunction<Monster> mobs = LifeFactory::getMonster;
+    /** Item names; tests bring their own. */
+    IntFunction<String> itemNames = itemId -> ItemInformationProvider.getInstance().getName(itemId);
 
     public WorldEvents(Population population) {
         this(population, new WorldEventStore(), null, ZoneId.systemDefault(), new Random());
@@ -179,7 +190,7 @@ public final class WorldEvents {
         return on() && switch (kind) {
             case MARKET_DAY -> config.WORLD_EVENT_MARKET_DAY_ENABLED;
             case FESTIVAL -> config.WORLD_EVENT_FESTIVAL_ENABLED;
-            case INVASION -> false;
+            case INVASION -> config.WORLD_EVENT_INVASION_ENABLED;
         };
     }
 
@@ -310,7 +321,7 @@ public final class WorldEvents {
         return switch (run.entry.kind()) {
             case MARKET_DAY -> new MarketDay(this, run);
             case FESTIVAL -> new Festival(this, run);
-            case INVASION -> throw new IllegalStateException("not built");
+            case INVASION -> new Invasion(this, run);
         };
     }
 
@@ -596,6 +607,30 @@ public final class WorldEvents {
         }
     }
 
+    /** An invasion's monster: everyone's, so no kill of it is stolen (PopulationHooks.mobKilled). Memory only. */
+    public boolean isInvader(Monster monster) {
+        return invaders.contains(monster);
+    }
+
+    /** A citizen on an invasion's field: it fights beside players, whoever hit a monster first (AgentGrindManners). */
+    public boolean defends(int characterId) {
+        return defenders.contains(characterId);
+    }
+
+    void invader(Monster monster) {
+        invaders.add(monster);
+    }
+
+    void defenders(List<Integer> citizens) {
+        defenders = Set.copyOf(citizens);
+    }
+
+    /** The invasion is over: no invaders, no defenders. */
+    void disbanded() {
+        invaders.clear();
+        defenders = Set.of();
+    }
+
     // ---- prizes ----------------------------------------------------------------------------------------------------
 
     /** Fame and one item of the fixed table to a player, or to a bot on its own tick (decision D13: never meso). */
@@ -628,8 +663,8 @@ public final class WorldEvents {
         }
     }
 
-    static String itemName(int itemId) {
-        String name = ItemInformationProvider.getInstance().getName(itemId);
+    String itemName(int itemId) {
+        String name = itemNames.apply(itemId);
         return name == null ? "a prize" : name;
     }
 

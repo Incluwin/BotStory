@@ -563,6 +563,9 @@ public class PopulationConfig {
     public boolean WORLD_EVENTS_ENABLED = false;
     public boolean WORLD_EVENT_MARKET_DAY_ENABLED = false;
     public boolean WORLD_EVENT_FESTIVAL_ENABLED = false;
+    public boolean WORLD_EVENT_INVASION_ENABLED = false;
+    public int WORLD_EVENT_RALLY_MAX = 12;
+    public int WORLD_EVENT_POTION_FLOOR = 50;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
@@ -719,6 +722,10 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.BOUNTY_CHANCE must be 0..1, BOUNTY_PURSE_SHARE over 0 up to 1,"
                     + " BOUNTY_HUNT_KILLS and BOUNTY_CLAIM_MINUTES at least 1, BOUNTY_SHARE_PERCENT 1..100,"
                     + " FIELD_BOSS_CAMP_CHANCE 0..1, FIELD_BOSS_ROLL_MINUTES at least 1 and the rest not negative");
+        }
+        if (WORLD_EVENT_RALLY_MAX < 0 || WORLD_EVENT_POTION_FLOOR < 0) {
+            throw new IllegalArgumentException("population.WORLD_EVENT_RALLY_MAX and WORLD_EVENT_POTION_FLOOR must not be"
+                    + " negative");
         }
         if (PAPER_HOUR < 0 || PAPER_HOUR > 23 || PAPER_RETENTION_DAYS < 0 || (PAPER_RETENTION_DAYS > 0 && PAPER_RETENTION_DAYS < 30)
                 || !dayOfWeek(PAPER_DAY)) {

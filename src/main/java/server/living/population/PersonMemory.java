@@ -94,7 +94,9 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
          * They kept finishing the mobs it had done most of the work on, where it was training first (N2.4, decision D4):
          * a grudge from nothing ({@link #COLD}), as a let-down is.
          */
-        KS(7, -35, 30 * 60_000L);
+        KS(7, -35, 30 * 60_000L),
+        /** They fought beside it when a world event's invasion was held (N4.3); the detail is the town. */
+        DEFENDED(6, 6, HOUR_MS);
 
         final double weight;
         final int warmth;
@@ -279,7 +281,7 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
 
     /**
      * A deed code (Hearsay) in a few words naming {@code witness}: "ful" helped Ann out, "fam" famed Ann, "dfm" defamed
-     * Ann, "won" won at the coliseum, "ks" kept taking Ann's kills, "clr-kpq" cleared KPQ with Ann, "left-kpq" left Ann's
+     * Ann, "won" won at the coliseum, "ks" kept taking Ann's kills, "def" held the line with Ann, "clr-kpq" cleared KPQ with Ann, "left-kpq" left Ann's
      * KPQ run halfway. An unknown code is "did something".
      */
     public static String deedWords(String code, String witness) {
@@ -299,6 +301,7 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             case "won" -> "won at the coliseum";
             case "race" -> "beat " + who + "'s crew's time";
             case "ks" -> "kept taking " + who + "'s kills";
+            case "def" -> "held the line with " + who;
             default -> "did something for " + who;
         };
     }
@@ -396,6 +399,7 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
                 case FULFILLED, FULFILLED_BOARD -> "memory.greet.fulfilled";
                 case WON -> "memory.greet.won";
                 case RACE_WON -> "memory.greet.race";
+                case DEFENDED -> "memory.greet.defended";
                 case TALK, THANKED -> "memory.greet.talk";
                 case PQ_LEFT, DEFAMED, KS, HEARD_GOOD, HEARD_BAD -> null;
             };
@@ -490,6 +494,7 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             case WON -> "saw them win at the coliseum";
             case RACE_WON -> "they beat our " + quest + " time";
             case KS -> "they kept taking my kills";
+            case DEFENDED -> "held the line at " + (what.isEmpty() ? "the gate" : what) + " together";
             case HEARD_GOOD, HEARD_BAD -> {
                 Heard heard = Heard.parse(what);
                 yield heard == null ? "heard about them" : "heard from " + heard.teller() + " they "
