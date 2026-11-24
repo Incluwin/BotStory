@@ -240,6 +240,82 @@ class MarketErrandStallTest {
         assertNull(session.shopping);
     }
 
+    /** A market whose citizen buys the glove scroll at up to 500k by CitizenScrolling's rules, with no gear errand. */
+    private Market scrollMarket(MockedConstruction<CitizenScrolling> ignored) {
+        when(store.gearErrands()).thenReturn(Map.of());
+        when(population.citizen(CITIZEN)).thenReturn(session.citizen);
+        session.activity = Activity.TRAIN;
+        Market market = new Market(population, itemId -> 40_000L);
+        market.tick(); // opens it; an errand in training does not walk yet
+        session.activity = Activity.MARKET;
+        return market;
+    }
+
+    private static MockedConstruction<CitizenScrolling> buysGloveScrolls() {
+        return mockConstruction(CitizenScrolling.class, (scrolling, context) -> {
+            when(scrolling.seeker(any())).thenReturn(new CitizenScrolling.Seeker(CITIZEN, 110, List.of(1082002), 900_000L));
+            when(scrolling.offer(any(), eq(GLOVE_SCROLL))).thenReturn(500_000L);
+        });
+    }
+
+    private static final int GLOVE_SCROLL = 2040804;
+
+    private static PlayerShop.ListingView scroll(int perBundle, int price) {
+        return new PlayerShop.ListingView(0, GLOVE_SCROLL, (short) perBundle, (short) 3, price, "s", Map.of());
+    }
+
+    @Test
+    void aScrollErrandGoesToAPlayersStallFirstThenACitizens() {
+        config.SCROLL_ERRANDS_ENABLED = true;
+        int seller = 5150;
+        when(population.isCitizen(seller)).thenReturn(true);
+        when(population.citizen(seller)).thenReturn(session.citizen);
+        rooms.put(HERE, List.of(shop(77, seller, true, 400, scroll(1, 400_000))));
+        rooms.put(OTHER, List.of(shop(78, ANN, true, 400, scroll(1, 450_000))));
+        try (MockedConstruction<CitizenScrolling> scrolling = buysGloveScrolls()) {
+            scrollMarket(scrolling).tick();
+            verify(presence).travel(eq(session), eq(Activity.MARKET), eq(OTHER), anyLong()); // dearer, but a player's
+        }
+    }
+
+    @Test
+    void withOnlyACitizensStallItWalksThereAndGivingUpEndsTheErrand() {
+        config.SCROLL_ERRANDS_ENABLED = true;
+        int seller = 5150;
+        when(population.isCitizen(seller)).thenReturn(true);
+        when(population.citizen(seller)).thenReturn(session.citizen);
+        rooms.put(HERE, List.of(shop(77, seller, true, 400, scroll(1, 400_000))));
+        try (MockedConstruction<CitizenScrolling> scrolling = buysGloveScrolls()) {
+            Market market = scrollMarket(scrolling);
+            market.tick();
+            movement.verify(() -> AgentMovementCommandRuntime.moveTo(eq(session.entry), eq(new Point(400, 150)), eq(true)));
+            assertTrue(market.scrollErrands().any(CITIZEN));
+            market.tick();
+            market.tick();
+            market.tick();
+            assertFalse(market.scrollErrands().any(CITIZEN));
+        }
+    }
+
+    @Test
+    void noScrollErrandForAStackSoldAsOneBundleNorWithTheSwitchOff() {
+        rooms.put(OTHER, List.of(shop(78, ANN, true, 400, scroll(3, 1_000))));
+        config.SCROLL_ERRANDS_ENABLED = true;
+        try (MockedConstruction<CitizenScrolling> scrolling = buysGloveScrolls()) {
+            Market market = scrollMarket(scrolling);
+            assertFalse(market.scrollErrands().any(CITIZEN));
+        }
+        config.SCROLL_ERRANDS_ENABLED = false;
+        rooms.put(OTHER, List.of(shop(78, ANN, true, 400, scroll(1, 1_000))));
+        try (MockedConstruction<CitizenScrolling> scrolling = buysGloveScrolls()) {
+            Market market = scrollMarket(scrolling);
+            market.tick();
+            assertFalse(market.scrollErrands().any(CITIZEN));
+            verify(presence, never()).travel(any(), any(), anyInt(), anyLong());
+            assertFalse(market.statsJson().contains("scroll_errands"));
+        }
+    }
+
     @Test
     void leavingTheRoomEndsTheTrip() {
         session.shopping = new Market.ShoppingTrip(HERE, 77, 2, false);

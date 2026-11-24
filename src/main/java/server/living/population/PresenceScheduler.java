@@ -732,6 +732,12 @@ public final class PresenceScheduler {
         return true;
     }
 
+    /** Out for a scroll some stall has (ScrollErrands). */
+    private boolean onScrollErrand(Citizen citizen) {
+        ScrollErrands errands = population.market() == null ? null : population.market().scrollErrands();
+        return errands != null && errands.any(citizen.characterId());
+    }
+
     Activity plan(CitizenSession session, long now) {
         Citizen citizen = session.citizen;
         session.salonNpc = 0;
@@ -769,6 +775,9 @@ public final class PresenceScheduler {
             if (activity == Activity.MARKET && population.config().MARKET_ENABLED
                     && population.market().wantsFromMarket(citizen.characterId())) {
                 weight = Math.max(weight * 3, 10); // it wants gear or a scroll (the needs board, a gear errand: E3)
+            }
+            if (activity == Activity.MARKET && onScrollErrand(citizen)) {
+                weight = Math.max(weight, population.config().SCROLL_ERRAND_MARKET_WEIGHT); // its own weight, capped in number
             }
             if (activity == Activity.AFK && citizen.has(Citizen.FLAG_AFK_TOWNIE)) {
                 weight *= 3;

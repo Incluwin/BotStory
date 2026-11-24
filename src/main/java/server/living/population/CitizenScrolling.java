@@ -127,6 +127,56 @@ final class CitizenScrolling {
         return Math.min(Math.round(quote.applyAsLong(itemId) * config.SCROLL_BUY_OVER_INDEX), spare);
     }
 
+    /** A citizen that could buy a scroll now: its job, its worn pieces with slots left, and the meso it has to spare. */
+    record Seeker(int id, int jobId, List<Integer> pieces, long spare) { }
+
+    /** {@code agent} as a seeker, by {@link #offer}'s rules; null when it buys none now. */
+    Seeker seeker(Character agent) {
+        if (!enabled() || !eligible(agent.getId()) || capped(agent.getId(), System.currentTimeMillis())
+                || agent.getInventory(InventoryType.USE).getNumFreeSlot() < 1) { // a full Use tab could not take it
+            return null;
+        }
+        PopulationConfig config = population.config();
+        long spare = agent.getMeso() - Math.round(config.SCROLL_BUY_RESERVE * Market.expectedMeso(agent.getLevel()));
+        if (spare <= 0L) {
+            return null;
+        }
+        List<Integer> pieces = new ArrayList<>();
+        for (Item worn : agent.getInventory(InventoryType.EQUIPPED).list()) {
+            if (worn instanceof Equip equip && equip.getUpgradeSlots() > 0) {
+                pieces.add(equip.getItemId());
+            }
+        }
+        if (pieces.isEmpty() || best(agent, bagScrolls(agent), config.SCROLL_MIN_VALUE) != null) {
+            return null;
+        }
+        return new Seeker(agent.getId(), agent.getJob().getId(), List.copyOf(pieces), spare);
+    }
+
+    /** Whether {@code seeker} would use one {@code itemId}: safe, worth SCROLL_BUY_MIN_VALUE to its job, and a piece it fits. */
+    boolean wants(Seeker seeker, int itemId) {
+        if (itemId / 10_000 != 204) {
+            return false;
+        }
+        Map<String, Integer> info = stats.apply(itemId);
+        return safe(itemId, info) && value(seeker.jobId(), info) >= population.config().SCROLL_BUY_MIN_VALUE
+                && seeker.pieces().stream().anyMatch(piece -> fits.test(itemId, piece));
+    }
+
+    /** Whether a citizen of some job could want one {@code itemId}: {@link #safe} and worth SCROLL_BUY_MIN_VALUE to it. */
+    boolean useful(int itemId) {
+        Map<String, Integer> info = stats.apply(itemId);
+        if (itemId / 10_000 != 204 || !safe(itemId, info)) {
+            return false;
+        }
+        for (int job : new int[]{100, 200, 300, 400, 510, 520}) {
+            if (value(job, info) >= population.config().SCROLL_BUY_MIN_VALUE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** It bought {@code itemId} at a stall for a scroll want: used on the piece it was for. */
     void bought(Character agent, int itemId) {
         if (!enabled() || itemId / 10_000 != 204) {

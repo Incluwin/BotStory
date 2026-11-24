@@ -441,6 +441,22 @@ public class PopulationConfig {
     /** Episodes the best arm needs before companions (which never explore) play it. */
     public int SUPPORT_MIN_EPISODES = 30;
 
+    // Scroll errands and the stall's scroll cap (docs/ECONOMY_PLAN.md 10.14, ScrollErrands, Market.capScrolls)
+    /** Kill switch: false = no citizen goes to a stall for a scroll, and scroll stacks are listed in bundles as before. */
+    public boolean SCROLL_ERRANDS_ENABLED = false;
+    /** How many scroll errands may be out at once. */
+    public int SCROLL_ERRANDS_MAX = 12;
+    /** The least MARKET weight of a citizen on one when it plans its next activity. */
+    public int SCROLL_ERRAND_MARKET_WEIGHT = 30;
+    /** An errand ends after this long. */
+    public int SCROLL_ERRAND_HOURS = 6;
+    /** How long a citizen waits after an errand before its next. */
+    public int SCROLL_ERRAND_RETRY_HOURS = 12;
+    /** Kill switch: false = a citizen's stall lists its stacks by value alone, as before. */
+    public boolean MARKET_STALL_SCROLL_CAP_ENABLED = false;
+    /** The most scroll stacks a citizen's stall lists. */
+    public int MARKET_STALL_SCROLL_LINES = 2;
+
     // The needs board: citizens ask for real things they lack (docs/BOT_CONCEPT_PLAN.md F1, server.living.population.needs)
     /** Kill switch: false = no need derived, posted or listed, no board spawned, "B>" chatter and gear as before. */
     public boolean NEEDS_ENABLED = false;
@@ -736,6 +752,11 @@ public class PopulationConfig {
         }
         if (PRICE_INDEX_RESEED_FORMULA_TO <= 0 || PRICE_INDEX_RESEED_FORMULA_TO > 1) {
             throw new IllegalArgumentException("population.PRICE_INDEX_RESEED_FORMULA_TO must be over 0 and at most 1");
+        }
+        if (SCROLL_ERRANDS_MAX < 0 || SCROLL_ERRAND_MARKET_WEIGHT < 0 || SCROLL_ERRAND_HOURS < 1
+                || SCROLL_ERRAND_RETRY_HOURS < 0 || MARKET_STALL_SCROLL_LINES < 0) {
+            throw new IllegalArgumentException("population.SCROLL_ERRANDS_MAX, SCROLL_ERRAND_MARKET_WEIGHT,"
+                    + " SCROLL_ERRAND_RETRY_HOURS and MARKET_STALL_SCROLL_LINES must be >= 0 and SCROLL_ERRAND_HOURS >= 1");
         }
         if (NEEDS_PER_CITIZEN < 1 || NEEDS_EXPIRE_MIN_HOURS < 1 || NEEDS_EXPIRE_MAX_HOURS < NEEDS_EXPIRE_MIN_HOURS
                 || NEEDS_GEAR_DEADLINE_HOURS < 1 || NEEDS_GEAR_WANT_SHARE < 0 || NEEDS_GEAR_WANT_SHARE > 1

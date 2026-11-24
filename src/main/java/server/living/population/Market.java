@@ -36,8 +36,11 @@ import server.maps.reservation.FreeMarketStorePlacementService;
 import java.awt.Point;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -51,6 +54,7 @@ import java.util.function.IntToLongFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
+import java.util.function.UnaryOperator;
 
 /**
  * An economy players can join (plan 7): a price index seeded from the market basket and drifted
@@ -113,6 +117,7 @@ public final class Market {
     private volatile double buyBudgetScale = 1.0d;
     private final GearErrands gearErrands;
     private final CitizenScrolling scrolling;
+    private final ScrollErrands scrollErrands;
     /** Learned asks, board offers and bench stall asks (I2); answers as the fixed rule while PRICE_LEARNING_ENABLED is off. */
     private final PriceLearning prices;
 
@@ -134,6 +139,7 @@ public final class Market {
         this.gearErrands = new GearErrands(population, this);
         this.scrolling = new CitizenScrolling(population, this::quote);
         this.random = new Random(population.config().SEED ^ 0x3a44e7L);
+        this.scrollErrands = new ScrollErrands(population, scrolling, new Random(population.config().SEED ^ 0x5c011L)::nextInt);
         this.buyers = new AgentFreeMarketBuyerService(INTERACTION_RANGE_PX);
         this.prices = new PriceLearning(population);
         this.prices.install();
@@ -151,7 +157,12 @@ public final class Market {
     public String statsJson() {
         return "{\"ok\":true,\"index_items\":" + index.size() + ",\"stalls_open\":" + stallsOpen + ",\"stalls_max\":"
                 + population.config().MARKET_STALLS_MAX + ",\"purchases\":" + purchases + ",\"gear_errands\":"
-                + gearErrands.json() + ",\"scrolls\":" + scrolling.json() + ",\"prices\":" + prices.json() + "}";
+                + gearErrands.json() + ",\"scrolls\":" + scrolling.json() + scrollErrandsJson() + ",\"prices\":" + prices.json() + "}";
+    }
+
+    /** Left out while the errands are off, so the route reads as before. */
+    private String scrollErrandsJson() {
+        return scrollErrands.on() ? ",\"scroll_errands\":" + scrollErrands.json() : "";
     }
 
     /** The learned price levers (I2): the bench stall's form asks them for its starting asks. */
@@ -504,7 +515,7 @@ public final class Market {
             server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> walkToStall(session), 3_000L);
             return;
         }
-        if (gearErrands.any(session.characterId)) {
+        if (onErrand(session.characterId)) {
             seekErrandStall(session, agent, System.currentTimeMillis()); // straight to the stall it came for
         }
         // otherwise the market tick browses the room's shops
@@ -695,6 +706,12 @@ public final class Market {
      */
     static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice, Predicate<Item> keeps,
                                   IntUnaryOperator wanted) {
+        return stallStacks(agent, unitPrice, keeps, wanted, stacks -> stacks);
+    }
+
+    /** As above, the ranked stacks cut by {@code scrollCap} ({@link #capScrolls}) before the stall's lines are taken. */
+    static List<Item> stallStacks(Character agent, IntToLongFunction unitPrice, Predicate<Item> keeps,
+                                  IntUnaryOperator wanted, UnaryOperator<List<Item>> scrollCap) {
         List<Item> stacks = new ArrayList<>();
         Map<Integer, Integer> demand = new HashMap<>();
         for (InventoryType type : new InventoryType[]{InventoryType.ETC, InventoryType.USE, InventoryType.EQUIP}) {
@@ -711,34 +728,85 @@ public final class Market {
         stacks.sort(Comparator.comparingInt((Item item) -> demand.getOrDefault(item.getItemId(), 0)).reversed()
                 .thenComparing(Comparator.comparingLong(
                         (Item item) -> unitPrice.applyAsLong(item.getItemId()) * item.getQuantity()).reversed()));
+        stacks = scrollCap.apply(stacks);
         return stacks.subList(0, Math.min(STALL_MAX_LISTINGS, stacks.size()));
+    }
+
+    /**
+     * The stall cap (docs/ECONOMY_PLAN.md 10.14): of {@code ranked} stacks (best first) at most {@code lines} scroll
+     * stacks stay, in their place, and the rest of the stall goes to other goods. The last of them is always the best by
+     * the ranking, whatever it is, so cursed and chaos scrolls still reach players; the others are the scrolls most
+     * citizens on the look for one want ({@code demand}), then those a citizen of some job could use ({@code useful}),
+     * then by the ranking. Two stacks of one scroll count as two, but a second scroll kind goes before a second stack.
+     */
+    static List<Item> capScrolls(List<Item> ranked, int lines, IntUnaryOperator demand, IntPredicate useful) {
+        List<Item> scrolls = ranked.stream().filter(Market::isScroll).toList();
+        if (scrolls.size() <= lines) {
+            return ranked;
+        }
+        Set<Item> kept = Collections.newSetFromMap(new IdentityHashMap<>());
+        if (lines > 0) {
+            kept.add(scrolls.get(0)); // the ranking's own best
+        }
+        Set<Integer> kinds = new HashSet<>();
+        kept.forEach(item -> kinds.add(item.getItemId()));
+        Map<Integer, Integer> wanted = new HashMap<>();
+        scrolls.forEach(item -> wanted.computeIfAbsent(item.getItemId(), demand::applyAsInt));
+        List<Item> rest = new ArrayList<>(scrolls.subList(1, scrolls.size()));
+        rest.sort(Comparator.comparingInt((Item item) -> wanted.get(item.getItemId())).reversed()
+                .thenComparing(item -> !useful.test(item.getItemId())));
+        for (Item item : rest) {
+            if (kept.size() < lines && kinds.add(item.getItemId())) {
+                kept.add(item);
+            }
+        }
+        for (Item item : rest) {
+            if (kept.size() < lines) {
+                kept.add(item);
+            }
+        }
+        return ranked.stream().filter(item -> !isScroll(item) || kept.contains(item)).toList();
+    }
+
+    private static boolean isScroll(Item item) {
+        return item.getItemId() / 10_000 == 204;
+    }
+
+    /** {@link #capScrolls} at MARKET_STALL_SCROLL_LINES while MARKET_STALL_SCROLL_CAP_ENABLED; else the stacks as they are. */
+    private UnaryOperator<List<Item>> scrollCap(int sellerId) {
+        PopulationConfig config = population.config();
+        return config.MARKET_STALL_SCROLL_CAP_ENABLED
+                ? stacks -> capScrolls(stacks, config.MARKET_STALL_SCROLL_LINES,
+                        itemId -> scrollErrands.demand(sellerId, itemId), scrolling::useful)
+                : UnaryOperator.identity();
     }
 
     /**
      * {@code forErrands}: the equips listed that an open gear errand would buy. {@code asks}: the learned asks (I2), item
      * id -> {arm, price over index, bundles}; null while price learning is off.
      */
-    private record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings, int forErrands,
+    record Stock(List<Listing> listings, List<AgentFreeMarketStallService.Listing> shopListings, int forErrands,
                          Map<Integer, double[]> asks) {
         boolean isEmpty() {
             return shopListings.isEmpty();
         }
     }
 
-    private Stock stock(Character agent) {
+    Stock stock(Character agent) {
         List<Listing> listings = new ArrayList<>();
         List<AgentFreeMarketStallService.Listing> shopListings = new ArrayList<>();
         Map<Integer, Integer> demand = new HashMap<>();
         IntUnaryOperator wanted = itemId -> demand.computeIfAbsent(itemId, id -> gearErrands.demand(agent.getId(), id));
         int forErrands = 0;
         Map<Integer, double[]> asks = newAsks();
-        for (Item item : stallStacks(agent, this::price, item -> scrolling.keeps(agent, item), wanted)) {
+        for (Item item : stallStacks(agent, this::price, item -> scrolling.keeps(agent, item), wanted,
+                scrollCap(agent.getId()))) {
             InventoryType type = item.getInventoryType();
             if (type == InventoryType.EQUIP && wanted.applyAsInt(item.getItemId()) > 0) {
                 forErrands++;
             }
             long unit = price(item.getItemId());
-            short perBundle = (short) (type == InventoryType.EQUIP ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
+            short perBundle = (short) (type == InventoryType.EQUIP || scrollErrands.on() && isScroll(item) ? 1 : Math.min(item.getQuantity(), type == InventoryType.ETC ? 100 : 10));
             short bundles = (short) Math.max(1, item.getQuantity() / perBundle);
             long bundlePrice = ask(item.getItemId(), unit, perBundle, bundles, asks);
             shopListings.add(new AgentFreeMarketStallService.Listing(type, item.getPosition(), perBundle, bundles,
@@ -846,6 +914,11 @@ public final class Market {
             prices.confirmPending(population.needs()::need); // board ends written in a transaction that held (I2.2)
         }
         long now = System.currentTimeMillis();
+        try {
+            scrollErrands.tick(population.presence().sessions(), this::scrollsOnSale, now);
+        } catch (RuntimeException failure) {
+            log.debug("scroll errands failed", failure);
+        }
         for (CitizenSession session : population.presence().sessions()) {
             Character agent = session.agent();
             if (session.stallOpen && agent != null && agent.getPlayerShop() != null && agent.getPlayerShop().isOwner(agent)) {
@@ -923,6 +996,7 @@ public final class Market {
                         }
                         gearErrands.bought(agent, view.itemId());
                         scrolling.bought(agent, view.itemId());
+                        scrollErrands.bought(session, view.itemId(), now);
                     }
                     if (!population.isCitizen(stall.ownerCharacterId())) { // a player's shop, not a companion's bench stall
                         remember(session, stall.ownerCharacterId(), PersonMemory.Kind.BOUGHT, agent.getMapId(), view.itemId());
@@ -957,12 +1031,12 @@ public final class Market {
      */
     void seekErrandStall(CitizenSession session, Character agent, long now) {
         ShoppingTrip previous = session.shopping;
-        if (session.entry == null || !gearErrands.any(session.characterId) || agent.getMapId() == FieldCatalog.FM_ENTRANCE
+        if (session.entry == null || !onErrand(session.characterId) || agent.getMapId() == FieldCatalog.FM_ENTRANCE
                 || !FieldCatalog.isFreeMarket(agent.getMapId())) {
             session.shopping = null;
             return;
         }
-        if (!roomForGear(agent)) {
+        if (gearErrands.any(session.characterId) && !roomForGear(agent)) {
             // it could not carry the piece: it sells its loot first (live 10-29, all 9 citizens who gave up on a stall
             // had full equip bags, and 145 of the 204 full bags were on gear errands)
             session.shopping = null;
@@ -972,8 +1046,16 @@ public final class Market {
             }
             return;
         }
-        ErrandStall stall = errandStall(agent.getMapId(), roomShops(session.channel), view -> errandOffer(agent, view),
-                agent.getMeso(), this::buysFrom, agent.getId(), previous);
+        Map<Integer, List<PlayerShop>> shops = roomShops(session.channel);
+        ErrandStall stall = null;
+        if (scrollErrands.any(session.characterId)) { // a player's stall first, in whatever room (gear: the nearest room)
+            stall = errandStall(agent.getMapId(), shops, view -> errandOffer(agent, view), agent.getMeso(),
+                    owner -> !population.isCitizen(owner), agent.getId(), previous);
+        }
+        if (stall == null) {
+            stall = errandStall(agent.getMapId(), shops, view -> errandOffer(agent, view), agent.getMeso(),
+                    this::buysFrom, agent.getId(), previous);
+        }
         if (stall == null) {
             session.shopping = previous != null && previous.abandoned() ? previous : null;
             return;
@@ -989,6 +1071,7 @@ public final class Market {
         if (trip.abandoned()) {
             log.info("citizen {} could not reach {}'s stall in room {}; it browses on", session.name(), stall.ownerName(),
                     stall.mapId() - FieldCatalog.FM_ENTRANCE);
+            scrollErrands.gaveUp(session, now);
             return;
         }
         if (trip.tries() == 1) {
@@ -1040,7 +1123,11 @@ public final class Market {
 
     /** What a gear errand of {@code agent} pays for one piece of this listing; 0 for a bundle or a piece no errand fits. */
     private long errandOffer(Character agent, PlayerShop.ListingView view) {
-        return view.perBundle() == 1 ? gearErrands.offer(agent, view.itemId()) : 0L;
+        if (view.perBundle() != 1) {
+            return 0L;
+        }
+        long gear = gearErrands.offer(agent, view.itemId());
+        return gear > 0L ? gear : scrollErrands.offer(agent, view.itemId());
     }
 
     /** The open player shops of each loaded Free Market room of the channel. */
@@ -1092,6 +1179,33 @@ public final class Market {
         return needs != null && needs.wantsFromMarket(citizenId) || gearErrands.any(citizenId);
     }
 
+    ScrollErrands scrollErrands() {
+        return scrollErrands;
+    }
+
+    /** On an errand that takes it to a stall: for gear, or for a scroll. */
+    private boolean onErrand(int citizenId) {
+        return gearErrands.any(citizenId) || scrollErrands.any(citizenId);
+    }
+
+    /** The scrolls sold singly in the channel's open stalls citizens buy from: item id -> the cheapest one's price. */
+    private Map<Integer, Long> scrollsOnSale(int channelId) {
+        Map<Integer, Long> cheapest = new HashMap<>();
+        for (List<PlayerShop> shops : roomShops(channelId).values()) {
+            for (PlayerShop shop : shops) {
+                if (!shop.isOpen() || !buysFrom(shop.getOwnerId())) {
+                    continue;
+                }
+                for (PlayerShop.ListingView view : shop.listingSnapshot()) {
+                    if (view.bundles() > 0 && view.perBundle() == 1 && view.itemId() / 10_000 == 204) {
+                        cheapest.merge(view.itemId(), (long) view.bundlePrice(), Math::min);
+                    }
+                }
+            }
+        }
+        return cheapest;
+    }
+
     GearErrands gearErrands() {
         return gearErrands;
     }
@@ -1099,7 +1213,7 @@ public final class Market {
     private int wantedRoom(CitizenSession session, long now) {
         net.server.world.World world = population.gameWorld();
         net.server.channel.Channel channel = world == null ? null : world.getChannel(session.channel);
-        if (channel == null || !wantsFromMarket(session.characterId)) {
+        if (channel == null || !wantsFromMarket(session.characterId) && !scrollErrands.any(session.characterId)) {
             return 0;
         }
         for (int room = FieldCatalog.FM_ENTRANCE + 1; room <= FieldCatalog.FM_ENTRANCE + FM_ROOMS; room++) {

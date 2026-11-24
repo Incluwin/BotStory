@@ -1578,6 +1578,22 @@ population:
     SUPPORT_DEATH_PENALTY: 5.0
     SUPPORT_EPISODE_MS: 240000
     SUPPORT_MIN_EPISODES: 30
+    # Scroll errands (docs/ECONOMY_PLAN.md 10.14): a citizen with an open slot, no scroll of its own it would use and meso
+    # to spare goes to a stall that has one for it (players' first), pays up to SCROLL_BUY_OVER_INDEX x the index and uses
+    # it at once. At most ERRANDS_MAX are out; each makes MARKET weigh at least MARKET_WEIGHT in its plan. Scroll stacks
+    # are then listed one by one, as a bundle of several is nothing a citizen buys. false = the kill switch.
+    # Technical: ScrollErrands opens one at the two-minute market tick only for a scroll on sale now, in memory (nothing to keep over a restart); Market.seekErrandStall walks it as a gear errand, CitizenScrolling buys and applies.
+    SCROLL_ERRANDS_ENABLED: false
+    SCROLL_ERRANDS_MAX: 12
+    SCROLL_ERRAND_MARKET_WEIGHT: 30
+    SCROLL_ERRAND_HOURS: 6
+    SCROLL_ERRAND_RETRY_HOURS: 12
+    # The stall's scroll cap (docs/ECONOMY_PLAN.md 10.14): a citizen's stall lists at most SCROLL_LINES scroll stacks and
+    # gives the rest of its shelf to other goods; one is its dearest scroll of any kind, so cursed and chaos scrolls stay
+    # on sale, the others what citizens look for. Players' and bench stalls are untouched. false = the kill switch.
+    # Technical: Market.capScrolls cuts the ranked stacks before the stall's eight lines are taken; demand is ScrollErrands' seekers of the last market tick (none while the errands are off, then usefulness to any job decides).
+    MARKET_STALL_SCROLL_CAP_ENABLED: false
+    MARKET_STALL_SCROLL_LINES: 2
     # The needs board (docs/BOT_CONCEPT_PLAN.md F1): citizens ask for real things they lack and pay from their own
     # purse. SUPPLY: the potion it would buy for Balrog, short of the standard; SCROLL: a basket scroll for a piece it
     # wears, when it can pay the index price; GEAR (decision D4): GEAR_WANT_SHARE of its free gear upgrades become a want,
