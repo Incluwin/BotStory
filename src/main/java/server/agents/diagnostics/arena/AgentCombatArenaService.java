@@ -202,7 +202,14 @@ public final class AgentCombatArenaService {
             notes.add("Max build: learned/maxed " + AgentHarnessProvisioning.learnFullTree(bot) + " skills.");
         }
         if (AgentAttackExecutionProvider.getEquippedWeaponType(bot) == null || options.wantsShaping()) {
-            String note = AgentHarnessProvisioning.provisionWeapon(bot, AgentHarnessProvisioning.arenaWeaponFor(bot.getJob()));
+            // The best weapon of its family the Agent can hold: a starter weapon at Lv 100 measures the weapon.
+            String note = null;
+            for (int weapon : AgentHarnessProvisioning.arenaWeaponsFor(bot.getJob())) {
+                note = AgentHarnessProvisioning.provisionWeapon(bot, weapon);
+                if (note == null) {
+                    break;
+                }
+            }
             if (note != null) {
                 notes.add("WARNING: " + note);
             }
