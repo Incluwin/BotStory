@@ -16,7 +16,8 @@ Nothing here adopts anything: adopt=off never writes combat-policy/, and --stagi
 stack is driven (the admin port of tools/checks; the live port 8480 is refused).
 
 The verdict of one job and scenario, on the paired differences (candidate - live) of all its pairs:
-  candidate wins   the CONFIDENCE interval lies above 0 and the mean is at least MARGIN of live play's rate
+  candidate wins   the CONFIDENCE interval lies above 0, the mean is at least MARGIN of live play's rate, and it has
+                   held over WIN_PAIRS pairs (two batches: one lucky batch is no win)
   priors won       the interval lies below +MARGIN: whatever the candidate is worth, it is not MARGIN better
   not enough data  neither after MAX_LOOKS batches (or the candidate has too few decisions)
 CONFIDENCE is 99 % per look, so with at most three looks a verdict is wrong less than 3 % of the time.
@@ -36,6 +37,7 @@ from threading import Lock
 MARGIN = 0.03
 CONFIDENCE = 0.99
 PAIRS, SECONDS, MAX_LOOKS = 8, 20, 3
+WIN_PAIRS = 16
 MIN_DECISIONS = 400
 SCENARIOS = ("single", "multi")
 LIVE_ADMIN_PORT = ":8480"
@@ -79,7 +81,8 @@ def judge(candidate: list, live: list, capped: bool = False) -> dict:
     if capped:
         out["verdict"] = "not enough data"
     elif out["low"] > 0 and out["change"] >= MARGIN:
-        out["verdict"] = "candidate wins by %.1f %%" % (100 * out["change"])
+        if n >= WIN_PAIRS:
+            out["verdict"] = "candidate wins by %.1f %%" % (100 * out["change"])
     elif out["high"] < MARGIN:
         out["verdict"] = "priors won"
     return out

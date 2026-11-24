@@ -1,0 +1,173 @@
+{
+  "jobId": 121,
+  "jobName": "WHITEKNIGHT",
+  "level": 0,
+  "build": "bench",
+  "learnedAt": "2026-10-15T00:11:03.155092Z",
+  "gammaPerSecond": 0.9,
+  "priorsRelaxed": false,
+  "actionNames": {},
+  "scenarios": {
+    "single": {
+      "adopted": true,
+      "learnedDps": 7454.15,
+      "priorDps": 3733.78125,
+      "decisions": 4738,
+      "table": {
+        "1 target": {
+          "1001004": {
+            "visits": 3712,
+            "value": 6349.78932954353,
+            "seeded": true,
+            "meanReward": 1491.8400801349062,
+            "meanSeconds": 4.3370724676724155
+          },
+          "0": {
+            "visits": 650,
+            "value": 5449.576531874534,
+            "seeded": true,
+            "meanReward": 552.0758834713449,
+            "meanSeconds": 4.064200000000005
+          },
+          "1001005": {
+            "visits": 331,
+            "value": 5433.303104001126,
+            "seeded": true,
+            "meanReward": 849.7106552079799,
+            "meanSeconds": 4.94638368580061
+          },
+          "1201006": {
+            "visits": 14,
+            "value": 4903.028328655233,
+            "seeded": true,
+            "meanReward": 0.0,
+            "meanSeconds": 3.6754285714285713
+          }
+        },
+        "1 target|target debuffed": {
+          "0": {
+            "visits": 5,
+            "value": 1345.3390778342437,
+            "seeded": true,
+            "meanReward": 382.5851862359731,
+            "meanSeconds": 6.0645999999999995
+          },
+          "1001004": {
+            "visits": 6,
+            "value": 4163.65104405008,
+            "seeded": true,
+            "meanReward": 1302.338704496904,
+            "meanSeconds": 3.8676666666666666
+          },
+          "1001005": {
+            "visits": 20,
+            "value": 2219.978783947756,
+            "seeded": true,
+            "meanReward": 813.4432601991707,
+            "meanSeconds": 5.326199999999999
+          }
+        }
+      }
+    },
+    "multi": {
+      "adopted": true,
+      "learnedDps": 8801.25625,
+      "priorDps": 6016.45,
+      "decisions": 9915,
+      "table": {
+        "2-3 targets": {
+          "1001004": {
+            "visits": 57,
+            "value": 8140.184094864403,
+            "seeded": true,
+            "meanReward": 1611.3265340552598,
+            "meanSeconds": 4.000543859649124
+          },
+          "1001005": {
+            "visits": 1913,
+            "value": 10125.910891345784,
+            "seeded": true,
+            "meanReward": 2482.2271605656583,
+            "meanSeconds": 3.9050135912179846
+          },
+          "1201006": {
+            "visits": 7,
+            "value": 4645.569336618686,
+            "seeded": true,
+            "meanReward": 0.0,
+            "meanSeconds": 3.8777142857142852
+          },
+          "0": {
+            "visits": 1,
+            "value": 7785.293912683815,
+            "seeded": true,
+            "meanReward": 822.0487054137245,
+            "meanSeconds": 1.912
+          }
+        },
+        "2-3 targets|target debuffed": {
+          "1001004": {
+            "visits": 3,
+            "value": 2773.170645214684,
+            "seeded": true,
+            "meanReward": 1369.053411599889,
+            "meanSeconds": 5.882000000000001
+          },
+          "1001005": {
+            "visits": 6,
+            "value": 4267.897449031954,
+            "seeded": true,
+            "meanReward": 1970.133124583781,
+            "meanSeconds": 3.2043333333333335
+          }
+        },
+        "4+ targets": {
+          "1001004": {
+            "visits": 202,
+            "value": 10170.552840930079,
+            "seeded": true,
+            "meanReward": 902.0131583126785,
+            "meanSeconds": 4.269495049504949
+          },
+          "1001005": {
+            "visits": 7575,
+            "value": 14260.818435453983,
+            "seeded": true,
+            "meanReward": 4063.699249517163,
+            "meanSeconds": 3.9969959075907733
+          },
+          "1201006": {
+            "visits": 43,
+            "value": 6596.4589786597335,
+            "seeded": true,
+            "meanReward": 0.0,
+            "meanSeconds": 4.335744186046511
+          },
+          "0": {
+            "visits": 1,
+            "value": 1828.7557179207602,
+            "seeded": true,
+            "meanReward": 231.0144975229785,
+            "meanSeconds": 2.557
+          }
+        },
+        "4+ targets|target debuffed": {
+          "1001004": {
+            "visits": 6,
+            "value": 3267.48609555458,
+            "seeded": true,
+            "meanReward": 660.6470438203247,
+            "meanSeconds": 2.1598333333333333
+          },
+          "1001005": {
+            "visits": 101,
+            "value": 10068.544585323143,
+            "seeded": true,
+            "meanReward": 2626.8028749137925,
+            "meanSeconds": 3.83193069306931
+          }
+        }
+      }
+    }
+  }
+}

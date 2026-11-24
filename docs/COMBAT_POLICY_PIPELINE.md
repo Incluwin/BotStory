@@ -23,9 +23,13 @@ eight pairs (so a verdict is wrong less than 3 % of the time):
 
 | Verdict | When |
 |---|---|
-| candidate wins by X % | the interval is above 0 and the mean is at least 3 % of live play's rate |
+| candidate wins by X % | the interval is above 0, the mean is at least 3 % of live play's rate, and it held over two batches (16 pairs) |
 | priors won | the interval is below +3 %: the candidate is not 3 % better, whatever else |
 | not enough data | neither after three looks, or a reading hit the dummy's HP pool |
+
+Control: a candidate that plays exactly as live play (a table whose situations never come up) read -2.7 % (-14.0 ..
++8.5) over 16 pairs of Warrior, Lv 25 (2026-11-23), so the harness itself favours neither side. One batch can mislead:
+the Warrior's bench candidate read +20 % on eight pairs with the same casts on both sides, which is why a win needs two.
 
 Deaths: an Agent in the arena is topped up every second and its dummies do not fight back, so the column only shows
 that no run was spoiled by one. A skill policy chooses among the attacks already legal and touches no potion, heal or

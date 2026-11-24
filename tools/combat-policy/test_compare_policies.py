@@ -10,7 +10,10 @@ class Verdicts(unittest.TestCase):
     live = [100, 101, 99, 100, 102, 98, 100, 100]
 
     def test_clear_win(self):
-        self.assertTrue(cp.judge([x * 1.10 for x in self.live], self.live)["verdict"].startswith("candidate wins by 10"))
+        self.assertTrue(cp.judge([x * 1.10 for x in self.live] * 2, self.live * 2)["verdict"].startswith("candidate wins by 10"))
+
+    def test_one_batch_alone_is_no_win(self):
+        self.assertEqual("not enough data", cp.judge([x * 1.10 for x in self.live], self.live)["verdict"])
 
     def test_a_real_gain_below_the_margin_is_not_adopted(self):
         self.assertEqual("priors won", cp.judge([x * 1.01 for x in self.live], self.live)["verdict"])
