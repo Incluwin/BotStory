@@ -92,7 +92,7 @@ def readings(tree: Path) -> dict:
         line = json.loads(raw)
         key = (line["jobId"], line["scenario"])
         got = out.get(key)
-        if got is None or got["decisions"] != line["decisions"] or got["level"] != line["level"]:
+        if got is None or got["decisions"] != line["decisions"]:  # another candidate: start over (arena kills level an Agent)
             got = out[key] = {"candidate": [], "live": [], "looks": 0, "deaths": 0, "capped": False, "job": line["job"],
                               "level": line["level"], "decisions": line["decisions"], "seconds": line["seconds"]}
         got["looks"] += 1
