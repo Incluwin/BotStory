@@ -395,7 +395,7 @@ live server's ports and database.
    - asks the Coke Town gate, where a stock-file player must be kept out of the Repack map.
 
    It fails when `MapleStory.exe` exits, then runs the same log check. The client shares
-   `HKCU\Software\Wizet\MapleStory` with any other v83 client, so the driver puts back only the login and
+   `HKCU\Software\Wizet\MapleStory` with any other v83 client, so the driver puts back only the
    last-place values it wrote, and none at all if another client ran meanwhile. `-Phase stop` stops the smoke server.
 
 The log line comes from `server.mods.StockClientAudit`. It is on only with
