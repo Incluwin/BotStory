@@ -55,13 +55,14 @@ public final class AgentCombatHealRuntime {
         Rectangle healBounds = fx.hasBoundingBox()
                 ? fx.calculateBoundingBox(bot.getPosition(), bot.isFacingLeft())
                 : null;
-        boolean selfNeedsHeal = AgentCombatSupportPolicy.needsHeal(bot, config.SUPPORT_HEAL_TARGET_RATIO);
+        float healRatio = AgentSupportPoints.healRatio(bot, config.SUPPORT_HEAL_TARGET_RATIO);
+        boolean selfNeedsHeal = AgentCombatSupportPolicy.needsHeal(bot, healRatio);
         boolean partyNeedsHeal = selfNeedsHeal || AgentCombatSupportPolicy.hasPartyMemberInBoundsNeedingHeal(
                 bot,
                 healBounds,
                 config.SUPPORT_RANGE,
                 config.SUPPORT_VERTICAL_RANGE,
-                config.SUPPORT_HEAL_TARGET_RATIO);
+                healRatio);
         List<Monster> undeadTargets = AgentCombatTargetSelector.collectUndeadMobsInHealRange(bot, fx, healBounds);
         if (!AgentCombatSupportPolicy.shouldCastSupportHeal(partyNeedsHeal, !undeadTargets.isEmpty())) return false;
 

@@ -123,6 +123,9 @@ public final class PopulationHooks {
             return;
         }
         try {
+            if (population.support() != null) {
+                population.support().died(chr, System.currentTimeMillis()); // ends its party's support episodes (I1.4)
+            }
             CitizenSession self = population.presence().sessionOf(chr);
             if (self != null) {
                 CitizenSpots spots = population.fields().spots();

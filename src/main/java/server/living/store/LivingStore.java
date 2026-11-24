@@ -981,6 +981,8 @@ public final class LivingStore {
      * meso_per_hour the arm's multiplier (for reading only).
      */
     public static final String YIELD_PRICE = "price";
+    /** companion_yield rows of the learned support points (I1.4, SupportLearning), laid out as the price levers' rows. */
+    public static final String YIELD_SUPPORT = "support";
 
     /**
      * Every companion_yield row the live bench slices measured (one per job branch, level band and camp: a small table).
@@ -1007,6 +1009,15 @@ public final class LivingStore {
      */
     public List<YieldRow> priceArms() {
         return yields(YIELD_PRICE);
+    }
+
+    /**
+     * Every companion_yield row of the learned support points (source 'support', I1.4).
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public List<YieldRow> supportArms() {
+        return yields(YIELD_SUPPORT);
     }
 
     private List<YieldRow> yields(String source) {
@@ -1460,6 +1471,11 @@ public final class LivingStore {
     /** Upserts one arm of a learned price lever (source 'price', I2). */
     public boolean savePriceArm(YieldRow row) {
         return saveYield(row, YIELD_PRICE);
+    }
+
+    /** Upserts one arm of a learned support point (source 'support', I1.4). */
+    public boolean saveSupportArm(YieldRow row) {
+        return saveYield(row, YIELD_SUPPORT);
     }
 
     private boolean saveYield(YieldRow row, String source) {

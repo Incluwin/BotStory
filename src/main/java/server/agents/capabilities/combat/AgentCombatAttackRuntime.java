@@ -179,6 +179,7 @@ public final class AgentCombatAttackRuntime {
             AgentCombatSkillUsageStateRuntime.recordDegenerate(entry);
         }
         AgentCombatLearner.onAttackCommitted(entry, attackPlan.skillId, dealt, expected);
+        AgentSupportPoints.attacked(bot, committedAtMs);
         AgentSkillShowcase.used(entry, bot, attackPlan.skillId);
         AgentCombatFacingRuntime.rememberAttackFacing(entry, attackPlan.stance);
         AgentCombatDamageRuntime.dashAfterAttack(entry, bot, attackPlan.skillId, attackPlan.skillLevel, attackPlan.stance);

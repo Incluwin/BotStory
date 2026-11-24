@@ -413,6 +413,24 @@ public class PopulationConfig {
     /** What one unit of premium over the shop price costs an offer's reward. */
     public double PRICE_OFFER_COST = 1.0;
 
+    // Learned support points (docs/WORLD_SYSTEMS_PLAN.md I1.4, SupportLearning): when to heal, how early to rebuff
+    /** Kill switch: false = the fixed heal point (SUPPORT_HEAL_TARGET_RATIO) and buff recast times, nothing booked. */
+    public boolean SUPPORT_LEARNING_ENABLED = false;
+    /** The UCB weight on a support arm tried less often (0 = never explore). */
+    public double SUPPORT_EXPLORE = 0.15;
+    /** How sharp the weighted draw over support arms is (0 = always the best). */
+    public double SUPPORT_TEMPERATURE = 0.02;
+    /** How many episodes the prior weighs in an arm's estimate. */
+    public double SUPPORT_PRIOR_SAMPLES = 10;
+    /** The party damage uptime the prior believes every arm earns (today's points a little more). */
+    public double SUPPORT_PRIOR_UPTIME = 0.5;
+    /** What one death in the party costs an episode whose uptime is at most 1. */
+    public double SUPPORT_DEATH_PENALTY = 5.0;
+    /** How long one pair of points is played before it is judged. */
+    public long SUPPORT_EPISODE_MS = 240000;
+    /** Episodes the best arm needs before companions (which never explore) play it. */
+    public int SUPPORT_MIN_EPISODES = 30;
+
     // The needs board: citizens ask for real things they lack (docs/BOT_CONCEPT_PLAN.md F1, server.living.population.needs)
     /** Kill switch: false = no need derived, posted or listed, no board spawned, "B>" chatter and gear as before. */
     public boolean NEEDS_ENABLED = false;

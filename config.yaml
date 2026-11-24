@@ -1548,6 +1548,21 @@ population:
     PRICE_OFFER_PRIOR_REWARD: 0.4
     PRICE_OFFER_HALF_HOURS: 6
     PRICE_OFFER_COST: 1.0
+    # Learned support points (docs/WORLD_SYSTEMS_PLAN.md I1.4): citizens learn, per job, under what HP share to heal (0.80
+    # to 0.95, today 0.90) and how far through its duration to recast a buff (0.86 to 0.95, today 0.90), by how much of
+    # the time their party was dealing damage less a heavy cost per death in it. Companions never explore: they play the
+    # best arm once MIN_EPISODES say it is. Never in event instances, party quests or near a boss (the F8 exclusions),
+    # never past the F8 floors. false = the kill switch: the fixed points, nothing booked.
+    # Technical: SupportLearning picks one arm per lever (PriceArms on the shared Ucb) for each SUPPORT_EPISODE_MS of one Agent; AgentSupportPoints clamps heal points to 0.80..0.95 and keeps survival buffs at or before today's recast; arm stats live in companion_yield rows of source 'support', no schema change.
+    SUPPORT_LEARNING_ENABLED: false
+    SUPPORT_EXPLORE: 0.15
+    SUPPORT_TEMPERATURE: 0.02
+    SUPPORT_PRIOR_SAMPLES: 10
+    SUPPORT_PRIOR_UPTIME: 0.5
+    # Technical: an episode's reward is party damage uptime (0..1: each attacking member's time with no gap over 3 s between attacks, averaged over the members) minus SUPPORT_DEATH_PENALTY per death of a party member, human or Agent; a death ends the episode.
+    SUPPORT_DEATH_PENALTY: 5.0
+    SUPPORT_EPISODE_MS: 240000
+    SUPPORT_MIN_EPISODES: 30
     # The needs board (docs/BOT_CONCEPT_PLAN.md F1): citizens ask for real things they lack and pay from their own
     # purse. SUPPLY: the potion it would buy for Balrog, short of the standard; SCROLL: a basket scroll for a piece it
     # wears, when it can pay the index price; GEAR (decision D4): GEAR_WANT_SHARE of its free gear upgrades become a want,
