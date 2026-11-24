@@ -877,4 +877,8 @@ The first sales (10-28 to 10-30) were 2.8-4.6 M, but those buyers pay a share of
 not confirm it. 2040513 is a table entry of its own (3 M); 2044312 is a formula price (2.8 M, a 60 % spear accuracy
 scroll).
 
-What the reseed should do with the fallback and the formula rows is an open question to the user; nothing changed for it.
+**Decision (user 2026-11-24: "Yes, option D"), built.** Table and basket rows go to 0.8 x seed; formula rows to
+`PRICE_INDEX_RESEED_FORMULA_TO` (0.5) x seed; rows with only an NPC-multiple seed are skipped (not in the backup) and left
+to the guard. A row over its target is never lowered. The dry run lists every move with its source and multiple, the count
+per source and the skipped items. Expected on the 11-24 dump: 81 + 7 at 0.8, 23 at 0.5, 27 skipped, 111 moves, CPI 56.1 ->
+91.9 at the reseed, 91.5 on day 7, 91.8 on day 30 (projected). The 138-row run and the 95.2 above are from before this decision.

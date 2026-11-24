@@ -1555,12 +1555,14 @@ population:
     PRICE_INDEX_DRIFT_GUARD_ENABLED: false
     PRICE_INDEX_ANCHOR_PULL: 0.04
     # The index's one-time reseed (docs/ECONOMY_PLAN.md section 10.9): once, at the next start, with the drift guard on,
-    # every row under RESEED_BELOW x its seed price goes to RESEED_TO x it, never under what an NPC pays. What it would
-    # change: admin GET /runtime/stats/price-reseed. false = it does not run; it never runs twice.
+    # every row under RESEED_BELOW x its seed price goes to RESEED_TO x it (a scroll priced by the formula: FORMULA_TO x),
+    # never under what an NPC pays; one whose seed is only a multiple of its NPC price stays (option D, user 2026-11-24).
+    # What it would change: admin GET /runtime/stats/price-reseed. false = it does not run; it never runs twice.
     # Technical: PriceIndexReseed.runOnce before any citizen loads; old prices and the ran marker (item 0) live in living_price_reseed (changeset 70), in the same transaction as the new ones.
     PRICE_INDEX_RESEED_ENABLED: false
     PRICE_INDEX_RESEED_BELOW: 0.5
     PRICE_INDEX_RESEED_TO: 0.8
+    PRICE_INDEX_RESEED_FORMULA_TO: 0.5
     # The needs board (docs/BOT_CONCEPT_PLAN.md F1): citizens ask for real things they lack and pay from their own
     # purse. SUPPLY: the potion it would buy for Balrog, short of the standard; SCROLL: a basket scroll for a piece it
     # wears, when it can pay the index price; GEAR (decision D4): GEAR_WANT_SHARE of its free gear upgrades become a want,

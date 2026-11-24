@@ -426,6 +426,19 @@ public final class Market {
         return seed(itemId);
     }
 
+    /** Where an item's seed comes from, in {@link #rawSeed}'s order. */
+    enum SeedSource { BASKET, TABLE, SCROLL_FORMULA, NPC_MULTIPLE }
+
+    SeedSource seedSource(int itemId) {
+        if (population.content().basket().stream().anyMatch(good -> good.itemId() == itemId && good.price() > 0L)) {
+            return SeedSource.BASKET;
+        }
+        if (PriceSeeds.of(itemId) > 0L) {
+            return SeedSource.TABLE;
+        }
+        return scrollSeeds.seed(itemId) > 0L ? SeedSource.SCROLL_FORMULA : SeedSource.NPC_MULTIPLE;
+    }
+
     /** The index itself, item id -> {price, samples}: the one-time reseed's (PriceIndexReseed). */
     Map<Integer, long[]> rows() {
         return index;
