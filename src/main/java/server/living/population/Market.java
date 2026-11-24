@@ -69,7 +69,7 @@ public final class Market {
     /** A line still unsold when its stall closes pulls the index toward this share of min(ask, index). */
     static final double UNSOLD_STEP_DOWN = 0.9d;
     /** A seed never starts lower; a row still at it is a seed, whatever its sale count says (reseedUnmoved). */
-    private static final long MINIMUM_SEED = 10L;
+    static final long MINIMUM_SEED = 10L;
     private static final int INTERACTION_RANGE_PX = 900;
     /** A merchant on its stall spot: a precise move stops within a few pixels of it. */
     static final int STALL_ARRIVAL_PX = 24;
@@ -258,7 +258,7 @@ public final class Market {
     }
 
     /** The index's floor: what an NPC pays for one (a rechargeable's unit price; its base is paid once per bundle). */
-    private long npcUnit(int itemId) {
+    long npcUnit(int itemId) {
         if (ItemConstants.isRechargeable(itemId)) {
             return (long) Math.ceil(ItemInformationProvider.getInstance().getUnitPrice(itemId));
         }
@@ -401,12 +401,52 @@ public final class Market {
         }
         long current = price(itemId);
         long[] row = index.get(itemId);
-        long next = Math.max(Math.max(1L, npcUnit(itemId)), Math.round(current + (unitPrice - current) * INDEX_STEP));
+        double moved = current + (unitPrice - current) * INDEX_STEP;
+        long next = Math.max(Math.max(1L, npcUnit(itemId)), Math.round(moved * anchorPull(itemId, current)));
         row[0] = next;
         if (sale) {
             row[1] = row[1] + 1;
         }
         population.store().savePrice(itemId, next, (int) row[1]);
+    }
+
+    /**
+     * The drift guard (docs/ECONOMY_PLAN.md section 10): every update also pulls the index PRICE_INDEX_ANCHOR_PULL of
+     * the way (in log terms) to the item's anchor. Every citizen's offer is a share of the current index, so without it
+     * unsold goods take the index down, and errand buyers (1.3 x) take it up, with nothing to stop either. 1 while off.
+     */
+    private double anchorPull(int itemId, long current) {
+        PopulationConfig config = population.config();
+        return config.PRICE_INDEX_DRIFT_GUARD_ENABLED
+                ? Math.pow(anchorPrice(itemId) / (double) Math.max(1L, current), config.PRICE_INDEX_ANCHOR_PULL) : 1.0d;
+    }
+
+    /** What the drift guard holds an item's index near: its seed price. The one place to change the anchor. */
+    long anchorPrice(int itemId) {
+        return seed(itemId);
+    }
+
+    /** Where an item's seed comes from, in {@link #rawSeed}'s order. */
+    enum SeedSource { BASKET, TABLE, SCROLL_FORMULA, NPC_MULTIPLE }
+
+    SeedSource seedSource(int itemId) {
+        if (population.content().basket().stream().anyMatch(good -> good.itemId() == itemId && good.price() > 0L)) {
+            return SeedSource.BASKET;
+        }
+        if (PriceSeeds.of(itemId) > 0L) {
+            return SeedSource.TABLE;
+        }
+        return scrollSeeds.seed(itemId) > 0L ? SeedSource.SCROLL_FORMULA : SeedSource.NPC_MULTIPLE;
+    }
+
+    /** The index itself, item id -> {price, samples}: the one-time reseed's (PriceIndexReseed). */
+    Map<Integer, long[]> rows() {
+        return index;
+    }
+
+    /** What the one-time reseed would change now (PriceIndexReseed), for the admin port; changes nothing. */
+    public String reseedDryRunJson() {
+        return PriceIndexReseed.dryRunJson(this, population.store(), population.config());
     }
 
     public static String formatPrice(long price) {
