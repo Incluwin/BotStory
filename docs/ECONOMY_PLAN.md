@@ -799,7 +799,7 @@ The fates are from the code; the simulation does not model vendoring. Fewer vend
   more (value and daily limits); (d) lower the seeds: cursed and chaos scrolls have table prices only humans would pay.
   (b) is the smallest change and lowers the unsold-close count, so it slows the drift on today's rule too.
 
-### 10.9 Recovery (a user decision; no live row was changed)
+### 10.9 Recovery options (the user chose the one-shot: 10.11; no live row was changed)
 Index / seed, live 11-23, geometric mean (rows; rows under half their seed): scrolls 0.73 (277; 43; the 75 with sales
 0.38), weapons 0.85 (382; 39), armour 0.93 (1,510; 49), ETC 0.95 (502; 15), other use 0.99 (183; 1), stars 1.00 (14),
 all 0.91 (2,873; 147). Rows that moved since 11-09: 0.69 (449). Of 147 rows under half, 59 had no stall line since 11-09,
@@ -831,3 +831,32 @@ CPI projection, 53 now, from each basket item's own rate of closes since 11-09, 
 `tools/checks/checks/price-index-drift` (outside the repo): the CPI after the switch, read from a fresh dump of the live
 closes. Working: no new low after day 2, by day 7 CPI at or over day 0. Off: CPI over 1.5 x day 0 with no one-shot, or a
 close moving more than 20 % outside the one-shot's, or a basket item over 1.6 x the most it ever cost before.
+
+### 10.11 The one-time reseed (user 2026-11-24: "Yes, seed anchor 4%", "do one time reseed"; built, off)
+`PriceIndexReseed` runs at start before any citizen loads, after `reseedUnmoved`, when `PRICE_INDEX_RESEED_ENABLED` and
+the drift guard are both on (without the guard it refuses and logs). Rows under `PRICE_INDEX_RESEED_BELOW` (0.5) x seed go
+to `PRICE_INDEX_RESEED_TO` (0.8) x it, never under the NPC price. A seed at the 10-meso fallback counts as none.
+- **Once, undoable:** old prices and a marker (item 0) go to `living_price_reseed` (changeset 70, SQL 061) in one
+  transaction with the new ones. While a row is there it never runs again; an unreadable table also means no. The undo
+  statement is in the down file.
+- **Samples stay.** At 0 the next start's `reseedUnmoved` would set the row to its full seed, over what the market taught
+  it. (That rule also means a row no sale ever moved goes back to full seed at every start today.)
+- **Dry run:** GET `/runtime/stats/price-reseed`: per class, total, ten largest moves; changes nothing.
+
+**Check stack run, fresh live dump 2026-11-24.** Dry run: 138 of 2,874 rows (EQUIP 83, SCROLL 39, ORE 11, OTHER 5), 415
+with no seed. Real run, next start: the same 138; every backup row matches the price before, every new price is 0.8 x
+seed and at or over the NPC price, samples kept, no other row changed, the dry run then says 0. CPI from the index:
+56.1 -> 95.2 (13 of 33 basket items moved); last close 53.5. Index / seed: scrolls 0.77 -> 0.94, weapons 0.87 -> 0.95,
+armour 0.93 -> 0.96, ETC 0.95 -> 0.98; no row of these classes is under half its seed after. The undo restored 138 rows
+(in a rolled-back transaction). A second start was not run on the stack; the once-only rule is tested with a stand-in.
+
+**What reads the index then.**
+- *Citizen and bench stalls:* both close at a restart and price from the index as they open, so none keeps an old ask.
+- *Gear errands:* offers are read live (1.3 x index). An errand whose piece now costs more than the purse waits out its
+  24 h and is handed over as before; new ones the purse cannot cover are handed over at once.
+- *Browse budget:* 200 k x its scale a day is now under more items' price, so browsers buy fewer of those.
+- *Board offers* posted before keep their price until they end (24-48 h).
+- *Controller:* the reseed day's close is about +78 %, one capped step (1.70 -> 1.45 at the 11-23 setting), then rest.
+  Not skipped: that needs a read of the reseed table, not one line.
+- *A6* (last close over 30 closes back, 0.95 to 1.05): about 0.95 until 11-27, 0.10 on 11-28 (the 941 close of 10-29),
+  then over 1.05 and up to about 1.8 for a month. Judge by 10.10 with day 0 = the first close after the reseed.
