@@ -1,0 +1,98 @@
+# World events (docs/WORLD_SYSTEMS_PLAN.md N4, server.living.population.events). Nothing here runs unless
+# population.WORLD_EVENTS_ENABLED and the kind's own switch are on.
+#
+# events: the calendar. cadence weekly, fortnightly (every second week) or seasonal (on its dates, MM-DD). The hour is
+# not set here: each week takes the hour of the week with the most players online over the last four weeks, in the order
+# the events are listed, skipping the coliseum tournament and the week's other events. fallback: the slot while there are
+# too few samples to go by (a seasonal event takes its hour only). hours: the first and last hour it may start at.
+events:
+  - { id: invasion, kind: invasion, cadence: weekly, minutes: 20, fallback: { day: SUNDAY, hour: 20 } }
+  - { id: marketday, kind: market-day, cadence: fortnightly, minutes: 180, fallback: { day: SUNDAY, hour: 15 } }
+  - { id: festival, kind: festival, cadence: seasonal, minutes: 120, dates: ["03-20", "06-20", "09-22", "12-21"], hours: [17, 21], fallback: { day: SUNDAY, hour: 19 } }
+
+# Market day: the stall cap times `stalls`, stall asks times `ask`, MARKET plans times `weight`.
+market: { stalls: 2, ask: 0.85, weight: 3 }
+
+# Where an invasion comes, one a week in turn: the field map just outside a town's gate (decision D12), never the town.
+# levels: the citizens of the region who come. Monsters are ordinary ones that walk, with no boss flag, summons or
+# revives, none over the lowest level that comes by more than 3 (the band citizens train in), and the last is an ordinary
+# one with `hp` times its HP: the boss rules (AgentBossTargetGate) stay out of it, and no citizen is sent against
+# something that hits harder than the fields it trains on.
+invasions:
+  - id: henesys
+    region: victoria
+    map: 106010000      # The Road to the Dungeon
+    town: "Henesys"
+    place: "the Henesys gate"
+    levels: [25, 50]
+    waves:
+      - { mob: 2220100, count: 14 }   # Blue Mushroom 20
+      - { mob: 2110200, count: 16 }   # Horny Mushroom 22
+      - { mob: 2230101, count: 16 }   # Zombie Mushroom 24
+      - { mob: 2230100, count: 14 }   # Evil Eye 27
+    boss: { mob: 2230100, hp: 12 }
+  - id: ludibrium
+    region: ludibrium
+    map: 220010500      # Terrace Hall
+    town: "Ludibrium"
+    place: "the Ludibrium terrace"
+    levels: [35, 65]
+    waves:
+      - { mob: 3000005, count: 14 }   # Brown Teddy 30
+      - { mob: 3110102, count: 14 }   # Ratz 32
+      - { mob: 3110101, count: 16 }   # Pink Teddy 32
+    boss: { mob: 3110101, hp: 14 }
+  - id: orbis
+    region: orbis
+    map: 200010000      # Cloud Park I
+    town: "Orbis"
+    place: "the Orbis cloud park"
+    levels: [40, 70]
+    waves:
+      - { mob: 3230200, count: 12 }   # Star Pixie 35
+      - { mob: 3230200, count: 14 }
+      - { mob: 3230200, count: 16 }
+    boss: { mob: 3230200, hp: 14 }
+  - id: mu-lung
+    region: mu-lung
+    map: 250010000      # Entrance to Sky Forest
+    town: "Mu Lung"
+    place: "the Mu Lung forest gate"
+    levels: [45, 90]
+    waves:
+      - { mob: 4230500, count: 12 }   # Chipmunk 40
+      - { mob: 4230501, count: 14 }   # Red Porky 41
+      - { mob: 4230501, count: 16 }
+    boss: { mob: 4230501, hp: 14 }
+  - id: el-nath
+    region: el-nath
+    map: 211000200      # Snowy Hill
+    town: "El Nath"
+    place: "the hill outside El Nath"
+    levels: [55, 90]
+    waves:
+      - { mob: 5100000, count: 10 }   # Jr. Yeti 50
+      - { mob: 5100000, count: 12 }
+      - { mob: 5130104, count: 12 }   # Hector 55
+    boss: { mob: 5130104, hp: 12 }
+
+# One town a season (spring, summer, autumn, winter): minigame tables, the drop game, and a jump-quest meet on one of
+# its courses (jump quests start by these towns only). weight: PLAY and CASINO plans of the region's citizens.
+festivals:
+  weight: 4
+  towns:
+    - { name: "Henesys", map: 100000000, region: victoria, courses: [pwr] }
+    - { name: "Ellinia", map: 101000000, region: victoria, courses: [fop_a, fop_b] }
+
+# Fixed tables (decision D13): fame and one of the items, never meso. Every item here sells for 100 mesos or less.
+prizes:
+  invasion:
+    fame: 1
+    items:
+      - { item: 2022117, count: 5 }   # Maple Syrup
+      - { item: 2022002, count: 20 }  # Cider
+  festival:
+    fame: 2
+    items:
+      - { item: 3010004, count: 1 }   # The Yellow Relaxer
+      - { item: 3010005, count: 1 }   # The Red Relaxer

@@ -11,6 +11,8 @@ import server.Trade;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.living.population.CitizenSession;
+import server.living.population.events.WorldEvents;
+import server.living.resident.ResidentSpots;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 
@@ -47,6 +49,9 @@ final class DropGame extends HostPost<DropGame.DropPost> {
         volatile int routeIndex;
         /** The mesos the trade brought in (the fee less the trade fee), handed back if the game cannot start. */
         volatile long received;
+        /** Where it was opened: the drop game may move to a festival or back while it runs (N4.4). */
+        final int mapId = DropGame.this.mapId();
+        final Point spot = DropGame.this.spot();
 
         DropPost(CitizenSession session, long until) {
             super(session, until);
@@ -64,7 +69,14 @@ final class DropGame extends HostPost<DropGame.DropPost> {
 
     @Override
     public int mapId() {
-        return content.dropGameMap();
+        WorldEvents events = host.population().worldEvents();
+        int festival = events == null ? 0 : events.modifier().festivalTown(null);
+        return festival > 0 ? festival : content.dropGameMap(); // a festival has it for the evening (N4.4)
+    }
+
+    @Override
+    int mapId(DropPost post) {
+        return post.mapId;
     }
 
     @Override
@@ -74,7 +86,10 @@ final class DropGame extends HostPost<DropGame.DropPost> {
 
     @Override
     Point spot() {
-        return content.dropHost();
+        int mapId = mapId();
+        MapleMap festival = mapId == content.dropGameMap() ? null
+                : host.population().map(host.population().channels().getFirst(), mapId);
+        return festival == null ? content.dropHost() : ResidentSpots.fallback(festival, mapId);
     }
 
     @Override
@@ -94,7 +109,11 @@ final class DropGame extends HostPost<DropGame.DropPost> {
 
     @Override
     void step(DropPost post, long now) {
-        if (post.stage == Stage.IDLE && host.random().nextInt(100) < 15 && host.humanOn(post.session.channel, mapId())) {
+        if (post.stage == Stage.IDLE && post.mapId != mapId()) {
+            leave(post, "the drop game moved"); // to a festival, or back from it
+            return;
+        }
+        if (post.stage == Stage.IDLE && host.random().nextInt(100) < 15 && host.humanOn(post.session.channel, post.mapId)) {
             host.say(post.session, "casino.drop.advertise", fees());
         }
     }
@@ -121,7 +140,7 @@ final class DropGame extends HostPost<DropGame.DropPost> {
             case TRADE -> trade(post, agent, now);
             case PARTY -> party(post, agent, now);
             case GAME -> {
-                if (post.player == null || post.player.getMapId() != mapId() || !post.player.isLoggedinWorld()) {
+                if (post.player == null || post.player.getMapId() != post.mapId || !post.player.isLoggedinWorld()) {
                     host.say(post.session, "casino.drop.gone", Map.of("name", post.player == null ? "" : post.player.getName()));
                     end(post, agent);
                 } else if (now >= post.stageUntil) {
@@ -224,7 +243,7 @@ final class DropGame extends HostPost<DropGame.DropPost> {
             walkRoute(post);
             return;
         }
-        if (player == null || player.getMapId() != mapId() || now > post.stageUntil) {
+        if (player == null || player.getMapId() != post.mapId || now > post.stageUntil) {
             host.say(post.session, "casino.drop.forfeit", Map.of("name", player == null ? "" : player.getName()));
             end(post, agent);
         }
@@ -247,12 +266,22 @@ final class DropGame extends HostPost<DropGame.DropPost> {
         if (post.stage != Stage.GAME || posts.get(post.session.channel) != post) {
             return;
         }
-        List<Point> route = content.dropRoute();
+        List<Point> route = post.mapId == content.dropGameMap() ? content.dropRoute() : around(post.spot);
         if (!route.isEmpty() && post.session.entry != null) {
             post.routeIndex = (post.routeIndex + 1 + host.random().nextInt(Math.max(1, route.size() - 1))) % route.size();
-            AgentMovementCommandRuntime.moveTo(post.session.entry, route.get(post.routeIndex), false);
+            Point next = route.get(post.routeIndex);
+            if (post.mapId == content.dropGameMap()) {
+                AgentMovementCommandRuntime.moveTo(post.session.entry, next, false);
+            } else {
+                walk(post.session, next);
+            }
         }
         host.after(3_500L + host.random().nextInt(2_500), () -> walkRoute(post));
+    }
+
+    /** A festival's route: a few steps either side of the host's spot. */
+    private static List<Point> around(Point spot) {
+        return List.of(spot, new Point(spot.x - 120, spot.y), new Point(spot.x + 120, spot.y));
     }
 
     private void dropNext(DropPost post) {
@@ -309,7 +338,7 @@ final class DropGame extends HostPost<DropGame.DropPost> {
             }
         });
         reset(post);
-        walk(post.session, spot());
+        walk(post.session, post.spot);
     }
 
     private void reset(DropPost post) {

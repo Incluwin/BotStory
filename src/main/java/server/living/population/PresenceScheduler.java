@@ -41,6 +41,8 @@ import server.living.population.PopulationContent.Cohort;
 import server.living.population.PopulationContent.Field;
 import server.living.population.PopulationContent.Lobby;
 import server.living.population.PopulationContent.Region;
+import server.living.population.events.WorldEvents;
+import server.living.population.events.WorldModifier;
 import server.living.resident.ResidentSpots;
 import server.living.roster.CompanionLeases;
 import server.living.roster.RosterService;
@@ -780,6 +782,7 @@ public final class PresenceScheduler {
             if (activity == Activity.CASINO && (session.virtual || casino() == null || !casino().plays(citizen, now))) {
                 weight = 0;
             }
+            weight = worldModifier().weigh(activity, citizen.homeRegion(), weight); // a world event (N4)
             if (weight > 0) {
                 options.add(activity);
                 option.add(weight);
@@ -802,6 +805,10 @@ public final class PresenceScheduler {
     int mapFor(CitizenSession session, Activity activity) {
         Citizen citizen = session.citizen;
         int level = Math.max(1, population.store().characterProgress(citizen.characterId())[0]);
+        int eventMap = worldModifier().targetMap(activity, citizen.homeRegion());
+        if (eventMap > 0) {
+            return eventMap; // where a world event has it now (a festival's town, N4)
+        }
         switch (activity) {
             case TRAIN -> {
                 long now = System.currentTimeMillis();
@@ -858,6 +865,7 @@ public final class PresenceScheduler {
                 AgentMovementCommandRuntime.grind(entry);
                 beginStint(session, now); // its stint here is booked when it ends (F2.1)
             }
+            case EVENT -> AgentMovementCommandRuntime.grind(entry); // rallied to an invasion: it fights there (N4.3)
             case MARKET -> population.market().onArrive(session);
             case PQ -> waitAtLobby(session, map, now);
             case PLAY -> {
@@ -945,6 +953,12 @@ public final class PresenceScheduler {
     /** The population's jump quests; null in tests that leave them out. */
     private CitizenJumpQuests jumpQuests() {
         return population.jumpQuests();
+    }
+
+    /** What the world events change now (docs/WORLD_SYSTEMS_PLAN.md N4.1); nothing in tests that leave them out. */
+    private WorldModifier worldModifier() {
+        WorldEvents events = population.worldEvents();
+        return events == null ? WorldModifier.NONE : events.modifier();
     }
 
     /** The population's casino; null in tests that leave it out. */
@@ -1207,6 +1221,10 @@ public final class PresenceScheduler {
 
     /** True while {@code session} avoids {@code mapId}: it died there beside a field boss that still stands. */
     boolean avoiding(CitizenSession session, int mapId, long now) {
+        Character self = session.agent();
+        if (worldModifier().avoided(mapId, self == null ? WorldModifier.EVERYONE - 1 : self.getLevel())) {
+            return true; // an invasion over its level, or a field overrun (N4.3)
+        }
         if (mapId == 0 || mapId != session.avoidMapId) {
             return false;
         }
@@ -1543,7 +1561,7 @@ public final class PresenceScheduler {
     private void refused(CitizenSession session, Activity next, MapleMap target, long now, int waited) {
         PopulationConfig config = population.config();
         if (waited == 0) {
-            Placement other = next == Activity.PQ || next == Activity.JOB
+            Placement other = next == Activity.PQ || next == Activity.JOB || next == Activity.EVENT
                     ? null : elsewhere(session, next, target.getId(), now);
             if (other != null) {
                 cap.countRedirect();

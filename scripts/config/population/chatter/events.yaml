@@ -1,0 +1,168 @@
+# World events (docs/WORLD_SYSTEMS_PLAN.md N4, server.living.population.events.WorldEvents). event.soon.<id>: a citizen in
+# town with a player on the map, from the day before ({when} "tomorrow at 8 pm", {place} for an invasion or a festival).
+# event.now.<id>: while it runs. Each at most once a town map an hour. Needs population.WORLD_EVENTS_ENABLED.
+intents:
+  - id: event.soon.marketday
+    trigger: event.soon.marketday
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "market day {when} right?"
+      - "saving up, market day is {when}"
+      - "dont buy stuff yet, market day {when}"
+      - "anyone selling on market day? its {when}"
+    styles:
+      quiet-practical-v1:
+        - "market day {when}"
+        - "waiting for market day to buy. {when}"
+  - id: event.now.marketday
+    trigger: event.now.marketday
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "market day in the fm, go go"
+      - "fm is packed rn, stuff is cheap"
+      - "brb fm, its market day"
+      - "everything is on sale in the fm lol"
+    styles:
+      quiet-practical-v1:
+        - "market day. fm is cheap"
+  - id: event.soon.festival
+    trigger: event.soon.festival
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "festival in {place} {when}, who's going"
+      - "gonna win the tables in {place} {when}"
+      - "{place} festival {when}!"
+      - "u doing the climb at the festival? {when} in {place}"
+    styles:
+      quiet-practical-v1:
+        - "festival {when}, {place}"
+  - id: event.now.festival
+    trigger: event.now.festival
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "festival's on in {place}"
+      - "omok in {place}, come on"
+      - "everyone's at the {place} festival"
+      - "there's a prize for the tables in {place} rn"
+    styles:
+      quiet-practical-v1:
+        - "festival in {place} now"
+  - id: event.soon.invasion
+    trigger: event.soon.invasion
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "they say monsters hit {place} {when}"
+      - "u coming to {place} {when}? gonna be a big fight"
+      - "stocking pots for {place} {when}"
+      - "invasion at {place} {when}, need ppl"
+    styles:
+      quiet-practical-v1:
+        - "{place}, {when}. bring pots"
+  - id: event.now.invasion
+    trigger: event.now.invasion
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "theyre at {place} rn, go help"
+      - "{place} is under attack!!"
+      - "who can fight? {place} needs ppl"
+      - "invasion at {place} now"
+    styles:
+      quiet-practical-v1:
+        - "attack at {place}. help if u can"
+  # on the field, as a wave comes ({count} which one), the last one, and after
+  - id: event.wave
+    trigger: event.wave
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "here they come!"
+      - "wave {count}"
+      - "more of em, watch out"
+      - "wave {count}, stay close"
+    styles:
+      quiet-practical-v1:
+        - "wave {count}"
+  - id: event.boss
+    trigger: event.boss
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "big one!! everyone on it"
+      - "that ones tough, focus it"
+      - "last one, kill it"
+    styles:
+      quiet-practical-v1:
+        - "last one. focus it"
+  - id: event.thanks
+    trigger: event.thanks
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ty {name}, couldnt have held it without u"
+      - "{name} nice job!!"
+      - "gg {name}, thx for the help"
+    styles:
+      quiet-practical-v1:
+        - "thanks {name}"
+  # in the region's towns for an hour after
+  - id: event.held
+    trigger: event.held
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "we held {place}!"
+      - "{place} is safe, gg"
+      - "they got nowhere at {place} lol"
+    styles:
+      quiet-practical-v1:
+        - "{place} held"
+  - id: event.overrun
+    trigger: event.overrun
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "ugh {place} got overrun, cant train there"
+      - "stay away from {place} for a while"
+      - "nobody showed up at {place}, its a mess now"
+    styles:
+      quiet-practical-v1:
+        - "{place} is overrun. avoid it"
+  # meeting again a player it held the line with ({what} the town)
+  - id: memory.greet.defended.map
+    trigger: memory.greet.defended
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}! u were there when they attacked {what}"
+      - "hey {name}, good fight at {what} {when}"
+      - "{name} ty again for {what}"

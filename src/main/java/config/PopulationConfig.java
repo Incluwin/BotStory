@@ -585,6 +585,13 @@ public class PopulationConfig {
     public double BUY_ORDER_PURSE_SHARE = 0.1;
     public int BUY_ORDERS_PER_PLAYER = 3;
     public int BUY_ORDER_DAYS = 7;
+    /** The world events calendar (docs/WORLD_SYSTEMS_PLAN.md N4; population/events.yaml). */
+    public boolean WORLD_EVENTS_ENABLED = false;
+    public boolean WORLD_EVENT_MARKET_DAY_ENABLED = false;
+    public boolean WORLD_EVENT_FESTIVAL_ENABLED = false;
+    public boolean WORLD_EVENT_INVASION_ENABLED = false;
+    public int WORLD_EVENT_RALLY_MAX = 12;
+    public int WORLD_EVENT_POTION_FLOOR = 50;
 
     /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
     public Set<String> citizenBosses() {
@@ -760,6 +767,10 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.COMMISSION_FRIEND_DISCOUNT must be 0..0.2 (recipes.yaml leaves out"
                     + " what would print meso below that), BUY_ORDER_CHANCE 0..1, BUY_ORDER_PURSE_SHARE over 0 up to 1,"
                     + " BUY_ORDERS_OPEN_MAX not negative and the other COMMISSION and BUY_ORDER numbers at least 1");
+        }
+        if (WORLD_EVENT_RALLY_MAX < 0 || WORLD_EVENT_POTION_FLOOR < 0) {
+            throw new IllegalArgumentException("population.WORLD_EVENT_RALLY_MAX and WORLD_EVENT_POTION_FLOOR must not be"
+                    + " negative");
         }
         if (PAPER_HOUR < 0 || PAPER_HOUR > 23 || PAPER_RETENTION_DAYS < 0 || (PAPER_RETENTION_DAYS > 0 && PAPER_RETENTION_DAYS < 30)
                 || !dayOfWeek(PAPER_DAY)) {

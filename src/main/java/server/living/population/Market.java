@@ -21,6 +21,8 @@ import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorldHooks;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Good;
+import server.living.population.events.WorldEvents;
+import server.living.population.events.WorldModifier;
 import server.living.population.needs.NeedLedger;
 import server.maps.MapleMap;
 import server.maps.PlayerShop;
@@ -359,7 +361,7 @@ public final class Market {
      */
     void learnSales() {
         for (Sale sale = sales.poll(); sale != null; sale = sales.poll()) {
-            if (!LivingWorldHooks.benchCompanion(sale.sellerId())) {
+            if (!LivingWorldHooks.benchCompanion(sale.sellerId()) && !worldModifier().holdsPrices()) { // not a sale day's price
                 observe(sale.itemId(), saleEstimate(sale.itemId(), sale.unitPrice()));
             }
         }
@@ -388,6 +390,9 @@ public final class Market {
      * average a little over the index, so a pull toward the ask alone used to push unsold goods up). Not a sale.
      */
     void unsold(int itemId, long unitAsk) {
+        if (worldModifier().holdsPrices()) {
+            return; // a market day's asks teach the index nothing (N4.2)
+        }
         nudge(itemId, Math.round(Math.min(unitAsk, price(itemId)) * UNSOLD_STEP_DOWN), false);
     }
 
@@ -495,7 +500,7 @@ public final class Market {
             return;
         }
         if (session.citizen.has(Citizen.FLAG_MERCHANT) && !session.stallOpen && session.stallSpot == null
-                && stallsOpen < population.config().MARKET_STALLS_MAX) {
+                && stallsOpen < stallCap()) {
             server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> walkToStall(session), 3_000L);
             return;
         }
@@ -613,7 +618,18 @@ public final class Market {
 
     private boolean mayOpenStall(CitizenSession session, Character agent) {
         return agent != null && FieldCatalog.isFreeMarket(agent.getMapId()) && agent.getMapId() != FieldCatalog.FM_ENTRANCE
-                && !session.stallOpen && stallsOpen < population.config().MARKET_STALLS_MAX;
+                && !session.stallOpen && stallsOpen < stallCap();
+    }
+
+    /** MARKET_STALLS_MAX, more of them on a market day (N4.2). */
+    private int stallCap() {
+        return worldModifier().stallCap(population.config().MARKET_STALLS_MAX);
+    }
+
+    /** What the world events change now (docs/WORLD_SYSTEMS_PLAN.md N4.1); nothing in tests that leave them out. */
+    private WorldModifier worldModifier() {
+        WorldEvents events = population.worldEvents();
+        return events == null ? WorldModifier.NONE : events.modifier();
     }
 
     private void openStall(CitizenSession session, CharacterSpaceReservation spot) {
@@ -741,7 +757,7 @@ public final class Market {
         double[] known = asks == null ? null : asks.get(itemId);
         int arm = asks == null ? -1 : known != null ? (int) known[0] : prices.askArm(itemId, random);
         double share = arm >= 0 ? prices.asks().multiplier(arm) : 0.9d + random.nextDouble() * 0.3d;
-        long bundlePrice = Math.max(Math.max(1L, npcPays(itemId, perBundle)), Math.round(unit * perBundle * share));
+        long bundlePrice = Math.max(Math.max(1L, npcPays(itemId, perBundle)), Math.round(unit * perBundle * share * worldModifier().askShare())); // less on a market day (N4.2)
         if (arm >= 0) { // its bundles add up across stacks of the same item
             double ratio = unit > 0L ? bundlePrice / (double) (unit * perBundle) : share;
             asks.put(itemId, new double[]{arm, ratio, (known == null ? 0 : known[2]) + bundles});
@@ -751,7 +767,7 @@ public final class Market {
 
     /** A new stall's learned asks: kept while price learning is on and its arms are read, else null (the fixed rule). */
     Map<Integer, double[]> newAsks() {
-        return prices.ready() ? new HashMap<>() : null;
+        return prices.ready() && !worldModifier().holdsPrices() ? new HashMap<>() : null;
     }
 
     /** Lets go of the spot it was walking to (or opening on), by its character id: its character may be gone. */

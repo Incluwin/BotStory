@@ -131,6 +131,10 @@ public final class CitizenMiniGames {
         if (region == null) {
             return out;
         }
+        int festival = population.worldEvents() == null ? 0 : population.worldEvents().modifier().festivalTown(region.id());
+        if (festival > 0 && allows(population.map(citizen.channel(), festival))) {
+            return List.of(festival); // everybody plays at the festival (N4.4)
+        }
         for (String part : config().MINIGAME_TOWNS.split(",")) {
             try {
                 int mapId = Integer.parseInt(part.trim());
@@ -461,6 +465,10 @@ public final class CitizenMiniGames {
         public void played(MiniGameTable.Seat seat, MiniGameResult result, Character opponent) {
             if (seat.session == null || opponent == null) {
                 return;
+            }
+            if (population.worldEvents() != null && result != MiniGameResult.TIE) { // a festival's table (N4.4)
+                boolean won = result == MiniGameResult.WIN;
+                population.worldEvents().played(won ? seat.chr : opponent, won ? opponent : seat.chr, seat.chr.getMapId());
             }
             String what = result == MiniGameResult.WIN ? "beat " : result == MiniGameResult.LOSS ? "lost to " : "tied with ";
             Character agent = seat.chr;

@@ -13,9 +13,10 @@ public final class CitizenSession {
     /**
      * JOB: on its way to its instructor for its next job (CitizenJobErrands); never rolled by a cohort's weights. PLAY:
      * omok or match cards in a town that allows minigames (CitizenMiniGames). CASINO: dealing, hosting or playing at
-     * Henesys Game Park, the drop game, a gachapon box or selling NX codes (CitizenCasino).
+     * Henesys Game Park, the drop game, a gachapon box or selling NX codes (CitizenCasino). EVENT: rallied to a world
+     * event's map to fight there (events.Invasion, N4.3); never rolled by a cohort's weights.
      */
-    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK, JOB, PLAY, JQ, CASINO }
+    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK, JOB, PLAY, JQ, CASINO, EVENT }
 
     public final int characterId;
     public volatile Citizen citizen;

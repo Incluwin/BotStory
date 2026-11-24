@@ -583,6 +583,9 @@ public final class CitizenJumpQuests {
         boolean last = attempt.leg == attempt.course.legs().size() - 1;
         if (last) {
             say("jq.clear", attempt.session);
+            if (population.worldEvents() != null) { // a festival's meet (N4.4)
+                population.worldEvents().climbed(attempt.session, attempt.course);
+            }
             int[] counts = tally(attempt.course);
             counts[1]++;
             attempt.session.journal.add("jq", "cleared " + attempt.course.spoken() + " after "

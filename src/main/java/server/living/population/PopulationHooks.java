@@ -166,7 +166,8 @@ public final class PopulationHooks {
                             + population.fields().name(map.getId()).toLowerCase(java.util.Locale.ROOT));
                 }
             }
-            if (population.killSteals() != null) {
+            if (population.killSteals() != null
+                    && (population.worldEvents() == null || !population.worldEvents().isInvader(monster))) {
                 population.killSteals().killed(monster, attackerIds, map); // who took whose kill (N2.4)
             }
             if (population.fieldBossKills() != null) { // a field boss's record and bounties (WORLD_SYSTEMS_PLAN N6)

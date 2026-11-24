@@ -39,6 +39,16 @@ class PaperCatalogTest {
         FILED.put("market.faller", Map.of("item", "Mithril Ore", "percent", "18"));
         FILED.put("market.month", Map.of("item", "Mithril Ore", "way", "up", "percent", "24"));
         FILED.put("market.commission", Map.of("name", "Ann", "crafter", "Ben", "item", "Steel Helmet"));
+        FILED.put("market.bargains", Map.of("items", "Cape STR, Work Gloves", "percent", "28"));
+        FILED.put("town.festival", Map.of("name", "Ann", "place", "Henesys", "count", "5"));
+        FILED.put("town.festival.quiet", Map.of("place", "Henesys"));
+        FILED.put("town.meet", Map.of("name", "Ann", "place", "Henesys"));
+        FILED.put("notices.festival", Map.of("when", "Sunday at 7 pm", "place", "Henesys"));
+        FILED.put("town.invasion.held", Map.of("place", "the Henesys gate", "town", "Henesys"));
+        FILED.put("town.invasion.heroes", Map.of("place", "the Henesys gate", "town", "Henesys", "names", "Ann, Ben"));
+        FILED.put("town.invasion.overrun", Map.of("place", "the Henesys gate", "town", "Henesys"));
+        FILED.put("notices.invasion", Map.of("when", "Sunday at 8 pm", "place", "the Henesys gate"));
+        FILED.put("notices.marketday", Map.of("when", "Sunday at 3 pm"));
         FILED.put("town.wedding", Map.of("name", "Ann", "partner", "Ben"));
         FILED.put("town.guild", Map.of("guild", "Lumen", "leader", "Ann"));
         FILED.put("town.alliance", Map.of("alliance", "Dawn", "names", "Lumen, Ember"));

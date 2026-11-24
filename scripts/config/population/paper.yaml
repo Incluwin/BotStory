@@ -18,6 +18,11 @@
 #   town.wedding          name, partner                       town.guild     guild, leader
 #   town.alliance         alliance, names (its guilds)        town.job       name, job
 #   town.level            name, level                         town.guildgoal guild, goal
+#   market.bargains       items, percent (market day)         notices.marketday  when
+#   town.festival         name, place, count                  town.festival.quiet  place
+#   town.meet             name, place (a festival's climb)    notices.festival   when, place
+#   town.invasion.held / .overrun  place, town                town.invasion.heroes  place, town, names
+#   notices.invasion      when, place
 # title: the masthead. Players are named like citizens (decision D2, as the records board does). ASCII only, no '#' (NPC window codes).
 
 title: "The Henesys Herald"
@@ -183,6 +188,116 @@ stories:
     gists:
       - "{crafter} made {name} a {item}"
       - "{name} had {crafter} make a {item}"
+
+  - key: market.bargains
+    headlines:
+      - "Market Day bargains: {items}"
+      - "Up to {percent} percent off on Market Day"
+    bodies:
+      - "The Free Market's best buys on Market Day were {items}, up to {percent} percent under the usual price."
+      - "Stalls marked down {items} on Market Day. The best of it went for {percent} percent less."
+    gists:
+      - "{items} went for cheap on market day"
+      - "stuff was {percent}% off on market day"
+
+  - key: town.festival
+    headlines:
+      - "{name} rules the tables at the {place} festival"
+      - "Champion of the {place} festival: {name}"
+    bodies:
+      - "{name} beat {count} people at the game tables in {place} and went home with the prize."
+      - "Nobody at the {place} festival could stop {name}, who beat {count} of them."
+    gists:
+      - "{name} won the tables at the {place} festival"
+      - "{name} beat {count} people at the {place} festival"
+
+  - key: town.festival.quiet
+    headlines:
+      - "Festival in {place}"
+      - "{place} had its festival"
+    bodies:
+      - "Games and music filled {place} for an evening, with nobody far enough ahead at the tables to take the prize."
+      - "The {place} festival came and went. The table prize waits for next season."
+    gists:
+      - "there was a festival in {place}"
+      - "nobody won the tables in {place}"
+
+  - key: town.meet
+    headlines:
+      - "{name} first to the top at {place}"
+      - "{place} festival: {name} wins the climb"
+    bodies:
+      - "{name} was the first up the climb at the {place} festival."
+      - "The climb at the {place} festival went to {name}, who made it look easy."
+    gists:
+      - "{name} won the climb in {place}"
+      - "{name} was first up at the {place} festival"
+
+  - key: notices.festival
+    headlines:
+      - "Festival in {place}: {when}"
+      - "{place} holds its festival {when}"
+    bodies:
+      - "Game tables, the drop game and a climb with a prize, in {place} {when}."
+      - "{place} puts its tables out {when}. There is a prize for the champion and for the first up the climb."
+    gists:
+      - "festival in {place} {when}"
+      - "{place} has a festival {when}"
+
+  - key: town.invasion.held
+    headlines:
+      - "{town} holds"
+      - "Invaders beaten at {place}"
+    bodies:
+      - "Monsters massed at {place} and were driven off by those who stood there."
+      - "{town} sleeps soundly: the attack on {place} came to nothing."
+    gists:
+      - "they held {place}"
+      - "{town} beat the invasion"
+
+  - key: town.invasion.heroes
+    headlines:
+      - "{names} hold {place}"
+      - "{town} thanks {names}"
+    bodies:
+      - "Monsters came at {place} in waves. {names} stood in the way, and the line held."
+      - "{town} owes {names} a drink: the attack on {place} broke on them."
+    gists:
+      - "{names} held {place}"
+      - "{names} saved {town}"
+
+  - key: town.invasion.overrun
+    headlines:
+      - "{town} gate overrun"
+      - "The line at {place} breaks"
+    bodies:
+      - "Monsters overran {place}. Travellers from {town} took the long way round."
+      - "Too few stood at {place}, and the monsters walked through."
+    gists:
+      - "{place} got overrun"
+      - "{town} lost the invasion"
+
+  - key: notices.invasion
+    headlines:
+      - "Monsters gather near {place}"
+      - "Warning: {when}"
+    bodies:
+      - "Scouts expect an attack on {place} {when}. Anyone who can fight is welcome."
+      - "Monsters are massing. They will come at {place} {when}; bring potions and friends."
+    gists:
+      - "monsters are coming to {place} {when}"
+      - "invasion at {place} {when}"
+
+  - key: notices.marketday
+    headlines:
+      - "Market Day: {when}"
+      - "Free Market stalls cut prices {when}"
+    bodies:
+      - "The Free Market holds its Market Day {when}. More stalls, lower prices, three hours only."
+      - "Merchants promise lower prices in the Free Market {when}. Bring a full purse."
+    gists:
+      - "market day is {when}"
+      - "its market day {when}"
 
   - key: town.wedding
     headlines:

@@ -23,6 +23,7 @@ import server.living.LivingWorld;
 import server.living.config.ContentException;
 import server.living.population.needs.NeedLedger;
 import server.living.population.paper.EventLogSweep;
+import server.living.population.events.WorldEvents;
 import server.living.population.paper.PaperDesk;
 import server.living.population.paper.PaperTalk;
 import server.living.population.records.ClearLog;
@@ -94,6 +95,7 @@ public final class Population {
     private final CitizenWhispers whispers;
     private final GuildChat guildChat;
     private final GuildGoals guildGoals;
+    private final WorldEvents worldEvents;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -167,6 +169,7 @@ public final class Population {
         this.churn = new Churn(this);
         this.guildChat = new GuildChat(this); // guild chat that answers (docs/WORLD_SYSTEMS_PLAN.md N5.1)
         this.guildGoals = new GuildGoals(this); // and a goal a week (N5.2)
+        this.worldEvents = new WorldEvents(this); // the world events calendar (docs/WORLD_SYSTEMS_PLAN.md N4)
         this.clears.onBooked(clear -> guildChat.cleared(clear, System.currentTimeMillis())); // a guild's gz
     }
 
@@ -231,7 +234,7 @@ public final class Population {
         AgentLootPolicy.installSelectivity(population.controller);
         // citizens leave alone a mob a human is fighting, while kill-steal memory is on (docs/WORLD_SYSTEMS_PLAN.md N2.4)
         server.agents.capabilities.combat.AgentGrindManners.install(id -> population.config().KS_MEMORY_ENABLED
-                && population.isCitizen(id));
+                && population.isCitizen(id) && !population.worldEvents().defends(id)); // an invasion's are everyone's (N4.3)
         AgentEtcRoomPlan.installKeepsFree(population::etcRoomFor);
         // a camping citizen may hit a field boss when its manners allow (docs/WORLD_SYSTEMS_PLAN.md N6.3)
         server.agents.capabilities.expedition.boss.AgentFieldBossSeats.install(population.camps::allows);
@@ -261,6 +264,7 @@ public final class Population {
             population.casino.tick(); // the casino's seating and shifts (docs/SOLOMAPLING_PORT.md)
             population.fidgets.tick();
             population.conversations.tick();
+            population.worldEvents.tick(System.currentTimeMillis()); // the running world events (N4)
         }, 20_000L, 20_000L));
         // and on the same minute the tell audit samples where idle bots stand, folding hourly (BOT_CONCEPT_PLAN.md C2)
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
@@ -273,6 +277,7 @@ public final class Population {
             population.guildGoals.minute(System.currentTimeMillis()); // bot guilds' weekly goals (N5.2)
             population.camps.minute(System.currentTimeMillis()); // citizens at field bosses (N6.3)
             population.tradesMinute(System.currentTimeMillis()); // crafters and buy orders (N8)
+            population.worldEvents.minute(System.currentTimeMillis()); // the world events calendar (N4)
         }, 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
@@ -316,6 +321,7 @@ public final class Population {
             timer.cancel(false);
         }
         population.timers.clear();
+        population.worldEvents.shutdown(); // an invasion's monsters go; a running event is resumed at the next start
         population.market.closeAll("server shutdown");
         population.needs.boards().removeAll(); // a later start spawns them again
         population.casino.stopAll(); // the cashier NPC and the tables' chips and cards
@@ -518,6 +524,11 @@ public final class Population {
     /** Citizens' talk of the paper's headlines on its first day (N1.3). */
     public PaperTalk paperTalk() {
         return paperTalk;
+    }
+
+    /** The world events calendar (docs/WORLD_SYSTEMS_PLAN.md N4). */
+    public WorldEvents worldEvents() {
+        return worldEvents;
     }
 
     /** Bot guilds' weekly goals (docs/WORLD_SYSTEMS_PLAN.md N5.2). */

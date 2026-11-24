@@ -251,6 +251,9 @@ public final class ChatterEngine {
                 if (population.paperTalk() != null && population.paperTalk().talk(session, now)) {
                     continue; // the paper's headlines on its first day instead (docs/WORLD_SYSTEMS_PLAN.md N1.3)
                 }
+                if (population.worldEvents() != null && population.worldEvents().talk(session, now)) {
+                    continue; // a world event of the next day, running now or just over (N4)
+                }
                 if (population.tieTalk() != null && population.tieTalk().talk(session, now)) {
                     continue; // traded a line with a citizen it is tied to instead (N2.2)
                 }
