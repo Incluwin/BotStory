@@ -830,4 +830,4 @@ CPI projection, 53 now, from each basket item's own rate of closes since 11-09, 
 ### 10.10 Check
 `tools/checks/checks/price-index-drift` (outside the repo): the CPI after the switch, read from a fresh dump of the live
 closes. Working: no new low after day 2, by day 7 CPI at or over day 0. Off: CPI over 1.5 x day 0 with no one-shot, or a
-close moving more than 20 % outside the one-shot's, or a basket item over 3 x its price on day 0 without a one-shot.
+close moving more than 20 % outside the one-shot's, or a basket item over 1.6 x the most it ever cost before.
