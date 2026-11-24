@@ -41,7 +41,8 @@ SCENARIOS = ("single", "multi")
 LIVE_ADMIN_PORT = ":8480"
 OPERATOR = "Crewfriend"
 # Flat ground with no mobs of its own, 450 px or more on both sides of the first portal (one arena each).
-MAPS = (180000000, 140030000, 450007000, 450012000, 270000000, 271030000, 450006000, 450009120)
+MAPS = (180000000, 140030000, 450007000, 450012000, 270000000, 271030000, 450006000, 450009120,
+        450003350, 450003400, 450007170, 450009130)
 # Every job a citizen can hold: the explorer trees, the Cygnus Knights and Aran.
 JOBS = [b + o for b in (100, 200, 300, 400, 500)
         for o in ((0, 10, 11, 12, 20, 21, 22, 30, 31, 32) if b in (100, 200) else (0, 10, 11, 12, 20, 21, 22))]
