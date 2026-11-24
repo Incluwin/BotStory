@@ -225,6 +225,40 @@ class CitizenRunInvitesTest {
     }
 
     @Test
+    void aPlayerAloneInTheirPartyIsAskedPlainlyAndToldToLeaveIt() {
+        Character lia = threeAtLakelis();
+        Character ann = trainer(10, "Ann", 24, CitizenLobbyFixture.CHANNEL);
+        lobby.parties.lead(ann);
+        knows(lia, ann, 30);
+        quests.tick(T0);
+        assertEquals(List.of("Lia->Ann run: run.invite"), invitationsTo("Ann"));
+
+        assertTrue(invites.replied(lobby.session(lia), ann, "sure", T0 + 5_000L));
+        assertTrue(whispers.contains("Lia->Ann reply: whisper.join.party"), whispers.toString());
+        lobby.parties.leaveCurrentParty(ann);
+        quests.tick(T0 + 20_000L);
+        assertTrue(lobby.parties.hasPendingPartyInvite(ann.getId()));
+    }
+
+    @Test
+    void aPlayerOnAnExpeditionsListIsNotAsked() {
+        Character lia = threeAtLakelis();
+        Character ann = trainer(10, "Ann", 24, CitizenLobbyFixture.CHANNEL);
+        knows(lia, ann, 30);
+        net.server.channel.Channel channel = mock(net.server.channel.Channel.class, withSettings().stubOnly());
+        server.expeditions.Expedition list = mock(server.expeditions.Expedition.class, withSettings().stubOnly());
+        when(list.contains(ann)).thenReturn(true);
+        when(channel.getExpeditions()).thenReturn(List.of(list));
+        Client client = ann.getClient();
+        when(client.getChannelServer()).thenReturn(channel);
+
+        assertEquals("in a party quest or boss run", invites.gate(ann, CitizenLobbyFixture.KPQ, 1,
+                CitizenLobbyFixture.KPQ.mapId(), T0));
+        quests.tick(T0);
+        assertTrue(whispers.isEmpty(), whispers.toString());
+    }
+
+    @Test
     void aPlayerPartiedWithAnotherPlayerOrAnotherOwnersBotIsNotInvited() {
         Character lia = threeAtLakelis();
         Character ann = trainer(10, "Ann", 24, CitizenLobbyFixture.CHANNEL);
@@ -262,7 +296,13 @@ class CitizenRunInvitesTest {
         assertFalse(lobby.parties.memberIds(lia).contains(tobi.getId()), "Ann's seat is not given away");
         assertEquals(List.of(ann.getId(), brannock.getId()), lobby.parties.memberIds(ann), "nobody moved her crew");
 
-        lobby.parties.leaveCurrentParty(ann); // she benched Brannock (her party is gone)
+        lobby.parties.leaveCurrentParty(brannock); // she benched Brannock: her party of one is still there
+        quests.tick(T0 + 10_000L + CitizenPartyQuests.FILL_WAIT_MS + 10_000L);
+        quests.tick(T0 + 10_000L + CitizenPartyQuests.FILL_WAIT_MS + 15_000L);
+        assertFalse(lobby.parties.hasPendingPartyInvite(ann.getId()), "the game invites nobody who has a party");
+        assertEquals(1, whispers.stream().filter("Lia->Ann reply: whisper.join.party"::equals).count(), "told once");
+
+        lobby.parties.leaveCurrentParty(ann);
         quests.tick(T0 + 2 * MINUTE);
         assertTrue(lobby.parties.hasPendingPartyInvite(ann.getId()), "the leader's invite once she is free");
         assertTrue(whispers.contains("Lia->Ann reply: whisper.join.invited"), whispers.toString());
@@ -421,6 +461,11 @@ class CitizenRunInvitesTest {
         assertEquals(CitizenRunInvites.Answer.NO, CitizenRunInvites.answer("nah busy"));
         assertEquals(CitizenRunInvites.Answer.NO, CitizenRunInvites.answer("can't rn sorry"));
         assertEquals(CitizenRunInvites.Answer.OTHER, CitizenRunInvites.answer("what map?"));
+        assertEquals(CitizenRunInvites.Answer.NO, CitizenRunInvites.answer("im busy"));
+        assertEquals(CitizenRunInvites.Answer.NO, CitizenRunInvites.answer("ok maybe later"));
+        assertEquals(CitizenRunInvites.Answer.OTHER, CitizenRunInvites.answer("im afk"));
+        assertEquals(CitizenRunInvites.Answer.YES, CitizenRunInvites.answer("im in"));
+        assertEquals(CitizenRunInvites.Answer.YES, CitizenRunInvites.answer("sure why not"));
     }
 
     // ---- the bandit (N3.6) ---------------------------------------------------------------------------------

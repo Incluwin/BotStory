@@ -54,8 +54,8 @@ intents:
     weight: 10
     cooldownMs: 0
     lines:
-      - "nice, bench ur crew and ill inv u"
-      - "kk, leave ur crew for this one and ill send inv"
+      - "nice, bench ur crew n leave ur party, ill inv u"
+      - "kk, send ur crew home n drop ur party, then ill inv"
       - "cool, once ur crew's out of the party ill inv"
   - id: whisper.run.yes
     trigger: whisper.run.yes
