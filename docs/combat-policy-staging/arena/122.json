@@ -1,0 +1,87 @@
+{
+  "jobId": 122,
+  "jobName": "PALADIN",
+  "level": 0,
+  "build": "bench",
+  "learnedAt": "2026-11-24T04:11:56.534173900Z",
+  "gammaPerSecond": 0.9,
+  "priorsRelaxed": false,
+  "actionNames": {},
+  "scenarios": {
+    "single": {
+      "adopted": true,
+      "learnedDps": 16315.5375,
+      "priorDps": 9260.775,
+      "decisions": 138,
+      "table": {
+        "1 target": {
+          "1221009": {
+            "visits": 36,
+            "value": 181912.16679922314,
+            "seeded": true,
+            "meanReward": 12353.853193566954,
+            "meanSeconds": 1.5550000000000002
+          },
+          "1001004": {
+            "visits": 9,
+            "value": 184004.27545168577,
+            "seeded": true,
+            "meanReward": 13657.989497460649,
+            "meanSeconds": 1.9972222222222222
+          },
+          "1001005": {
+            "visits": 8,
+            "value": 182635.20177059047,
+            "seeded": true,
+            "meanReward": 9536.96756447553,
+            "meanSeconds": 1.670125
+          },
+          "1211002": {
+            "visits": 39,
+            "value": 190299.25363480093,
+            "seeded": true,
+            "meanReward": 16014.414051154023,
+            "meanSeconds": 0.9503846153846156
+          },
+          "1201006": {
+            "visits": 2,
+            "value": 179428.86743430264,
+            "seeded": true,
+            "meanReward": 0.0,
+            "meanSeconds": 1.523
+          }
+        },
+        "1 target|target debuffed": {
+          "1221009": {
+            "visits": 28,
+            "value": 201786.5424235126,
+            "seeded": true,
+            "meanReward": 15241.170477247371,
+            "meanSeconds": 0.8401785714285714
+          },
+          "1001004": {
+            "visits": 6,
+            "value": 200359.62694585425,
+            "seeded": true,
+            "meanReward": 14811.066888975103,
+            "meanSeconds": 1.0523333333333333
+          },
+          "1001005": {
+            "visits": 4,
+            "value": 194092.88104790522,
+            "seeded": true,
+            "meanReward": 5897.675962619896,
+            "meanSeconds": 1.19425
+          },
+          "1211002": {
+            "visits": 6,
+            "value": 197546.28551890267,
+            "seeded": true,
+            "meanReward": 14536.138864838864,
+            "meanSeconds": 1.4485
+          }
+        }
+      }
+    }
+  }
+}

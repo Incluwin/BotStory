@@ -10,8 +10,8 @@
   "scenarios": {
     "single": {
       "adopted": true,
-      "learnedDps": 7454.15,
-      "priorDps": 3733.78125,
+      "learnedDps": 8834.365625,
+      "priorDps": 5292.303125,
       "decisions": 4738,
       "table": {
         "1 target": {
@@ -71,8 +71,8 @@
     },
     "multi": {
       "adopted": true,
-      "learnedDps": 8801.25625,
-      "priorDps": 6016.45,
+      "learnedDps": 13531.525,
+      "priorDps": 11563.63125,
       "decisions": 9915,
       "table": {
         "2-3 targets": {

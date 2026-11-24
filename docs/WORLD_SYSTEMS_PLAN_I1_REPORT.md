@@ -5,7 +5,7 @@ answers as before.
 
 | Piece | State |
 |---|---|
-| I1.1 adoption pipeline | Built and run: `docs/COMBAT_POLICY_PIPELINE.md`, tables in `docs/COMBAT_POLICY_RESULTS_BENCH.md` (what bench grinders learned) and `docs/COMBAT_POLICY_RESULTS.md` (arena learning). Nothing adopted. |
+| I1.1 adoption pipeline | Built and run: `docs/COMBAT_POLICY_PIPELINE.md`, tables in `docs/COMBAT_POLICY_RESULTS.md`. Nothing adopted. |
 | I1.4 support points | Built, `population.SUPPORT_LEARNING_ENABLED` off. |
 | I1.2 duel learner and self-play | Built, `pvp.DUEL_LEARNING_ENABLED` off. |
 | I1.3 job-scale bandit | Design only, and the design is "do not build": below. |
@@ -36,6 +36,11 @@ answers as before.
    Lv 100 White Knight at level 1 of the charge), and Charged Blow uses the charge up. That is most of why the White
    Knight's candidate, which hardly uses Charged Blow, gains so much: fix the prior and the gain shrinks.
 5. *Deaths cannot be measured in the arena* (dummies do not hit back, the Agent is topped up every second).
+
+**Adoption.** The user approved Fire/Poison Arch Mage, Sniper and Outlaw on 2026-11-24 under four conditions; none
+repeated its win in the independent second run, so all three are held. White Knight and Paladin (one target, about
++75 % twice) are the only confirmed wins. The Cygnus Knights and Aran (19 jobs) were not run for want of time.
+The arena's 3 minutes of learning give 100-200 decisions a setting: enough to play, too few to beat the priors often.
 
 ## I1.4
 
@@ -70,6 +75,12 @@ answers as before.
   classes. Footwork (PD's steps and hops) and the prior's gates stay in force under the learner. Own potions in field
   duels stay the prior's. Team fights keep the prior brain. The measuring bouts play the table under the live evidence
   rule, so what is measured is what would be used. Off-peak is 08:00-12:00 UTC.
+
+- *Trial on the check stack (2026-11-24):* six bouts by `!pvp selfplay 6` fought their rounds (rounds of 29-64 s, one
+  side down), eight jobs learned 60-320 decisions each in three minutes, no error, and `logs/pvp` held nothing but
+  `duel-policies` (no duels.csv, no learned rates). No job has been measured yet: a verdict needs 4,000 decisions plus
+  40 pairs, so "the learned brain beats the prior brain" is **not shown yet**; a few off-peak nights will.
+  The bots' own autopot still drinks tonics at its alert, so DRINK decides only above it.
 
 ## I1.3 PVP_JOB_SCALE: design, and why not to build it
 
