@@ -99,7 +99,7 @@ final class EconomyController implements AgentLootPolicy.Selectivity {
         if (!config.CONTROLLER_ENABLED) {
             return;
         }
-        Decision decision = decide(close, levers, config);
+        Decision decision = setting(close);
         boolean applied = !config.CONTROLLER_SHADOW;
         save(decision, applied);
         log.info("economy controller {}{}: growth {} (target {}), basket {}, pickup {}, luxury {}, buy budget x{}",
@@ -110,6 +110,17 @@ final class EconomyController implements AgentLootPolicy.Selectivity {
         if (applied) {
             apply(decision.levers());
         }
+    }
+
+    /** The close's setting; on the day the price index was reseeded (PriceIndexReseed), every lever as it is. */
+    Decision setting(EconomyLedger.Close close) {
+        Decision decision = decide(close, levers, config);
+        if (!close.day().equals(population.store().priceReseedDay())) {
+            return decision;
+        }
+        log.info("economy controller {}: no step, the price index was reseeded that day (docs/ECONOMY_PLAN.md 10.11)",
+                close.day());
+        return new Decision(decision.day(), decision.growth(), decision.cpiChange(), levers);
     }
 
     static Decision decide(EconomyLedger.Close close, Levers now, EconomyConfig config) {

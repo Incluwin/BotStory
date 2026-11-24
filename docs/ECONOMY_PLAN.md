@@ -856,7 +856,25 @@ armour 0.93 -> 0.96, ETC 0.95 -> 0.98; no row of these classes is under half its
   24 h and is handed over as before; new ones the purse cannot cover are handed over at once.
 - *Browse budget:* 200 k x its scale a day is now under more items' price, so browsers buy fewer of those.
 - *Board offers* posted before keep their price until they end (24-48 h).
-- *Controller:* the reseed day's close is about +78 %, one capped step (1.70 -> 1.45 at the 11-23 setting), then rest.
-  Not skipped: that needs a read of the reseed table, not one line.
+- *Controller:* the close of the reseed's UTC day takes no step on any lever and logs why (`EconomyController.setting`,
+  one read of the marker's date); its row keeps the growth and basket change it read. The next close is read against the
+  reseed-day basket. A missed day before it, closed at the same start, has the old basket and is read as ever.
 - *A6* (last close over 30 closes back, 0.95 to 1.05): about 0.95 until 11-27, 0.10 on 11-28 (the 941 close of 10-29),
   then over 1.05 and up to about 1.8 for a month. Judge by 10.10 with day 0 = the first close after the reseed.
+
+**Where the 138 targets come from** (check stack run 2026-11-24):
+
+| Seed source | Rows | Meso added to the index | A real price? |
+|---|---|---|---|
+| PriceSeeds table | 81 (28 weapons, 28 armour, 15 ETC, 9 scrolls, 1 potion) | 46.7 M | a GMS-era player price, but mostly one per level band and class, not per item |
+| ScrollSeeds formula | 23 scrolls | 20.1 M | an estimate: expected stat points x the table scrolls' median price a point (their 10th to 90th percentile spans 0.4 M to 4.0 M a point) |
+| NPC price x 2.5 | 27 (21 armour, 6 weapons) | 2.6 M | no: the fallback for an equip no table lists; 16 of the 27 sit exactly on the NPC price now |
+| Market basket | 7 scrolls | 5.8 M | hand set in market.yaml |
+
+The 4,000,000 is no cap and no default: it is the tables' one price for a Lv 70 weapon (warrior.yaml, bowman.yaml,
+mage.yaml and thief.yaml list 23 ids at it). The eight are Lv 68-70 with NPC prices of 250-300 k, so seed/NPC is 13 to 16.
+The first sales (10-28 to 10-30) were 2.8-4.6 M, but those buyers pay a share of the index, which was then the seed, so they do
+not confirm it. 2040513 is a table entry of its own (3 M); 2044312 is a formula price (2.8 M, a 60 % spear accuracy
+scroll).
+
+What the reseed should do with the fallback and the formula rows is an open question to the user; nothing changed for it.

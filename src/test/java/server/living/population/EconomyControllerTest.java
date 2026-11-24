@@ -101,6 +101,35 @@ class EconomyControllerTest {
                 new Levers(1.0d, 0.0d, scale), config).levers().budgetScale();
     }
 
+    /** The reseed (ECONOMY_PLAN 10.11) lifts the basket on purpose: that day's close moves nothing, the next is read as ever. */
+    @Test
+    void theReseedDaysCloseLeavesEveryLeverAndTheNextReadsTheBasketFromIt() {
+        Population population = mock(Population.class);
+        CitizenStore store = mock(CitizenStore.class);
+        when(population.store()).thenReturn(store);
+        when(population.market()).thenReturn(mock(Market.class));
+        EconomyController controller = new EconomyController(population, config);
+        Levers before = new Levers(0.5d, 0.3d, 1.7d);
+        controller.apply(before);
+
+        // 17 % growth and a basket up 78 %: each lever has a step to take
+        Close reseeded = close(5_800_000_000L, 1_000_000_000L, 850_000_000L, 95.2d, 53.5d);
+        assertFalse(before.equals(controller.setting(reseeded).levers()), "no reseed that day: it steps");
+        when(store.priceReseedDay()).thenReturn(DAY);
+        EconomyController.Decision held = controller.setting(reseeded);
+        assertEquals(before, held.levers());
+        assertEquals(95.2d / 53.5d - 1.0d, held.cpiChange(), EPS, "still logged as read");
+
+        // the day after, with the reseed-day close as its previous: an ordinary -1 %, inside the band
+        Close next = new Close(DAY.plusDays(1), 10_000_000_000L, 100_000_000L, 0L, 94.2d, 95.2d);
+        assertEquals(1.7d, controller.setting(next).levers().budgetScale(), EPS);
+        assertTrue(controller.setting(new Close(DAY.plusDays(1), 10_000_000_000L, 100_000_000L, 0L, 90.0d, 95.2d))
+                .levers().budgetScale() > 1.7d, "read against the reseed-day basket, a fall lifts budgets");
+        // a missed day before the reseed closed at the same start has a pre-reseed basket: an ordinary close
+        assertFalse(before.equals(controller.setting(new Close(DAY.minusDays(1), 5_800_000_000L, 1_000_000_000L,
+                850_000_000L, 53.5d, 54.8d)).levers()));
+    }
+
     @Test
     void aCitizenLeavesTheShareOfEquipDropsTheLeverLeavesTheSameEachAsk() {
         Population population = mock(Population.class);

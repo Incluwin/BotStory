@@ -11,6 +11,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -275,6 +277,18 @@ public final class CitizenStore {
         } catch (SQLException failure) {
             log.error("living_price_reseed unreadable; the price index reseed does not run", failure);
             return true;
+        }
+    }
+
+    /** The day (UTC, as the ledger's closes) the one-time price reseed ran; null when it did not, or cannot be read. */
+    LocalDate priceReseedDay() {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT reseeded_at FROM living_price_reseed WHERE item_id = 0");
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getTimestamp(1).toInstant().atZone(ZoneOffset.UTC).toLocalDate() : null;
+        } catch (SQLException failure) {
+            log.warn("living_price_reseed unreadable; the controller takes its step as on any day", failure);
+            return null;
         }
     }
 
