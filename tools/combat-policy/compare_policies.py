@@ -155,8 +155,9 @@ class Stack:
         time.sleep(wait)
 
 
-def compare_job(stack: Stack, job: int, learn_seconds: int, fresh: bool, maps: Queue) -> str:
-    scenarios = [s for s in SCENARIOS if learn_seconds > 0 or decisions_of(stack.tree, job, s) >= MIN_DECISIONS]
+def compare_job(stack: Stack, job: int, learn_seconds: int, fresh: bool, maps: Queue,
+                fewest: int = MIN_DECISIONS) -> str:
+    scenarios = [s for s in SCENARIOS if learn_seconds > 0 or decisions_of(stack.tree, job, s) >= max(1, fewest)]
     if not scenarios:
         return f"{job}: no candidate"
     arena_map = maps.get()
@@ -167,7 +168,8 @@ def compare_job(stack: Stack, job: int, learn_seconds: int, fresh: bool, maps: Q
         stack.gm(f"spawnbot {agent} confirm noparty{line}")
         time.sleep(5)
         for scenario in scenarios:
-            if decisions_of(stack.tree, job, scenario) < MIN_DECISIONS or fresh and (job, scenario) not in readings(stack.tree):
+            if learn_seconds > 0 and (decisions_of(stack.tree, job, scenario) < fewest
+                                      or fresh and (job, scenario) not in readings(stack.tree)):
                 stack.arena(f"{base} scenario={scenario} policy=learn learn={learn_seconds}", learn_seconds + 60)
             for _ in range(MAX_LOOKS):
                 got = readings(stack.tree).get((job, scenario))
@@ -198,7 +200,7 @@ def run(args) -> None:
         maps.put(m)
     jobs = [int(j) for j in args.jobs.split(",")] if args.jobs else JOBS
     with ThreadPoolExecutor(args.parallel) as pool:
-        for result in pool.map(lambda j: compare_job(stack, j, args.learn, args.fresh, maps), jobs):
+        for result in pool.map(lambda j: compare_job(stack, j, args.learn, args.fresh, maps, args.fewest), jobs):
             print(result, flush=True)
 
 
@@ -269,6 +271,7 @@ def main() -> None:
     r.add_argument("--parallel", type=int, default=6, choices=range(1, len(MAPS) + 1))
     r.add_argument("--learn", type=int, default=300)
     r.add_argument("--fresh", action="store_true")
+    r.add_argument("--fewest", type=int, default=MIN_DECISIONS, help="decisions a candidate needs (1 to measure arena-learned ones again)")
     r.set_defaults(go=run)
     t = sub.add_parser("table")
     t.add_argument("--stack-tree", required=True)
