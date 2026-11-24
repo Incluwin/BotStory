@@ -1548,6 +1548,12 @@ population:
     PRICE_OFFER_PRIOR_REWARD: 0.4
     PRICE_OFFER_HALF_HOURS: 6
     PRICE_OFFER_COST: 1.0
+    # Price index drift guard (docs/ECONOMY_PLAN.md section 10): every stall sale or unsold close also pulls the item's
+    # index ANCHOR_PULL of the way back to its seed price, so unsold stock cannot take it to the shop price and errand
+    # buyers (1.3 x the index) cannot run it up. false = the kill switch: the index learns as before.
+    # Technical: Market.nudge multiplies the 8 % step's result by (anchorPrice / current) ^ PRICE_INDEX_ANCHOR_PULL; the anchor is Market.seed (basket, PriceSeeds, ScrollSeeds, else a multiple of the NPC price). Off, the factor is exactly 1.
+    PRICE_INDEX_DRIFT_GUARD_ENABLED: false
+    PRICE_INDEX_ANCHOR_PULL: 0.04
     # The needs board (docs/BOT_CONCEPT_PLAN.md F1): citizens ask for real things they lack and pay from their own
     # purse. SUPPLY: the potion it would buy for Balrog, short of the standard; SCROLL: a basket scroll for a piece it
     # wears, when it can pay the index price; GEAR (decision D4): GEAR_WANT_SHARE of its free gear upgrades become a want,

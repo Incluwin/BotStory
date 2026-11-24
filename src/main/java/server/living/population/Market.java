@@ -401,12 +401,29 @@ public final class Market {
         }
         long current = price(itemId);
         long[] row = index.get(itemId);
-        long next = Math.max(Math.max(1L, npcUnit(itemId)), Math.round(current + (unitPrice - current) * INDEX_STEP));
+        double moved = current + (unitPrice - current) * INDEX_STEP;
+        long next = Math.max(Math.max(1L, npcUnit(itemId)), Math.round(moved * anchorPull(itemId, current)));
         row[0] = next;
         if (sale) {
             row[1] = row[1] + 1;
         }
         population.store().savePrice(itemId, next, (int) row[1]);
+    }
+
+    /**
+     * The drift guard (docs/ECONOMY_PLAN.md section 10): every update also pulls the index PRICE_INDEX_ANCHOR_PULL of
+     * the way (in log terms) to the item's anchor. Every citizen's offer is a share of the current index, so without it
+     * unsold goods take the index down, and errand buyers (1.3 x) take it up, with nothing to stop either. 1 while off.
+     */
+    private double anchorPull(int itemId, long current) {
+        PopulationConfig config = population.config();
+        return config.PRICE_INDEX_DRIFT_GUARD_ENABLED
+                ? Math.pow(anchorPrice(itemId) / (double) Math.max(1L, current), config.PRICE_INDEX_ANCHOR_PULL) : 1.0d;
+    }
+
+    /** What the drift guard holds an item's index near: its seed price. The one place to change the anchor. */
+    private long anchorPrice(int itemId) {
+        return seed(itemId);
     }
 
     public static String formatPrice(long price) {

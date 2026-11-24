@@ -412,6 +412,10 @@ public class PopulationConfig {
     public double PRICE_OFFER_HALF_HOURS = 6;
     /** What one unit of premium over the shop price costs an offer's reward. */
     public double PRICE_OFFER_COST = 1.0;
+    /** Kill switch (docs/ECONOMY_PLAN.md section 10): false = the price index learns with no pull to its anchor. */
+    public boolean PRICE_INDEX_DRIFT_GUARD_ENABLED = false;
+    /** The share of the way (in log terms) each index update pulls an item's price back to its seed price. */
+    public double PRICE_INDEX_ANCHOR_PULL = 0.04;
 
     // The needs board: citizens ask for real things they lack (docs/BOT_CONCEPT_PLAN.md F1, server.living.population.needs)
     /** Kill switch: false = no need derived, posted or listed, no board spawned, "B>" chatter and gear as before. */
@@ -675,6 +679,9 @@ public class PopulationConfig {
                 || PRICE_PRIOR_SELL_RATE > 1 || PRICE_OFFER_HALF_HOURS <= 0 || PRICE_OFFER_COST < 0) {
             throw new IllegalArgumentException("population.PRICE_EXPLORE, PRICE_TEMPERATURE, PRICE_PRIOR_SAMPLES and"
                     + " PRICE_OFFER_COST must be >= 0, PRICE_PRIOR_SELL_RATE 0..1 and PRICE_OFFER_HALF_HOURS > 0");
+        }
+        if (PRICE_INDEX_ANCHOR_PULL <= 0 || PRICE_INDEX_ANCHOR_PULL > 1) {
+            throw new IllegalArgumentException("population.PRICE_INDEX_ANCHOR_PULL must be over 0 and at most 1");
         }
         if (NEEDS_PER_CITIZEN < 1 || NEEDS_EXPIRE_MIN_HOURS < 1 || NEEDS_EXPIRE_MAX_HOURS < NEEDS_EXPIRE_MIN_HOURS
                 || NEEDS_GEAR_DEADLINE_HOURS < 1 || NEEDS_GEAR_WANT_SHARE < 0 || NEEDS_GEAR_WANT_SHARE > 1

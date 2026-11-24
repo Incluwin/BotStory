@@ -658,7 +658,7 @@ the server restarted. Changeset 63 created `living_luxury_roll` at boot. In the 
 shop. Rolls are being stored for all three looks. The 11-21 close (19:01) is the first with the new sink, for part of
 the day; 11-22 is the first full day.
 
-## 10. The price index ratchets down (found 2026-11-23 by WORLD_SYSTEMS_PLAN I2; nothing changed)
+## 10. The price index ratchets down (found 2026-11-23 by WORLD_SYSTEMS_PLAN I2; guard built, off)
 
 ### 10.1 Mechanism
 Each `living_price_index` row moves 8 % (`Market.INDEX_STEP`) toward one of two observations:
@@ -704,7 +704,7 @@ The fall to the floor at b >= 0.5 is today's rule, not the learner's.
 - **Reading:** most of the basket is still falling toward the floor, not on it. The decline is this mechanism in
   progress. With scrolls (NPC price 1) it has no practical floor.
 
-### 10.4 Candidate fixes (not decided)
+### 10.4 Candidate fixes (first two; measured in 10.5, where a third replaced them)
 1. **Learn the index only from sales at or above 1.0 x index, and drop the unsold step-down,** or step it toward the
    index rather than under it.
    - Changes: an unsold line no longer lowers the index, so stalls that never sell no longer drag it down.
@@ -718,3 +718,116 @@ The fall to the floor at b >= 0.5 is today's rule, not the learner's.
 
 **Test first:** candidate 1. It is one rule in `Market.nudge`/`unsold`, and `PriceIndexTrajectoryTest` already
 measures it.
+
+### 10.5 Candidates measured (2026-11-23)
+Same setup as 10.2. Cells: settled mean [lowest-highest index], sell-through. "learned" = PRICE_LEARNING_ENABLED.
+| rule | b=0 | 0.1 | 0.3 | 0.5 | 0.7 |
+|---|---|---|---|---|---|
+| today, fixed | 960 [896-1018] 81% | 946 [855-1018] 78% | 742 [495-1000] 69% | 405 [400-992] 50% | 401 [400-992] 30% |
+| today, learned | 1029 [929-1061] 96% | 944 [683-1057] 87% | 703 [400-1018] 74% | 476 [400-992] 55% | 410 [400-992] 31% |
+| C1 fixed | 1076 [1000-1079] 44% | 1076 [1000-1082] 39% | 1074 [1000-1079] 31% | 1073 [1000-1078] 23% | 1068 [1000-1071] 14% |
+| C1 learned | 1058 [1000-1058] 97% | 1054 [1000-1060] 89% | 1033 [1000-1052] 93% | 1021 [1000-1054] 94% | 1008 [1000-1015] 94% |
+| C2 fixed | 960 [896-1018] 81% | 947 [858-1016] 79% | 908 [779-997] 77% | 829 [744-992] 81% | 804 [737-992] 81% |
+| C2 learned | 1029 [929-1061] 96% | 919 [766-1056] 91% | 847 [615-1000] 94% | 844 [747-992] 96% | 845 [757-992] 96% |
+| C3 2% fixed | 969 [916-1016] 78% | 959 [901-1018] 74% | 935 [847-1006] 64% | 877 [770-992] 50% | 771 [679-992] 30% |
+| C3 2% learned | 1032 [944-1055] 96% | 1000 [879-1057] 88% | 764 [576-1012] 80% | 572 [569-992] 88% | 570 [569-992] 91% |
+| C3 4% fixed | 974 [932-1020] 76% | 966 [914-1017] 71% | 948 [889-1011] 60% | 924 [852-1000] 48% | 877 [795-992] 30% |
+| C3 4% learned | 1031 [947-1053] 97% | 1002 [915-1053] 88% | 835 [748-1024] 82% | 751 [748-993] 89% | 750 [748-992] 92% |
+
+- C1: index learns only from sales at or over it; unsold closes do nothing.
+- C2: browsers buy to 0.9 x seed; the unsold step never aims under 0.7 x seed.
+- C3 (new): nudge as today, then every update also pulls the index a share (2/3/4%, in log terms) back to its seed.
+- 1 % and 3 % for C3 are in price-drift/candidates-raw.txt, with every mix below.
+
+Other mixes (fixed / learned):
+
+| rule | never sells (b=1) | half browsers, half errands at 1.3x index | all errands | worth 500, b=0 | worth 2200, b=0 |
+|---|---|---|---|---|---|
+| today | 400 / 400 (floor) | 405 / 448 | 130 M / overflow | 436 / 466 | 1924 / 2059 |
+| C1 | 1000, sells 0% / 96% | 608,974 / 1999 | 415 M / overflow | 1000, sells 0% / 0% | 2153 / 2116 |
+| C2 | 787 / 842 | 829 / 844 | 130 M / overflow | 706, sells 0% / 0% | 1924 / 2059 |
+| C3 2% | 642 / 570 | 881 / 572 | 1240 / 2084 | 641, sells 0% / 80% | 1240 / 1808 |
+| C3 4% | 798 / 750 | 939 / 752 | 1114 / 1443 | 798, sells 0% / 0% | 1114 / 1523 |
+
+**Today's rule also runs away upward.** Gear errands and scroll wants pay up to 1.3 x the current index, so with only
+such buyers the index grows without limit, and C1 does it with half of them too. No citizen offer is absolute: browsers
+0.9 x, board wants 1.0 x, errands and scrolls 1.3 x the index. Only an anchor outside the index bounds both ways.
+
+### 10.6 Built: the anchor pull (C3), off
+`PRICE_INDEX_DRIFT_GUARD_ENABLED` (false), `PRICE_INDEX_ANCHOR_PULL` (0.04). `Market.nudge` multiplies the stepped index
+by `(anchorPrice / current) ^ PULL`: each update goes 4 % of the way, in log terms, back to the item's seed price. The
+anchor is `Market.anchorPrice`, one accessor (the seed today), so another anchor is a change in one place. The pull is
+per observation, so how often an item is listed does not change where it settles.
+- **Band** (`PriceIndexDriftGuardTest`): 0.65 to 1.0 x what absolute buyers pay for browser shares 0 to 0.7, fixed and
+  learned asks; 0.65 to 1.6 x the seed at every round with relative buyers only (50/50, errands only, browsers only).
+  Over 1.0 x nobody absolute buys; the low end is the lowest settled mean measured (750 of 1100 = 0.68) with room for
+  seed noise. On today's rule the same test fails (405, the floor, at b=0.5; over 100 x the seed with errands only).
+- **Off** is today's rule exactly, 4000 rounds against a copy of the old arithmetic.
+- **With the rest:** the NPC floor still bounds it (test). The bench markdown and its 0.85 floor are shares of the index
+  and bench sales still do not move it. The buy-budget lever scales what browsers may spend and reads nothing of the
+  pull. Asks only move meso between holders: no meso is made.
+- **Cost:** an item worth half its seed holds at 0.75-0.8 of seed and does not sell (simulation); a lower PULL lets it
+  fall further (2 %: 0.64 fixed, 0.57 learned) and also lets absolute demand over the seed pull further.
+- **Scrolls and NPC price 0 or 1:** floor today: `max(1, NPC price)`, so 1 meso for a scroll, and 1 for an item with no
+  NPC price. With the pull a never-sold one settles near 0.8 of its seed (fixed asks): that is its floor in effect. No
+  separate hard floor was added. Prices of a few mesos do not move: rounding swallows 4 % of 5.
+
+### 10.7 What happens to stock that does not sell
+| Stock | Today | Guard on |
+|---|---|---|
+| Merchants' equips (holds: best 8 at >= 1.5 x NPC) | relisted, index falls, then vendored once under 1.5 x | held and relisted; only a row under 1.5 x goes to the shop. 65 of the 1,630 equip rows with an NPC price are under 1.5 x today, 7 would be at 0.8 seed or more |
+| Other citizens' equips | vendored at the next shop visit (MARKET_HOLD_OTHERS 0) | the same |
+| Scrolls | relisted for ever, index falls for ever: no shop visit sells them, except the cheapest looted stacks when a full Use tab leaves no room for potions | relisted for ever at about 0.8 seed; the same exception |
+| ETC | stalls list it; the shop visit also sells surplus ETC, whatever the index says | the same |
+The fates are from the code; the simulation does not model vendoring. Fewer vended equips is less minted meso.
+
+### 10.8 The scroll glut (read-only, 2026-11-23)
+- **Held:** active citizens carry 53,417 scrolls (about 72 each), retired ones 4,601. 339 scroll ids, 3,470 drop rows on
+  645 monsters. Citizens loot them and have almost no other way out: 18 scrolls were ever used on gear.
+- **Listed:** since 11-09, 126 citizens opened 4,556 stalls holding 19,270 scroll lines (the same stock relisted). Sold:
+  65 bundles.
+- **Nobody buys because:**
+  - 7,997 of the lines are cursed (dark) scrolls and 2,405 chaos, clean-slate or flag scrolls: no citizen uses or buys
+    either (`CitizenScrolling.safe`). That is 54 % of the lines.
+  - 3,586 more are worth under 1.0 point to any job (`SCROLL_BUY_MIN_VALUE`). All 65 sales were from the other 5,282.
+  - A want needs a worn piece with slots and no usable scroll in the citizen's own bag; with 72 in it, few have one
+    (inferred from the rule, not counted).
+  - Money is not it: 715 of 746 active citizens have more spare meso than the median useful scroll's price (440 k).
+    Browsers buy only under 0.9 x index and stalls ask 0.9 or more.
+- **Options (none built):** (a) holders vendor or use surplus scrolls instead of relisting (an NPC pays 1, so this makes
+  almost no meso); (b) list fewer: leave out scrolls no citizen buys, or cap scroll lines a stall; (c) let citizens use
+  more (value and daily limits); (d) lower the seeds: cursed and chaos scrolls have table prices only humans would pay.
+  (b) is the smallest change and lowers the unsold-close count, so it slows the drift on today's rule too.
+
+### 10.9 Recovery (a user decision; no live row was changed)
+Index / seed, live 11-23, geometric mean (rows; rows under half their seed): scrolls 0.73 (277; 43; the 75 with sales
+0.38), weapons 0.85 (382; 39), armour 0.93 (1,510; 49), ETC 0.95 (502; 15), other use 0.99 (183; 1), stars 1.00 (14),
+all 0.91 (2,873; 147). Rows that moved since 11-09: 0.69 (449). Of 147 rows under half, 59 had no stall line since 11-09,
+so nothing pulls them back by itself.
+
+CPI projection, 53 now, from each basket item's own rate of closes since 11-09, fixed asks (day 1 / 7 / 14 / 30):
+
+| | rows left alone | one-shot: rows under 0.5 seed to 0.8 seed | gradual: to 0.8 seed over 14 closes |
+|---|---|---|---|
+| today's rule | 53 / 49 / 45 / 37 | 94 / 87 / 80 / 66 | 55 / 68 / 96 / 79 |
+| pull 2 % | 55 / 63 / 68 / 74 | 94 / 92 / 91 / 90 | 57 / 77 / 96 / 92 |
+| pull 4 % | 57 / 71 / 78 / 83 | 95 / 95 / 95 / 95 | 60 / 83 / 96 / 96 |
+
+- **Controller** (buy budget 1.70 now): the one-shot is one close of about +78 %, one capped step to 1.45, then quiet;
+  4 % alone steps down to 1.25 by day 7; gradual to 0.96. Pickup and luxury follow supply, not CPI.
+- **Items held at old asks.** A citizen's stall prices its lines when it opens and keeps those asks until it closes.
+  - *One-shot at a restart:* every stall is closed, so none keeps an old ask; needs-board offers already posted keep
+    their old price until they end, and so do humans' own shops.
+  - *Rule alone, gradual:* an open stall trails the index by what it moved since opening (a close's worth, a few percent a
+    day at first). A human can buy the cheap lines; nothing resells them at a set profit, as no citizen's buying limit
+    changes (0.9 x index).
+- **Recommendation:** turn the guard on with the one-shot (rows under 0.5 seed to 0.8 seed, the level the guard itself
+  holds), run and logged once at a restart like `CitizenPurseReset`. The rule alone leaves the 59 rows with no lines where
+  they are and takes over a month to reach 83. Not built.
+- **Projection limits:** calibrated on closes that already moved prices; 2049100's listed lines overstate its closes.
+  2040804, 2044501, 2041013 and 2043301 fell as closes x the mean unsold step predicts.
+
+### 10.10 Check
+`tools/checks/checks/price-index-drift` (outside the repo): the CPI after the switch, read from a fresh dump of the live
+closes. Working: no new low after day 2, by day 7 CPI at or over day 0. Off: CPI over 1.5 x day 0 with no one-shot, or a
+close moving more than 20 % outside the one-shot's, or a basket item over 3 x its price on day 0 without a one-shot.
