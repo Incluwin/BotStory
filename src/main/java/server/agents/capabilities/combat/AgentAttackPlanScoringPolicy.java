@@ -67,9 +67,14 @@ public final class AgentAttackPlanScoringPolicy {
                 minimumKillsFullHpTargets = false;
             }
         }
-        double animationSeconds = Math.max(1, attackPlan.cooldownMs) / 1000.0d;
+        double animationSeconds = swingSeconds(agent, attackPlan);
         return new AgentAttackPlanScore<>(attackPlan, usefulDamage, rawDamage,
                 usefulDamage / animationSeconds, rawDamage / animationSeconds, minimumKillsFullHpTargets);
+    }
+
+    /** How long a swing keeps the Agent from its next one, with the recast of a charge it uses up. */
+    public static double swingSeconds(Character agent, AgentAttackPlan plan) {
+        return (Math.max(1, plan.cooldownMs) + AgentWeaponChargePolicy.spentChargeMs(agent, plan.skillId)) / 1000.0d;
     }
 
     /**
