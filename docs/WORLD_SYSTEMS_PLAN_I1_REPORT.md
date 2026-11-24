@@ -1,5 +1,7 @@
 # I1. Learning: what was built, decided and found
 
+Full suite (2026-11-24, code of 5d96efd68): 16,794 tests, 0 failures, 0 errors, 33 skipped (baseline 16,769; 25 new).
+
 Branch `feat/world-learning`. No schema change (changeset 70 stays spare). Both switches ship off; off, every path
 answers as before.
 
