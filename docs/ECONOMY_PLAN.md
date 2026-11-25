@@ -782,6 +782,8 @@ per observation, so how often an item is listed does not change where it settles
 The fates are from the code; the simulation does not model vendoring. Fewer vended equips is less minted meso.
 
 ### 10.8 The scroll glut (read-only, 2026-11-23)
+**Corrected by 10.13 (2026-11-24):** the 18 uses are only scrolls handed in at the needs board; citizens use scrolls from
+their own bags daily. And buyers do exist: about 341 of 728 citizens have an open slot and no usable scroll of their own.
 - **Held:** active citizens carry 53,417 scrolls (about 72 each), retired ones 4,601. 339 scroll ids, 3,470 drop rows on
   645 monsters. Citizens loot them and have almost no other way out: 18 scrolls were ever used on gear.
 - **Listed:** since 11-09, 126 citizens opened 4,556 stalls holding 19,270 scroll lines (the same stock relisted). Sold:
@@ -882,6 +884,122 @@ scroll).
 to the guard. A row over its target is never lowered. The dry run lists every move with its source and multiple, the count
 per source and the skipped items. Dry run on a check stack, dump of 11-24 12:27: 81 + 7 at 0.8, 23 at 0.5, 27 skipped, 111 moves; projected CPI 56.1 ->
 91.9 at the reseed, 91.5 on day 7, 91.8 on day 30 (projected). The 138-row run and the 95.2 above are from before this decision.
+
+### 10.12 The formula's scroll seeds (user 2026-11-24: "fix the suspect scroll seeds"; branch fix/scroll-seeds)
+**Cause.** `ScrollSeeds` priced every scroll no table lists at one rate, the median meso per expected point of all 92 table
+scrolls. Their rates depend on the kind of bonus and the success rate (0.17 M to 10 M a point): the tables put accuracy
+and avoid scrolls at 100 k flat, weapon attack at about 1.1 M a point (60 %) and 0.8 M (10 %), stats at about 2.2 M. A
+weapon accuracy scroll (+3 ACC, +2 DEX, +1 PAD) got 1.68 points x 1.67 M = 2.8 M beside 1.5 M for a 60 % attack scroll.
+
+**Fix (the formula, no hand-set row).** A scroll takes the median rate of its peers: table scrolls of the same kind of
+bonus (its largest), then weapon or armour as it is, then dark or not, then the nearest success rate. The seed stays
+within 2 x of the range those peers' prices span. Judgments, not prices: the stat weights (unchanged), the order of the
+peers, HP and MP counting a tenth in choosing the kind, and the factor 2. Every price comes from the tables themselves.
+
+**Audit** (633 formula scrolls, 210 with a live row). Suspect = the old seed is more than 2 x off the new one: 231, 79 of
+them live. `ScrollSeedAuditTest` holds every formula seed to the 2 x bound with peers worked out apart from the formula;
+it fails on the old one. Full live list: shared notes price-drift/scroll-live-effect.csv.
+
+| Live suspects | Rows | Old seed | New seed | Table peers |
+|---|---|---|---|---|
+| weapon accuracy 60 % | 9 | 2.8 M | 200 k | gloves and shoes DEX 60 %, 100 k each |
+| weapon accuracy 10 % | 9 | 967 k | 200 k | gloves and shoes DEX 10 %, 100 k |
+| weapon accuracy 30 % dark | 6 | 2.9 M | 290 k | dark gloves DEX 30 %, 150 k |
+| weapon accuracy 100 % | 8 | 333 k | 50 k | gloves and shoes DEX 60 % |
+| armour accuracy / avoid | 8 | 333 k - 1 M | 50 k - 133 k | gloves and shoes DEX |
+| weapon attack 10 % | 14 | 1.03 - 1.14 M | 499 - 551 k | dagger 550 k, claw 500 k |
+| weapon attack 30 % dark | 5 | 3.1 - 3.4 M | 1.1 M | dagger and claw 10 % (no dark weapon scroll is listed) |
+| jump / speed (pet, bottom, shoes) | 6 | 333 k - 1.08 M | 83 k - 271 k | shoes and pet speed and jump 60 %, 100 k to 1 M |
+| Balrog defence 5 % and 30 % | 2 | 0.5 - 1.2 M | 200 k | DEF 10 %, 100 k |
+| HP and MP | 12 | 25 - 88 k | 125 - 200 k | HP scrolls 100 k and 150 k |
+
+The other 131 live formula rows change by 0.65 to 2.0 x (median 1.05). The HP seeds go up because the tables price every
+junk scroll at 100 k or more; that is a floor of the tables', not evidence of demand.
+**Left alone:** the basket's hand-set 60 % weapon attack prices (sword 250 k, axe 150 k) sit under the new 10 % ones
+(551 k), which follow the listed dagger and claw. One of the two is off; correcting it means a judgment on the basket.
+
+**Live effect** (read-only, after the reseed). 166 of the 210 live formula rows have no sale: the next start sets them to
+their new seed by itself (`reseedUnmoved`), 55 of them suspects. 24 suspects have sales and walk: the guard takes them to
+about 0.8 x the new seed at about 4 % a stall close. Eight attack 10 % rows are within about 10 closes. At the listing rates
+since 11-09 the six accuracy 60 % rows need 8 to 62 days, the five accuracy 10 % rows 9 to 103, the two pet rows 17 to 18,
+two attack 10 % rows 93 and 109 (hardly listed), and 2043702 is not listed at all. 2043002 is the one basket item: the CPI loses about 1 %.
+
+**Options** (a user decision; none built): (a) nothing, as above; (b) a second one-shot for the suspects that have sales
+and sit over 1.5 x their new seed (15 rows), set to the new seed, kept and marked as the first was; (c) sample counts of those rows
+to 0, so the next start reseeds them: the same effect with no backup row, so worse. (b) is recommended only because the
+accuracy scrolls would otherwise ask 5 to 10 x too much for weeks; the rest needs nothing.
+
+**With the glut (10.8).** A stall lists its eight dearest stacks (index x quantity), so an overpriced scroll takes a line
+from something that could sell: the suspects are 31 % of the scroll lines since 11-09 (2044112 alone 41 a day, and no sale
+the index learned). Corrected seeds drop them down the list. What the 10.8 options would cut of the 19,270 lines: leaving
+out scrolls no citizen uses or buys (cursed, chaos, flag) 54 %; those and the ones worth under 1 point to any job 73 %; a
+cap of two scroll lines a stall 55 %. A scroll no citizen wants may still be what a player wants, so a full filter
+also takes those out of players' reach; the cap does not. Vendoring surplus scrolls makes 1 meso each. None of these adds
+buyers; 10.13 has the buyers.
+
+### 10.13 The scroll oversupply: facts and options (2026-11-24; nothing built, for the user to decide)
+**Facts.** Read-only from live, 2026-11-24 about 14:35 local; dates are local. M = measured, I = inferred. Live restarted at
+13:18 with the guard and reseed on, so "since restart" is 75 minutes, too short to judge.
+
+| Question | Answer | Source, range |
+|---|---|---|
+| Listed | 19,797 scroll lines on 4,664 stalls (1,270 a day), 53 % of all lines; a restocked stack counts each time (M) | economy_transaction_journal, PLAYER_SHOP_LIST, 11-09 to 11-24 |
+| Sold | 71 bundles, 60.6 M meso, 4.6 a day; 6 of them since the restart (M) | the same, PLAYER_SHOP_SALE |
+| Listed per sale | about 280 (M) | |
+| Who lists | 130 citizens, all with the merchant flag (288 of 746 active have it). No bench companion: living_stall_stock is empty of scrolls (M) | journal, living_citizen |
+| In bags | active citizens 53,769 (median 72 each, 38 stacks); retired 4,745; merchants hold 20,921 of it (M) | inventoryitems, now |
+| Where from | monster drops: 3,470 drop rows on 645 monsters; 20 monsters carry 59 % of the summed chance. 39 % of the chance is cursed, chaos or flag scrolls, 41 % ones useful to some job, 20 % under 1 point to any (M; not weighted by kills, which are not recorded) | drop_data |
+| Entering a day | bags grew about 370 in 17.5 hours (M, two reads); with uses and vendoring about 1,000 a day (I) | inventoryitems |
+| Used on gear | 26 in 75 minutes since the restart (M), a few hundred a day (I, short sample). Older uses are not kept: the log is replaced at a restart | cosmic-log |
+| Vendored | 721 sales, 965 scrolls, 965 meso since 11-16, 1 meso each, only when a full Use tab leaves no room for potions (M) | journal, SHOP_SELL |
+| Worth to holder | 30,720 under 0.25 points to the holder's job; 13,593 worth something but no open piece fits; 6,762 cursed, chaos or flag; 2,007 the holder would use (M on saved bags, by the CitizenScrolling rules; fit by category) | inventoryitems, inventoryequipment |
+| Useful to another | 25,986 of them are worth 1 point or more to some other citizen's job but not to the holder's gear now (M, same rules) | |
+| Would buy | 728 citizens not hired or personas: all have an open slot (30,416 slots). 387 hold a scroll they would use, so they do not buy; 341 do not, and 322 of those can pay for a scroll that was listed since 11-09 (M, same rules) | |
+| Board | 4.7 k SCROLL wants expired and 19 were filled since 11-01; 352 are open. BOUGHT (2.6 k) means "no longer wanted", not a sale (M) | living_need |
+| Gear errands | none are open and they do not cover scrolls (M) | living_gear_errand |
+| Prices | sellers ask 0.9 to 1.2 x the index; a scroll want pays up to 1.3 x, a board want 1.0 x, a browser under 0.9 x (M, the rules) | code |
+| Humans | 1,102 scrolls in 300 stacks off citizens (M); their purchases are not told apart from citizens' here | inventoryitems |
+| CPI | 17 of the 33 basket items priced are scrolls | economy_cpi_daily |
+
+**Mechanism.** Every citizen picks up every scroll, though nearly all are for another job or another piece, and nearly the only ways
+out are its own gear, a stall, or (with a full Use tab) the shop for 1 meso. A stall lists its eight dearest stacks, so
+scrolls take half of all lines, again at each opening, and a buyer buys only what is at a stall within reach of where it
+happens to browse: of about 322 willing buyers almost none meets the scroll it wants. Each unsold close used to lower the index,
+and half the CPI basket is scrolls, so the glut was the CPI's fall; with the guard the prices hold near 0.8 x seed and no longer follow
+the glut, but nothing clears it.
+
+**Options.** None mints meso: stalls move it between citizens (a sale's tax takes some out), and an NPC pays 1 meso a
+scroll (all 58 k held are worth 58 k meso). The controller: pickup share is at its minimum (0.1), luxury 0.3 of 0.8, buy
+budget 1.70 of 2.0; none of them touches scrolls. Effects marked I are estimates.
+
+| Option | What changes | A player notices | Listed per sale (280 now) | Build | Risk |
+|---|---|---|---|---|---|
+| (a) nothing beyond the guard | prices hold; the glut stays | stalls half scrolls, few sales | about 280 | none | bags fill: slots for potions |
+| (b) pick up less: citizens leave cursed, chaos and flag scrolls, and those worth under 1 point to any job | 39 to 59 % less enters; what is held stays | more scrolls on the ground in hunting maps | no change soon; bags shrink over weeks (I) | small: one rule beside the equip pickup rule | players may read it as odd; take the scrolls they could use |
+| (b2) lower drop rates | less enters for everyone, players too | fewer scrolls | as (b) | config | changes the player's game; not advised |
+| (c1) scroll errands: a citizen with an open slot, no usable scroll and the meso goes to a stall that has one, as gear errands do | real buyers reach real stalls; the scroll is used at once | citizens walking to stalls and buying; players' own stalls sell too | from 1,270 lines a day for 4.6 sales to perhaps 20 to 60 sales a day: 20 to 60 (I) | medium: reuse gear errands' room search and walk | 322 at most a day at first; FM crowding; prices near 0.8 x seed may be dear to them |
+| (c2) citizens use more (lower value bar, more a day) | the 2,007 held usable go faster | little | small (I) | config | small: they are only 4 % of the stock |
+| (d) sink: after N unsold closes, or a cap a kind, vendor the surplus scroll | stock of unwanted ones falls | none | no direct change; fewer lines a stall (I) | small to medium: a counter per stack or kind | a scroll a player may have wanted is gone |
+| (e1) at most 2 scroll lines a stall | 8,960 lines instead of 19,797 (M, recount of the same stalls); the rest goes to equips, ETC and stars | stalls with mixed goods | 126 at the same sales | small: one filter in stall selection | less chance of a given scroll at a stall |
+| (e2) do not list scrolls no citizen uses or buys | 5,522 lines (M) | scrolls only players want vanish from stalls | 78 at the same sales | small | takes cursed and chaos scrolls out of players' reach |
+| (f) rank stall lines by what sold lately, not by price | scrolls that sell come first | better stalls | between e1 and e2 (I) | medium | 71 sales in two weeks is little to learn from |
+
+**Which combine.** (e1) with (c1): fewer, more varied lines, and buyers who walk to them; (b) for the cursed, chaos and flag
+scrolls adds a slow drain on the source. (d) after them if bags do not shrink. Not (e2) with (c1): an errand cannot buy
+what is not listed, and cursed scrolls are what players may want.
+
+**Recommendation: (c1) and (e1), then (b) for cursed, chaos and flag scrolls.** The fault is not that nobody wants scrolls but
+that the buyers (322) and the goods (26 k) never meet, and (c1) fixes that while its scrolls are destroyed in use; (e1)
+gives the other goods half their shelf back at the cost of one filter, and (b) stops the 39 % no citizen can use from entering.
+
+**Measure for a week after.** Scroll bundles sold a day (4.6 now; working: 15 or more), listed per sale (280; under 80),
+scrolls used a day, total held by active citizens (53.8 k; flat or falling), other goods' lines and sales (no fall), median
+price of sold scrolls over the index (inside 0.8 to 1.3), the CPI (no close over 5 %), meso supply (no change beyond tax).
+Turn it off: used scrolls rise but sales do not, or FM rooms fill with citizens who buy nothing.
+
+**Limits.** Bags are the saved ones (a logged-in citizen's may lag). Usefulness is by the CitizenScrolling rules and by
+equip category, not each scroll's own required-item list. Open slots ignore locked or cash gear. The 1,000 a day and the
+few hundred uses rest on one day's reads.
 
 ### 10.14 Scroll errands and the stall's scroll cap (user 2026-11-24: "build scroll errands and the stall cap"; built, both off)
 
