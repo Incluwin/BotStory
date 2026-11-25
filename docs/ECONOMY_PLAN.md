@@ -882,3 +882,75 @@ scroll).
 to the guard. A row over its target is never lowered. The dry run lists every move with its source and multiple, the count
 per source and the skipped items. Dry run on a check stack, dump of 11-24 12:27: 81 + 7 at 0.8, 23 at 0.5, 27 skipped, 111 moves; projected CPI 56.1 ->
 91.9 at the reseed, 91.5 on day 7, 91.8 on day 30 (projected). The 138-row run and the 95.2 above are from before this decision.
+
+### 10.14 Scroll errands and the stall's scroll cap (user 2026-11-24: "build scroll errands and the stall cap"; built, both off)
+
+Options c1 and e of 10.13 (on `fix/scroll-seeds`); b and d are not approved and not built. Switches
+`population.SCROLL_ERRANDS_ENABLED` and `population.MARKET_STALL_SCROLL_CAP_ENABLED`, independent; no table.
+
+**Errands** (`ScrollErrands`, at the two-minute market tick). A loaded citizen with an open slot, no scroll of its own it
+would use, meso over its reserve and a free Use slot opens one when a fitting scroll is on sale singly now at or under
+its offer (`CitizenScrolling.offer`: safe, worth `SCROLL_BUY_MIN_VALUE` to its job, up to 1.3 x the index and its spare
+meso). Merchants, and citizens in a run, at a job errand or a game, open none. At most `SCROLL_ERRANDS_MAX` (12) are out;
+each makes MARKET weigh at least `SCROLL_ERRAND_MARKET_WEIGHT` (30) at the next plan. It walks as a gear errand does
+(`seekErrandStall`, same room choice, tries and give-up) but takes a player's stall in any room before a citizen's. It buys and uses
+through the existing paths (`AgentFreeMarketBuyerService`, `CitizenScrolling.bought`), so journal, tax and scroll odds are
+today's. It ends on a buy, a give-up, 6 h, or nothing left on sale; the citizen rests 12 h and, if at the market, plans
+anew. It holds no goods or meso, so nothing is refunded.
+
+- *Not reused:* the gear errand's table and deadline hand-over. An errand only lasts while the goods are on sale and
+  hands nothing over, so a restart forgets it and the next tick reopens what still holds. No changeset is taken.
+- *Found while building:* live since 11-09, 66 % of scroll stacks were listed as one bundle of 2 to 10, and a citizen
+  buys only singles. With the errands on, citizens' stalls list scrolls one by one (players can then buy one too). How much
+  of any gain is this and how much the walking is not measured; both go off with the same switch.
+
+**Cap** (`Market.capScrolls`): at most `MARKET_STALL_SCROLL_LINES` (2) scroll stacks a citizen's stall. The dearest by
+the stall's own ranking stays whatever it is, so cursed and chaos scrolls still reach players; the other is the kind
+most seeking citizens want, then one some job could use, then by ranking; a second kind before a second stack. Without
+the errands there are no seekers and usefulness decides. Players' and bench stalls do not pass this code.
+
+**Simulation** (`ScrollMarketSimulationTest`, guard on, 60 scroll ids, 40 days, index as a share of seed, settled / highest):
+
+| Lines a day | Errands a day | Lines a sale | Fixed asks | Learned asks |
+|---|---|---|---|---|
+| 1,320 (today) | 5 | 264 | 0.79 / 0.91 | 0.78 / 0.91 |
+| 1,320 | 60 | 22 | 0.80 / 0.92 | 0.79 / 0.92 |
+| 597 (cap) | 5 | 119 | 0.80 / 0.97 | 0.78 / 0.97 |
+| 597 | 60 | 10 | 0.82 / 0.98 | 0.82 / 0.98 |
+| 597 | 300 | 2.1 | 0.92 / 1.07 | 1.11 / 1.43 |
+| 597 | 2,000 (saturated) | 1.0 | 1.11 / 1.23 | 1.77 / 1.80 |
+
+The index holds 0.6 to 1.6 of seed up to 300 a day. At a buyer for every line the learner reaches 1.8 x seed; the cap
+of 12 out and the 12 h rest do not let that many out. It is a closed model, not a sales forecast, and has no CPI of its
+own: 17 of the 33 basket items are scrolls (live 11-23), so the CPI follows the column by about half.
+
+**Free Market head-count** (live read 2026-11-24, 245 online): 45 in the Free Market, the busiest room 16. With the
+errands on at most 12 more, 57, if all 12 are out and none would have been there. An open errand also needs a plan
+that draws MARKET, so fewer are expected. The visible-per-map cap and the arrival strolling are unchanged.
+
+**Week measurement:** `tools/checks/checks/scroll-errands/week.sql` (read-only): lines, bundles, lines a sale, other goods'
+sales, scrolls held, CPI, supply. `/runtime/stats/market` has `scroll_errands` while on. Baseline 11-10 to 11-23: 700 to 1,700 scroll
+lines a day, 1 to 8 bundles sold. *Working:* bundles a day several times that by day 7, lines a sale under 30, other goods'
+sales no lower, scrolls held no longer rising. *Turn it off:* a Free Market room at the visible cap, CPI up over 20 % in a close, or
+supply residual off zero.
+
+**Client checks** (a human, with both switches on): `!warp` to Free Market rooms 1 to 5. (1) A citizen walks to a stall, and
+the stall's owner's chat or log shows a scroll sold at the asked price; (2) the scroll effect plays on the buyer shortly
+after, success or fail; (3) it then leaves or strolls, and does not stand on the arrival ledge; (4) a citizen's stall shows
+at most two scroll lines, sold singly, one possibly cursed or chaos; (5) with a player's stall selling the same wanted scroll, the citizen
+goes there first; (6) a player can buy one scroll of a stack; (7) the arrival map shows no pile-up after 20 minutes.
+
+**Check-stack trial** (193d36499, fresh live dump, both switches on, 2026-11-24 18:51 to 20:11, 248 online):
+
+- 56 scroll sales to citizens (live: 1 to 8 a day). Journal and ledger agree for the ledger's window (46 sales, 45,542,935 gross, 639,867
+  tax; PLAYER_SHOP in = out), so the only change of supply from them is the tax. The close at 19:00 read CPI 92.65 and a residual
+  of -373,850 (days before: -453,210, 5,726,341); that day is mostly live's, so it neither shows nor rules out a leak by itself.
+- At the last sample 50 scrolls bought and 69 used (33 success, 36 fail). 57 scroll rows moved, median +3 %, -5 % to +21 %.
+- **Most of it is the single listing, not the walking.** 9 of 75 ended errands bought; 53 found nothing on sale any more (others in the
+  market bought first, or the stall shut) and 13 no longer wanted one. An errand only raises the weight of the next plan, so few set
+  out: 4 changed room, 9 walked to a stall. Making a citizen plan at once would raise that and interrupts what it does; not built.
+- Free Market 33 to 50 (live 45 before), room 1 up to 22, no room near the visible cap of 60.
+- It is a backlog: about 150 citizens were seekers at any time, and the same citizen bought up to four times. A first 80 minutes after a boot is
+  not a daily rate.
+- Found and fixed after the run: 22 of 35 stalls listed one scroll line, the wanted one ranking under the stall's eighth
+  line. It now stands beside the dearest. The trial ran without this fix, and no off-switch control was run on a stack.
