@@ -14,8 +14,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * A scroll no player price table lists starts from what it is expected to add, at the median mesos per expected point
- * of the scrolls the tables price (docs/ECONOMY_PLAN.md E3), instead of 4x the 1 meso a shop pays for it.
+ * A scroll no player price table lists starts from what it is expected to add, at its peers' median mesos per point
+ * among the scrolls the tables price (docs/ECONOMY_PLAN.md E3 and 10.12), instead of 4x the 1 meso a shop pays for it.
  */
 class ScrollSeedsTest {
     private static final int ATT_10 = 2043002;   // a table-less 10% attack scroll
@@ -34,8 +34,8 @@ class ScrollSeedsTest {
                 3, Map.of("success", 60, "STR", 2),       // 0.72 at 1.2m: 1.667m a point
                 4, Map.of("success", 100, "PDD", 1)).get(id - 2_040_000),
                 () -> Map.of(2_040_001, 1_000_000L, 2_040_002, 600_000L, 2_040_003, 1_200_000L, 1_302_000, 9L));
-        assertEquals(833_333L, seeds.seed(2_040_001), "0.5 points x the median 1.667m a point");
-        assertEquals(83_333L, seeds.seed(2_040_004), "a 100% DEF +1: 0.05 points");
+        assertEquals(1_000_000L, seeds.seed(2_040_001), "0.5 points x its nearest peer's 2m: the same kind at 10 %, not the 60 %");
+        assertEquals(83_333L, seeds.seed(2_040_004), "a 100% DEF +1, no DEF peer: 0.05 points x the median 1.667m of all");
         assertEquals(0L, seeds.seed(1_302_000), "no scroll");
         assertEquals(0L, seeds.seed(2_040_005), "no WZ info");
     }
@@ -58,8 +58,8 @@ class ScrollSeedsTest {
         Market market = new Market(population, itemId -> 1L, itemId -> STATS.getOrDefault(itemId, Map.of()));
 
         assertEquals(1, market.reseedUnmoved());
-        assertEquals(625_000L, market.price(ATT_10), "0.5 points x the claw scroll's 1.5m / 1.2 points");
-        verify(store).savePrice(eq(ATT_10), eq(625_000L), eq(9));
+        assertEquals(750_000L, market.price(ATT_10), "0.5 points x the claw scroll's rate is 625k: no less than half its one peer's 1.5m");
+        verify(store).savePrice(eq(ATT_10), eq(750_000L), eq(9));
         assertEquals(0, market.reseedUnmoved(), "a second start writes nothing");
         assertEquals(10L, market.price(CLEAN_SLATE), "no bonus to price: the NPC multiple, at its minimum");
     }
