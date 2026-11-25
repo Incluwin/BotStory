@@ -734,7 +734,7 @@ public final class Market {
 
     /**
      * The stall cap (docs/ECONOMY_PLAN.md 10.14): of {@code ranked} stacks (best first) at most {@code lines} scroll
-     * stacks stay, in their place, and the rest of the stall goes to other goods. The last of them is always the best by
+     * stacks stay, at the first one's place, and the rest of the stall goes to other goods. The last of them is always the best by
      * the ranking, whatever it is, so cursed and chaos scrolls still reach players; the others are the scrolls most
      * citizens on the look for one want ({@code demand}), then those a citizen of some job could use ({@code useful}),
      * then by the ranking. Two stacks of one scroll count as two, but a second scroll kind goes before a second stack.
@@ -765,7 +765,16 @@ public final class Market {
                 kept.add(item);
             }
         }
-        return ranked.stream().filter(item -> !isScroll(item) || kept.contains(item)).toList();
+        List<Item> capped = new ArrayList<>();
+        for (Item item : ranked) {
+            if (!isScroll(item)) {
+                capped.add(item);
+            } else if (!kept.isEmpty() && item == scrolls.get(0)) { // the others beside it, or a low rank drops them off the stall
+                capped.add(item);
+                scrolls.stream().filter(other -> other != item && kept.contains(other)).forEach(capped::add);
+            }
+        }
+        return capped;
     }
 
     private static boolean isScroll(Item item) {

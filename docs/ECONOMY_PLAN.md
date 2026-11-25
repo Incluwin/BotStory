@@ -939,3 +939,18 @@ the stall's owner's chat or log shows a scroll sold at the asked price; (2) the 
 after, success or fail; (3) it then leaves or strolls, and does not stand on the arrival ledge; (4) a citizen's stall shows
 at most two scroll lines, sold singly, one possibly cursed or chaos; (5) with a player's stall selling the same wanted scroll, the citizen
 goes there first; (6) a player can buy one scroll of a stack; (7) the arrival map shows no pile-up after 20 minutes.
+
+**Check-stack trial** (193d36499, fresh live dump, both switches on, 2026-11-24 18:51 to 20:11, 248 online):
+
+- 56 scroll sales to citizens (live: 1 to 8 a day). Journal and ledger agree for the ledger's window (46 sales, 45,542,935 gross, 639,867
+  tax; PLAYER_SHOP in = out), so the only change of supply from them is the tax. The close at 19:00 read CPI 92.65 and a residual
+  of -373,850 (days before: -453,210, 5,726,341); that day is mostly live's, so it neither shows nor rules out a leak by itself.
+- At the last sample 50 scrolls bought and 69 used (33 success, 36 fail). 57 scroll rows moved, median +3 %, -5 % to +21 %.
+- **Most of it is the single listing, not the walking.** 9 of 75 ended errands bought; 53 found nothing on sale any more (others in the
+  market bought first, or the stall shut) and 13 no longer wanted one. An errand only raises the weight of the next plan, so few set
+  out: 4 changed room, 9 walked to a stall. Making a citizen plan at once would raise that and interrupts what it does; not built.
+- Free Market 33 to 50 (live 45 before), room 1 up to 22, no room near the visible cap of 60.
+- It is a backlog: about 150 citizens were seekers at any time, and the same citizen bought up to four times. A first 80 minutes after a boot is
+  not a daily rate.
+- Found and fixed after the run: 22 of 35 stalls listed one scroll line, the wanted one ranking under the stall's eighth
+  line. It now stands beside the dearest. The trial ran without this fix, and no off-switch control was run on a stack.

@@ -249,12 +249,25 @@ class ScrollErrandsTest {
     @Test
     void theCapKeepsTheDearestScrollOfAnyKindAndTheOneMostWanted() {
         List<Item> ranked = List.of(stack(CHAOS), stack(4010000), stack(GLOVE_HP), stack(GLOVE_ATT), stack(1302012));
-        assertEquals(List.of(CHAOS, 4010000, GLOVE_ATT, 1302012),
+        assertEquals(List.of(CHAOS, GLOVE_ATT, 4010000, 1302012),
                 ids(Market.capScrolls(ranked, 2, itemId -> itemId == GLOVE_ATT ? 3 : 0, itemId -> false)));
-        assertEquals(List.of(CHAOS, 4010000, GLOVE_ATT, 1302012),
+        assertEquals(List.of(CHAOS, GLOVE_ATT, 4010000, 1302012),
                 ids(Market.capScrolls(ranked, 2, itemId -> 0, itemId -> itemId == GLOVE_ATT)), "useful to some job");
         assertEquals(List.of(CHAOS, 4010000, 1302012), ids(Market.capScrolls(ranked, 1, itemId -> 9, itemId -> true)));
         assertEquals(List.of(4010000, 1302012), ids(Market.capScrolls(ranked, 0, itemId -> 9, itemId -> true)));
+    }
+
+    /** Check stack 2026-11-24: 22 of 35 stalls listed one scroll, the wanted one ranked under the eighth line. */
+    @Test
+    void theWantedScrollStaysOnTheStallHoweverLowItRanks() {
+        List<Item> ranked = new ArrayList<>(List.of(stack(CHAOS)));
+        for (int i = 0; i < 9; i++) {
+            ranked.add(stack(4010000 + i));
+        }
+        ranked.add(stack(GLOVE_HP));
+        ranked.add(stack(GLOVE_ATT));
+        List<Integer> listed = ids(Market.capScrolls(ranked, 2, itemId -> itemId == GLOVE_ATT ? 3 : 0, itemId -> false));
+        assertEquals(List.of(CHAOS, GLOVE_ATT), listed.subList(0, 2));
     }
 
     @Test
