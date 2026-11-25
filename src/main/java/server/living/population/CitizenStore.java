@@ -268,35 +268,66 @@ public final class CitizenStore {
         }
     }
 
+    /** Where each one-time price change keeps the old prices and its ran marker (item 0). */
+    private static final String RESEED_TABLE = "living_price_reseed";
+    private static final String CORRECTION_TABLE = "living_price_correction";
+
     /** Whether the one-time price reseed ran (PriceIndexReseed); true when it cannot tell, so it never runs unsure. */
     boolean priceReseedRan() {
+        return oneShotRan(RESEED_TABLE);
+    }
+
+    /** As {@link #priceReseedRan}, for the seed correction (PriceSeedCorrection). */
+    boolean priceCorrectionRan() {
+        return oneShotRan(CORRECTION_TABLE);
+    }
+
+    private static boolean oneShotRan(String table) {
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT 1 FROM living_price_reseed LIMIT 1");
+             PreparedStatement ps = con.prepareStatement("SELECT 1 FROM " + table + " LIMIT 1");
              ResultSet rs = ps.executeQuery()) {
             return rs.next();
         } catch (SQLException failure) {
-            log.error("living_price_reseed unreadable; the price index reseed does not run", failure);
+            log.error("{} unreadable; its one-time price change does not run", table, failure);
             return true;
         }
     }
 
     /** The day (UTC, as the ledger's closes) the one-time price reseed ran; null when it did not, or cannot be read. */
     LocalDate priceReseedDay() {
+        return oneShotDay(RESEED_TABLE);
+    }
+
+    /** As {@link #priceReseedDay}, for the seed correction (PriceSeedCorrection). */
+    LocalDate priceCorrectionDay() {
+        return oneShotDay(CORRECTION_TABLE);
+    }
+
+    private static LocalDate oneShotDay(String table) {
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT reseeded_at FROM living_price_reseed WHERE item_id = 0");
+             PreparedStatement ps = con.prepareStatement("SELECT reseeded_at FROM " + table + " WHERE item_id = 0");
              ResultSet rs = ps.executeQuery()) {
             return rs.next() ? rs.getTimestamp(1).toInstant().atZone(ZoneOffset.UTC).toLocalDate() : null;
         } catch (SQLException failure) {
-            log.warn("living_price_reseed unreadable; the controller takes its step as on any day", failure);
+            log.warn("{} unreadable; the controller takes its step as on any day", table, failure);
             return null;
         }
     }
 
     /** The reseed's prices, the old ones kept beside them, and the marker (item 0), in one transaction; false = none. */
     boolean reseedPrices(List<PriceIndexReseed.Move> moves) {
+        return changePrices(RESEED_TABLE, moves);
+    }
+
+    /** As {@link #reseedPrices}, for the seed correction (PriceSeedCorrection). */
+    boolean correctPrices(List<PriceIndexReseed.Move> moves) {
+        return changePrices(CORRECTION_TABLE, moves);
+    }
+
+    private static boolean changePrices(String table, List<PriceIndexReseed.Move> moves) {
         try (Connection con = DatabaseConnection.getConnection()) {
             con.setAutoCommit(false);
-            try (PreparedStatement backup = con.prepareStatement("INSERT INTO living_price_reseed"
+            try (PreparedStatement backup = con.prepareStatement("INSERT INTO " + table
                     + " (item_id, seed, old_price, new_price, samples) VALUES (?, ?, ?, ?, ?)");
                  PreparedStatement price = con.prepareStatement("UPDATE living_price_index SET price = ?"
                          + " WHERE item_id = ? AND price = ?")) {
@@ -330,7 +361,7 @@ public final class CitizenStore {
                 con.setAutoCommit(true);
             }
         } catch (SQLException failure) {
-            log.error("price index reseed not written", failure);
+            log.error("{} not written", table, failure);
             return false;
         }
     }

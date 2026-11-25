@@ -112,10 +112,11 @@ final class EconomyController implements AgentLootPolicy.Selectivity {
         }
     }
 
-    /** The close's setting; on the day the price index was reseeded (PriceIndexReseed), every lever as it is. */
+    /** The close's setting; on a day the index was reseeded (PriceIndexReseed, PriceSeedCorrection), every lever as it is. */
     Decision setting(EconomyLedger.Close close) {
         Decision decision = decide(close, levers, config);
-        if (!close.day().equals(population.store().priceReseedDay())) {
+        if (!close.day().equals(population.store().priceReseedDay())
+                && !close.day().equals(population.store().priceCorrectionDay())) {
             return decision;
         }
         log.info("economy controller {}: no step, the price index was reseeded that day (docs/ECONOMY_PLAN.md 10.11)",

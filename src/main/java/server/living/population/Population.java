@@ -212,6 +212,7 @@ public final class Population {
         }
         population.markJobBacklogOnce();
         CitizenPurseReset.runOnce(); // decision D1, before the first sweep can load a citizen (economy.CITIZEN_PURSE_RESET)
+        PriceSeedCorrection.runOnce(population.market, population.store, config); // before the unsold rows take their seeds
         int reseeded = population.market.reseedUnmoved();
         if (reseeded > 0) {
             log.info("price index: {} rows take a fresh seed (unmoved, or under the NPC price; docs/ECONOMY_PLAN.md E2-E3)",

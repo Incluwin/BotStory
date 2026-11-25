@@ -422,6 +422,10 @@ public class PopulationConfig {
     public double PRICE_INDEX_RESEED_TO = 0.8;
     /** As RESEED_TO, for a row whose seed is the scroll formula's estimate (ScrollSeeds). */
     public double PRICE_INDEX_RESEED_FORMULA_TO = 0.5;
+    /** Once, at the next start with the drift guard on: the scroll formula's rows go to its new seeds (PriceSeedCorrection). */
+    public boolean PRICE_SEED_CORRECTION_ENABLED = false;
+    /** A row with sales is corrected when it stands over this x its seed. */
+    public double PRICE_SEED_CORRECTION_OVER = 1.5;
 
     // Learned support points (docs/WORLD_SYSTEMS_PLAN.md I1.4, SupportLearning): when to heal, how early to rebuff
     /** Kill switch: false = the fixed heal point (SUPPORT_HEAL_TARGET_RATIO) and buff recast times, nothing booked. */
@@ -749,6 +753,9 @@ public class PopulationConfig {
         if (PRICE_INDEX_RESEED_BELOW <= 0 || PRICE_INDEX_RESEED_BELOW > PRICE_INDEX_RESEED_TO || PRICE_INDEX_RESEED_TO > 1) {
             throw new IllegalArgumentException("population.PRICE_INDEX_RESEED_BELOW must be over 0 and at most"
                     + " PRICE_INDEX_RESEED_TO, and that at most 1");
+        }
+        if (PRICE_SEED_CORRECTION_OVER < 1) {
+            throw new IllegalArgumentException("population.PRICE_SEED_CORRECTION_OVER must be at least 1");
         }
         if (PRICE_INDEX_RESEED_FORMULA_TO <= 0 || PRICE_INDEX_RESEED_FORMULA_TO > 1) {
             throw new IllegalArgumentException("population.PRICE_INDEX_RESEED_FORMULA_TO must be over 0 and at most 1");

@@ -460,6 +460,14 @@ public final class Market {
         return index;
     }
 
+    /** The formula-priced scrolls without a sale this start set to their seed (PriceSeedCorrection's dry run). */
+    volatile List<PriceIndexReseed.Move> unsoldAtStart = List.of();
+
+    /** What the one-time seed correction would change now (PriceSeedCorrection), for the admin port; changes nothing. */
+    public String correctionDryRunJson() {
+        return PriceSeedCorrection.dryRunJson(this, population.store(), population.config());
+    }
+
     /** What the one-time reseed would change now (PriceIndexReseed), for the admin port; changes nothing. */
     public String reseedDryRunJson() {
         return PriceIndexReseed.dryRunJson(this, population.store(), population.config());

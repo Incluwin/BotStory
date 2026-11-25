@@ -206,6 +206,7 @@ public final class AdminControlPort {
                 case "/runtime/stats/cpi":               return AdminStatsReader.closes(AdminStatsReader.days(query, 30));
                 case "/runtime/stats/market":            return AdminStatsReader.market();
                 case "/runtime/stats/price-reseed":      return AdminStatsReader.priceReseed();
+                case "/runtime/stats/price-correction":  return AdminStatsReader.priceCorrection();
                 case "/runtime/stats/controller":        return AdminStatsReader.controller(AdminStatsReader.days(query, 30));
                 case "/runtime/stats/new-accounts":      return AdminStatsReader.newAccountsPerDay(30);
                 case "/runtime/stats/retention":         return AdminStatsReader.retention();

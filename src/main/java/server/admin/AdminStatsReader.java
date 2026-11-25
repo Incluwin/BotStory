@@ -179,6 +179,12 @@ final class AdminStatsReader {
         return population == null ? "{\"ok\":false,\"error\":\"population_off\"}" : population.market().statsJson();
     }
 
+    /** What the one-time seed correction would change now (docs/ECONOMY_PLAN.md section 10.15); changes nothing. */
+    static String priceCorrection() {
+        Population population = Population.get();
+        return population == null ? "{\"ok\":false,\"error\":\"population_off\"}" : population.market().correctionDryRunJson();
+    }
+
     /** What the price index's one-time reseed would change now (docs/ECONOMY_PLAN.md section 10.9); changes nothing. */
     static String priceReseed() {
         Population population = Population.get();

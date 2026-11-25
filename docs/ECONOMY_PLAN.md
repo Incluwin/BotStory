@@ -1072,3 +1072,20 @@ goes there first; (6) a player can buy one scroll of a stack; (7) the arrival ma
   not a daily rate.
 - Found and fixed after the run: 22 of 35 stalls listed one scroll line, the wanted one ranking under the stall's eighth
   line. It now stands beside the dearest. The trial ran without this fix, and no off-switch control was run on a stack.
+
+### 10.15 The seed correction (user 2026-11-25: "do recommended", option b of 10.12; built, off; branch fix/scroll-seed-correction)
+
+`PRICE_SEED_CORRECTION_ENABLED`, once, at the next start with the drift guard on (`PriceSeedCorrection`, just before
+`reseedUnmoved`): a formula-priced scroll with sales over `PRICE_SEED_CORRECTION_OVER` (1.5) x its seed goes to its seed,
+never under the NPC price; a row with sales is never raised. In the same transaction the formula rows without a sale take
+their seed (up or down, as any start on the new formula sets them) with their old prices kept: without this switch on at the
+first start of the new formula, those prices are gone. Old prices and its own marker: `living_price_correction` (changeset 72, SQL
+063). The first reseed's table is keyed by item and already holds formula rows, so a second pass did not fit it. The controller takes
+no step at that day's close. Dry run: `/runtime/stats/price-correction`.
+
+**Check stack, 407c8a08c, live dump of 2026-11-25 08:52.** Dry run (switch off): 16 rows with sales, 159 without that the start
+set. Real run from the same dump: those same 175 rows and prices, marker written beside the first reseed's 112 rows; all 175
+backups equal the dump's prices, all 175 prices equal the seed, samples kept. Dry run after it: 0. Second start with the switch on: 0 rows,
+still 176 in the table. Undo in a rolled-back transaction: 16 restored. CPI unmoved (none of the 33 basket items is among
+them). The 159: 84 down (43 to under half, the lowest to 0.07 x), 75 up (12 more than doubled, the most x5.0). 16 other rows
+moved, equips without a sale that every start sets to their table seed. Not shown: the controller's close on that day (unit test only).
