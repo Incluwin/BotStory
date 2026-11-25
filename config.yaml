@@ -1568,7 +1568,7 @@ population:
     # the ones without a sale, which any start sets to their seed, do so with their old prices kept. Never under what an
     # NPC pays. What it would change: admin GET /runtime/stats/price-correction. false = it does not run; never runs twice.
     # Technical: PriceSeedCorrection.runOnce just before Market.reseedUnmoved; old prices and its own ran marker (item 0) live in living_price_correction (changeset 72), in the same transaction as the new ones; the reseed's marker does not matter to it.
-    PRICE_SEED_CORRECTION_ENABLED: false
+    PRICE_SEED_CORRECTION_ENABLED: true
     PRICE_SEED_CORRECTION_OVER: 1.5
     # Learned support points (docs/WORLD_SYSTEMS_PLAN.md I1.4): citizens learn, per job, under what HP share to heal (0.80
     # to 0.95, today 0.90) and how far through its duration to recast a buff (0.86 to 0.95, today 0.90), by how much of
