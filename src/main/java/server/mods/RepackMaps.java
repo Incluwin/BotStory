@@ -139,7 +139,18 @@ public final class RepackMaps {
      */
     static final long PENDING_MILLIS = 60_000;
 
-    private record Pending(int map, long at) {
+    /**
+     * How long after a login (or the NPC answer) on an account's "Repack files" answer a close counts as the client
+     * failing on what it was just sent: the Repack-only NPCs in the scriptable list, or a Repack map it logged into.
+     * A client on the Cosmic files closes on those at once ("Unknown error 0x80030002"), and before this it did so at
+     * every login until someone edited account_client_files by hand (GitHub Incluwin/BotStory#3). Short, because
+     * nothing tells the server that the client took the list: a Repack player who quits this soon after logging in
+     * is marked Cosmic too and has to answer again.
+     */
+    static final long LOGIN_PENDING_MILLIS = 20_000;
+
+    /** {@code map} 0: the login or the answer itself, not a warp. */
+    private record Pending(int map, long at, long window) {
     }
 
     private final ServerMods mods;
@@ -236,6 +247,9 @@ public final class RepackMaps {
      */
     public Map<Integer, String> scriptableNpcs(Client client, Map<Integer, String> all) {
         boolean repack = open() && files(client) == Files.REPACK;
+        if (repack) {
+            sentOnAnswer(client);
+        }
         Map<Integer, String> out = new TreeMap<>();
         all.forEach((npcId, text) -> {
             if (repack || !repackOnlyNpc(npcId)) {
@@ -320,9 +334,20 @@ public final class RepackMaps {
             });
             if (!held.isEmpty()) {
                 client.sendPacket(PacketCreator.setNPCScriptable(held));
+                sentOnAnswer(client);
             }
         }
         return true;
+    }
+
+    /**
+     * The client was just sent what only the Repack files can show, on its account's word alone (a Kaentake report
+     * needs no checking): a close within {@link #LOGIN_PENDING_MILLIS} marks the account Cosmic ({@link #clientClosed}).
+     */
+    private void sentOnAnswer(Client client) {
+        if (!isBot(client) && !clientReportsRepack.test(client)) {
+            pending.put(client.getAccID(), new Pending(0, clock.getAsLong(), LOGIN_PENDING_MILLIS));
+        }
     }
 
     public void forget(int accountId) {
@@ -370,7 +395,7 @@ public final class RepackMaps {
             return refuse(chr, INCOMPLETE_LINE);
         }
         if (!isBot(client) && !clientReportsRepack.test(client)) {
-            pending.put(client.getAccID(), new Pending(toMap, clock.getAsLong()));
+            pending.put(client.getAccID(), new Pending(toMap, clock.getAsLong(), PENDING_MILLIS));
         }
         return true;
     }
@@ -397,10 +422,15 @@ public final class RepackMaps {
             return;
         }
         Pending warp = pending.remove(client.getAccID());
-        if (warp != null && !transition && clock.getAsLong() - warp.at() <= PENDING_MILLIS) {
+        if (warp != null && !transition && clock.getAsLong() - warp.at() <= warp.window()) {
             record(client.getAccID(), Files.COSMIC, Source.CRASH);
-            log.info("Account {} closed before Repack map {} loaded: marked as on the Cosmic WZ files",
-                    client.getAccID(), warp.map());
+            if (warp.map() == 0) {
+                log.info("Account {} said it has the Repack files and closed right after it was sent what only they"
+                        + " have: marked as on the Cosmic WZ files", client.getAccID());
+            } else {
+                log.info("Account {} closed before Repack map {} loaded: marked as on the Cosmic WZ files",
+                        client.getAccID(), warp.map());
+            }
         }
     }
 

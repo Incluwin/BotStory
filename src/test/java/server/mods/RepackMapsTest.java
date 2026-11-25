@@ -289,6 +289,52 @@ class RepackMapsTest {
         assertEquals(everyClient, maps.scriptableNpcs(client, all).keySet(), "closed: nobody meets a Repack NPC");
     }
 
+    /**
+     * GitHub Incluwin/BotStory#3: one wrong "Repack files" answer closed a client on the Cosmic files at every login
+     * (the Repack-only NPCs in its login list), until someone edited account_client_files by hand.
+     */
+    @Test
+    void aClientThatClosesRightAfterALoginOnItsAnswerIsMarkedCosmic() {
+        Map<Integer, String> all = Map.of(9001105, "Rescue Gaga!", 2142112, "The scouts' way");
+        maps.record(ACCOUNT, Files.REPACK, Source.PLAYER);
+        assertEquals(all.keySet(), maps.scriptableNpcs(client, all).keySet());
+        now.addAndGet(2_000);
+        maps.clientClosed(client, false);
+
+        assertEquals(Optional.of(new Answer(Files.COSMIC, Source.CRASH)), store.load(ACCOUNT));
+        assertEquals(Set.of(9001105), maps.scriptableNpcs(client, all).keySet(), "its next login is sent no Repack NPC");
+    }
+
+    @Test
+    void aClientThatClosesRightAfterAnsweringRepackIsMarkedCosmic() {
+        assertTrue(maps.recordWord(client, "repack"));
+        now.addAndGet(1_000);
+        maps.clientClosed(client, false);
+        assertEquals(Optional.of(new Answer(Files.COSMIC, Source.CRASH)), store.load(ACCOUNT));
+    }
+
+    @Test
+    void aLoginThatLastsAChannelChangeOrAKaentakeReportKeepsTheRepackAnswer() {
+        Map<Integer, String> all = Map.of(2142112, "The scouts' way");
+        maps.record(ACCOUNT, Files.REPACK, Source.PLAYER);
+
+        maps.scriptableNpcs(client, all);
+        now.addAndGet(RepackMaps.LOGIN_PENDING_MILLIS + 1);
+        maps.clientClosed(client, false);
+        assertEquals(Files.REPACK, maps.files(client), "it played on: a later logout is no crash");
+
+        maps.scriptableNpcs(client, all);
+        now.addAndGet(1_000);
+        maps.clientClosed(client, true);
+        assertEquals(Files.REPACK, maps.files(client), "a channel change is no crash");
+
+        reporting.add(client);
+        maps.scriptableNpcs(client, all);
+        now.addAndGet(1_000);
+        maps.clientClosed(client, false);
+        assertEquals(Files.REPACK, maps.files(client), "the launcher said Repack: nothing to check");
+    }
+
     @Test
     void anAccountThatAnswersRepackIsSentTheNpcsItsLoginListLeftOut() {
         assertTrue(maps.recordWord(client, "cosmic"));

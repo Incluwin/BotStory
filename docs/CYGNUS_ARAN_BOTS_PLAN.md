@@ -49,7 +49,8 @@ instructors, using their own skills. Today every bot is an Explorer.
 - **Engine.** `JobProgressionPolicy.isLegalAdvancement` allows Explorer jobs only (id < 1000), and
   `Character.changeJob` goes through it, so no character (bot or player) can become a Cygnus or Aran; the stock quest
   scripts above are refused too. `JobProgressionPolicyTest` pins Noblesse -> Dawn Warrior as illegal.
-  `CreateCharHandler` creates Adventurers only ("Phase 0"), so players cannot make these characters either.
+  `CreateCharHandler` created Adventurers only ("Phase 0") until 2026-11-25, so players could not make these
+  characters either (GitHub Incluwin/BotStory#4); it now creates Noblesse and Legend characters as upstream does.
 - **Creation.** `BotCreator` makes every bot a Beginner in Henesys (Residents, citizens, hires, `!spawnbot`).
 - **Builds.** Career bundles, AP profiles and SP profiles key on job families WARRIOR..PIRATE (Jackson enums), and
   `compatibleChoices` hands a Noblesse or Legend one of the 7 Explorer bundles. No SP profile names a Cygnus or Aran
