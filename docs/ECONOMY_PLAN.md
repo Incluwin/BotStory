@@ -1001,3 +1001,13 @@ Turn it off: used scrolls rise but sales do not, or FM rooms fill with citizens 
 equip category, not each scroll's own required-item list. Open slots ignore locked or cash gear. The 1,000 a day and the
 few hundred uses rest on one day's reads.
 
+
+### 10.15 The seed correction (user 2026-11-25: "do recommended", option b of 10.12; built, off; branch fix/scroll-seed-correction)
+
+`PRICE_SEED_CORRECTION_ENABLED`, once, at the next start with the drift guard on (`PriceSeedCorrection`, just before
+`reseedUnmoved`): a formula-priced scroll with sales over `PRICE_SEED_CORRECTION_OVER` (1.5) x its seed goes to its seed,
+never under the NPC price; a row with sales is never raised. In the same transaction the formula rows without a sale take
+their seed (up or down, as any start on the new formula sets them) with their old prices kept: without this switch on at the
+first start of the new formula, those prices are gone. Old prices and its own marker: `living_price_correction` (changeset 72, SQL
+063). The first reseed's table is keyed by item and already holds formula rows, so a second pass did not fit it. The controller takes
+no step at that day's close. Dry run: `/runtime/stats/price-correction`.

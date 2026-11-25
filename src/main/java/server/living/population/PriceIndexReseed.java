@@ -138,7 +138,7 @@ final class PriceIndexReseed {
         return out.toString();
     }
 
-    private static String listed(List<Move> moves) {
+    static String listed(List<Move> moves) {
         StringJoiner out = new StringJoiner(",", "[", "]");
         for (Move move : moves) {
             out.add(String.format(Locale.ROOT,

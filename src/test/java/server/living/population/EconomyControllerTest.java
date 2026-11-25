@@ -125,6 +125,10 @@ class EconomyControllerTest {
         assertEquals(1.7d, controller.setting(next).levers().budgetScale(), EPS);
         assertTrue(controller.setting(new Close(DAY.plusDays(1), 10_000_000_000L, 100_000_000L, 0L, 90.0d, 95.2d))
                 .levers().budgetScale() > 1.7d, "read against the reseed-day basket, a fall lifts budgets");
+        when(store.priceReseedDay()).thenReturn(null);
+        when(store.priceCorrectionDay()).thenReturn(DAY);
+        assertEquals(before, controller.setting(reseeded).levers(), "the seed correction's day too");
+        when(store.priceReseedDay()).thenReturn(DAY);
         // a missed day before the reseed closed at the same start has a pre-reseed basket: an ordinary close
         assertFalse(before.equals(controller.setting(new Close(DAY.minusDays(1), 5_800_000_000L, 1_000_000_000L,
                 850_000_000L, 53.5d, 54.8d)).levers()));
